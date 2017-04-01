@@ -148,19 +148,30 @@ void DoMix(void) {
 		break;
 	case VTOLAF: //  elevon with axis swap
 	case DeltaAF:
-		PW[RudderC] = -PWSense[RudderC] * Yl + OUT_NEUTRAL;
+		if (UsingVTOLMode) {
+			PW[RudderC] = PWSense[RudderC] * Rl + OUT_NEUTRAL;
 
-		TempElevator = PWSense[ElevatorC] * (F.Bypass ? Pl : (Pl
-				+ FWRollPitchMixFrac * Abs(Rl)));
-		// assume servos are opposite hand
-		PW[RightElevonC] = PWSense[RightElevonC] * (TempElevator + Rl)
-				+ OUT_NEUTRAL;
-		PW[LeftElevonC] = PWSense[LeftElevonC] * (-TempElevator + Rl)
-				+ OUT_NEUTRAL;
+			TempElevator = PWSense[ElevatorC] * (F.Bypass ? Pl : (Pl
+					+ FWRollPitchMixFrac * Abs(Rl)));
+			// assume servos are opposite hand
+			PW[RightElevonC] = PWSense[RightElevonC] * (TempElevator + Yl)
+					+ OUT_NEUTRAL;
+			PW[LeftElevonC] = PWSense[LeftElevonC] * (-TempElevator + Yl)
+					+ OUT_NEUTRAL;
+		} else {
+			PW[RudderC] = -PWSense[RudderC] * Yl + OUT_NEUTRAL;
 
-		if (UAVXAirframe == DeltaAF) {
-			PW[RightFlapC] = PWSense[RightFlapC] * Sl;
-			PW[LeftFlapC] = -PWSense[RightFlapC] * Sl;
+			TempElevator = PWSense[ElevatorC] * (F.Bypass ? Pl : (Pl
+					+ FWRollPitchMixFrac * Abs(Rl)));
+			// assume servos are opposite hand
+			PW[RightElevonC] = PWSense[RightElevonC] * (TempElevator + Rl)
+					+ OUT_NEUTRAL;
+			PW[LeftElevonC] = PWSense[LeftElevonC] * (-TempElevator + Rl)
+					+ OUT_NEUTRAL;
+
+		//	PW[RightFlapC] = PWSense[RightFlapC] * Sl;
+		//	PW[LeftFlapC] = -PW[RightFlapC];
+
 		}
 		break;
 	default:

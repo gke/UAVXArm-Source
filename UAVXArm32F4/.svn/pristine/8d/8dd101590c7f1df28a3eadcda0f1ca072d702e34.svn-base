@@ -51,8 +51,7 @@ int8 BeepTick = 0;
 
 real32 FWRollPitchFFFrac, FWAileronDifferentialFrac, FWPitchThrottleFFFrac,
 		MaxAltHoldCompFrac, MaxAttitudeAngleRad, FWMaxClimbAngleRad,
-		FWFlapDecayS, BestROCMPS;
-real32 FWGlideAngleOffsetRad = 0.0f;
+		FWGlideAngleOffsetRad, FWFlapDecayS, BestROCMPS;
 
 void ZeroCompensation(void) {
 	AltComp = 0.0f;
@@ -357,11 +356,7 @@ void DoAngleControl(int32 a) { // with Ming Liu
 
 	DesiredAngle = Limit1(C->Control, C->O.Max);
 
-//	if (UsingVTOLMode) {
-//		// TODO: needs a transition - MORE THOUGHT
-//		AngleE = DesiredAngle - (C->Angle - DegreesToRadians(90));
-//	} else
-		AngleE = DesiredAngle - C->Angle;
+	AngleE = DesiredAngle - C->Angle;
 
 	Pa = AngleE * C->O.Kp;
 
