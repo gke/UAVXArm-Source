@@ -236,7 +236,7 @@ void UpdateParameters(void) {
 
 		FWFlapDecayS = P(FWFlapDecayTime);
 
-		AttitudeThrFF = FromPercent((real32)P(AltThrottleFF));
+		TiltThrFFFrac = FromPercent((real32)P(TiltThrottleFF));
 
 		CGOffset = Limit1((real32)P(Balance) * 0.01f, 1.0f);
 

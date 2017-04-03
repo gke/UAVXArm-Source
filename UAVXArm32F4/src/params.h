@@ -196,7 +196,7 @@ enum Params { // MAX 64
 
 	NavVelKi, // 61
 	GPSProtocol, // 62
-	AltThrottleFF, // 63
+	TiltThrottleFF, // 63
 	StickScaleYaw, // 64
 
 	FWRollPitchFF, // 65

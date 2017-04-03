@@ -2,25 +2,19 @@ SHELL=cmd
 
 #V1 = -DV1_BOARD  // Beeper reversed but must be re-wired to 5V
 
-#const char * const targetName = __TARGET__;
-#const char * const shortGitRevision = __REVISION__;
-#const char * const buildDate = __DATE__;
-#const char * const buildTime = __TIME__;
+
+SVN_REV := "$(shell "C:\Program Files (x86)\Subversion\bin\svnversion" -cn . | sed -e 's/[MS]//g' -e 's/^[[:digit:]]*://')" 
 
 #EXPFLAGS =  
- 
-#TARGET=UAVXArm32F4_V4P_EXP_FIXED_WING
-#CONFIG=  -DV4_BOARD  -DARM_MATH_CM4 -DHSE_VALUE=8000000
 
-#TARGET=UAVXArm32F4_V4P
-#CONFIG=  -DV4_BOARD   -DARM_MATH_CM4  -DHSE_VALUE=8000000
+INSTALL_DIR = "C:/Flight/gitHub/UAVXArm.git/UAVXArm/firmware"
+
+TARGET=UAVXArm32F4_$(SVN_REV)_V4
+CONFIG=  -DV4_BOARD   -DARM_MATH_CM4  -DHSE_VALUE=8000000
 
 #==========================================================================================
 
-TARGET=UAVXArm32F4_V3P_EXP_FIXED_WING
-CONFIG= -DV3_BOARD  -DARM_MATH_CM4 -DHSE_VALUE=8000000
-
-#TARGET=UAVXArm32F4_V3P
+#TARGET=UAVXArm32F4_$(SVN_REV)_V3
 #CONFIG= -DV3_BOARD  -DARM_MATH_CM4 -DHSE_VALUE=8000000
 
 #==========================================================================================
@@ -154,7 +148,8 @@ MAIN_OBJS := $(wildcard obj/src/*/*/*/*/*/*/*.o) \
 all: uavxarm
 	$(OBJCOPY) -O ihex "$(BIN_DIR)/$(TARGET).elf" "$(BIN_DIR)/$(TARGET).hex"
 	$(RM) $(OBJS) "$(BIN_DIR)/$(TARGET).elf" "$(BIN_DIR)/$(TARGET).map" "$(BIN_DIR)/src" "$(BIN_DIR)/lib"
-
+	cp "$(BIN_DIR)/$(TARGET).hex" "$(INSTALL_DIR)/$(TARGET).hex"
+	
 svn: src/UAVXRevisionSVN.h
 	SubWCRev . src/UAVXRevisionSVN.h src/UAVXRevision.h
 

@@ -77,7 +77,7 @@ void InitControl(void);
 
 AxisStruct A[3];
 AltStruct Alt;
-real32 AttitudeThrFF;
+real32 TiltThrFFFrac;
 
 real32 CameraAngle[3], OrbitCamAngle;
 

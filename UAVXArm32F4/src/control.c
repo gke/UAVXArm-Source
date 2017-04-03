@@ -30,7 +30,7 @@ real32 CameraAngle[3];
 real32 OrbitCamAngle = 0.0f;
 real32 AngleE, RateE;
 int16 AttitudeHoldResetCount;
-real32 AttitudeThrFF;
+real32 TiltThrFF;
 
 real32 DesiredAltitude, Altitude;
 real32 AltComp, ROC, MinROCMPS, EffMinROCMPS;
@@ -65,7 +65,7 @@ void CalcTiltThrFFComp(void) {
 	real32 Temp;
 
 	if (IsMulticopter && (State == InFlight) && !F.UsingRateControl) { // forget near level check
-		Temp = (1.0f / AttitudeCosine() - 1.0) * AttitudeThrFF + 1.0f;
+		Temp = (1.0f / AttitudeCosine() - 1.0) * TiltThrFFFrac + 1.0f;
 		Temp = Limit(Temp, 1.0f, TiltFFLimit);
 		TiltThrFFComp = SlewLimit(TiltThrFFComp, Temp, TiltFFLimit, dT);
 	} else

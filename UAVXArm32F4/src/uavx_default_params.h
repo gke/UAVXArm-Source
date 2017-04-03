@@ -109,7 +109,7 @@ const ParamStruct_t
 
 						// Control
 
-						{ AltThrottleFF, { 0, 0, 0, 0 } }, //  % 63
+						{ TiltThrottleFF, { 0, 0, 0, 0 } }, //  % 63
 						{ StickScaleRollPitch, { 10, 10, 10, 10 } }, //  *10 75
 						{ StickScaleYaw, { 10, 50, 10, 10 } }, //  *10 64
 						{ Horizon, { 30, 30, 0, 0 } }, //  % 31

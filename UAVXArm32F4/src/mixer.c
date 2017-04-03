@@ -35,7 +35,6 @@ const uint8 SM[] = { ThrottleC, RightAileronC, LeftAileronC, ElevatorC,
 		RudderC, RightFlapC, LeftFlapC };
 
 real32 PWSense[MAX_PWM_OUTPUTS];
-real32 FWRollPitchMixFrac = 0.0f;
 real32 FWAileronDifferentialFrac = 0.0f;
 real32 OrientationRad = 0.0f;
 real32 OrientS = 0.0f;
@@ -90,7 +89,7 @@ void DoMix(void) {
 	case ElevonAF:
 		TempRudder = -PWSense[RudderC] * Yl; // use Roll not Yaw
 		TempElevator = PWSense[ElevatorC] * (F.Bypass ? Pl : (Pl
-				+ FWRollPitchMixFrac * Abs(Rl)));
+				+ FWRollPitchFFFrac * Abs(Rl)));
 		// assume servos are opposite hand
 		PW[RightElevonC] = PWSense[RightElevonC] * (TempElevator + TempRudder
 				+ Rl) + OUT_NEUTRAL;
@@ -112,7 +111,7 @@ void DoMix(void) {
 		PW[LeftAileronC] += OUT_NEUTRAL;
 
 		PW[ElevatorC] = PWSense[ElevatorC] * (F.Bypass ? Pl : (Pl
-				+ FWRollPitchMixFrac * Abs(Rl))) + OUT_NEUTRAL;
+				+ FWRollPitchFFFrac * Abs(Rl))) + OUT_NEUTRAL;
 
 		PW[RightFlapC] = PWSense[RightFlapC] * Sl + OUT_NEUTRAL;
 		PW[LeftFlapC] = -PWSense[RightFlapC] * Sl + OUT_NEUTRAL;
@@ -134,14 +133,14 @@ void DoMix(void) {
 				+ OUT_NEUTRAL;
 
 		PW[ElevatorC] = PWSense[ElevatorC] * (F.Bypass ? Pl : (Pl
-				+ FWRollPitchMixFrac * Abs(Rl))) + OUT_NEUTRAL;
+				+ FWRollPitchFFFrac * Abs(Rl))) + OUT_NEUTRAL;
 		break;
 	case RudderElevatorAF:
 		TempAileron = PWSense[RightAileronC] * Rl;
 
 		PW[RudderC] = PWSense[RudderC] * (TempAileron + Yl) + OUT_NEUTRAL;
 		PW[ElevatorC] = PWSense[ElevatorC] * (F.Bypass ? Pl : (Pl
-				+ FWRollPitchMixFrac * Abs(Rl))) + OUT_NEUTRAL;
+				+ FWRollPitchFFFrac * Abs(Rl))) + OUT_NEUTRAL;
 
 		PW[RightFlapC] = PWSense[RightFlapC] * Sl + OUT_NEUTRAL;
 		PW[LeftFlapC] = -PWSense[RightFlapC] * Sl + OUT_NEUTRAL;
@@ -151,7 +150,7 @@ void DoMix(void) {
 		PW[RudderC] = -PWSense[RudderC] * Yl + OUT_NEUTRAL;
 
 		TempElevator = PWSense[ElevatorC] * (F.Bypass ? Pl : (Pl
-				+ FWRollPitchMixFrac * Abs(Rl)));
+				+ FWRollPitchFFFrac * Abs(Rl)));
 		// assume servos are opposite hand
 		PW[RightElevonC] = PWSense[RightElevonC] * (TempElevator + Rl)
 				+ OUT_NEUTRAL;
