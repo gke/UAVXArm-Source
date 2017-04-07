@@ -210,7 +210,8 @@ int main() {
 
 				DoBeep(8, 2);
 
-				if (GPSRxSerial == TelemetrySerial)
+				if (!((CurrComboPort1Config == CPPM_GPS_M7to10)
+						|| (CurrComboPort2Config == GPS_RF_V4))) // using Telemetry port
 					InitGPS();
 
 				DoBeep(8, 2);

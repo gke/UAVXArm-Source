@@ -565,11 +565,6 @@ void InitParameters(void) {
 		CurrComboPort2Config = Unused_RF_V4;
 		SetP(ComboPort2Config, CurrComboPort2Config);
 	}
-#else
-	if (CurrComboPort2Config != I2C_RF_BatV_V3) {
-		CurrComboPort2Config = ComboPort2Unused;
-		SetP(ComboPort2Config, CurrComboPort2Config);
-	}
 #endif
 
 	if (CurrComboPort1Config != ComboPort1ConfigUnknown) {
@@ -592,7 +587,8 @@ void InitParameters(void) {
 	if (UsingExtLEDs)
 		wsInit();
 
-	if (GPSRxSerial != TelemetrySerial)
+	if ((CurrComboPort1Config == CPPM_GPS_M7to10) || (CurrComboPort2Config
+			== GPS_RF_V4))
 		InitGPS();
 
 	InitMAVLink();

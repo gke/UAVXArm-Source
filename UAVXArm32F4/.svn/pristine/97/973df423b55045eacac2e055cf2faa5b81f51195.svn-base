@@ -138,8 +138,6 @@ void RCParallelISR(TIM_TypeDef *tim) {
 		u = &RCPins[c].Timer;
 
 		if ((u->Tim == tim) && (TIM_GetITStatus(tim, u->CC) == SET)) {
-
-
 			TIM_ClearITPendingBit(u->Tim, u->CC);
 			switch (u->Channel) {
 			case TIM_Channel_1:
@@ -161,7 +159,6 @@ void RCParallelISR(TIM_TypeDef *tim) {
 			RCPtr = &RCInp[c];
 
 			if (RCPtr->State) {
-
 				RCPtr->FallingEdge = TimerVal & 0x0000ffff; // worst case 16 bit timer
 				RCPtr->State = false;
 
@@ -211,6 +208,17 @@ void RCParallelISR(TIM_TypeDef *tim) {
 
 // Futaba SBus
 
+/*
+ * Observations
+ *
+ * FrSky X8R
+ * time between frames: 6ms.
+ * time to send frame: 3ms.
+ *
+ * Futaba R6208SB/R6303SB
+ * time between frames: 11ms.
+ * time to send frame: 3ms.
+ */
 
 void DoSBus(void) {
 	uint8 i;
@@ -540,8 +548,6 @@ void InitRC(void) {
 	switch (CurrComboPort1Config) {
 	case ParallelPPM:
 		DiscoveredRCChannels = P(RCChannels);
-		RxEnabled[RCSerial] = false;
-		break;
 	case FutabaSBus_M7to10:
 		DiscoveredRCChannels = SBUS_CHANNELS;
 		RxEnabled[RCSerial] = true;
@@ -953,5 +959,132 @@ void CheckThrottleMoved(void) {
 } // CheckThrottleMoved
 
 
+/*
 
+ * General Futaba SBus Encoding Scheme
+
+ * The data is contained in 16 byte packets transmitted at 115200 baud.
+
+ * The format of each frame, as know to date, is as follows
+
+ *  byte1:  0x0f sentinel
+ *  bytes1-24: packet with 11 bit channel values bit packed towards byte1.
+ _______________________________________________________________________
+
+ * General Spektrum Encoding Scheme
+
+ * The bind function means that the satellite receivers believe they are
+ * connected to a 9 channel JR-R921 24 receiver thus during the bind process
+ * they try to get the transmitter to transmit at the highest resolution that
+ * it can manage. The data is contained in 16 byte packets transmitted at
+ * 115200 baud. Depending on the transmitter either 1 or 2 frames are required
+ * to contain the data for all channels. These frames are either 11ms or 22ms
+ * apart.
+
+ * The format of each frame for the main receiver is as follows
+
+ *  byte1:  frame loss data
+ *  byte2:  transmitter information
+ *  byte3:  and byte4:  channel data
+ *  byte5:  and byte6:  channel data
+ *  byte7:  and byte8:  channel data
+ *  byte9:  and byte10: channel data
+ *  byte11: and byte12: channel data
+ *  byte13: and byte14: channel data
+ *  byte15: and byte16: channel data
+
+ * The format of each frame for the secondary receiver is as follows
+
+ *  byte1:  frame loss data
+ *  byte2:  frame loss data
+ *  byte3:  and byte4:  channel data
+ *  byte5:  and byte6:  channel data
+ *  byte7:  and byte8:  channel data
+ *  byte9:  and byte10: channel data
+ *  byte11: and byte12: channel data
+ *  byte13: and byte14: channel data
+ *  byte15: and byte16: channel data
+
+ * The frame loss data bytes starts out containing 0 as long as the
+ * transmitter is switched on before the receivers. It then increments
+ * whenever frames are dropped.
+
+ * Three values for the transmitter information byte have been seen thus far
+
+ * 0x01 From a Spektrum DX7eu which transmits a single frame containing all
+ * channel data every 22ms with 10bit resolution.
+
+ * 0x02 From a Spektrum DM9 module which transmits two frames to carry the
+ * data for all channels 11ms apart with 10bit resolution.
+
+ * 0x12 From a Spektrum DX7se which transmits two frames to carry the
+ * data for all channels 11ms apart with 11bit resolution.
+
+ * 0x12 From a JR X9503 which transmits two frames to carry the
+ * data for all channels 11ms apart with 11bit resolution.
+
+ * 0x01 From a Spektrum DX7 which transmits a single frame containing all
+ * channel data every 22ms with 10bit resolution.
+
+ * 0x12 From a JR DSX12 which transmits two frames to carry the
+ * data for all channels 11ms apart with 11bit resolution.
+
+ * 0x1 From a Spektrum DX5e which transmits a single frame containing all
+ * channel data every 22ms with 10bit resolution.
+
+ * 0x01 From a Spektrum DX6i which transmits a single frame containing all
+ * channel data every 22ms with 10bit resolution.
+
+ * Currently the assumption is that the data has the form :
+
+ * [0 0 0 R 0 0 N1 N0]
+
+ * where :
+
+ * 0 means a '0' bit
+ * R: 0 for 10 bit resolution 1 for 11 bit resolution channel data
+ * N1 to N0 is the number of frames required to receive all channel
+ * data.
+
+ * Channels can have either 10bit or 11bit resolution. Data from a transmitter
+ * with 10 bit resolution has the form:
+
+ * [F 0 C3 C2 C1 C0 D9 D8 D7 D6 D5 D4 D3 D2 D1 D0]
+
+ * Data from a transmitter with 11 bit resolution has the form
+
+ * [F C3 C2 C1 C0 D10 D9 D8 D7 D6 D5 D4 D3 D2 D1 D0]
+
+ * where :
+
+ * 0 means a '0' bit
+ * F: Normally 0 but set to 1 for the first channel of the 2nd frame if a
+ * second frame is transmitted.
+
+ * C3 to C0 is the channel number, 4 bit, matching the numbers allocated in
+ * the transmitter.
+
+ * D9 to D0 is the channel data (10 bit) 0xaa..0x200..0x356 for
+ * 100% transmitter-travel
+
+ * D10 to D0 is the channel data (11 bit) 0x154..0x400..0x6AC for
+ * 100% transmitter-travel
+
+ * The order of the channels on a Spektrum is always as follows:
+ *
+ * Throttle   0
+ * Aileron    1
+ * Elevator   2
+ * Rudder     3
+ * Gear       4
+ * Flap/Aux1  5
+ * Aux2       6
+
+ * Aux3       7
+ * Aux4       8
+ * Aux5       9
+ * Aux6      10
+ * Aux7      11
+
+ */
 

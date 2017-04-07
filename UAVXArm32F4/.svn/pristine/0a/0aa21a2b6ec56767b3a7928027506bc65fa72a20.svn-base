@@ -77,19 +77,18 @@ void PendSV_Handler(void) {
 void TIM2_IRQHandler(void) {
 
 	if (CurrComboPort1Config == CPPM_GPS_M7to10) {
-		if (TIM_GetITStatus(TIM2, TIM_IT_CC1) == SET)
+		if ((TIM_GetITStatus(TIM2, TIM_IT_CC1) == SET) && (CurrComboPort1Config
+				== CPPM_GPS_M7to10))
 			RCSerialISR(TIM_GetCapture1(TIM2));
 		TIM_ClearITPendingBit(TIM2, TIM_IT_CC1);
 	} else if (CurrComboPort1Config == ParallelPPM)
 		RCParallelISR(TIM2);
-
 } // TIM2_IRQHandler
 
 void TIM3_IRQHandler(void) {
 
 	if (CurrComboPort1Config == ParallelPPM)
 		RCParallelISR(TIM3);
-
 } // TIM3_IRQHandler
 
 
@@ -174,7 +173,7 @@ void DMA1_Stream3_IRQHandler(void) {
 	if (CurrComboPort2Config == GPS_RF_V4) {
 		TxQHead[2] = TxQNewHead[2];
 		if (TxQHead[I2CSerial] != TxQTail[2])
-		serialTxDMA(2);
+			serialTxDMA(2);
 	}
 
 } // DMA1_Stream3_IRQHandler
@@ -201,7 +200,7 @@ void USART2_IRQHandler(void) {
 #if (MAX_SERIAL_PORTS > 2)
 void USART3_IRQHandler(void) {
 	if (CurrComboPort2Config == GPS_RF_V4)
-	serialISR(2);
+		serialISR(2);
 } // USART2_IRQHandler
 #endif
 #endif

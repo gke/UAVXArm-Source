@@ -837,12 +837,13 @@ void InitRCComboPort(void) {
 		break;
 	case ParallelPPM:
 		CurrMaxPWMOutputs = 6;
-		CurrNoOfRCPins = MAX_RC_INPS; //P(RCChannels);
+		CurrNoOfRCPins = DiscoveredRCChannels;
 		RxUsingSerial = false;
 #if defined(V4_BOARD)
 		if (CurrComboPort2Config == GPS_RF_V4){
 			GPSRxSerial = GPSTxSerial = I2CSerial;
 			InitSerialPort(GPSRxSerial, false);
+			GPSUsingTelemetry = false;
 		} else
 #endif
 		{
