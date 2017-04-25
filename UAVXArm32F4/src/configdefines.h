@@ -46,7 +46,7 @@
 #define PID_CYCLE_S ((real32)PID_CYCLE_US*1.0E-6)
 #define PID_SYNCPWM_CYCLE_US (1000000L/450) //2500 // for synchronised standard PWM
 
-#define ARMED_TIMEOUT_MS 150000L // mS. automatic disarming if armed for this long and landed
+#define ARMED_TIMEOUT_MS 120000L // mS. automatic disarming if armed for this long and landed
 #define FAILSAFE_TIMEOUT_MS 1000 // mS. hold last "good" settings and then restore flight or abort
 #define NAV_LAND_TIMEOUT_MS 3000
 #define NAV_ACTIVE_DELAY_MS 10000 // mS. after throttle exceeds idle that Nav becomes active
@@ -120,9 +120,7 @@
 
 #define NAV_SENS_THRESHOLD_STICK FromPercent(20)// No GPS Nav if Ch7 is less than this
 
-#define NAV_MAX_ACC_MPSPS 0.5f // assumed max acc for velocity estimation
-
-#define NAV_ATTITUDE_SLEW_RAD_S DegreesToRadians(5) // was 10 20
+#define NAV_ATTITUDE_SLEW_RAD_S DegreesToRadians(20)
 #define NAV_YAW_MAX_SLEW_RAD_S DegreesToRadians(60)
 
 #define NAV_LAND_M 5.0f // altitude below which motor shutoff armed for autoland
@@ -137,6 +135,7 @@
 #define GPS_MIN_FIX 3 // must be 3D
 #define GPS_ORIGIN_SENTENCES 30 // Number of sentences needed to obtain reasonable Origin
 #define GPS_MIN_HACC 5.0f
+#define GPS_MIN_SACC 1.0f
 #define GPS_HDOP_TO_HACC 4.0f // crude approximation for NMEA GPS units
 #define GPS_UPDATE_MS 200
 #define GPS_UPDATE_HZ (1000/GPS_UPDATE_MS)

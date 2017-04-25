@@ -29,11 +29,11 @@ enum Coords {
 typedef struct {
 	real32 Desired[3];
 	real32 Acc[3];
-	real32 Pos[3], PosE[3], PosEP[3];
-	real32 DesVel[3], Vel[3], VelP[3], VelE[3], VelEP[3], VelIntE[3];
+	real32 Pos[3], PosE[3],PosEP[3], PosIntE[3];
+	real32 DesVel[3], Vel[3], VelP[3], VelE[3];
 	real32 Corr[3], CorrP[3];
 
-	real32 Sensitivity, KpEff, KiEff;
+	real32 Sensitivity;
 	real32 TakeoffBearing;
 	real32 Distance, Bearing, Elevation;
 	real32 Hint;
@@ -48,7 +48,7 @@ typedef struct {
 	real32 LPFCutOffHz;
 	PIDStruct O, I;
 
-	real32 MaxVelocity, VelocityLimit;
+	real32 MaxVelocity;
 	real32 MaxAngle;
 	real32 YawKp;
 } NavStruct;
@@ -115,7 +115,7 @@ extern void AcquireHoldPosition(void);
 extern void CheckRapidDescentHazard(void);
 
 extern void DecayPosCorr(void);
-extern void DoShutdown(void);
+extern void InitiateShutdown(uint8 s);
 
 extern uint8 NavState, NavSwState, NavSwStateP, FailState;
 extern real32 DesiredNavHeading;

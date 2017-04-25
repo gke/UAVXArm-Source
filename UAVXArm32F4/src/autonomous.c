@@ -90,20 +90,21 @@ boolean DoLanding(void) {
 } // DoLanding
 
 
-void DoShutdown(void) {
-
+void InitiateShutdown(uint8 s) {
+	ZeroCompensation();
 	DesiredThrottle = 0.0f;
 	StopDrives();
-	LEDsOff();
-	NavState = Touchdown;
+	F.NavigationActive = false;
+	NavState = s;
+	FailState = Monitoring;
 	State = Shutdown;
+} // InitiateShutdown
 
-} // DoShutdown
 
 void DoAutoLanding(void) {
 
 	if (DoLanding())
-		DoShutdown();
+		InitiateShutdown(Touchdown);
 
 } // DoAutoLanding
 
@@ -196,8 +197,6 @@ void UpdateRTHSwState(void) { // called in rc.c on every rx packet
 	if (NowmS > NextNavSwUpdatemS) {
 		if (NavSwState != NavSwStateP) {
 			NextNavSwUpdatemS = NowmS + 1500;
-
-			Nav.VelocityLimit = NAV_MIN_VEL_MPS;
 
 			if (F.UsingWPNavigation) {
 				F.NavigationEnabled = F.NavigationActive;

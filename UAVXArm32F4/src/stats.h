@@ -56,7 +56,9 @@ enum Statistics {
 
 	UtilisationS,
 	BadS,
-	BadNumS
+	BadNumS,
+	MinsAccS,
+	MaxsAccS,
 };
 // NO MORE THAN 32 or 64 bytes
 

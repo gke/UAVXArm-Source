@@ -130,5 +130,7 @@ extern uint8 CurrGPSType;
 extern uint8 ll, ss, tt, RxCh;
 extern uint8 RxCheckSum, GPSCheckSumChar, GPSTxCheckSum;
 
+extern int16 UbxVersion;
+
 #endif
 

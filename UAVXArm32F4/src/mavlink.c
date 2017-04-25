@@ -85,8 +85,11 @@ void InitMAVLink(void) {
 	// 	Instrumentation, IREmulation,
 	// AFUnknown,
 
-	uint8 MAVAFTypes[] = { MAV_TYPE_TRICOPTER, MAV_TYPE_TRICOPTER, MAV_TYPE_TRICOPTER, //
-			MAV_TYPE_QUADROTOR, MAV_TYPE_QUADROTOR, MAV_TYPE_QUADROTOR, MAV_TYPE_QUADROTOR, //
+	uint8 MAVAFTypes[] = { MAV_TYPE_TRICOPTER,
+			MAV_TYPE_TRICOPTER,
+			MAV_TYPE_TRICOPTER, //
+			MAV_TYPE_QUADROTOR, MAV_TYPE_QUADROTOR, MAV_TYPE_QUADROTOR,
+			MAV_TYPE_QUADROTOR, //
 			MAV_TYPE_HEXAROTOR, MAV_TYPE_HEXAROTOR, //
 			MAV_TYPE_OCTOROTOR, MAV_TYPE_OCTOROTOR, //
 			MAV_TYPE_HELICOPTER, MAV_TYPE_HELICOPTER, //
@@ -157,9 +160,8 @@ void mavlinkSendGPSRaw(uint8 s) {
 
 	mavlink_msg_gps_raw_int_pack(mavlink_system.sysid, mavlink_system.compid,
 			&msg, uSClock(), GPS.fix, GPS.Raw[NorthC], GPS.Raw[EastC],
-			GPS.altitude * 1000.0f,
-			GPS.hAcc * 100.0f, GPS.vAcc * 100.0f, GPS.gspeed,
-			RadiansToDegrees(GPS.heading), GPS.noofsats);
+			GPS.altitude * 1000.0f, GPS.hAcc * 100.0f, GPS.vAcc * 100.0f,
+			GPS.gspeed, RadiansToDegrees(GPS.heading), GPS.noofsats);
 
 	mavlinkTx(s, buffer, mavlink_msg_to_send_buffer(buffer, &msg));
 
@@ -219,7 +221,7 @@ void mavlinkSendSysStatus(uint8 s) {
 			sensorspresent, // uint32 onboard_control_sensors_present,
 			sensorspresent, // uint32 onboard_control_sensors_enabled,
 			sensorshealth, // uint32 onboard_control_sensors_health,
-			(uint16)NV.Stats[UtilisationS], // uint16 load,
+			(uint16) NV.Stats[UtilisationS], // uint16 load,
 			(uint16) (BatteryVolts * 1000.0f), // voltage_battery mV,
 			-1, // int16_t current_battery 10mAH,
 			-1, // int8_t battery_remaining %,
@@ -270,6 +272,7 @@ void mavlinkPollRx(uint8 s) {
 
 	while (serialAvailable(s)) {
 		ch = RxChar(s);
+
 		if (mavlink_parse_char(s, ch, &rxmsg, &rxstatus)) {
 			mavlink_system_rx.sysid = rxmsg.sysid;
 			mavlink_system_rx.compid = rxmsg.compid;
@@ -299,70 +302,57 @@ void mavlinkPollRx(uint8 s) {
 				break;
 			} // switch
 		}
+
 	}
 } // mavlinkPollRx
 
 
 void mavlinkUpdate(uint8 s) {
 	static uint32 LastHeartbeatmS = 0;
+	static uint8 Tick = 0;
 	uint32 NowmS;
 
 	NowmS = mSClock();
-	if (CurrTelType == MAVLinkMinTelemetry) {
-		// 2hz for waypoints, GPS raw, fence data, current waypoint
-		// 2hz for VFR_Hud data )
-		// 2hz for raw imu sensor data )
-		// 3hz for AHRS, Hardware Status, Wind
-		// 5hz for attitude
-		// 5hz for radio input
+	// 2hz for waypoints, GPS raw, fence data, current waypoint
+	// 2hz for VFR_Hud data )
+	// 2hz for raw imu sensor data )
 
-		if (NowmS > LastHeartbeatmS) {
-			LastHeartbeatmS = NowmS + 1000;
-			mavlinkSendHeartbeat(s);
-			mavlinkSendSysStatus(s);
+	// 5hz for attitude
+	// 5hz for radio input
+
+	if (F.UsingUplink)
+		while (serialAvailable(s))
+			RxChar(s);
+	//mavlinkPollRx(s);
+
+	if (NowmS > LastHeartbeatmS) {
+		LastHeartbeatmS = NowmS + 1000;
+		mavlinkSendHeartbeat(s);
+		mavlinkSendSysStatus(s);
+	}
+
+	if (NowmS >= mS[TelemetryUpdate]) {
+		mSTimer(NowmS, TelemetryUpdate, 100);
+
+		if ((Tick % 2) == 0) { // 5Hz
+			Probe(1);
+			mavlinkSendAttitude(s);
+			mavlinkSendVFRHUD(s);
+			mavlinkSendRCRaw(s);
+			// mavlinkSendScaledPressure(s);
+			Probe(0);
 		}
 
-		if (F.GPSPosUpdated) {
+		if ((Tick % 5) == 0) { // 2Hz
 			mavlinkSendGPSRaw(s);
 			mavlinkSendMissionCurrent(s);
 			mavlinkSendNavController(s);
 		}
 
-		if (NowmS >= mS[TelemetryUpdate]) {
-			mSTimer(NowmS, TelemetryUpdate, 500);
-			mavlinkSendAttitude(s);
-			mavlinkSendVFRHUD(s);
-			mavlinkSendRCRaw(s);
-			// mavlinkSendScaledPressure(s);
-		}
+		// also 3hz for AHRS, Hardware Status, Wind
 
-	} else {
-
-		if (F.UsingUplink)
-			mavlinkPollRx(s);
-
-		//   case MAVLINK_MSG_ID_WIND:
-		//??? case MAVLINK_MSG_ID_GLOBAL_POSITION_INT:
-
-		if (NowmS > LastHeartbeatmS) {
-			LastHeartbeatmS = NowmS + 1000;
-			mavlinkSendHeartbeat(s);
-			mavlinkSendSysStatus(s);
-		}
-
-		if (F.GPSPosUpdated) {
-			mavlinkSendGPSRaw(s);
-			mavlinkSendMissionCurrent(s);
-			mavlinkSendNavController(s);
-		}
-
-		if (NowmS >= mS[TelemetryUpdate]) {
-			mSTimer(NowmS, TelemetryUpdate, 500);
-			mavlinkSendAttitude(s);
-			mavlinkSendVFRHUD(s);
-			mavlinkSendRCRaw(s);
-			// mavlinkSendScaledPressure(s);
-		}
+		if (++Tick >= 10)
+			Tick = 0;
 	}
 
 } // mavlinkUpdate

@@ -544,7 +544,7 @@ void UpdateInertial(void) {
 	// one cycle delay OK
 	UpdateHeading();
 
-//zzz	UpdateGPS();
+    UpdateGPS();
 	if (F.NewGPSPosition) {
 		F.NewGPSPosition = false;
 		for (a = NorthC; a <= DownC; a++) {

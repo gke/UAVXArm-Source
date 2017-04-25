@@ -167,10 +167,13 @@ void Catastrophe(void) {
 } // Catastrophe
 
 
-void CheckCrashed(void) {
+boolean StillFlying(void) {
 	static real32 CrashAltitude = -100.0f;
+	static boolean Flying;
 
-	if (F.FailsafesEnabled && IsMulticopter) {
+	Flying = true;
+
+	if (F.FailsafesEnabled && IsMulticopter ) {
 		if ((Abs(A[Roll].Angle) < CRASHED_ANGLE_RAD) && (Abs(A[Pitch].Angle)
 				< CRASHED_ANGLE_RAD)) {
 			mSTimer(mSClock(), CrashedTimeout, CRASHED_TIMEOUT_MS);
@@ -178,12 +181,13 @@ void CheckCrashed(void) {
 		} else {
 			if ((mSClock() > mS[CrashedTimeout])
 					&& (Abs(CrashAltitude - Altitude) < 0.5f)
-					&& (DesiredThrottle > IdleThrottle) && !F.UsingRateControl) {
-				State = Shutdown;
-			}
+					&& (DesiredThrottle > IdleThrottle) && !F.UsingRateControl)
+				Flying = false;
 		}
 	}
 
-} // CheckCrashed
+	return (Flying);
+
+} // StillFlying
 
 

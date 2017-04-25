@@ -362,7 +362,7 @@ void SendNavPacket(uint8 s) {
 	SendPacketHeader(s);
 
 	TxESCu8(s, UAVXNavPacketTag);
-	TxESCu8(s, 51);
+	TxESCu8(s, 57);
 
 	TxESCu8(s, NavState);
 	TxESCu8(s, FailState);
@@ -371,7 +371,10 @@ void SendNavPacket(uint8 s) {
 
 	TxESCu8(s, CurrWPNo);
 
-	TxESCi16(s, GPS.hAcc * 100.0f);
+	TxESCi16(s, Limit(GPS.hAcc, 0.0f, 32.0f) * 100.0f);
+	TxESCi16(s, Limit(GPS.vAcc, 0.0f, 32.0f) * 100.0f);
+	TxESCi16(s, Limit(GPS.sAcc, 0.0f, 32.0f) * 100.0f);
+	TxESCi16(s, Limit(GPS.cAcc, 0.0f, 32.0f) * 100.0f);
 
 	TxESCi16(s, Nav.WPBearing * 1000.0f);
 	TxESCi16(s, Nav.CrossTrackE * 10.0f);
@@ -443,7 +446,7 @@ void SendFusionPacket(uint8 s) {
 	TxESCi16(s, FROC * 100.0f);
 	TxESCi16(s, NV.AccCal.DynamicAccBias[Z] * 1000.0f);
 
-	TxESCi16(s, 0);
+	TxESCi16(s, RateEnergySum / (real32) RateEnergySamples);
 	TxESCi16(s, RadiansToDegrees(FWGlideAngleOffsetRad) * 10.0f);
 	TxESCi16(s, NewParameterTuning);
 
@@ -846,10 +849,20 @@ void ProcessOriginPacket(uint8 s) {
 
 } // ProcessOriginPacket
 
-void ProcessEscProgPacket(void) {
-	esc4wayInit();
 
-}
+void ProcessGPSBypass(void) {
+
+	while (true) {
+		if (serialAvailable(GPSRxSerial)) {
+			LEDToggle(LEDBlueSel);
+			TxChar(TelemetrySerial, RxChar(GPSRxSerial));
+		}
+		if (serialAvailable(TelemetrySerial)) {
+			TxChar(GPSTxSerial, RxChar(TelemetrySerial));
+			LEDToggle(LEDRedSel);
+		}
+	}
+} // ProcessGPSBypass
 
 void InitPollRxPacket(void) {
 
@@ -954,9 +967,13 @@ void ProcessRxPacket(uint8 s) {
 				BBReplaySpeed = UAVXPacket[4];
 				DumpBlackBox(s);
 				break;
-			case miscProgEsc:
-				if (IsMulticopter)
-					DoBLHeliSuite(s);
+			case miscGPSBypass:
+				if ((GPSRxSerial != TelemetrySerial) && !Armed()) {
+					InitiateShutdown(Landed);
+					SendAckPacket(s, miscGPSBypass, true);
+					ProcessGPSBypass(); // requires power cycle to escape
+				} else
+					SendAckPacket(s, miscLB, false);
 				break;
 			default:
 				break;

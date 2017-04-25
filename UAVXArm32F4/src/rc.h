@@ -107,15 +107,6 @@ typedef struct {
 #define SPEKTRUM_CHANNEL1	0x04
 #define SPEKTRUM_CHANNEL2	0x05
 
-
-//  Measured values with Futaba FX-30/R6108SB:
-//    -+100% on TX:  PCM 1.100/1.520/1.950ms -> SBus raw values: 350/1024/1700  (100% ATV)
-//    -+140% on TX:  PCM 0.930/1.520/2.112ms -> SBus raw values:  78/1024/1964  (140% ATV)
-//    -+152% on TX:  PCM 0.884/1.520/2.160ms -> SBus raw values:   1/1024/2047  (140% ATV plus dirty tricks)
-
-#define SPEK_OFFSET_US 903 // 884
-#define SPEK_RANGE_US 1194 // 2160-884 = 1276
-
 void CheckSpektrumSBus(void);
 void DoRCSerial(uint32 Now);
 void DoSpektrum(void);

@@ -23,7 +23,7 @@
 const uint8 TuneMap[] = { NoTuning, RollAngleKp, RollAngleKi, RollRateKp,
 		RollRateKd, PitchAngleKp, PitchAngleKi, PitchRateKp, PitchRateKd,
 		YawAngleKp, YawRateKp, AltPosKp, AltPosKi, AltVelKp, AltVelKd, NavPosKp,
-		NavVelKp, NavVelKi, NavCrossTrackKp};
+		NavPosKi, NavVelKp, NavCrossTrackKp};
 
 uint8 CurrTuningSel = NoTuning; // index into map to actual parameter
 real32 TuningScale = 1.0f;

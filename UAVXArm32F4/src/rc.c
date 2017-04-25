@@ -27,7 +27,8 @@ uint8 SpekChannelCount;
 
 uint8 SpekChanShift;
 uint8 SpekChanMask;
-real32 SpekRange = 2047.0f;
+real32 SpekScale = 1.0f;
+int32 SpekOffset = 988;
 uint8 SpekFrameSize = 16;
 uint16 LostFrameCount = 0;
 uint8 SpekFrameNo = 0;
@@ -139,7 +140,6 @@ void RCParallelISR(TIM_TypeDef *tim) {
 
 		if ((u->Tim == tim) && (TIM_GetITStatus(tim, u->CC) == SET)) {
 
-
 			TIM_ClearITPendingBit(u->Tim, u->CC);
 			switch (u->Channel) {
 			case TIM_Channel_1:
@@ -233,8 +233,8 @@ void DoSBus(void) {
 	RCInp[15].Raw = RCFrame.u.c.c16;
 
 	for (i = 0; i < 16; i++)
-		RCInp[i].Raw = (real32)RCInp[i].Raw * 0.625f + 880;
-		//RCInp[i].Raw = Limit((real32)RCInp[i].Raw * 0.625f + 880, RC_MIN_WIDTH_US, RC_MAX_WIDTH_US);
+		RCInp[i].Raw = (real32) RCInp[i].Raw * 0.625f + 880;
+	//RCInp[i].Raw = Limit((real32)RCInp[i].Raw * 0.625f + 880, RC_MIN_WIDTH_US, RC_MAX_WIDTH_US);
 
 	RCInp[16].Raw = RCFrame.u.b[22] & 0b0001 ? 2000 : 1000;
 	RCInp[17].Raw = RCFrame.u.b[22] & 0b0010 ? 2000 : 1000;
@@ -243,24 +243,6 @@ void DoSBus(void) {
 
 } // DoSBus
 
-
-void SpektrumDecode(void) {
-	int16 v;
-	uint8 Channel;
-
-	if ((RCFrame.u.b[0] & RCFrame.u.b[1]) != 0xff) {
-
-		//uint8 SpekFrameNo = (RCFrame.u.b[index] >> 7) & 1;
-		Channel = (RCFrame.u.b[0] >> SpekChanShift) & 0x0f;
-		if ((Channel + 1) > DiscoveredRCChannels)
-			DiscoveredRCChannels = Channel + 1;
-		v = ((RCFrame.u.b[0] & SpekChanMask) << 8) | RCFrame.u.b[1];
-
-		RCInp[Channel].Raw = ((real32) v * (SPEK_RANGE_US / SpekRange))
-				+ SPEK_OFFSET_US;
-	}
-
-} // spektrumDecode
 
 void SpektrumSBusISR(uint8 v) { // based on MultiWii
 
@@ -384,11 +366,7 @@ void CheckSpektrumSBus(void) {
 					v = ((uint32) (RCFrame.u.b[i] & SpekChanMask) << 8)
 							| RCFrame.u.b[i + 1];
 
-					RCInp[Channel].Raw
-							= CurrComboPort1Config == BadDM9_M7to10 ? ((v - 588)
-									* 1.18) + 1500
-									: ((real32) v * (SPEK_RANGE_US / SpekRange))
-											+ SPEK_OFFSET_US;
+					RCInp[Channel].Raw = (v - SpekOffset) * SpekScale + 1500;
 				}
 
 			if (CurrComboPort1Config == Deltang1024_M7to10)
@@ -548,16 +526,24 @@ void InitRC(void) {
 		break;
 	case Deltang1024_M7to10:
 	case Spektrum1024_M7to10:
-	case BadDM9_M7to10:
 		SpekChanShift = 2;
 		SpekChanMask = 0x03;
-		SpekRange = 1023.0f;
+		SpekScale = 1.2f;
+		SpekOffset = 1500-988;
 		RxEnabled[RCSerial] = true;
 		break;
 	case Spektrum2048_M7to10:
 		SpekChanShift = 3;
 		SpekChanMask = 0x07;
-		SpekRange = 2047.0f;
+		SpekScale = 0.6f;
+		SpekOffset = (1500-988)*2;
+		RxEnabled[RCSerial] = true;
+		break;
+	case BadDM9_M7to10:
+		SpekChanShift = 2;
+		SpekChanMask = 0x03;
+		SpekScale = 1.2f;
+		SpekOffset = 1500-910;
 		RxEnabled[RCSerial] = true;
 		break;
 	default:
@@ -765,9 +751,7 @@ void SpekLoopback(boolean HiRes) {
 			SpekByte = SpekCh * 2;
 			// 180..512..854 + 988 offset 332 342
 
-			v = (real32) (SP[SpekCh] - SPEK_OFFSET_US) * (SpekRange
-					/ SPEK_RANGE_US);
-			v = Limit(v, 0, (int16) SpekRange);
+			v =  (real32) (SP[SpekCh] - 1500) / SpekScale + SpekOffset;
 
 			LBFrame[SpekByte] = (SpekCh << SpekChanShift) | ((v >> 8)
 					& SpekChanMask);
@@ -951,7 +935,5 @@ void CheckThrottleMoved(void) {
 			F.ThrottleMoving = false;
 	}
 } // CheckThrottleMoved
-
-
 
 

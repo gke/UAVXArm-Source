@@ -32,7 +32,7 @@ void DoBeeps(uint8);
 void DoCalibrationAlarm(void);
 void CheckAlarms(void);
 void Catastrophe(void);
-void CheckCrashed(void);
+boolean StillFlying(void);
 
 extern boolean FirstPass;
 extern uint8 ArmingMethod;

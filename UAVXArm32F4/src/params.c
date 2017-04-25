@@ -44,7 +44,7 @@ volatile boolean StickArmed = false;
 
 uint8 UAVXAirframe = AFUnknown;
 boolean IsMulticopter, IsFixedWing;
-boolean UsingGliderStrategy, UsingFastStart, UsingBLHeliPrograming;
+boolean UsingGliderStrategy, UsingFastStart, UsingBLHeliPrograming, UsingSpecial;
 
 uint8 CurrConfig1, CurrConfig2;
 uint8 CurrUAVXAirframe;
@@ -96,6 +96,8 @@ void DoConfigBits(void) {
 	UsingGliderStrategy = ((P(Config2Bits) & UseGliderStrategyMask) != 0)
 			&& !F.UsingWPNavigation && IsFixedWing;
 
+	UsingSpecial = (P(Config2Bits) & UseSpecialMask) != 0;
+
 	UsingInvertedBoard = (P(Config2Bits) & UseInvertedBoardMask) != 0;
 	//... currentl unused
 
@@ -107,6 +109,9 @@ void RegeneratePIDCoeffs(void) {
 
 	// Roll
 	C = &A[Roll];
+
+	//P = Nav.PosE[a] * 0.00709f; // Nav.O.Kp
+	//D = Nav.Vel[a] * 0.10371f; // Nav.O.Kd
 
 	C->O.Kp = (real32) P(RollAngleKp) * OKp;
 	C->O.Ki = (real32) P(RollAngleKi) * OKi;
@@ -158,12 +163,12 @@ void RegeneratePIDCoeffs(void) {
 
 	Nav.LPFCutOffHz = 1.0f; // GPS_UPDATE_HZ * 0.2f;
 
-	Nav.O.Kp = (real32) P(NavPosKp) * 0.0059f; //0.00625f; //20 -> 0.125f;
+	Nav.O.Kp = (real32) P(NavPosKp) * 0.0165f; //20 -> 0.33f;
+	Nav.O.Ki =  (real32) P(NavPosKi) * 0.004f; // 5 -> 0.02f;
+	Nav.MaxVelocity = Nav.O.IL = (real32) P(NavPosIntLimit);
 
-	Nav.I.Kp = (real32) P(NavVelKp) * 0.003675; // 0.012f; // 20 -> 0.24f;
-	Nav.I.Ki = (real32) P(NavVelKi) * 0.000096f; // 0.0078f; // 5 -> 0.039f;
-
-	Nav.MaxVelocity = (real32) P(NavVelIntLimit);
+	Nav.I.Kp = (real32) P(NavVelKp) * 0.06f; // 20 -> 1.2f; // @45deg max
+	Nav.I.Ki = 0.0f;
 
 	Nav.YawKp = 2.0f;
 
@@ -289,7 +294,7 @@ void UpdateParameters(void) {
 
 		// Nav
 
-		Nav.MaxAngle = NAV_MAX_ANGLE_RAD;
+		Nav.MaxAngle = DegreesToRadians(P(NavMaxAngle));
 		Nav.CrossTrackKp = P(NavCrossTrackKp) * 0.01f;
 
 		Nav.FenceRadius = NAV_DEFAULT_FENCE_M; // TODO: from Default Mission

@@ -60,6 +60,8 @@ extern const real32 GyroScale[];
 extern uint8 CurrAttSensorType;
 extern boolean UsingInvertedBoard;
 extern real32 Acc[], Rate[];
+extern real32 RateEnergySum;
+extern uint32 RateEnergySamples;
 
 #endif
 

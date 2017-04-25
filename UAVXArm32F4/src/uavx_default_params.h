@@ -92,9 +92,11 @@ const ParamStruct_t
 						{ GPSProtocol, { UBXBinGPS, UBXBinGPS, UBXBinGPS,
 								UBXBinGPS } }, // GPSProtocol 62
 						{ NavPosKp, { 20, 20, 20, 20 } }, //  57
+						{ NavPosKi, { 5, 5, 5, 5 } }, //  61
+						{ NavPosIntLimit, { 3, 3, 12, 12 } }, // 41
+
 						{ NavVelKp, { 20, 20, 20, 20 } }, //  29
-						{ NavVelKi, { 5, 5, 5, 5 } }, //  61
-						{ NavVelIntLimit, { 3, 3, 12, 12 } }, //  or NavMaxVel 41
+						{ NavMaxAngle, { 45, 45, 45, 45 } }, // 69,
 
 						{ NavCrossTrackKp, { 4, 4, 4, 4 } }, //  49
 
@@ -156,8 +158,8 @@ const ParamStruct_t
 
 						// Unused
 
-						{ P69, { 0, } }, // 80,
-						{ P79, { 0, } }, // 80,
+
+						{ P79, { 0, } }, // 79,
 						{ P80, { 0, } }, // 80,
 						{ P81, { 0, } }, // 81,
 						{ P82, { 0, } }, // 82,

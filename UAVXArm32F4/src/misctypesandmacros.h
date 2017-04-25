@@ -52,6 +52,23 @@ typedef unsigned char BYTE;
 #define true 1
 #define false 0
 
+#define _b0 1
+#define _b1 2
+#define _b2 4
+#define _b3 8
+#define _b4 16
+#define _b5 32
+#define _b6 64
+#define _b7 128
+#define _b8 256
+#define _b9 512
+#define _b10 1024
+#define _b11 2048
+#define _b12 4096
+#define _b13 8192
+#define _b14 16384
+#define _b15 32768
+
 typedef union {
 	int16 i32;
 	uint8 u8[4];

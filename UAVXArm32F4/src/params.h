@@ -172,7 +172,7 @@ enum Params { // MAX 64
 	MadgwickKpAcc, // 39
 	CamRollTrim, // 40
 
-	NavVelIntLimit, // 41
+	NavPosIntLimit, // 41
 	RxPitchCh, // 42
 	RxYawCh, // 43
 	AFType, // 44
@@ -194,7 +194,7 @@ enum Params { // MAX 64
 	Balance, // 59
 	RxAux4Ch, // 60
 
-	NavVelKi, // 61
+	NavPosKi, // 61
 	GPSProtocol, // 62
 	TiltThrottleFF, // 63
 	StickScaleYaw, // 64
@@ -203,7 +203,7 @@ enum Params { // MAX 64
 	FWPitchThrottleFF, // 66
 	MaxAltHoldComp, // 67
 	FWMaxClimbAngle, // 68
-	P69, // 69
+	NavMaxAngle, // 69
 	FWFlapDecayTime, // 70
 	FWAileronDifferential, // 71
 	ASSensorType, // 72,
@@ -251,10 +251,10 @@ typedef struct {
 #define UseManualAltHoldMask 	0x01
 #define	UseFastStartMask		(1<<1)
 #define UseBLHeliMask 			(1<<2)
-#define UseGliderStrategyMask		(1<<3)
+#define UseGliderStrategyMask	(1<<3)
 #define UseConfigRebootMask		(1<<4)
 #define	UseInvertedBoardMask	(1<<5)
-//#define	UseRapidDescentMask		(1<<6)
+#define	UseSpecialMask			(1<<6)
 
 // bit 7 unusable in UAVPSet
 
@@ -270,7 +270,7 @@ extern int8 CP[];
 extern const real32 AFOrientation[];
 extern uint8 UAVXAirframe;
 extern boolean IsMulticopter, IsFixedWing, UsingFastStart,
-		UsingBLHeliPrograming, UsingGliderStrategy;
+		UsingBLHeliPrograming, UsingGliderStrategy, UsingSpecial;
 
 extern real32 AltCompDecayS;
 extern boolean UseFastStart;

@@ -46,6 +46,8 @@ boolean UsingInvertedBoard = false;
 
 real32 AccBias[3], GyroBias[3];
 real32 Acc[3], Rate[3];
+real32 RateEnergySum;
+uint32 RateEnergySamples;
 
 // NED
 // P,R,Y

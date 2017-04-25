@@ -210,6 +210,7 @@ void GPSEmulation(void) {
 		GPS.noofsats = 10;
 		GPS.hDOP = 0.9f;
 		GPS.hAcc = GPS.hDOP * GPS_HDOP_TO_HACC;
+		GPS.sAcc = 1.0f;
 		F.GPSValid = F.GPSPacketReceived = true;
 	}
 

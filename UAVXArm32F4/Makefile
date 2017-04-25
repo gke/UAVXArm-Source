@@ -9,13 +9,13 @@ SVN_REV := "$(shell "C:\Program Files (x86)\Subversion\bin\svnversion" -cn . | s
 
 INSTALL_DIR = "C:/Flight/gitHub/UAVXArm.git/UAVXArm/firmware"
 
-TARGET=UAVXArm32F4_$(SVN_REV)_V4
-CONFIG= -DV4_BOARD   -DARM_MATH_CM4  -DHSE_VALUE=8000000
+#TARGET=UAVXArm32F4_$(SVN_REV)_V4
+#CONFIG= -DV4_BOARD   -DARM_MATH_CM4  -DHSE_VALUE=8000000
 
 #==========================================================================================
 
-#TARGET=UAVXArm32F4_$(SVN_REV)_V3
-#CONFIG= -DV3_BOARD  -DARM_MATH_CM4 -DHSE_VALUE=8000000
+TARGET=UAVXArm32F4_$(SVN_REV)_V3
+CONFIG= -DV3_BOARD  -DARM_MATH_CM4 -DHSE_VALUE=8000000
 
 #==========================================================================================
 

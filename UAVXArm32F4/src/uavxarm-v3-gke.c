@@ -58,9 +58,18 @@ void CalculatedT(uint32 NowuS) {
 
 } // CalculatedT
 
+void ResetMainTimeouts(void) {
+	uint32 NowmS;
+
+	NowmS = mSClock();
+	mSTimer(NowmS, ArmedTimeout, ARMED_TIMEOUT_MS);
+	mSTimer(NowmS, RxFailsafeTimeout, RC_NO_CHANGE_TIMEOUT_MS);
+	F.SticksUnchangedFailsafe = F.LostModel = false;
+} // ResetMainTimeouts
+
+
 int main() {
 	uint32 NowuS;
-	uint32 NowmS;
 	static uint32 LastUpdateuS = 0;
 
 	CheckParametersInitialised();
@@ -97,12 +106,6 @@ int main() {
 
 	InitParameters();
 
-/*
-	while(1) {
-		if (serialAvailable(2))
-			TxChar(0,RxChar(2) );
-	}
-*/
 	if ((P(Config2Bits) & UseBLHeliMask) != 0)
 		DoBLHeliSuite(TelemetrySerial);
 	else
@@ -169,7 +172,7 @@ int main() {
 			case Preflight:
 
 				F.HoldingAlt = F.IsArmed = false;
-				DesiredThrottle = 0.0;
+				DesiredThrottle = 0.0f;
 				ZeroCompensation();
 
 				StopDrives();
@@ -243,10 +246,8 @@ int main() {
 					DoBeeps(3);
 					DoBeep(8, 2);
 
-					NowmS = mSClock();
-					mSTimer(NowmS, ArmedTimeout, ARMED_TIMEOUT_MS);
-					mSTimer(NowmS, RxFailsafeTimeout, RC_NO_CHANGE_TIMEOUT_MS);
-					F.SticksUnchangedFailsafe = F.LostModel = false;
+					ResetMainTimeouts();
+
 					LEDOff(LEDYellowSel);
 
 					State = (UAVXAirframe == IREmulation) ? IREmulate : Landed;
@@ -278,34 +279,25 @@ int main() {
 							State = InFlight;
 						}
 					} else {
-						NowmS = mSClock();
-						if (NowmS > mS[ArmedTimeout])
-							DoShutdown();
+						if (mSClock() > mS[ArmedTimeout])
+							InitiateShutdown(PIC);
 						else {
 							if (StickThrottle < IdleThrottle) {
-
 								// disabled for perching uncomment for reset every landing
 								// F.OriginValid = false;
 								SetGPSOrigin(); // only when throttle definitely closed
-
-								if (F.NewCommands)
-									F.LostModel = F.SticksUnchangedFailsafe;
 							} else {
-
-								mSTimer(NowmS, NavActiveTime,
-										NAV_ACTIVE_DELAY_MS);
-								mSTimer(NowmS, RxFailsafeTimeout,
-										RC_NO_CHANGE_TIMEOUT_MS);
+								ResetMainTimeouts();
 								NV.Stats[RCGlitchesS] = 0;
-								F.SticksUnchangedFailsafe = F.LostModel = false;
+								RateEnergySum = 0.0f; RateEnergySamples = 0;
 								F.DrivesArmed = true;
 								LEDsOff();
+								UbxSaveConfig(GPSTxSerial);
 								State = InFlight;
 							}
 						}
 					}
-				} else
-					// became disarmed mid state change
+				} else // became disarmed mid state change
 					State = Preflight;
 
 				break;
@@ -313,6 +305,7 @@ int main() {
 				if (StickThrottle > IdleThrottle) {
 					mS[StartTime] = mSClock();
 					DesiredThrottle = 0.0f;
+					ResetMainTimeouts();
 					F.DrivesArmed = true;
 					State = InFlight;
 				} else {
@@ -326,7 +319,7 @@ int main() {
 						if (Tuning)
 							SetP(TuningParamIndex, OldUntunedParam);
 						UpdateNV(); // also captures stick programming
-						mSTimer(mSClock(), ArmedTimeout, ARMED_TIMEOUT_MS);
+						ResetMainTimeouts();
 						LEDOn(LEDGreenSel);
 						State = Landed;
 					}
@@ -335,23 +328,12 @@ int main() {
 			case Shutdown:
 				if ((StickThrottle < IdleThrottle) && !(F.ReturnHome
 						|| F.Navigate)) {
-					uint32 NowmS = mSClock();
-					mSTimer(NowmS, ArmedTimeout, ARMED_TIMEOUT_MS);
-					mSTimer(NowmS, RxFailsafeTimeout, RC_NO_CHANGE_TIMEOUT_MS);
-					F.SticksUnchangedFailsafe = F.LostModel = false;
-					DoBeeps(3);
-					F.NavigationActive = false;
-					NavState = PIC;
+					StickArmed = false;
+					FirstPass = true; // should force fail preprocess with arming switch
+					State = Preflight;
+				} else
 					LEDsOff();
-					LEDOn(LEDGreenSel);
-					FailState = Monitoring;
-					State = Landed;
-				} else {
-					LEDsOn();
-					DesiredThrottle = 0.0f;
-					ZeroCompensation();
-					StopDrives();
-				}
+
 				break;
 			case InFlight:
 
@@ -369,23 +351,26 @@ int main() {
 
 					DoNavigation();
 
-					CheckCrashed(); // roll/pitch > 90deg for more than a second! => kill motors
+					if (StillFlying()) {
+						if ((StickThrottle
+								< IdleThrottle)
+								&& (IsMulticopter || ((ArmingMethod
+										== SwitchArming) && !Armed()))) {
+							ZeroCompensation();
+							mSTimer(mSClock(), ThrottleIdleTimeout,
+									THR_LOW_DELAY_MS);
+							State = Landing;
+						} else { // fixed wing so no exit when using roll/yaw stick arming
 
-					if ((State != Shutdown) && (StickThrottle < IdleThrottle)
-							&& (IsMulticopter
-									|| ((ArmingMethod == SwitchArming)
-											&& !Armed()))) {
-						ZeroCompensation();
-						mSTimer(mSClock(), ThrottleIdleTimeout,
-								THR_LOW_DELAY_MS);
-						State = Landing;
-					} else { // fixed wing so no exit when using roll/yaw stick arming
+							RateEnergySum += Sqr(Abs(Rate[X]) + Abs(Rate[Y]) + Abs(Rate[Z]));
+							RateEnergySamples++;
+							DFT8(RawAcc[X], DFT); // 145uS
+							UpdateMagHist(); // ~1uS?
+							DoAltitudeControl();
 
-						DFT8(RawAcc[X], DFT); // 145uS
-						UpdateMagHist(); // ~1uS?
-						DoAltitudeControl();
-
-					}
+						}
+					} else   // roll/pitch > 90deg for more than a second! => kill motors
+						InitiateShutdown(PIC);
 				}
 				break;
 			case IREmulate:
