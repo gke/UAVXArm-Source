@@ -47,13 +47,13 @@ enum ControlModes {
 };
 
 typedef struct {
-	real32 Kp, Ki, IntE, IL, Kd, Dp, Max;
+	real32 Desired, Kp, Ki, E, IntE, IL, Kd, Dp, Max;
 } PIDStruct;
 
 typedef struct {
+	real32 Stick;
 	PIDStruct O, I;
 	// controls
-	real32 Desired;
 	// body frame sensors
 	real32 Ratep, DriftCorr, Angle;
 	// stats
@@ -65,10 +65,9 @@ typedef struct {
 
 typedef struct {
 	PIDStruct O, I;
-	real32 IL;
 } AltStruct;
 
-void ZeroCompensation(void);
+void ZeroThrottleCompensation(void);
 void DoAltitudeControl(void);
 void ZeroPIDIntegrals(void);
 
@@ -94,7 +93,7 @@ real32 MaxAttitudeAngleRad;
 real32 YawStickThreshold;
 real32 OrientationRad, OrientS, OrientC;
 
-real32 FWRollPitchFFFrac, FWAileronDifferentialFrac,
+real32 NavHeadingTurnoutRad, FWRollPitchFFFrac, FWAileronDifferentialFrac,
 		FWPitchThrottleFFFrac, MaxAltHoldCompFrac, FWMaxClimbAngleRad, MaxRollAngleRad,
 		FWGlideAngleOffsetRad, FWFlapDecayS, BestROCMPS;
 

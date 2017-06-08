@@ -29,8 +29,8 @@ real32 DesiredVel;
 real32 POIHeading = 0.0f;
 real32 NorthP, EastP;
 uint8 PrevWPNo;
-real32 PosXTrack, VelXTrack, PosYTrack, VelYTrack;
 boolean ResetNavHold = true;
+real32 VelScale[2];
 
 void RotateWPPath(real32 * nx, real32 * ny, real32 x, real32 y) {
 	static real32 wpS = 0.0f;
@@ -59,21 +59,27 @@ void RotateWPPath(real32 * nx, real32 * ny, real32 x, real32 y) {
 
 } // RotateWPPath
 
+#if defined(INC_AEROSONDE)
 
 real32 Aerosonde(void) {
 	// "Lateral Track Control Law for Aerosonde UAV", M. Niculescu,
 	// Paper 16, AIAA, 8-11 January 2001, Reno, NV
+	real32 PosXTrack, VelXTrack, PosYTrack, VelYTrack;
 	real32 DesYawRate;
 
-	RotateWPPath(&PosXTrack, &PosYTrack, Nav.PosE[NorthC], Nav.PosE[EastC]);
-	RotateWPPath(&VelXTrack, &VelYTrack, Nav.Vel[NorthC], Nav.Vel[EastC]);
+	RotateWPPath(&PosXTrack, &PosYTrack, Nav.C[NorthC].PosE, Nav.C[EastC].PosE);
+	RotateWPPath(&VelXTrack, &VelYTrack, Nav.C[NorthC].Vel, Nav.C[EastC].VelE);
 
 	DesYawRate = (0.2f * PosXTrack * VelYTrack - PosYTrack * VelXTrack)
-			* 0.0025;
+	* 0.0025;
 
 	return (Limit1(DesYawRate, NAV_YAW_MAX_SLEW_RAD_S));
 
 } // Aerosonde
+
+#endif
+
+#if defined(INC_L1)
 
 //_______________________________________________________________________________
 
@@ -120,9 +126,10 @@ real32 NuP;
 
 // Wrap AHRS yaw if in reverse - radians
 
+
 real32 L1_get_yaw(void) {
 	if (_reverse)
-		return MakePi(PI + Heading);
+	return MakePi(PI + Heading);
 
 	return Heading;
 } // L1_get_yaw
@@ -157,7 +164,7 @@ real32 L1_turn_distance(real32 WPRadius, real32 turn_angle) {
 
 	turn_angle = fabsf(turn_angle);
 	if (turn_angle >= HALF_PI)
-		return distance_90;
+	return distance_90;
 
 	return distance_90 * turn_angle / HALF_PI;
 }
@@ -180,7 +187,7 @@ real32 L1PreventIndecision(real32 Nu) {
 	if ((fabsf(Nu) > Nu_limit) && (fabsf(NuP) > Nu_limit)
 			&& (Abs(MakePi(Nav.WPBearing - Heading)) > RadiansToDegrees(120))
 			&& ((Nu * NuP) < 0.0f))
-		Nu = NuP;
+	Nu = NuP;
 
 	return Nu;
 } // L1PreventIndecision
@@ -225,7 +232,7 @@ void L1CrossTrack(void) {
 	//real32 WP_A_dist = WPDistance(CurrWP - 1);
 	real32 alongTrackDist = 123; //A_air * AB;
 	if ((Nav.WPDistance > L1Dist) && (alongTrackDist
-			/Max(Nav.WPDistance, 1.0f) < -0.7071f)) {
+					/Max(Nav.WPDistance, 1.0f) < -0.7071f)) {
 		//Calc Nu to fly To WP A
 		//	Vector2f A_air_unit = (A_air).normalized; // Unit vector from WP A to aircraft
 		ForwardTrackVel = _groundspeed_roll; // Velocity across line
@@ -258,7 +265,7 @@ void L1CrossTrack(void) {
 		// straight but reset it when disabled or if it changes. That allows for much easier
 		// tuning by having it re-converge each time it changes.
 		if ((_L1_ForwardTrack_i_gain <= 0) || (_L1_ForwardTrack_i_gain
-				!= _L1_ForwardTrack_i_gain_prev)) {
+						!= _L1_ForwardTrack_i_gain_prev)) {
 			_L1_ForwardTrack_i = 0;
 			_L1_ForwardTrack_i_gain_prev = _L1_ForwardTrack_i_gain;
 		} else if (fabsf(Nu1) < DegreesToRadians(5)) {
@@ -364,11 +371,11 @@ void L1_update_loiter(real32 radius, uint8 OrbitDirection) { //void) //Location 
 
 	//Prevent PD demand from turning the wrong way by limiting the command when flying the wrong way
 	if ((LateralTrackVelCap < 0.0f) && (velTangent < 0.0f))
-		LateralAccDemCircPD = Max(LateralAccDemCircPD, 0.0f);
+	LateralAccDemCircPD = Max(LateralAccDemCircPD, 0.0f);
 
 	// Calculate centripetal acceleration demand
 	real32 LateralAccDemCircCtr = velTangent * velTangent
-			/ Max((0.5f * radius), (radius + ForwardTrackErrCirc));
+	/ Max((0.5f * radius), (radius + ForwardTrackErrCirc));
 
 	//Sum PD control and centripetal acceleration to calculate lateral manoeuvre demand
 	real32 LateralAccDemCirc = OrbitDirection * (LateralAccDemCircPD
@@ -378,7 +385,7 @@ void L1_update_loiter(real32 radius, uint8 OrbitDirection) { //void) //Location 
 	// point where the commands cross over to achieve a seamless transfer
 	// Only fly 'capture' mode if outside the circle
 	if ((ForwardTrackErrCirc > 0.0f) && (OrbitDirection * LateralAccDemCap
-			< OrbitDirection * LateralAccDemCirc)) {
+					< OrbitDirection * LateralAccDemCirc)) {
 		DesiredLateralAcc = LateralAccDemCap;
 		F.WayPointCentred = false;
 		_bearing_error = Nu; // angle between demanded and achieved velocity vector, +ve to left of track
@@ -431,6 +438,8 @@ void L1_update_heading_hold(void) {
 
 } // L1_update_heading_hold
 
+#endif
+
 //_______________________________________________________________________________
 
 void CaptureWPHeading(void) {
@@ -450,37 +459,15 @@ boolean UseCrossTrack(real32 DiffHeading) {
 			> NV.Mission.ProximityRadius * 2.0f) && (Abs(MakePi(DiffHeading))
 			< DegreesToRadians(45)));
 	if (!r)
-		Nav.CrossTrackPosE[NorthC] = Nav.CrossTrackPosE[EastC]
-				= Nav.CrossTrackE = 0.0f;
+		Nav.CrossTrackE = 0.0f;
 	return r;
 } // UseCrossTrack
-
-
-void CompensateMulticopterCrossTrackError1D(void) {
-	real32 DiffHeading;
-
-	CaptureWPHeading();
-
-	DiffHeading = Nav.WPBearing - Nav.OriginalWPBearing;
-	if (UseCrossTrack(DiffHeading)) {
-		Nav.CrossTrackE = sinf(DiffHeading) * Nav.WPDistance;
-		Nav.CrossTrackPosE[EastC] = Nav.CrossTrackE * sin(Nav.WPBearing);
-		Nav.CrossTrackPosE[NorthC] = Nav.CrossTrackE * cos(Nav.WPBearing);
-	} else {
-		Nav.OriginalWPBearing = Nav.WPBearing; // safety
-		F.CrossTrackActive = false;
-		Nav.CrossTrackPosE[NorthC] = Nav.CrossTrackPosE[EastC] = 0.0f;
-	}
-
-} // CompensateMulticopterCrossTrackError1D
 
 
 void CompensateCrossTrackError1D(void) {
 	real32 DiffHeading;
 
 	CaptureWPHeading();
-
-	Nav.CrossTrackPosE[NorthC] = Nav.CrossTrackPosE[EastC] = 0.0f;
 
 	DiffHeading = Nav.WPBearing - Nav.OriginalWPBearing;
 	if (UseCrossTrack(DiffHeading)) {
@@ -519,203 +506,187 @@ void DecayPosCorr(void) {
 
 	for (a = Pitch; a <= Yaw; a++) {
 		A[a].NavCorr = DecayX(A[a].NavCorr, Decay, dT);
-		Nav.CorrP[a] = Nav.PosIntE[a] = 0.0f;
+		Nav.C[a].CorrP = Nav.C[a].PosIntE = 0.0f;
 	}
 
 	F.WayPointAchieved = F.WayPointCentred = false;
 } // DecayPosCorr
 
-void DoOrbit(real32 Radius, real32 OrbitVelocity) {
-	real32 TangentialVelocity;
-
-	TangentialVelocity = (Nav.WPDistance - Radius) * Nav.O.Kp * Nav.Sensitivity;
-
-	Rotate(&Nav.DesVel[NorthC], &Nav.DesVel[EastC], TangentialVelocity,
-			OrbitVelocity, -Heading);
-
-} // DoOrbit
-
-
-void ComputeRelVelocity2D(int32 a) {
-	// use position difference to compute velocity when travelling slowly
-	// including close to WP
-#if defined(GPS_FILTERED)
-	real32 D;
-
-	if (Nav.WPDistance < NV.Mission.ProximityRadius)
-	Nav.PosE[a] = SlewLimitLPFilter(Nav.PosEP[a], Nav.PosE[a], 5.0f,
-			Nav.LPFCutOffHz, NavdT);
-
-	D = Nav.PosEP[a] - Nav.PosE[a];
-	Nav.PosEP[a] = Nav.PosE[a];
-
-	// GPS velocity only useful at higher speeds
-	Nav.Vel[a] = Abs(GPS.gspeed) < 4.0f ? D * NavdTR : SlewLimitLPFilter(
-			Nav.VelP[a], Nav.Vel[a], 10.0f, Nav.LPFCutOffHz, NavdT);
-	Nav.VelP[a] = Nav.Vel[a];
-
-	Nav.Vel[a] = Threshold(Nav.Vel[a], 0.1f);
-#endif
-
-} // ComputeRelVelocity
-
-real32 NavCorr[2];
-
 real32 WPDistance(WPStruct * W) {
 	real32 NorthE, EastE;
 
-	NorthE = W->Pos[NorthC] - Nav.Pos[NorthC];
-	EastE = W->Pos[EastC] - Nav.Pos[EastC];
+	NorthE = W->Pos[NorthC] - Nav.C[NorthC].Pos;
+	EastE = W->Pos[EastC] - Nav.C[EastC].Pos;
 
 	return sqrtf(Sqr(EastE) + Sqr(NorthE));
 
 } // WPDistance
 
-void Navigate(WPStruct * W) {
-	int32 a;
-	real32 P, D, Ppos, Ipos, Pvel;
-	real32 POIEastDiff, POINorthDiff, POIDistance;
-	static boolean Saturating[2] = { false };
-	real32 VelScale[2];
 
-	NavdT = dTUpdate(uSClock(), &LastNavUpdateuS);
-	NavdTR = 1.0f / NavdT;
-
-	Nav.Desired[NorthC] = W->Pos[NorthC];
-	Nav.Desired[EastC] = W->Pos[EastC];
-
-	Nav.PosE[NorthC] = Nav.Desired[NorthC] - Nav.Pos[NorthC];
-	Nav.PosE[EastC] = Nav.Desired[EastC] - Nav.Pos[EastC];
-
-	Nav.WPDistance = sqrtf(Sqr(Nav.PosE[EastC]) + Sqr(Nav.PosE[NorthC]));
-	Nav.WPBearing = Make2Pi(atan2f(Nav.PosE[EastC], Nav.PosE[NorthC]));
+void CheckResetNavHold(void) {
+	uint8 a;
 
 	if (ResetNavHold) {
 		ResetNavHold = F.RapidDescentHazard = F.WayPointAchieved
 				= F.WayPointCentred = false;
 		for (a = NorthC; a <= EastC; a++) {
-			Nav.PosIntE[a] = Nav.VelP[a] = 0.0f;
-			Nav.PosEP[a] = Nav.PosE[a];
+			Nav.C[a].PosIntE = 0.0f;
 		}
 	}
+} // CheckResetNavHold
+
+
+void DoOrbit(real32 Radius, real32 OrbitVelocity) {
+	real32 TangentialVelocity;
+
+	TangentialVelocity = (Nav.WPDistance - Radius) * Nav.O.Kp;
+
+	Rotate(&Nav.C[NorthC].DesVel, &Nav.C[EastC].DesVel, TangentialVelocity,
+			OrbitVelocity, -Heading);
+
+	Nav.DesiredHeading = Nav.WPBearing;
+
+} // DoOrbit
+
+
+void NavYaw(WPStruct * W) {
+	real32 POIEastDiff, POINorthDiff, POIDistance;
+
+	if (F.RapidDescentHazard)
+		DoOrbit(DESCENT_RADIUS_M, DESCENT_VELOCITY_MPS);
+	else if (F.OrbitingWP)
+		DoOrbit(W->OrbitRadius, W->OrbitVelocity);
+	else {
+		if (F.UsingPOI) {
+			POIEastDiff = POI.Pos[EastC] - Nav.C[EastC].Pos;
+			POINorthDiff = POI.Pos[NorthC] - Nav.C[NorthC].Pos;
+
+			POIDistance = sqrtf(Sqr(POIEastDiff) + Sqr(POINorthDiff));
+			Nav.DesiredHeading = (POIDistance > (NV.Mission.ProximityRadius
+					* 2.0f)) ? atan2f(POIEastDiff, POINorthDiff) : Heading;
+		} else {
+			// manual or perhaps turn to heading?
+		}
+	}
+
+	A[Yaw].NavCorr = 0.0f;
+
+} // NavYaw
+
+
+void NavPI_P(void) {
+	uint8 a;
+	real32 Ppos, Pvel, Ipos, Windup, S, NavMaxVel;
+
+	for (a = NorthC; a <= EastC; a++) {
+
+		NavMaxVel = VelScale[a] * Nav.MaxVelocity;
+
+		//Position
+		if (F.OrbitingWP || F.RapidDescentHazard) {
+
+			Ppos = Nav.C[a].DesVel; // velocity computed in DoOrbit
+			Nav.C[a].PosIntE = Ipos = 0.0f;
+
+		} else {
+
+			Ppos = Limit1(Nav.C[a].PosE * Nav.O.Kp, NavMaxVel);
+
+			Nav.C[a].PosIntE += Nav.C[a].PosE * Nav.O.Ki * NavdT;
+			Ipos = Nav.C[a].PosIntE;
+
+			Nav.C[a].DesVel = Ppos + Ipos;
+
+			Windup = Abs(Nav.C[a].DesVel) - NavMaxVel;
+			if (Windup > 0.0f) {
+				S = Sign(Nav.C[a].DesVel);
+				Nav.C[a].PosIntE = S * (Abs(Nav.C[a].PosIntE) - Windup);
+				Nav.C[a].DesVel = S * NavMaxVel;
+			}
+		}
+
+		// Velocity - really this is bank angle and controls acceleration not velocity
+		Nav.C[a].VelE = Nav.C[a].DesVel - Nav.C[a].Vel;
+
+		Pvel = Nav.C[a].VelE * Nav.I.Kp * Nav.Sensitivity;
+		Nav.C[a].Corr = Pvel;
+
+		Nav.C[a].Corr = Limit1(Nav.C[a].Corr, Nav.MaxAngle);
+
+		Nav.C[a].Corr = SlewLimit(Nav.C[a].CorrP, Nav.C[a].Corr,
+				NAV_ATTITUDE_SLEW_RAD_S, NavdT);
+		Nav.C[a].CorrP = Nav.C[a].Corr;
+	}
+
+} // NavPI_P
+
+
+void Navigate(WPStruct * W) {
+
+	NavdT = dTUpdate(uSClock(), &LastNavUpdateuS);
+	NavdTR = 1.0f / NavdT;
+
+	Nav.C[NorthC].DesPos = W->Pos[NorthC];
+	Nav.C[EastC].DesPos = W->Pos[EastC];
+
+	Nav.C[NorthC].PosE = Nav.C[NorthC].DesPos - Nav.C[NorthC].Pos;
+	Nav.C[EastC].PosE = Nav.C[EastC].DesPos - Nav.C[EastC].Pos;
+
+	Nav.WPDistance = sqrtf(Sqr(Nav.C[EastC].PosE) + Sqr(Nav.C[NorthC].PosE));
+	Nav.WPBearing = Make2Pi(atan2f(Nav.C[EastC].PosE, Nav.C[NorthC].PosE));
+
+	CheckResetNavHold();
+
+	CompensateCrossTrackError1D();
 
 	CheckProximity();
 
 	if (IsFixedWing) {
-
-		CompensateCrossTrackError1D();
 
 		A[Pitch].NavCorr = A[Yaw].NavCorr = 0.0f;
 		Nav.DesiredHeading = MakePi(Nav.WPBearing);
 		// control is by yaw rate in control.c
 
 	} else {
-#define USE_FW_XTRACK
-#if defined(USE_FW_XTRACK)
-		CompensateCrossTrackError1D();
-#else
-		CompensateMulticopterCrossTrackError1D();
-#endif
 
-		if (F.RapidDescentHazard)
-			DoOrbit(DESCENT_RADIUS_M, DESCENT_VELOCITY_MPS);
-		else if (F.OrbitingWP)
-			DoOrbit(W->OrbitRadius, W->OrbitVelocity);
+		NavYaw(W);
 
 		VelScale[NorthC] = Abs(cosf(Nav.WPBearing));
 		VelScale[EastC] = Abs(sinf(Nav.WPBearing));
 
-		for (a = NorthC; a <= EastC; a++) {
+		NavPI_P();
 
-			if (UsingSpecial && IsMulticopter && ((NavState == HoldingStation)
-					|| (NavState == AtHome) || (NavState == Descending))) {
+		Rotate(&A[Pitch].NavCorr, &A[Roll].NavCorr, -Nav.C[NorthC].Corr,
+				Nav.C[EastC].Corr, -Heading);
 
-				// Position only when close
-				P = Nav.PosE[a] * 0.00709f; // Nav.O.Kp
-				D = Nav.Vel[a] * 0.10371f; // Nav.O.Kd
-
-				NavCorr[a] = Limit1((P + D) * Nav.Sensitivity, Nav.MaxAngle);
-
-			} else {
-				// Position
-				if (F.OrbitingWP || F.RapidDescentHazard) {
-					Ppos = Nav.DesVel[a];
-					Ipos = 0.0f;
-				} else {
-					Ppos = Nav.PosE[a] * Nav.O.Kp + Nav.CrossTrackPosE[a]
-							* Nav.CrossTrackKp; // radius is MaxVel/Kp
-					Nav.PosIntE[a] += Nav.PosE[a] * Nav.O.Ki * NavdT;
-					Nav.PosIntE[a] = Limit1(Nav.PosIntE[a], Nav.O.IL);
-					Ipos = Nav.PosIntE[a];
-				}
-
-				Nav.DesiredVel
-						= Limit1(Ppos + Ipos, Nav.MaxVelocity * VelScale[a]);
-
-				// Velocity
-				ComputeRelVelocity2D(a);
-
-				Nav.VelE[a] = Nav.DesiredVel - Nav.Vel[a];
-
-				Pvel = Nav.VelE[a] * Nav.I.Kp * Nav.Sensitivity;
-				NavCorr[a] = Pvel;
-
-				Saturating[a] = Abs(NavCorr[a]) > Nav.MaxAngle; // for info!
-				if (Saturating[a])
-					NavCorr[a] = Limit1(NavCorr[a], Nav.MaxAngle);
-			}
-
-			NavCorr[a] = SlewLimit(Nav.CorrP[a], NavCorr[a],
-									NAV_ATTITUDE_SLEW_RAD_S, NavdT);
-			Nav.CorrP[a] = NavCorr[a];
-		}
-
-		A[Yaw].NavCorr = 0.0f;
-
-		F.NavSaturation = Saturating[Pitch] || Saturating[Roll];
-
-		Rotate(&A[Pitch].NavCorr, &A[Roll].NavCorr, -NavCorr[NorthC],
-				NavCorr[EastC], -Heading);
-
-		if (F.OrbitingWP || F.RapidDescentHazard)
-			Nav.DesiredHeading = Nav.WPBearing;
-		else {
-			if (F.UsingPOI) {
-				POIEastDiff = POI.Pos[EastC] - Nav.Pos[EastC];
-				POINorthDiff = POI.Pos[NorthC] - Nav.Pos[NorthC];
-
-				POIDistance = sqrtf(Sqr(POIEastDiff) + Sqr(POINorthDiff));
-				Nav.DesiredHeading = (POIDistance > (NV.Mission.ProximityRadius
-						* 2.0f)) ? atan2f(POIEastDiff, POINorthDiff) : Heading;
-			} else {
-
-				// Manual yaw control only
-
-			}
-		}
 	}
+
 } // Navigate
 
-
-void InitNavigation(void) {
-	int32 a;
-	//gke
-	//DEFINITELY not memset(&Nav, 0, sizeof(NavStruct));
+void ZeroNavCorrections(void) {
+	uint8 a;
 
 	for (a = Pitch; a <= Yaw; a++)
-		A[a].NavCorr = Nav.CorrP[a] = Nav.VelP[a] = Nav.PosIntE[a] = 0.0f;
+		A[a].NavCorr = Nav.C[a].CorrP = Nav.C[a].PosIntE = 0.0f;
+} // ZeroNavCorrections
+
+void InitNavigation(void) {
+
+	//DEFINITELY not memset(&Nav, 0, sizeof(NavStruct));
+
+	ZeroNavCorrections();
+
+	Nav.Sensitivity = 0.5f;
 
 	Nav.Elevation = Nav.Bearing = Nav.Distance = Nav.TakeoffBearing
 			= Nav.WPDistance = Nav.WPBearing = Nav.CrossTrackE = 0.0f;
 
-	Nav.CrossTrackPosE[NorthC] = Nav.CrossTrackPosE[EastC] = 0.0f;
-
 	if (!F.OriginValid || F.Emulation) {
-		GPS.OriginRaw[NorthC] = DEFAULT_HOME_LAT;
-		GPS.OriginRaw[EastC] = DEFAULT_HOME_LON;
+		GPS.C[NorthC].OriginRaw = DEFAULT_HOME_LAT;
+		GPS.C[EastC].OriginRaw = DEFAULT_HOME_LON;
 		GPS.longitudeCorrection = DEFAULT_LON_CORR;
-		if (F.Emulation)
-			GenerateNavTestMission();
+		//if (F.Emulation)
+		//	GenerateNavTestMission();
 	} else {
 		NV.Mission.NoOfWayPoints = 0;
 		NV.Mission.OriginAltitude = OriginAltitude;
@@ -729,11 +700,8 @@ void InitNavigation(void) {
 	AttitudeHoldResetCount = 0;
 	F.OriginValid = F.NavigationEnabled = F.NavigationActive
 			= F.CrossTrackActive = F.WayPointAchieved = F.WayPointCentred
-					= F.NewNavUpdate = false;
+					= F.OrbitingWP = F.RapidDescentHazard = F.UsingPOI = false;
 
-	A[Pitch].NavCorr = A[Roll].NavCorr = 0.0f;
-
-	F.OrbitingWP = F.RapidDescentHazard = F.UsingPOI = false;
 	CurrWPNo = 0;
 	PrevWPNo = 255;
 	NorthP = EastP = 0.0f; // origin
@@ -742,529 +710,220 @@ void InitNavigation(void) {
 
 } // InitNavigation
 
-//#define INAV
-#if defined(INAV)
-
-#define US2S(t) ((real32)t * 1.0e-6)
-
-/*
- * This file is part of Cleanflight.
- *
- * Cleanflight is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Cleanflight is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Cleanflight.  If not, see <http://www.gnu.org/licenses/>.
- */
-
-// If we are going slower than NAV_FW_MIN_VEL_SPEED_BOOST - boost throttle to fight against the wind
-#define NAV_FW_THROTTLE_SPEED_BOOST_GAIN        1.5f
-#define NAV_FW_MIN_VEL_SPEED_BOOST              7.0f      // 7 m/s
-// If this is enabled navigation won't be applied if velocity is below 3 m/s
-//#define NAV_FW_LIMIT_MIN_FLY_VELOCITY
-
-static boolean isPitchAdjustmentValid = false;
-static boolean isRollAdjustmentValid = false;
-static real32 throttleSpeedAdjustment = 0;
-
-/*-----------------------------------------------------------
- * Altitude controller
- *-----------------------------------------------------------*/
-void setupFixedWingAltitudeController(void) {
-	// TODO
-}
-
-void resetFixedWingAltitudeController() {
-	navPidReset(&posControl.pids.fw_alt);
-	posControl.rcAdjustment[PITCH] = 0;
-	isPitchAdjustmentValid = false;
-	throttleSpeedAdjustment = 0;
-}
-
-bool adjustFixedWingAltitudeFromRCInput(void) {
-	real32 rcAdjustment = applyDeadband(rcCommand[PITCH],
-			rcControlsConfig()->alt_hold_deadband);
-
-	if (rcAdjustment) {
-		// set velocity proportional to stick movement
-		real32 rcClimbRate = -rcAdjustment
-		* navConfig()->general.max_manual_climb_rate / (5.0f
-				- rcControlsConfig()->alt_hold_deadband);
-		updateAltitudeTargetFromClimbRate(rcClimbRate,
-				CLIMB_RATE_RESET_SURFACE_TARGET);
-		return true;
-	} else
-	return false;
-}
-
-// Position to velocity controller for Z axis
-static void updateAltitudeVelocityAndPitchController_FW(uint32 dTuS) {
-	static pt1Filter_t velzFilterState;
-
-	// On a fixed wing we might not have a reliable climb rate source (if no BARO available), so we can't apply PID controller to
-	// velocity error. We use PID controller on altitude error and calculate desired pitch angle from desired climb rate and forward velocity
-
-	// FIXME: Use airspeed here
-	real32 forwardVelocity = MAX(posControl.actualState.velXY, 3.0f); // Limit min velocity for PID controller at about 10 km/h
-
-	// Calculate max climb rate from current forward velocity and maximum pitch angle (climb angle is fairly small, approximate tan=sin)
-	real32 maxVelocityClimb = forwardVelocity * sinf(
-			(navConfig()->fw.max_climb_angle));
-	real32 maxVelocityDive = -forwardVelocity * sinf(
-			(navConfig()->fw.max_dive_angle));
-
-	posControl.desiredState.vel.V.Z = navPidApply2(&posControl.pids.fw_alt,
-			posControl.desiredState.pos.V.Z, posControl.actualState.pos.V.Z,
-			US2S(dTuS), maxVelocityDive, maxVelocityClimb, 0);
-	posControl.desiredState.vel.V.Z = pt1FilterApply4(&velzFilterState,
-			posControl.desiredState.vel.V.Z, NAV_FW_VEL_CUTOFF_FREQENCY_HZ,
-			US2S(dTuS));
-
-	// Calculate climb angle ( >0 - climb, <0 - dive)
-	int16 climbAngleDeciDeg = (atan2_approx(posControl.desiredState.vel.V.Z,
-					forwardVelocity));
-	climbAngleDeciDeg
-	= Limit(climbAngleDeciDeg, -navConfig()->fw.max_dive_angle * 10, navConfig()->fw.max_climb_angle * 10);
-	posControl.rcAdjustment[PITCH] = climbAngleDeciDeg;
-
-#if defined(NAV_BLACKBOX)
-	navDesiredVelocity[Z] = Limit(posControl.desiredState.vel.V.Z, -32678, 32767);
-	navTargetPosition[Z] = Limit(posControl.desiredState.pos.V.Z, -32678, 32767);
-#endif
-}
-
-void applyFixedWingAltitudeController(uint32 NowuS) {
-	static uint32 PrevPosUpdateuS; // Occurs @ altitude sensor update rate (max MAX_ALTITUDE_UPDATE_RATE_HZ)
-	static uint32 PrevUpdateuS; // Occurs @ looptime rate
-
-	const uint32 dTuS = NowuS - PrevUpdateuS;
-	PrevUpdateuS = NowuS;
-
-	// If last time Z-controller was called is too far in the past - ignore it (likely restarting altitude controller)
-	if (dTuS > HZ2US(MIN_POSITION_UPDATE_RATE_HZ)) {
-		PrevUpdateuS = NowuS;
-		PrevPosUpdateuS = NowuS;
-		resetFixedWingAltitudeController();
-		return;
-	}
-
-	if (posControl.flags.hasValidPositionSensor) {
-		// If we have an update on vertical position data - update velocity and accel targets
-		if (posControl.flags.verticalPositionDataNew) {
-			const uint32 dTuSPositionUpdate = NowuS - PrevPosUpdateuS;
-			PrevPosUpdateuS = NowuS;
-
-			// Check if last correction was too log ago - ignore this update
-			if (dTuSPositionUpdate < HZ2US(MIN_POSITION_UPDATE_RATE_HZ))
-			updateAltitudeVelocityAndPitchController_FW(dTuSPositionUpdate);
-			else
-			// due to some glitch position update has not occurred in time, reset altitude controller
-			resetFixedWingAltitudeController();
-
-			// Indicate that information is no longer usable
-			posControl.flags.verticalPositionDataConsumed = 1;
-		}
-
-		isPitchAdjustmentValid = true;
-	} else
-	// No valid altitude sensor data, don't adjust pitch automatically, rcCommand[PITCH] is passed through to PID controller
-	isPitchAdjustmentValid = false;
-}
-
-/*-----------------------------------------------------------
- * Adjusts desired heading from pilot's input
- *-----------------------------------------------------------*/
-boolean adjustFixedWingHeadingFromRCInput(void) {
-	return false;
-}
-
+#if defined(INC_INAV)
 /*-----------------------------------------------------------
  * XY-position controller for multicopter aircraft
  *-----------------------------------------------------------*/
-static t_fp_vector VWP;
-static pt1Filter_t fwPosControllerCorrectionFilterState;
+static pt1Filter_t mcPosControllerAccFilterStateX, mcPosControllerAccFilterStateY;
+static real32 lastAccelTargetX = 0.0f, lastAccelTargetY = 0.0f;
 
-void resetFixedWingPositionController(void) {
-	VWP.V.X = 0;
-	VWP.V.Y = 0;
-	VWP.V.Z = 0;
-
-	navPidReset(&posControl.pids.fw_nav);
-	posControl.rcAdjustment[ROLL] = 0;
-	isRollAdjustmentValid = false;
-
-	pt1FilterReset(&fwPosControllerCorrectionFilterState, 0.0f);
+void resetMulticopterPositionController(void)
+{
+	for (int axis = 0; axis < 2; axis++) {
+		navPidReset(&Nav.pids.vel[axis]);
+		Nav.rcAdjustment[axis] = 0;
+		pt1FilterReset(&mcPosControllerAccFilterStateX, 0.0f);
+		pt1FilterReset(&mcPosControllerAccFilterStateY, 0.0f);
+		lastAccelTargetX = 0.0f;
+		lastAccelTargetY = 0.0f;
+	}
 }
 
-static void calculateVirtualPositionTarget_FW(real32 trackingPeriod) {
-	real32 posErrorX = posControl.desiredState.pos.V.X
-	- posControl.actualState.pos.V.X;
-	real32 posErrorY = posControl.desiredState.pos.V.Y
-	- posControl.actualState.pos.V.Y;
+boolean adjustMulticopterPositionFromRCInput(void)
+{
+	const int16_t rcPitchAdjustment = applyDeadband(rcCommand[PITCH], rcControlsConfig()->pos_hold_deadband);
+	const int16_t rcRollAdjustment = applyDeadband(rcCommand[ROLL], rcControlsConfig()->pos_hold_deadband);
 
-	real32 distanceToActualTarget = sqrtf(sq(posErrorX) + sq(posErrorY));
+	if (rcPitchAdjustment || rcRollAdjustment) {
+		// If mode is GPS_CRUISE, move target position, otherwise POS controller will passthru the RC input to ANGLE PID
+		if (navConfig()->general.flags.user_control_mode == NAV_GPS_CRUISE) {
+			const real32 rcVelX = rcPitchAdjustment * navConfig()->general.max_manual_speed / 500;
+			const real32 rcVelY = rcRollAdjustment * navConfig()->general.max_manual_speed / 500;
 
-	// Limit minimum forward velocity to 1 m/s
-	real32 trackingDistance = trackingPeriod * MAX(
-			posControl.actualState.velXY, 1.0f);
+			// Rotate these velocities from body frame to to earth frame
+			const real32 neuVelX = rcVelX * Nav.actualState.cosYaw - rcVelY * Nav.actualState.sinYaw;
+			const real32 neuVelY = rcVelX * Nav.actualState.sinYaw + rcVelY * Nav.actualState.cosYaw;
 
-	// If angular visibility of a waypoint is less than 30deg, don't calculate circular loiter, go straight to the target
-#define TAN_15DEG    0.26795f
-	boolean needToCalculateCircularLoiter = isApproachingLastWaypoint()
-	&& (distanceToActualTarget <= (navConfig()->fw.loiter_radius
-					/ TAN_15DEG)) && (distanceToActualTarget > 0.5f);
-
-	// Calculate virtual position for straight movement
-	if (needToCalculateCircularLoiter) {
-		// We are closing in on a waypoint, calculate circular loiter
-		real32 loiterAngle = atan2_approx(-posErrorY, -posErrorX)
-		+ DegreesToRadians(45);
-
-		real32 loiterTargetX = posControl.desiredState.pos.V.X
-		+ navConfig()->fw.loiter_radius * cosf(loiterAngle);
-		real32 loiterTargetY = posControl.desiredState.pos.V.Y
-		+ navConfig()->fw.loiter_radius * sinf(loiterAngle);
-
-		// We have temporary loiter target. Recalculate distance and position error
-		posErrorX = loiterTargetX - posControl.actualState.pos.V.X;
-		posErrorY = loiterTargetY - posControl.actualState.pos.V.Y;
-		distanceToActualTarget = sqrtf(sq(posErrorX) + sq(posErrorY));
-	}
-
-	// Calculate virtual waypoint
-	VWP.V.X = posControl.actualState.pos.V.X + posErrorX * (trackingDistance
-			/ distanceToActualTarget);
-	VWP.V.Y = posControl.actualState.pos.V.Y + posErrorY * (trackingDistance
-			/ distanceToActualTarget);
-
-	// Shift position according to pilot's ROLL input (up to max_manual_speed velocity)
-	if (posControl.flags.isAdjustingPosition) {
-		real32 rcRollAdjustment = applyDeadband(rcCommand[ROLL],
-				rcControlsConfig()->pos_hold_deadband);
-
-		if (rcRollAdjustment) {
-			real32 rcShiftY = rcRollAdjustment
-			* navConfig()->general.max_manual_speed / 5.0f
-			* trackingPeriod;
-
-			// Rotate this target shift from body frame to to earth frame and apply to position target
-			VWP.V.X += -rcShiftY * posControl.actualState.sinYaw;
-			VWP.V.Y += rcShiftY * posControl.actualState.cosYaw;
-
-			posControl.flags.isAdjustingPosition = true;
+			// Calculate new position target, so Pos-to-Vel P-controller would yield desired velocity
+			Nav.C[NorthC].DesPos = Nav.C[NorthC].Pos + (neuVelX / Nav[NorthC].I.Kp);
+			Nav.C[EastC].DesPos = Nav.C[EastC].Pos + (neuVelY / Nav[NorthC].I.Kp);
 		}
+
+		return true;
+	}
+	else {
+		// Adjusting finished - reset desired position to stay exactly where pilot released the stick
+		if (Nav.flags.isAdjustingPosition) {
+			t_fp_vector stopPosition;
+			calculateMulticopterInitialHoldPosition(&stopPosition);
+			setDesiredPosition(&stopPosition, 0, NAV_POS_UPDATE_XY);
+		}
+
+		return false;
 	}
 }
 
-boolean adjustFixedWingPositionFromRCInput(void) {
-	real32 rcRollAdjustment = applyDeadband(rcCommand[ROLL],
-			rcControlsConfig()->pos_hold_deadband);
-	return (rcRollAdjustment);
+static real32 getVelocityHeadingAttenuationFactor(void)
+{
+	// In WP mode scale velocity if heading is different from bearing
+	if (navGetCurrentStateFlags() & NAV_AUTO_WP) {
+		const int32_t headingError = constrain(wrap_18000(Nav.desiredState.yaw - Nav.actualState.yaw), -9000, 9000);
+		const real32 velScaling = cosf(CENTIDEGREES_TO_RADIANS(headingError));
+
+		return Limit(velScaling * velScaling, 0.05f, 1.0f);
+	} else {
+		return 1.0f;
+	}
 }
 
-static void updatePositionHeadingController_FW(uint32 NowuS, uint32 dTuS) {
-	static uint32 PrevMonitoringUpdateuS;
-	static real32 HeadingEp;
-	static boolean DecreasingHeadingE;
-	static boolean forceTurnDirection = false;
+static real32 getVelocityExpoAttenuationFactor(real32 velTotal, real32 velMax)
+{
+	// Calculate factor of how velocity with applied expo is different from unchanged velocity
+	const real32 velScale = Limit(velTotal / velMax, 0.01f, 1.0f);
 
-	// We have virtual position target, calculate heading error
-	int32_t virtualTargetBearing = calculateBearingToDestination(&VWP);
+	// navConfig()->max_speed * ((velScale * velScale * velScale) * Nav.posResponseExpo + velScale * (1 - Nav.posResponseExpo)) / velTotal;
+	// ((velScale * velScale * velScale) * Nav.posResponseExpo + velScale * (1 - Nav.posResponseExpo)) / velScale
+	// ((velScale * velScale) * Nav.posResponseExpo + (1 - Nav.posResponseExpo));
+	return 1.0f - Nav.posResponseExpo * (1.0f - Sqr(velScale)); // x^3 expo factor
+}
 
-	// Calculate NAV heading error
-	real32 HeadingE = MakePi(virtualTargetBearing - posControl.actualState.yaw);
+static void updatePositionVelocityController_MC(void)
+{
+	Nav.C[NorthC].PosE = Nav.C[NorthC].DesPos - Nav.C[NorthC].Pos;
+	Nav.C[EastC].PosE = Nav.C[EastC].DesPos - Nav.C[EastC].Pos;
 
-	// Forced turn direction
-	// If heading error is close to 180 deg we initiate forced turn and only disable it when heading error goes below 90 deg
-	if (Abs(HeadingE) > DegreesToRadians(170))
-	forceTurnDirection = true;
-	else if (Abs(HeadingE) < DegreesToRadians(90) && forceTurnDirection)
-	forceTurnDirection = false;
+	// Calculate target velocity
+	Nav.C[NorthC].DesVel = Nav.C[NorthC].PosE * Nav[NorthC].I.Kp;
+	Nav.C[EastC].DesVel = Nav.C[EastC].PosE * Nav[NorthC].I.Kp;
 
-	// If forced turn direction flag is enabled we fix the sign of the direction
-	if (forceTurnDirection)
-	HeadingE = Abs(HeadingE);
+	// Get max speed from generic NAV (waypoint specific), don't allow to move slower than 0.5 m/s
+	const real32 maxSpeed = getActiveWaypointSpeed();
 
-	// Slow error monitoring (2Hz rate)
-	if ((NowuS - PrevMonitoringUpdateuS) >= HZ2US(
-					NAV_FW_CONTROL_MONITORING_RATE)) {
-		// Check if error is decreasing over time
-		DecreasingHeadingE = Abs(HeadingEp) > Abs(HeadingE);
-
-		// Save values for next iteration
-		HeadingEp = HeadingE;
-		PrevMonitoringUpdateuS = NowuS;
+	// Scale velocity to respect max_speed
+	real32 newVelTotal = sqrtf(sq(Nav.C[NorthC].DesVel) + sq(Nav.C[EastC].DesVel));
+	if (newVelTotal > maxSpeed) {
+		Nav.C[NorthC].DesVel = maxSpeed * (Nav.C[NorthC].DesVel / newVelTotal);
+		Nav.C[EastC].DesVel = maxSpeed * (Nav.C[EastC].DesVel / newVelTotal);
+		newVelTotal = maxSpeed;
 	}
 
-	// Only allow PID integrator to shrink if error is decreasing over time
-	const pidControllerFlags_e pidFlags = PID_DTERM_FROM_ERROR
-	| (DecreasingHeadingE ? PID_SHRINK_INTEGRATOR : 0);
+	// Apply expo & attenuation if heading in wrong direction - turn first, accelerate later (effective only in WP mode)
+	const real32 velHeadFactor = getVelocityHeadingAttenuationFactor();
+	const real32 velExpoFactor = getVelocityExpoAttenuationFactor(newVelTotal, maxSpeed);
+	Nav.[NorthC].DesVel= Nav.C[NorthC].DesVel * velHeadFactor * velExpoFactor;
+	Nav.[EastC].DesVel = Nav.C[EastC].DesVel * velHeadFactor * velExpoFactor;
 
-	// Input error in (deg*100), output pitch angle (deg*100)
-	real32 rollAdjustment = navPidApply2(&posControl.pids.fw_nav,
-			posControl.actualState.yaw + HeadingE, posControl.actualState.yaw,
-			US2S(dTuS), -(navConfig()->fw.max_bank_angle),
-			(navConfig()->fw.max_bank_angle), pidFlags);
-
-	// Apply low-pass filter to prevent rapid correction
-	rollAdjustment = pt1FilterApply4(&fwPosControllerCorrectionFilterState,
-			rollAdjustment, NAV_FW_ROLL_CUTOFF_FREQUENCY_HZ, US2S(dTuS));
-
-	// Convert rollAdjustment to decidegrees (rcAdjustment holds decidegrees)
-	posControl.rcAdjustment[ROLL] = rollAdjustment;
-
-	// Update magHold heading lock in case pilot is using MAG mode (prevent MAGHOLD to fight navigation)
-	posControl.desiredState.yaw
-	= Make2Pi(posControl.actualState.yaw + HeadingE);
-	updateMagHoldHeading(posControl.desiredState.yaw);
-
-	// Add pitch compensation
-	//posControl.rcAdjustment[PITCH] = -(Abs(rollAdjustment)) * 0.50f;
 }
 
-void applyFixedWingPositionController(uint32 NowuS) {
-	static uint32 PrevPosUpdateuS; // Occurs @ GPS update rate
-	static uint32 PrevUpdateuS; // Occurs @ looptime rate
+static void updatePositionAccelController_MC(timeDelta_t deltaMicros, real32 maxAccelLimit)
+{
 
-	const uint32 dTuS = NowuS - PrevUpdateuS;
-	PrevUpdateuS = NowuS;
+	// Calculate velocity error
+	Nav.C[NorthC].VelE = Nav.[NorthC].DesVel- Nav.C[NorthC].Vel;
+	Nav.C[EastC].VelE = Nav.[EastC].DesVel - Nav.C[EastC].Vel;
 
-	// If last position update was too long in the past - ignore it (likely restarting altitude controller)
-	if (dTuS > HZ2US(MIN_POSITION_UPDATE_RATE_HZ)) {
-		PrevUpdateuS = NowuS;
-		PrevPosUpdateuS = NowuS;
-		resetFixedWingPositionController();
+	// Calculate XY-acceleration limit according to velocity error limit
+	real32 accelLimitX, accelLimitY;
+	const real32 velErrorMagnitude = sqrtf(sq(Nav.C[NorthC].VelE) + sq(Nav.C[EastC].VelE));
+	if (velErrorMagnitude > 0.1f) {
+		accelLimitX = maxAccelLimit / velErrorMagnitude * fabsf(Nav.C[NorthC].VelE);
+		accelLimitY = maxAccelLimit / velErrorMagnitude * fabsf(Nav.C[EastC].VelE);
+	}
+	else {
+		accelLimitX = maxAccelLimit / 1.414213f;
+		accelLimitY = accelLimitX;
+	}
+
+	// Apply additional jerk limiting of 1700 cm/s^3 (~100 deg/s), almost any copter should be able to achieve this rate
+	// This will assure that we wont't saturate out LEVEL and RATE PID controller
+	const real32 maxAccelChange = NavdT * 1700.0f;
+	const real32 accelLimitXMin = Limit1(lastAccelTargetX - maxAccelChange, accelLimitX);
+	const real32 accelLimitXMax = Limit1(lastAccelTargetX + maxAccelChange, accelLimitX);
+	const real32 accelLimitYMin = Limit1(lastAccelTargetY - maxAccelChange, accelLimitY);
+	const real32 accelLimitYMax = Limit1(lastAccelTargetY + maxAccelChange, accelLimitY);
+
+	// TODO: Verify if we need jerk limiting after all
+
+	// Apply PID with output limiting and I-term anti-windup
+	// Pre-calculated accelLimit and the logic of navPidApply2 function guarantee that our newAccel won't exceed maxAccelLimit
+	// Thus we don't need to do anything else with calculated acceleration
+	const real32 newAccelX = navPidApply2(&Nav.C[NorthC].I, Nav.C[NorthC].DesVel, Nav.C[NorthC].Vel, NavdT, accelLimitXMin, accelLimitXMax, 0);
+	const real32 newAccelY = navPidApply2(&Nav.C[EastC].I, Nav.C[EastC].DesVel, Nav.C[EastC].Vel, NavdT, accelLimitYMin, accelLimitYMax, 0);
+
+	// Save last acceleration target
+	lastAccelTargetX = newAccelX;
+	lastAccelTargetY = newAccelY;
+
+	// Apply LPF to jerk limited acceleration target
+	const real32 accelN = pt1FilterApply4(&mcPosControllerAccFilterStateX, newAccelX, NAV_ACCEL_CUTOFF_FREQUENCY_HZ, NavdT);
+	const real32 accelE = pt1FilterApply4(&mcPosControllerAccFilterStateY, newAccelY, NAV_ACCEL_CUTOFF_FREQUENCY_HZ, NavdT);
+
+	// Rotate acceleration target into forward-right frame (aircraft)
+	const real32 accelForward = accelN * Nav.actualState.cosYaw + accelE * Nav.actualState.sinYaw;
+	const real32 accelRight = -accelN * Nav.actualState.sinYaw + accelE * Nav.actualState.cosYaw;
+
+	// Calculate banking angles
+	const real32 desiredPitch = atan2f(accelForward, GRAVITY_MPS_S);
+	const real32 desiredRoll = atan2f(accelRight * cosf(desiredPitch), GRAVITY_MPS_S);
+
+	Nav.rcAdjustment[ROLL] = Limit1(desiredRoll, Max.Angle);
+	Nav.rcAdjustment[PITCH] = Limit1(desiredPitch, Max.Angle);
+}
+
+static void applyMulticopterPositionController(timeUs_t currentTimeUs)
+{
+	static timeUs_t previousTimePositionUpdate; // Occurs @ GPS update rate
+	static timeUs_t previousTimeUpdate; // Occurs @ looptime rate
+
+	const timeDelta_t deltaMicros = currentTimeUs - previousTimeUpdate;
+	previousTimeUpdate = currentTimeUs;
+	boolean bypassPositionController;
+
+	// We should passthrough rcCommand is adjusting position in GPS_ATTI mode
+	bypassPositionController = (navConfig()->general.flags.user_control_mode == NAV_GPS_ATTI) && Nav.flags.isAdjustingPosition;
+
+	// If last call to controller was too long in the past - ignore it (likely restarting position controller)
+	if (deltaMicros > HZ2US(MIN_POSITION_UPDATE_RATE_HZ)) {
+		previousTimeUpdate = currentTimeUs;
+		previousTimePositionUpdate = currentTimeUs;
+		resetMulticopterPositionController();
 		return;
 	}
 
 	// Apply controller only if position source is valid. In absence of valid pos sensor (GPS loss), we'd stick in forced ANGLE mode
-	if (posControl.flags.hasValidPositionSensor) {
+	// and pilots input would be passed thru to PID controller
+	if (Nav.flags.hasValidPositionSensor) {
 		// If we have new position - update velocity and acceleration controllers
-		if (posControl.flags.horizontalPositionDataNew) {
-			const uint32 dTuSPositionUpdate = NowuS - PrevPosUpdateuS;
-			PrevPosUpdateuS = NowuS;
+		if (Nav.flags.horizontalPositionDataNew) {
+			const timeDelta_t deltaMicrosPositionUpdate = currentTimeUs - previousTimePositionUpdate;
+			previousTimePositionUpdate = currentTimeUs;
 
-			if (dTuSPositionUpdate < HZ2US(MIN_POSITION_UPDATE_RATE_HZ)) {
-				// Calculate virtual position target at a distance of forwardVelocity * HZ2S(POSITION_TARGET_UPDATE_RATE_HZ)
-				// Account for pilot's roll input (move position target left/right at max of max_manual_speed)
-				// POSITION_TARGET_UPDATE_RATE_HZ should be chosen keeping in mind that position target shouldn't be reached until next pos update occurs
-				// FIXME: verify the above
-				calculateVirtualPositionTarget_FW(HZ2S(
-								MIN_POSITION_UPDATE_RATE_HZ) * 2);
-
-				updatePositionHeadingController_FW(NowuS, dTuSPositionUpdate);
-			} else
-			resetFixedWingPositionController();
-
-			// Indicate that information is no longer usable
-			posControl.flags.horizontalPositionDataConsumed = 1;
-		}
-
-		isRollAdjustmentValid = true;
-	} else
-	// No valid pos sensor data, don't adjust pitch automatically, rcCommand[ROLL] is passed through to PID controller
-	isRollAdjustmentValid = false;
-}
-
-int16 applyFixedWingMinSpeedController(uint32 NowuS) {
-	static uint32 PrevPosUpdateuS; // Occurs @ GPS update rate
-	static uint32 PrevUpdateuS; // Occurs @ looptime rate
-
-	const uint32 dTuS = NowuS - PrevUpdateuS;
-	PrevUpdateuS = NowuS;
-
-	// If last position update was too long in the past - ignore it (likely restarting altitude controller)
-	if (dTuS > HZ2US(MIN_POSITION_UPDATE_RATE_HZ)) {
-		PrevUpdateuS = NowuS;
-		PrevPosUpdateuS = NowuS;
-		throttleSpeedAdjustment = 0;
-		return 0;
-	}
-
-	// Apply controller only if position source is valid
-	if (posControl.flags.hasValidPositionSensor) {
-		// If we have new position - update velocity and acceleration controllers
-		if (posControl.flags.horizontalPositionDataNew) {
-			const uint32 dTuSPositionUpdate = NowuS - PrevPosUpdateuS;
-			PrevPosUpdateuS = NowuS;
-
-			if (dTuSPositionUpdate < HZ2US(MIN_POSITION_UPDATE_RATE_HZ)) {
-				real32 velThrottleBoost = (NAV_FW_MIN_VEL_SPEED_BOOST
-						- posControl.actualState.velXY)
-				* NAV_FW_THROTTLE_SPEED_BOOST_GAIN * US2S(
-						dTuSPositionUpdate);
-
-				// If we are in the deadband of 50cm/s - don't update speed boost
-				if (Abs(posControl.actualState.velXY - NAV_FW_MIN_VEL_SPEED_BOOST)
-						> 0.5f) {
-					throttleSpeedAdjustment += velThrottleBoost;
+			if (!bypassPositionController) {
+				// Update position controller
+				if (deltaMicrosPositionUpdate < HZ2US(MIN_POSITION_UPDATE_RATE_HZ)) {
+					updatePositionVelocityController_MC();
+					updatePositionAccelController_MC(deltaMicrosPositionUpdate, NAV_ACCELERATION_XY_MAX);
 				}
-
-				throttleSpeedAdjustment
-				= Limit(throttleSpeedAdjustment, 0.0f, 5.0f);
-			} else
-			throttleSpeedAdjustment = 0;
+				else {
+					resetMulticopterPositionController();
+				}
+			}
 
 			// Indicate that information is no longer usable
-			posControl.flags.horizontalPositionDataConsumed = 1;
+			Nav.flags.horizontalPositionDataConsumed = 1;
 		}
-	} else
-	// No valid pos sensor data, we can't calculate speed
-	throttleSpeedAdjustment = 0;
-
-	return throttleSpeedAdjustment;
-}
-
-void applyFixedWingPitchRollThrottleController(
-		navigationFSMStateFlags_t navStateFlags, uint32 NowuS) {
-	int16 pitchCorrection = 0; // >0 climb, <0 dive
-	int16 rollCorrection = 0; // >0 right, <0 left
-	int16 throttleCorrection = 0; // raw throttle
-
-	int16 minThrottleCorrection = navConfig()->fw.min_throttle
-	- navConfig()->fw.cruise_throttle;
-	int16 maxThrottleCorrection = navConfig()->fw.max_throttle
-	- navConfig()->fw.cruise_throttle;
-
-	// Mix Pitch/Roll/Throttle
-	if (isRollAdjustmentValid && (navStateFlags & NAV_CTL_POS)) {
-		pitchCorrection += Abs(posControl.rcAdjustment[ROLL])
-		* (navConfig()->fw.roll_to_pitch / 100.0f);
-		rollCorrection += posControl.rcAdjustment[ROLL];
 	}
-
-	if (isPitchAdjustmentValid && (navStateFlags & NAV_CTL_ALT)) {
-		pitchCorrection += posControl.rcAdjustment[PITCH];
-		throttleCorrection += pitchCorrection
-		* navConfig()->fw.pitch_to_throttle;
-		throttleCorrection
-		= Limit(throttleCorrection, minThrottleCorrection, maxThrottleCorrection);
-	}
-
-	// Speed controller - only apply in POS mode
-	if (navStateFlags & NAV_CTL_POS) {
-		throttleCorrection += applyFixedWingMinSpeedController(NowuS);
-		throttleCorrection
-		= Limit(throttleCorrection, minThrottleCorrection, maxThrottleCorrection);
-	}
-
-	// Limit and apply
-	if (isPitchAdjustmentValid && (navStateFlags & NAV_CTL_ALT)) {
-		// PITCH angle is measured in opposite direction ( >0 - dive, <0 - climb)
-		pitchCorrection
-		= Limit(pitchCorrection, -(navConfig()->fw.max_dive_angle), (navConfig()->fw.max_climb_angle));
-		rcCommand[PITCH] = -pidAngleToRcCommand(pitchCorrection,
-				pidProfile()->max_angle_inclination[FD_PITCH]);
-	}
-
-	if (isRollAdjustmentValid && (navStateFlags & NAV_CTL_POS)) {
-		rollCorrection
-		= Limit1(rollCorrection, (navConfig()->fw.max_bank_angle));
-		rcCommand[ROLL] = pidAngleToRcCommand(rollCorrection,
-				pidProfile()->max_angle_inclination[FD_ROLL]);
-
-		// Calculate coordinated turn rate based on velocity and banking angle
-		if (posControl.actualState.velXY >= 3.0f) {
-			real32 targetYawRateDPS = (tan_approx(DECI(-rollCorrection))
-					* GRAVITY_CMSS / posControl.actualState.velXY);
-			rcCommand[YAW] = pidRateToRcCommand(targetYawRateDPS,
-					currentControlRateProfile->rates[FD_YAW]);
-		} else
-		rcCommand[YAW] = 0;
-	}
-
-	if ((navStateFlags & NAV_CTL_ALT) || (navStateFlags & NAV_CTL_POS)) {
-		uint16
-		correctedThrottleValue =
-		Limit(navConfig()->fw.cruise_throttle + throttleCorrection, navConfig()->fw.min_throttle, navConfig()->fw.max_throttle);
-		rcCommand[THROTTLE]
-		= Limit(correctedThrottleValue, motorConfig()->minthrottle, motorConfig()->maxthrottle);
-	}
-}
-
-/*-----------------------------------------------------------
- * FixedWing land detector
- *-----------------------------------------------------------*/
-static uint32 landingTimerUs;
-
-void resetFixedWingLandingDetector(void) {
-	landingTimerUs = uSClock();
-}
-
-boolean isFixedWingLandingDetected(void) {
-	uint32 NowuS = uSClock();
-
-	landingTimerUs = NowuS;
-	return false;
-}
-
-/*-----------------------------------------------------------
- * FixedWing emergency landing
- *-----------------------------------------------------------*/
-void applyFixedWingEmergencyLandingController(void) {
-	// FIXME: Use altitude controller if available (similar to MC code)
-	rcCommand[ROLL] = pidAngleToRcCommand(
-			failsafeConfig()->failsafe_fw_roll_angle,
-			pidProfile()->max_angle_inclination[FD_ROLL]);
-	rcCommand[PITCH] = pidAngleToRcCommand(
-			failsafeConfig()->failsafe_fw_pitch_angle,
-			pidProfile()->max_angle_inclination[FD_PITCH]);
-	rcCommand[YAW] = pidRateToRcCommand(failsafeConfig()->failsafe_fw_yaw_rate,
-			currentControlRateProfile->rates[FD_YAW]);
-	rcCommand[THROTTLE] = failsafeConfig()->failsafe_throttle;
-}
-
-/*-----------------------------------------------------------
- * Calculate loiter target based on current position and velocity
- *-----------------------------------------------------------*/
-void calculateFixedWingInitialHoldPosition(t_fp_vector * pos) {
-	// TODO: stub, this should account for velocity and target loiter radius
-	*pos = posControl.actualState.pos;
-}
-
-void resetFixedWingHeadingController(void) {
-	updateMagHoldHeading((posControl.actualState.yaw));
-}
-
-void applyFixedWingNavigationController(
-		navigationFSMStateFlags_t navStateFlags, uint32 NowuS) {
-	if (navStateFlags & NAV_CTL_LAUNCH)
-	applyFixedWingLaunchController(NowuS);
-	else if (navStateFlags & NAV_CTL_EMERG)
-	applyFixedWingEmergencyLandingController();
 	else {
-#ifdef NAV_FW_LIMIT_MIN_FLY_VELOCITY
-		// Don't apply anything if ground speed is too low (<3m/s)
-		if (posControl.actualState.velXY > 300) {
-			if (navStateFlags & NAV_CTL_ALT)
-			applyFixedWingAltitudeController(NowuS);
+		/* No position data, disable automatic adjustment, rcCommand passthrough */
+		Nav.rcAdjustment[PITCH] = 0;
+		Nav.rcAdjustment[ROLL] = 0;
+		bypassPositionController = true;
+	}
 
-			if (navStateFlags & NAV_CTL_POS)
-			applyFixedWingPositionController(NowuS);
-		}
-		else {
-			posControl.rcAdjustment[PITCH] = 0;
-			posControl.rcAdjustment[ROLL] = 0;
-		}
-#else
-		if (navStateFlags & NAV_CTL_ALT)
-		applyFixedWingAltitudeController(NowuS);
-
-		if (navStateFlags & NAV_CTL_POS)
-		applyFixedWingPositionController(NowuS);
+	if (!bypassPositionController) {
+		rcCommand[PITCH] = pidAngleToRcCommand(Nav.rcAdjustment[PITCH], pidProfile()->max_angle_inclination[FD_PITCH]);
+		rcCommand[ROLL] = pidAngleToRcCommand(Nav.rcAdjustment[ROLL], pidProfile()->max_angle_inclination[FD_ROLL]);
+	}
+}
 #endif
 
-		//if (navStateFlags & NAV_CTL_YAW)
-		if ((navStateFlags & NAV_CTL_ALT) || (navStateFlags & NAV_CTL_POS))
-		applyFixedWingPitchRollThrottleController(navStateFlags, NowuS);
-	}
-}
-
-#endif  // NAV

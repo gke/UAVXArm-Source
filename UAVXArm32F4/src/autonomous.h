@@ -27,11 +27,14 @@ enum Coords {
 };
 
 typedef struct {
-	real32 Desired[3];
-	real32 Acc[3];
-	real32 Pos[3], PosE[3],PosEP[3], PosIntE[3];
-	real32 DesVel[3], Vel[3], VelP[3], VelE[3];
-	real32 Corr[3], CorrP[3];
+	real32 Acc;
+	real32 DesPos, Pos, PosE, PosIntE;
+	real32 DesVel, Vel, VelE;
+	real32 Corr, CorrP;
+} NavCoordStruct;
+
+typedef struct {
+	NavCoordStruct C[3];
 
 	real32 Sensitivity;
 	real32 TakeoffBearing;
@@ -42,7 +45,7 @@ typedef struct {
 
 	real32 WPDistance, OriginalWPBearing, WPBearing;
 	real32 CrossTrackKp, CrossTrackE;
-	real32 CrossTrackPosE[2];
+
 	real32 FenceRadius;
 
 	real32 LPFCutOffHz;
@@ -74,6 +77,8 @@ enum NavStates {
 	BoostClimb,
 	AltitudeLimiting,
 	JustGliding,
+	RateControl, // not actually a nav state
+	BypassControl, // not actually a nav state
 	NavStateUndefined
 };
 
@@ -93,8 +98,8 @@ typedef struct {
 	uint8 Action;
 } WPStruct;
 
-enum FailStates {
-	NoFailsafes, Monitoring, BatteryLow, LostSignal, HitFenceRTH
+enum AlarmStates {
+	NoAlarms, Monitoring, BatteryLow, LostSignal, HitFenceRTH
 };
 
 enum LandingStates {
@@ -117,7 +122,7 @@ extern void CheckRapidDescentHazard(void);
 extern void DecayPosCorr(void);
 extern void InitiateShutdown(uint8 s);
 
-extern uint8 NavState, NavSwState, NavSwStateP, FailState;
+extern uint8 NavState, NavSwState, NavSwStateP, AlarmState;
 extern real32 DesiredNavHeading;
 
 #endif

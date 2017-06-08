@@ -47,6 +47,7 @@ typedef struct {
 	WPStructNV WP[NAV_MAX_WAYPOINTS];
 }__attribute__((packed)) MissionStruct;
 
+extern void CaptureHomePosition(void);
 extern void GenerateNavTestMission(void);
 extern void DisplayNavMissions(uint8 s);
 extern boolean NavMissionSanityCheck(MissionStruct * M);

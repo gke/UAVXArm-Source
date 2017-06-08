@@ -35,18 +35,21 @@ void cycleCounterInit(void) {
 	DWT_CTRL |= CYCCNTENA;
 } // cycleCounterInit
 
-uint32 uSClock(void) {
-	// TODO: no check for wraparound
 
-	register uint32 PrevTick, Tick, mS;
-	__disable_irq();
-	Tick = *DWT_CYCCNT;
-	PrevTick = sysTickCycleCounter;
-	mS = sysTickUptime;
-	__enable_irq();
-	return ((mS * 1000) + (Tick - PrevTick) / TicksuS);
+uint32 uSClock(void) { // wraps at 71 minutes
+	volatile uint32 ms, cycle_cnt;
+
+	do {
+		ms = sysTickUptime;
+		cycle_cnt = SysTick->VAL; //*DWT_CYCCNT; //
+		asm volatile("\tnop\n");
+	} while (ms != sysTickUptime);
+
+	return (ms * 1000) + (TicksuS * 1000 - cycle_cnt) / TicksuS;
+	//return (ms * 1000) + ((8000 - cycle_cnt) >> 3);
 
 } // uSClock
+
 
 void Delay1uS(uint16 d) {
 	// TODO: needs round up
@@ -58,7 +61,8 @@ void Delay1uS(uint16 d) {
 
 } // Delay1uS
 
-uint32 mSClock(void) {
+
+__attribute__((always_inline))     inline uint32 mSClock(void) {
 	return (sysTickUptime);
 } // mSClock
 
@@ -94,6 +98,6 @@ void uSTimer(uint32 NowuS, uint8 t, int32 TimePeriod) {
 
 void InitClocks(void) {
 	cycleCounterInit();
-	SysTick_Config(SystemCoreClock / 1000);
+	SysTick_Config(SystemCoreClock / 1000); // 1mS
 } // InitClocks
 

@@ -67,8 +67,8 @@ enum TuneParams {
 	AltitudeROCD,
 	// TODO: should add all Nav PID params?
 	NavPositionP,
+	NavPositionI,
 	NavVelP,
-	NavVelI,
 	NavCrossTrack
 };
 
@@ -148,7 +148,7 @@ enum Params { // MAX 64
 	RxThrottleCh, // 17
 	LowVoltThres, // 18
 	CamRollKp, // 19
-	CruiseThr, // 20
+	EstCruiseThr, // 20
 
 	StickHysteresis, // 21
 	AltCompDecayTime, //  22
@@ -213,7 +213,7 @@ enum Params { // MAX 64
 	ComboPort2Config, // 76
 	MaxAttitudeAngle, // 77
 	TuneParamSel, // 78
-	P79,
+	NavHeadingTurnout, // 79
 	P80,
 	P81,
 	P82,
@@ -243,12 +243,12 @@ typedef struct {
 #define	UseRTHDescendMask		(1<<1)
 #define UseExtLEDsMask 			(1<<2)
 #define EmulationEnableMask		(1<<3)
-#define UseWPNavigationMask		(1<<4)
-#define	UseFailsafeMask			(1<<5)
+#define GPSToLaunchRequiredMask (1<<4)
+//#define	UnusedUseFailsafeMask			(1<<5)
 #define	UseRapidDescentMask		(1<<6)
 
 // Config2
-#define UseManualAltHoldMask 	0x01
+#define UnusedMask_2_1 			0x01
 #define	UseFastStartMask		(1<<1)
 #define UseBLHeliMask 			(1<<2)
 #define UseGliderStrategyMask	(1<<3)

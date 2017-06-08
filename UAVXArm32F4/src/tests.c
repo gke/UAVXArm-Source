@@ -213,10 +213,10 @@ void CommissioningTest(uint8 s) {
 			/*
 			 TxString(s, " i2CE:");
 			 OK(s, !F.i2cFatal);
-			 TxVal32(s, NV.Stats[I2CFailS], 0, ' ');
+			 TxVal32(s, currStat(I2CFailS), 0, ' ');
 			 TxString(s, "spiE:");
 			 OK(s, !F.spiFatal);
-			 TxVal32(s, NV.Stats[SPIFailS], 0, ' ');
+			 TxVal32(s, currStat(SPIFailS), 0, ' ');
 			 */
 
 			TxNextLine(s);
@@ -773,69 +773,69 @@ void ReceiverTest(uint8 s) {
 } // ReceiverTest
 
 
-void ShowStats(uint8 s) {
+void ShowStat(uint8 s) {
 	int32 a;
 #if defined(INC_MAG_HIST)
 	uint16 h;
 #endif // INC_MAG_HIST
 	TxString(s, "\r\nFlight Stats\r\n");
 
-	if (NV.Stats[BadS] != 0) {
+	if (currStat(BadS) != 0) {
 		TxString(s, "Misc(gke):     \t");
-		TxVal32(s, (int32) NV.Stats[BadS], 0, ' ');
-		TxVal32(s, (int32) NV.Stats[BadNumS], 0, ' ');
+		TxVal32(s, (int32) currStat(BadS), 0, ' ');
+		TxVal32(s, (int32) currStat(BadNumS), 0, ' ');
 		TxNextLine(s);
 	}
 
 	TxString(s, "\r\n\r\nSensor/Rx Fails (Count)\r\n");
 	TxString(s, "I2CBus:\t");
-	TxVal32(s, (int32) NV.Stats[I2CFailS], 0, 0);
+	TxVal32(s, (int32) currStat(I2CFailS), 0, 0);
 	TxNextLine(s);
 	TxString(s, "SPIBus:\t");
-	TxVal32(s, (int32) NV.Stats[SPIFailS], 0, 0);
+	TxVal32(s, (int32) currStat(SPIFailS), 0, 0);
 	TxNextLine(s);
 	TxString(s, "GPS:   \t");
-	TxVal32(s, (int32) NV.Stats[GPSInvalidS], 0, 0);
+	TxVal32(s, (int32) currStat(GPSInvalidS), 0, 0);
 	TxNextLine(s);
 	TxString(s, "Acc:   \t");
-	TxVal32(s, (int32) NV.Stats[AccFailS], 0, 0);
+	TxVal32(s, (int32) currStat(AccFailS), 0, 0);
 	TxNextLine(s);
 	TxString(s, "Gyro:  \t");
-	TxVal32(s, (int32) NV.Stats[GyroFailS], 0, 0);
+	TxVal32(s, (int32) currStat(GyroFailS), 0, 0);
 	TxNextLine(s);
 	TxString(s, "Comp:  \t");
-	TxVal32(s, (int32) NV.Stats[CompassFailS], 0, 0);
+	TxVal32(s, (int32) currStat(CompassFailS), 0, 0);
 	TxNextLine(s);
 	TxString(s, "Baro:  \t");
-	TxVal32(s, (int32) NV.Stats[BaroFailS], 0, 0);
+	TxVal32(s, (int32) currStat(BaroFailS), 0, 0);
 	TxNextLine(s);
 	if (CurrESCType != ESCPWM) {
 		TxString(s, "I2CESC:   \t");
-		TxVal32(s, (int32) NV.Stats[ESCI2CFailS], 0, 0);
+		TxVal32(s, (int32) currStat(ESCI2CFailS), 0, 0);
 		TxNextLine(s);
 	}
 	TxString(s, "Rx:       \t");
-	TxVal32(s, (int32) NV.Stats[RCGlitchesS], 0, ' ');
+	TxVal32(s, (int32) currStat(RCGlitchesS), 0, ' ');
 	TxNextLine(s);
 	TxString(s, "Failsafes:\t");
-	TxVal32(s, (int32) NV.Stats[RCFailsafesS], 0, ' ');
+	TxVal32(s, (int32) currStat(RCFailsafesS), 0, ' ');
 	TxNextLine(s);
 
 	TxString(s, "\r\nBaro\r\n");
 	TxString(s, "Alt:      \t");
-	TxVal32(s, (int32) NV.Stats[BaroAltitudeS], 0, ' ');
+	TxVal32(s, (int32) currStat(AltitudeS), 0, ' ');
 	TxString(s, "M \r\n");
 	TxString(s, "ROC:      \t");
-	TxVal32(s, (int32) NV.Stats[MinROCS], 2, ' ');
-	TxVal32(s, (int32) NV.Stats[MaxROCS], 2, ' ');
+	TxVal32(s, (int32) currStat(MinROCS), 2, ' ');
+	TxVal32(s, (int32) currStat(MaxROCS), 2, ' ');
 	TxString(s, "M/S\r\n");
 
 #if defined(INC_TEMPERATURE)
-	if ( NV.Stats[MinTempS] < INIT_MIN )
+	if ( currStat(MinTempS) < INIT_MIN )
 	{
 		TxString(s, "Ambient:  \t");
-		TxVal32(s, (int32)NV.Stats[MinTempS], 1, ' ');
-		TxVal32(s, (int32)NV.Stats[MaxTempS], 1, ' ');
+		TxVal32(s, (int32)currStat(MinTempS), 1, ' ');
+		TxVal32(s, (int32)currStat(MaxTempS), 1, ' ');
 		TxString(s, "C\r\n");
 	}
 #else
@@ -843,27 +843,27 @@ void ShowStats(uint8 s) {
 #endif // INC_TEMPERATURE
 	TxString(s, "\r\nGPS\r\n");
 	TxString(s, "Alt:      \t");
-	TxVal32(s, (int32) NV.Stats[GPSAltitudeS], 0, ' ');
+	TxVal32(s, (int32) currStat(GPSAltitudeS), 0, ' ');
 	TxString(s, "M\r\n");
 	TxString(s, "Vel:      \t");
-	TxVal32(s, NV.Stats[GPSVelS], 1, ' ');
+	TxVal32(s, currStat(GPSVelS), 1, ' ');
 	TxString(s, "M/S\r\n");
 
-	if (NV.Stats[GPSMinSatsS] < INIT_MIN) {
+	if (currStat(GPSMinSatsS) < INIT_MIN) {
 		TxString(s, "Sats:     \t");
-		TxVal32(s, (int32) NV.Stats[GPSMinSatsS], 0, ' ');
-		TxVal32(s, (int32) NV.Stats[GPSMaxSatsS], 0, 0);
+		TxVal32(s, (int32) currStat(GPSMinSatsS), 0, ' ');
+		TxVal32(s, (int32) currStat(GPSMaxSatsS), 0, 0);
 		TxNextLine(s);
 	}
 
-	if (NV.Stats[MinhAccS] < INIT_MIN) {
+	if (currStat(MinhAccS) < INIT_MIN) {
 		TxString(s, "DOP:  \t");
-		TxVal32(s, (int32) NV.Stats[MinhAccS], 2, ' ');
-		TxVal32(s, (int32) NV.Stats[MaxhAccS], 2, 0);
+		TxVal32(s, (int32) currStat(MinhAccS), 2, ' ');
+		TxVal32(s, (int32) currStat(MaxhAccS), 2, 0);
 		TxNextLine(s);
 	}
 
-	if (NV.Stats[OriginValidS])
+	if (currStat(OriginValidS))
 		TxString(s, "Nav ENABLED\r\n");
 	else
 		TxString(s, "Nav DISABLED (No fix at launch)\r\n");

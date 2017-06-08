@@ -67,7 +67,6 @@ enum PacketTags {
 	UAVXFusionPacketTag = 60,
 	UAVXSoaringPacketTag = 61,
 	UAVXCalibrationPacketTag = 62,
-	UAVXPIDPacketTag = 63,
 
 	FrSkyPacketTag = 99
 };

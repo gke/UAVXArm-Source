@@ -24,6 +24,10 @@
 
 #define INIT_MIN 1000L
 
+void incStat(uint8 s);
+void setStat(uint8 s, int16 v);
+int16 currStat(uint8 s);
+
 void ZeroStats(void);
 void ReadStatsNV(void);
 void WriteStatsNV(void);
@@ -33,7 +37,7 @@ void StatsMax(int16 v, uint8 u);
 
 enum Statistics {
 	GPSAltitudeS,
-	BaroAltitudeS,
+	AltitudeS,
 	ESCI2CFailS,
 	GPSMinSatsS,
 	MinROCS,

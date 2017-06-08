@@ -22,6 +22,8 @@
 #ifndef _uavx_h
 #define _uavx_h
 
+//#define USE_THERMALS
+
 #define MAX_BLHELI_ESCS 4
 
 //#define USE_ATT_BATT_COMP
@@ -39,6 +41,8 @@
 
 #define INC_DFT
 //#define INC_MAG_HIST
+//#define INC_STATS_TEL
+#define INC_RC_TEL
 
 //#define TUNE_TAU
 //#define TUNE_RLS

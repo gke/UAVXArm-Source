@@ -39,6 +39,7 @@ void ShowIMUType(uint8 s);
 
 real32 GravityCompensatedAccZ(void);
 real32 AttitudeCosine(void);
+void UpdateWhere(void);
 
 extern const char * IMUName[];
 

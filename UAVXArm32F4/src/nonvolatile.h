@@ -85,6 +85,5 @@ extern boolean Write32ExtMem(uint32 a, int32 d);
 
 extern uint32 CurrExtMemAddr;
 
-
 #endif
 

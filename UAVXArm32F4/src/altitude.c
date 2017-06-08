@@ -421,12 +421,8 @@ real32 SharpRFLookup(real32 r, uint8 Sel) {
 	//	if (RF[CurrRFSensorType].Min)
 
 	if (s >= MEDIAN_LEN) {
-		Probe(1);
 		v = median(a, 31);
-		Probe(0);
-		Probe(1);
 		v = A[Sel] * powf(v, B[Sel]);
-		Probe(0);
 		s = 0;
 	} else
 		a[s++] = r;
@@ -551,13 +547,14 @@ void InitRangefinder(void) {
 
 // altitude
 
+#if defined(RETIRED_ALT_HOLD)
 void SelectAltitudeSensor(void) {
 	const real32 RFlb = RF[CurrRFSensorType].maxAlt * 0.4f;
 	const real32 RFub = RF[CurrRFSensorType].maxAlt * 0.6f;
 
 	enum Strategies {
 		Recapture, TrackOrigin, DropHold
-	} Strategy;
+	}Strategy;
 
 	static boolean WasUsingRF = false;
 
@@ -567,7 +564,7 @@ void SelectAltitudeSensor(void) {
 	Strategy = DropHold;
 
 	switch (Strategy) {
-	case DropHold: // solves cliff problem
+		case DropHold: // solves cliff problem
 		if ((State != InFlight) && (StickThrottle < IdleThrottle)) {
 			WasUsingRF = false;
 			ZeroAltitude();
@@ -576,21 +573,21 @@ void SelectAltitudeSensor(void) {
 			if (F.UsingRangefinderAlt) {
 				Altitude = RangefinderAltitude;
 				if (F.HoldingAlt && !WasUsingRF)
-					F.HoldingAlt = false;
+				F.HoldingAlt = false;
 				WasUsingRF = true;
 			} else {
 				Altitude = UsingBeall ? FAltitude - OriginAltitude
-						: BaroAltitude - OriginAltitude;
+				: BaroAltitude - OriginAltitude;
 				if (F.HoldingAlt && WasUsingRF)
-					F.HoldingAlt = false;
+				F.HoldingAlt = false;
 				WasUsingRF = false;
 			}
 		}
 
 		break;
-	case TrackOrigin: // does not solve cliff problem and can give runaway altitude
+		case TrackOrigin: // does not solve cliff problem and can give runaway altitude
 		if ((State != InFlight) && (StickThrottle < IdleThrottle))
-			ZeroAltitude();
+		ZeroAltitude();
 		else {
 			AltitudeP = Altitude;
 			if (F.UsingRangefinderAlt) {
@@ -598,16 +595,16 @@ void SelectAltitudeSensor(void) {
 				if ((RangefinderAltitude > RFlb)
 						&& (RangefinderAltitude < RFub)) {
 					AltOffset = (BaroAltitude - OriginAltitude)
-							- RangefinderAltitude;
+					- RangefinderAltitude;
 					OriginAltitude = OriginAltitude * RF_CF + ((OriginAltitude
-							+ AltOffset) * (1.0f - RF_CF));
+									+ AltOffset) * (1.0f - RF_CF));
 				}
 			} else
-				Altitude = UsingBeall ? FAltitude - OriginAltitude
-						: BaroAltitude - OriginAltitude;
+			Altitude = UsingBeall ? FAltitude - OriginAltitude
+			: BaroAltitude - OriginAltitude;
 		}
 		break;
-	case Recapture: // solves cliff problem
+		case Recapture: // solves cliff problem
 		if ((State != InFlight) && (StickThrottle < IdleThrottle)) {
 			WasUsingRF = false;
 			ZeroAltitude();
@@ -616,19 +613,19 @@ void SelectAltitudeSensor(void) {
 			if (F.UsingRangefinderAlt) {
 				Altitude = RangefinderAltitude;
 				if (F.HoldingAlt && !WasUsingRF)
-					DesiredAltitude = Altitude;
+				DesiredAltitude = Altitude;
 				WasUsingRF = true;
 
 			} else {
 				Altitude = UsingBeall ? FAltitude - OriginAltitude
-						: BaroAltitude - OriginAltitude;
+				: BaroAltitude - OriginAltitude;
 				if (F.HoldingAlt && WasUsingRF)
-					DesiredAltitude = Altitude;
+				DesiredAltitude = Altitude;
 				WasUsingRF = false;
 			}
 		}
 		break;
-	default:
+		default:
 		break;
 	} // switch
 
@@ -652,7 +649,74 @@ void UpdateAltitudeEstimates(void) {
 		SelectAltitudeSensor();
 
 		ROC = F.UsingRangefinderAlt || !UsingBeall ? (Altitude - AltitudeP)
-				* AltdTR : FROC;
+		* AltdTR : FROC;
+		ROC = LPFilter(&ROCLPF, ROC, AltLPFHz, AltdT);
+		ROC = DeadZone(ROC, ALT_ROC_THRESHOLD_MPS);
+
+		if (UAVXAirframe == Instrumentation)
+		ROC = Limit1(ROC, 20.0f);
+		else if (!IsFixedWing)
+		ROC = Limit1(ROC, ALT_MAX_ROC_MPS);
+
+		ROCF = HardFilter(ROCF, ROC);
+
+		StatsMax(Altitude, AltitudeS);
+		StatsMinMax(ROC * 100.0f, MinROCS, MaxROCS);
+
+		F.NewAltitudeValue = true;
+	}
+
+} // UpdateAltitudeEstimates
+
+#else
+
+void SelectAltitudeSensor(void) {
+	static boolean WasUsingRF = false;
+
+	if ((State != InFlight) && (StickThrottle < IdleThrottle)) {
+		WasUsingRF = false;
+		ZeroAltitude();
+	} else {
+		if (F.UsingRangefinderAlt) {
+			Altitude = RangefinderAltitude;
+			if (F.HoldingAlt && !WasUsingRF) {
+				AltitudeP = Altitude;
+				F.HoldingAlt = false;
+			}
+			WasUsingRF = true;
+		} else {
+			Altitude = UsingBeall ? FAltitude - OriginAltitude : BaroAltitude
+					- OriginAltitude;
+			if (F.HoldingAlt && WasUsingRF) {
+				AltitudeP = Altitude;
+				F.HoldingAlt = false;
+			}
+			WasUsingRF = false;
+		}
+	}
+
+} // SelectAltitudeSensor
+
+void UpdateAltitudeEstimates(void) {
+	static uint32 LastAltUpdatemS = 0;
+	uint32 NowmS;
+
+	GetBaro();
+	GetRangefinderAltitude();
+
+	NowmS = mSClock();
+	if (NowmS > mS[AltUpdate]) { // 5 cycles @ 10mS -> 50mS or 20Hz
+		mSTimer(mSClock(), AltUpdate, ALT_UPDATE_MS);
+
+		AltdT = (NowmS - LastAltUpdatemS) * 0.001f;
+		AltdTR = 1.0f / AltdT;
+		LastAltUpdatemS = NowmS;
+
+		SelectAltitudeSensor();
+
+		ROC = (Altitude - AltitudeP) * AltdTR;
+		AltitudeP = Altitude;
+
 		ROC = LPFilter(&ROCLPF, ROC, AltLPFHz, AltdT);
 		ROC = DeadZone(ROC, ALT_ROC_THRESHOLD_MPS);
 
@@ -663,7 +727,7 @@ void UpdateAltitudeEstimates(void) {
 
 		ROCF = HardFilter(ROCF, ROC);
 
-		StatsMax(Altitude, BaroAltitudeS);
+		StatsMax(Altitude, AltitudeS);
 		StatsMinMax(ROC * 100.0f, MinROCS, MaxROCS);
 
 		F.NewAltitudeValue = true;
@@ -671,4 +735,5 @@ void UpdateAltitudeEstimates(void) {
 
 } // UpdateAltitudeEstimates
 
+#endif
 

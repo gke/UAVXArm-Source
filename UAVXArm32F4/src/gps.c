@@ -305,8 +305,8 @@ typedef struct {
 	uint32 tAcc; // Time accuracy estimate (UTC) [ns]
 	int32 nano; // Fraction of second (UTC) [-1e9...1e9 ns]
 	uint8 fixtype; // GNSSfix type: 0 = No fix, 1 = Dead Reckoning only, 2 = 2D fix, 3 = 3d-fix, 4 = GNSS + dead reckoning, 5 = time only fix
-	uint8 fix; // Fix Status Flags (see UBX_RX_NAV_PVT_FLAGS_...)
-	uint8 reserved1;
+	uint8 flags1; // Fix Status Flags (see UBX_RX_NAV_PVT_FLAGS_...)
+	uint8 flags2;
 	uint8 numSV; // Number of SVs used in Nav Solution
 	int32 lon; // Longitude [1e-7 deg]
 	int32 lat; // Latitude [1e-7 deg]
@@ -456,7 +456,6 @@ void UbxSaveConfig(uint8 s) {
 		infMsg = _b2,
 		navConf = _b3,
 		rxmConf = _b4,
-
 		senConf = _b8,// M8
 		rinvConf = _b9,// M8
 		antConf = _b10,
@@ -472,8 +471,6 @@ void UbxSaveConfig(uint8 s) {
 		devSPIFlash = _b4
 	};
 
-	//B5 62 06 09 0D - 00 - clear 00 00 00 00 - save FF FF 00 00 - load 00 00 00 00 - 03 - 1D AB
-
 	UbxSendPreamble(s);
 	TxUbxu8(s, UBX_CFG_CLASS);
 	TxUbxu8(s, UBX_CFG_CFG);
@@ -481,10 +478,7 @@ void UbxSaveConfig(uint8 s) {
 	TxUbxu32(s, 0); // clear mask
 	TxUbxu32(s, ioport | msgConf | infMsg | navConf | rxmConf | antConf); // save mask
 	TxUbxu32(s, 0); // load mask
-	if (UbxVersion >= 8)
-		TxUbxu8(s, devFlash | devBBR);
-	else
-		TxUbxu8(s, devEEPROM | devBBR);
+	TxUbxu8(s, devEEPROM | devFlash | devBBR);
 	TxUbxCheckSum(s);
 
 	Delay1mS(1000);
@@ -592,10 +586,9 @@ void UbxInitPort(uint8 s) {
 	TxUbxu16(s, inUBX); // outProtoMask
 	TxUbxu16(s, 0x00); // flags
 	TxUbxu16(s, 0x00); // reserved
+	TxUbxCheckSum(s);
 
 	Delay1mS(400);
-
-	TxUbxCheckSum(s);
 }
 
 void UbxSetTimepulse(uint8 s) {
@@ -663,18 +656,19 @@ void ParseUbxPacket(void) {
 			// = ubx.payload.pvt.tAcc;
 			// = ubx.payload.pvt.nano;
 			GPS.fix = ubx.payload.pvt.fixtype;
-			F.GPSValid = (ubx.payload.pvt.fix & 1) && ((ubx.payload.pvt.fixtype
-					== Fix3D || ubx.payload.pvt.fixtype == Fix2D));
-			// = ubx.payload.pvt.reserved1;
+			F.GPSValid = (ubx.payload.pvt.fixtype
+					== Fix3D) || (ubx.payload.pvt.fixtype == Fix2D) || (ubx.payload.pvt.fixtype == FixGPSDeadReckoning);
+			// = ubx.payload.pvt.flags1;
+			// = ubx.payload.pvt.flags2;
 			GPS.noofsats = ubx.payload.pvt.numSV;
-			GPS.lon = GPS.Raw[EastC] = ubx.payload.pvt.lon;
-			GPS.lat = GPS.Raw[NorthC] = ubx.payload.pvt.lat;
+			GPS.lon = GPS.C[EastC].Raw = ubx.payload.pvt.lon;
+			GPS.lat = GPS.C[NorthC].Raw = ubx.payload.pvt.lat;
 			// = ubx.payload.pvt.height; // Height above ellipsoid [mm]
 			GPS.height = GPS.altitude = ubx.payload.pvt.hMSL * 0.001f; // mm => m
 			GPS.hAcc = ubx.payload.pvt.hAcc * 0.001f; // mm/s => m/s
 			GPS.vAcc = ubx.payload.pvt.vAcc * 0.001f; // mm/s => m/s
-			GPS.velN = GPS.Vel[NorthC] = ubx.payload.pvt.velN * 0.001f; // mm => m
-			GPS.velE = GPS.Vel[EastC] = ubx.payload.pvt.velE * 0.001f; // mm => m
+			GPS.velN = GPS.C[NorthC].Vel = ubx.payload.pvt.velN * 0.001f; // mm => m
+			GPS.velE = GPS.C[EastC].Vel = ubx.payload.pvt.velE * 0.001f; // mm => m
 			GPS.velD = ubx.payload.pvt.velD * 0.001f; // mm => m
 			GPS.gspeed = ubx.payload.pvt.gSpeed * 0.001f; // mm/s => m/s
 			GPS.heading = DegreesToRadians(ubx.payload.pvt.headMot * 1e-5f);
@@ -721,8 +715,8 @@ void ParseUbxPacket(void) {
 			break;
 		case UBX_NAV_POSLLH:
 			GPS.missionTime = GPS.lastPosUpdatemS = ubx.payload.posllh.iTOW;
-			GPS.lat = GPS.Raw[NorthC] = (real64) ubx.payload.posllh.lat;
-			GPS.lon = GPS.Raw[EastC] = (real64) ubx.payload.posllh.lon;
+			GPS.lat = GPS.C[NorthC].Raw = (real64) ubx.payload.posllh.lat;
+			GPS.lon = GPS.C[EastC].Raw = (real64) ubx.payload.posllh.lon;
 			GPS.height = GPS.altitude = ubx.payload.posllh.hMSL * 0.001f; // mm => m
 			GPS.hAcc = ubx.payload.posllh.hAcc * 0.001f; // mm => m
 			GPS.vAcc = ubx.payload.posllh.vAcc * 0.001f; // mm => m
@@ -730,8 +724,8 @@ void ParseUbxPacket(void) {
 			break;
 		case UBX_NAV_VELNED:
 			GPS.lastVelUpdatemS = ubx.payload.valned.iTOW;
-			GPS.velN = GPS.Vel[NorthC] = ubx.payload.valned.velN * 0.01f; // cm => m
-			GPS.velE = GPS.Vel[EastC] = ubx.payload.valned.velE * 0.01f; // cm => m
+			GPS.velN = GPS.C[NorthC].Vel = ubx.payload.valned.velN * 0.01f; // cm => m
+			GPS.velE = GPS.C[EastC].Vel = ubx.payload.valned.velE * 0.01f; // cm => m
 			GPS.velD = ubx.payload.valned.velD * 0.01f; // cm => m
 			GPS.gspeed = ubx.payload.valned.gSpeed * 0.01f; // cm/s => m/s
 			GPS.heading = DegreesToRadians(ubx.payload.valned.heading * 1e-5f);
@@ -880,7 +874,7 @@ boolean WaitUbxAck(uint8 class, uint8 id) {
 } // WaitUbxAck
 
 void InitUbxGPS(uint8 s) {
-	uint16 i;
+	uint16 i, retries;
 
 	//Black GPS BD
 	//SW=<2.01 (75331)>
@@ -915,12 +909,15 @@ void InitUbxGPS(uint8 s) {
 
 		serialBaudRate(s, UBXGPSBaud);
 
+		Delay1mS(1000); // 1000
+
 		UbxDisableNavMessages(s);
 
 		RxEnabled[GPSRxSerial] = true;
 
 		UbxVersion = -1;
-		while (UbxVersion == -1) { // does not work first bite!!
+		retries = 0;
+		while ((UbxVersion == -1) && (++retries < 5)) { // does not work first bite!!
 			ubx.class = ubx.id = 0;
 			F.GPSPacketReceived = false;
 			UbxPollVersion(s);
@@ -1016,11 +1013,11 @@ void ParseMTKPacket(void) {
 			|| (MTKBuffer.msg.fixtype == FIX_3D_SBAS_MTK));
 
 	if (UseMTK16GPS) {
-		GPS.Raw[NorthC] = MTKBuffer.msg.latitude * 10;
-		GPS.Raw[EastC] = MTKBuffer.msg.longitude * 10;
+		GPS.C[NorthC].Raw = MTKBuffer.msg.latitude * 10;
+		GPS.C[EastC].Raw = MTKBuffer.msg.longitude * 10;
 	} else {
-		GPS.Raw[NorthC] = (real64) MTKBuffer.msg.latitude;
-		GPS.Raw[EastC] = (real64) MTKBuffer.msg.longitude;
+		GPS.C[NorthC].Raw = (real64) MTKBuffer.msg.latitude;
+		GPS.C[EastC].Raw = (real64) MTKBuffer.msg.longitude;
 	}
 	GPS.altitude = MTKBuffer.msg.altitude * 0.01f;
 	GPS.gspeed = MTKBuffer.msg.ground_speed * 0.01f; // in m/s * 100 == in cm/s
@@ -1211,16 +1208,16 @@ void ParseGXGGASentence(void) { // full position $GXGGA fix
 	PacketTimemS = mSClock(); // ConvertUTime(lo, hi);
 
 	UpdateField(); //Lat
-	GPS.Raw[NorthC] = ConvertLatLon(lo, hi);
+	GPS.C[NorthC].Raw = ConvertLatLon(lo, hi);
 	UpdateField(); //LatH
 	if (NMEA.s[lo] == 'S')
-		GPS.Raw[NorthC] = -GPS.Raw[NorthC];
+		GPS.C[NorthC].Raw = -GPS.C[NorthC].Raw;
 
 	UpdateField(); //Lon
-	GPS.Raw[EastC] = ConvertLatLon(lo, hi);
+	GPS.C[EastC].Raw = ConvertLatLon(lo, hi);
 	UpdateField(); //LonH
 	if (NMEA.s[lo] == 'W')
-		GPS.Raw[EastC] = -GPS.Raw[EastC];
+		GPS.C[EastC].Raw = -GPS.C[EastC].Raw;
 
 	UpdateField(); //Fix
 	GPS.fix = (uint8) (I32(lo, hi));
@@ -1262,16 +1259,16 @@ void ParseGXRMCSentence() { // main current position and heading
 	if (NMEA.s[lo] == 'A') {
 
 		UpdateField(); //Lat
-		GPS.Raw[NorthC] = ConvertLatLon(lo, hi);
+		GPS.C[NorthC].Raw = ConvertLatLon(lo, hi);
 		UpdateField(); //LatH
 		if (NMEA.s[lo] == 'S')
-			GPS.Raw[NorthC] = -GPS.Raw[NorthC];
+			GPS.C[NorthC].Raw = -GPS.C[NorthC].Raw;
 
 		UpdateField(); //Lon
-		GPS.Raw[EastC] = ConvertLatLon(lo, hi);
+		GPS.C[EastC].Raw = ConvertLatLon(lo, hi);
 		UpdateField(); //LonH
 		if (NMEA.s[lo] == 'W')
-			GPS.Raw[EastC] = -GPS.Raw[EastC];
+			GPS.C[EastC].Raw = -GPS.C[EastC].Raw;
 
 		UpdateField(); // Groundspeed (Knots)
 		GPS.gspeed = ((real32) I32(lo, hi - 3) + (real32) I32(hi - 1, hi)
@@ -1301,54 +1298,15 @@ void ParseGXRMCSentence() { // main current position and heading
 } // ParseGXRMCSentence
 
 
-void SetGPSOrigin(void) {
-	uint8 i;
-
-	if ((ValidGPSSentences == GPS_ORIGIN_SENTENCES) && !F.OriginValid) {
-
-		mS[LastGPS] = mSClock();
-
-		GPS.startTime = GPS.missionTime;
-
-		NV.Mission.OriginLatitude = GPS.OriginRaw[NorthC] = GPS.Raw[NorthC];
-		NV.Mission.OriginLongitude = GPS.OriginRaw[EastC] = GPS.Raw[EastC];
-
-		GPS.Vel[NorthC] = GPS.Vel[EastC] = 0.0f;
-
-		// do it once - operations area small
-		GPS.longitudeCorrection
-				= Abs(cos(DegreesToRadians((real64)GPS.Raw[NorthC] * 1e-7)));
-		GPS.PosP[NorthC] = GPS.PosP[EastC] = 0.0f;
-
-		GPS.originAltitude = GPS.altitude;
-
-		NV.Mission.OriginAltitude = GPS.altitude;
-		NV.Mission.OriginLatitude = GPS.OriginRaw[NorthC];
-		NV.Mission.OriginLongitude = GPS.OriginRaw[EastC];
-
-		ResetNavHold = true;
-		F.NavigationActive = false;
-		NavState = PIC;
-
-		if (!F.OriginValid) {
-			for (i = 0; i < 8; i++)
-				DoBeep(2, 2);
-
-			NV.Stats[OriginValidS] = true;
-			F.OriginValid = true;
-		}
-	}
-} // SetGPSOrigin
-
 boolean GPSSanityCheck(void) {
 	boolean r;
 
-	r = F.Emulation ? true : (Abs(GPS.Raw[NorthC]) <= 900000000L)
-			&& (Abs(GPS.Raw[EastC]) <= 1800000000L) && (GPS.Raw[NorthC] != 0)
-			&& (GPS.Raw[EastC] != 0);
+	r = F.Emulation ? true : (Abs(GPS.C[NorthC].Raw) <= 900000000L)
+			&& (Abs(GPS.C[EastC].Raw) <= 1800000000L) && (GPS.C[NorthC].Raw != 0)
+			&& (GPS.C[EastC].Raw != 0);
 
 	if (!r)
-		NV.Stats[GPSInvalidS]++;
+		incStat(GPSInvalidS);
 
 	return (r);
 
@@ -1366,19 +1324,19 @@ void ProcessGPSSentence(void) {
 
 		if (F.OriginValid) {
 			if (!F.Emulation) {
-				GPS.Pos[NorthC] = GPSToM(GPS.Raw[NorthC]
-						- GPS.OriginRaw[NorthC]);
-				GPS.Pos[EastC] = GPSToM(GPS.Raw[EastC] - GPS.OriginRaw[EastC])
+				GPS.C[NorthC].Pos = GPSToM(GPS.C[NorthC].Raw
+						- GPS.C[NorthC].OriginRaw);
+				GPS.C[EastC].Pos = GPSToM(GPS.C[EastC].Raw - GPS.C[EastC].OriginRaw)
 						* GPS.longitudeCorrection;
 
 				if ((CurrGPSType != UBXBinGPS)
 						&& (CurrGPSType != UBXBinGPSInit)) {
 					for (a = NorthC; a <= EastC; a++) {
-						GPS.Vel[a] = (GPS.Pos[a] - GPS.PosP[a]) * GPSdT;
-						GPS.PosP[a] = GPS.Pos[a];
+						GPS.C[a].Vel = (GPS.C[a].Pos - GPS.C[a].PosP) * GPSdT;
+						GPS.C[a].PosP = GPS.C[a].Pos;
 					}
-					GPS.gspeed = sqrtf(Sqr(GPS.Vel[NorthC])
-							+ Sqr(GPS.Vel[EastC]));
+					GPS.gspeed = sqrtf(Sqr(GPS.C[NorthC].Vel)
+							+ Sqr(GPS.C[EastC].Vel));
 				}
 			}
 
@@ -1388,17 +1346,12 @@ void ProcessGPSSentence(void) {
 			StatsMinMax(GPS.sAcc * 100.0f, MinsAccS, MaxsAccS);
 			StatsMinMax(GPS.noofsats, GPSMinSatsS, GPSMaxSatsS);
 
-		} else {
-			F.GPSValid = false;
-			if (ValidGPSSentences < GPS_ORIGIN_SENTENCES)
-				ValidGPSSentences
-						= GPS.hAcc <= GPS_MIN_HACC ? ValidGPSSentences + 1 : 0;
 		}
 	} else {
 		//GPS.Vel[NorthC] = GPS.Vel[EastC] = 0.0f;
 		F.ValidGPSVel = false;
 		if (State == InFlight)
-			NV.Stats[GPSInvalidS]++;
+			incStat(GPSInvalidS);
 	}
 
 	F.GPSFailure = (GPS.hAcc > GPS_MIN_HACC); // || (GPS.sAcc > GPS_MIN_SACC);
@@ -1523,6 +1476,8 @@ void UpdateGPS(void) {
 		if (NowmS > mS[GPSTimeout]) {
 			DecayPosCorr();
 
+			F.NavigationActive = false;
+
 			LEDOff(LEDBlueSel);
 			LEDOn(LEDRedSel);
 		}
@@ -1539,7 +1494,6 @@ void InitGPS(void) {
 	mS[FakeGPSUpdate] = 0;
 	F.OriginValid = F.GPSValid = F.HaveGPS = F.GPSPacketReceived
 			= F.GPSPosUpdated = false;
-	ValidGPSSentences = 0;
 
 	GPS.year = 0; // no auto variation with MTK
 
@@ -1549,8 +1503,8 @@ void InitGPS(void) {
 	// done in memset	GPS.Raw[EastC] = GPS.C[EastC].OriginRaw = 0;
 
 	if (F.Emulation) {
-		GPS.OriginRaw[NorthC] = DEFAULT_HOME_LAT;
-		GPS.OriginRaw[EastC] = DEFAULT_HOME_LON;
+		GPS.C[NorthC].OriginRaw = DEFAULT_HOME_LAT;
+		GPS.C[EastC].OriginRaw = DEFAULT_HOME_LON;
 		GPS.longitudeCorrection = DEFAULT_LON_CORR;
 	}
 

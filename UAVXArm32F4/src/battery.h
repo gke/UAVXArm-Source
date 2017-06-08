@@ -23,10 +23,6 @@
 #define _battery_h
 
 #define BATTERY_UPDATE_MS 200 // 1000
-#define LVC_FULL_BUCKET_MS 3000
-#define LVC_INIT_WARN_SCALE FromPercent(90, RC_MAXIMUM)
-#define LVC_THR_OFF_MS 10000
-#define LVC_DECAY_STEP ((real32)BATTERY_UPDATE_MS/LVC_THR_OFF_MS)
 
 extern void InitBattery(void);
 extern void CheckBatteries(void);

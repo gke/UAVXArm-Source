@@ -26,7 +26,7 @@ volatile uint32 sysTickUptime = 0;
 volatile uint32 sysTickCycleCounter = 0;
 
 void SysTick_Handler(void) {
-	sysTickCycleCounter = *DWT_CYCCNT;
+	sysTickCycleCounter = SysTick->VAL; // *DWT_CYCCNT;
 	sysTickUptime++;
 } // SysTick_Handler
 

@@ -44,7 +44,7 @@ uint32 PrevKFUpdatemS = 0;
 boolean ThrottleSuppressed = false;
 boolean Thermalling = false;
 
-real32 SoarNorthP, SoarEastP;
+SoarStruct Soar;
 
 real32 Vario;
 real32 VarioFilt;
@@ -140,8 +140,8 @@ void InitThermalling(void) {
 	AltMaxM = ALT_MAX_M;
 	AltMinM = ALT_MIN_M;
 
-	SoarNorthP = Nav.Pos[NorthC];
-	SoarEastP = Nav.Pos[EastC];
+	Soar.Th[NorthC].Pos = Nav.C[NorthC].Pos;
+	Soar.Th[EastC].Pos = Nav.C[EastC].Pos;
 
 	PrevKFUpdatemS = mSClock();
 	mSTimer(mSClock(), ThermalTimeout, THERMAL_MIN_MS);
@@ -160,8 +160,8 @@ void UpdateThermalEstimate(void) {
 
 	uint32 NowmS = mSClock();
 
-	real32 dx = Nav.Pos[NorthC] - SoarNorthP;
-	real32 dy = Nav.Pos[EastC] - SoarEastP;
+	real32 dx = Nav.C[NorthC].Pos - Soar.Th[NorthC].Pos;
+	real32 dy = Nav.C[EastC].Pos - Soar.Th[EastC].Pos;
 
 #if defined(HAVE_WIND_ESTIMATE)
 	// Wind correction
@@ -185,18 +185,18 @@ void UpdateThermalEstimate(void) {
 	SoaringTune.x1 = ekf.X[1]; // radius
 	SoaringTune.x2 = ekf.X[2]; // North
 	SoaringTune.x3 = ekf.X[3]; // East
-	SoaringTune.lat = MToGPS(Nav.Pos[NorthC] + ekf.X[2])
-			+ GPS.OriginRaw[NorthC];
-	SoaringTune.lon = MToGPS((Nav.Pos[EastC] + ekf.X[3])
-			/ GPS.longitudeCorrection) + GPS.OriginRaw[EastC];
+	SoaringTune.lat = MToGPS(Nav.C[NorthC].Pos + ekf.X[2])
+			+ GPS.C[NorthC].OriginRaw;
+	SoaringTune.lon = MToGPS((Nav.C[EastC].Pos + ekf.X[3])
+			/ GPS.longitudeCorrection) + GPS.C[EastC].OriginRaw;
 	SoaringTune.alt = Altitude;
 	SoaringTune.dx_w = dx_w;
 	SoaringTune.dy_w = dy_w;
 
 	EKFupdate(Vario, dx, dy); // update the filter
 
-	SoarNorthP = Nav.Pos[NorthC];
-	SoarEastP = Nav.Pos[EastC];
+	Soar.Th[NorthC].Pos = Nav.C[NorthC].Pos;
+	Soar.Th[EastC].Pos = Nav.C[EastC].Pos;
 
 	PrevKFUpdatemS = NowmS;
 
@@ -248,8 +248,9 @@ real32 CorrectNettoRate(real32 Vario, real32 Roll, real32 Airspeed) {
 
 void UpdateVario(void) {
 
-	real32 Headroom, AltitudeLost;
+	//real32 Headroom, AltitudeLost;
 
+	/*
 	if (F.UsingWPNavigation) {
 		Headroom = WP.Pos[DownC] + DESCENT_ALT_DIFF_M;
 		AltitudeLost = (WPDistance(&WP) / GPS.gspeed) * (-EXP_THERMAL_SINK_MPS);
@@ -257,10 +258,11 @@ void UpdateVario(void) {
 		AltMaxM = AltitudeLost * 2.0f + Headroom;
 		AltMinM = Max(DESCENT_SAFETY_ALT_M, AltitudeLost + Headroom); //(real32) P(NavRTHAlt] + DESCENT_ALT_DIFF_M;
 	} else {
+	*/
 		AltCutoffM = ALT_CUTOFF_M;
 		AltMaxM = ALT_MAX_M;
 		AltMinM = ALT_MIN_M;
-	}
+//	}
 
 	//#define USE_NETTO
 #if defined(USE_NETTO)
@@ -294,8 +296,10 @@ void DoGlider(void) {
 		NavState = HoldingStation;
 	} else {
 		UpdateThermalEstimate();
-		TH.Pos[NorthC] = Nav.Pos[NorthC] + ekf.X[2];
-		TH.Pos[EastC] = Nav.Pos[EastC] + ekf.X[3];
+		Soar.Th[NorthC].Pos = Nav.C[NorthC].Pos + ekf.X[2];
+		Soar.Th[EastC].Pos = Nav.C[EastC].Pos + ekf.X[3];
+		Soar.Th[EastC].Vel = 0.0f;
+		Soar.Th[NorthC].Vel = 0.0f;
 		//F.OrbitingWP = true;
 		Navigate(&TH);
 	}

@@ -58,7 +58,7 @@ void UpdateBlackBox(void) {
 void BlackBox(uint8 ch) {
 	uint16 NewTail;
 
-	if (BlackBoxEnabled && Armed() && (State == InFlight)) {
+	if (BlackBoxEnabled) {
 		NewTail = (BBQTail + 1) & BUFFER_MASK;
 		BBQ[NewTail] = ch;
 		BBQTail = NewTail;
@@ -102,7 +102,7 @@ void DumpBlackBox(uint8 s) {
 					SendBBPacket(s, seqNo++, 128, &B[0]);
 					SendBBPacket(s, seqNo++, MEM_BLOCK_SIZE - 128, &B[128]);
 				} else
-					SendBBPacket(s, seqNo++, (uint8)MEM_BLOCK_SIZE, &B[0]);
+					SendBBPacket(s, seqNo++, (uint8) MEM_BLOCK_SIZE, &B[0]);
 				a += MEM_BLOCK_SIZE;
 			}
 		} while ((a < MaxMemoryUsed) && !Finish);

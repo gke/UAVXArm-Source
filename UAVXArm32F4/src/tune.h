@@ -25,7 +25,7 @@
 // NoTuning, RollAngleP, RollAngleI, RollRateP, RollRateD, PitchAngleP,
 // PitchAngleI, PitchRateP, PitchlRateD, YawAngleP, YawRateP,
 // AltitudeErrorP, AltitudeErrorI, AltitudeROCP, AltitudeROCD,
-// NavPositionP, NavVelP, NavVelI, NavCrossTrack, UnknownParameter
+// NavPositionP, NavPositionI, NavVelP, NavCrossTrack, UnknownParameter
 
 real32 TuningScale;
 uint8 CurrTuningSel;

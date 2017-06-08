@@ -47,7 +47,6 @@
 #define PID_SYNCPWM_CYCLE_US (1000000L/450) //2500 // for synchronised standard PWM
 
 #define ARMED_TIMEOUT_MS 120000L // mS. automatic disarming if armed for this long and landed
-#define FAILSAFE_TIMEOUT_MS 1000 // mS. hold last "good" settings and then restore flight or abort
 #define NAV_LAND_TIMEOUT_MS 3000
 #define NAV_ACTIVE_DELAY_MS 10000 // mS. after throttle exceeds idle that Nav becomes active
 #define CRASHED_TIMEOUT_MS 1000 // aircraft is not falling and the attitude is greater than max bank
@@ -92,7 +91,7 @@
 #define THR_START_PW FromPercent(5)
 
 #define THR_MAX_CRUISE	FromPercent(80)
-#define THR_MIN_CRUISE	FromPercent(30)
+#define THR_MIN_CRUISE	FromPercent(20)
 #define THR_DEFAULT_CRUISE FromPercent(50)
 #define BATTERY_SAG_VPS 0.01f
 
@@ -108,8 +107,9 @@
 #define STICK_SCALE 2.0f // sticks are +/- 0.5 as are servos
 #define STICK_SCALE_R (1.0f/STICK_SCALE)
 
-#define DEFAULT_ROLLPITCH_RATE_RADPS DegreesToRadians(360)
+#define DEFAULT_ROLLPITCH_RATE_RADPS DegreesToRadians(720)
 #define DEFAULT_YAW_RATE_RADPS DegreesToRadians(90)
+#define DEFAULT_TURNOUT_RAD DegreesToRadians(60)
 
 #define NAV_CEILING_M 120.0f // 400 feet
 #define NAV_DEFAULT_FENCE_M 200.0f
@@ -133,7 +133,6 @@
 #define GPS_TIMEOUT_MS 2000 // mS.
 #define GPS_MIN_SATELLITES 6 // preferably > 5 for 3D fix
 #define GPS_MIN_FIX 3 // must be 3D
-#define GPS_ORIGIN_SENTENCES 30 // Number of sentences needed to obtain reasonable Origin
 #define GPS_MIN_HACC 5.0f
 #define GPS_MIN_SACC 1.0f
 #define GPS_HDOP_TO_HACC 4.0f // crude approximation for NMEA GPS units

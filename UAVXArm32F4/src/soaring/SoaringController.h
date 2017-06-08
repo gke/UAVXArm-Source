@@ -1,5 +1,5 @@
 /* 
- Thermalling Controller by Samuel Tabor
+ Thermalling Controller originally by Samuel Tabor
  Provides a layer between the thermal centering algorithm and the main code for
  managing navigation targets, data logging, tuning parameters, algorithm inputs
  and eventually other soaring strategies such as speed-to-fly.
@@ -41,6 +41,18 @@ struct {
 	real32 dx_w;
 	real32 dy_w;
 } SoaringTune;
+
+
+typedef struct {
+	real32 Pos, Vel;
+} ThermalCoordStruct;
+
+typedef struct { // need to generalise to liftmap?
+	ThermalCoordStruct Th[2]; // TODO: reduce to just what soar needs
+	real32 Strength;
+} SoarStruct;
+
+extern SoarStruct Soar;
 
 boolean ThrottleSuppressed;
 

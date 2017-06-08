@@ -150,7 +150,7 @@ typedef struct {
 #define bitIsClear(S,b) 	((uint8)(!(S>>b)&1))
 #define bitInvert(S,b) 		((uint8)(S^=(1<<b)))
 
-//#define ToPercent(n, m) ((100.0f*(real32)n)/m)
+#define ToPercent(n, m) ((100.0f*(real32)n)/m)
 #define FromPercent(n) ((real32)n*0.01f) // always to 1.0f
 
 // Simple filters using weighted averaging

@@ -544,14 +544,25 @@ void UpdateInertial(void) {
 	// one cycle delay OK
 	UpdateHeading();
 
-    UpdateGPS();
+	UpdateGPS();
 	if (F.NewGPSPosition) {
 		F.NewGPSPosition = false;
 		for (a = NorthC; a <= DownC; a++) {
-			Nav.Pos[a] = GPS.Pos[a];
-			Nav.Vel[a] = GPS.Vel[a];
+			Nav.C[a].Pos = GPS.C[a].Pos;
+			Nav.C[a].Vel = GPS.C[a].Vel;
 		}
-		CheckNavEnable();
+
+		if (!F.NavigationActive) { // (mSClock() > mS[NavActiveTime]) &&
+			F.NavigationActive = true;
+			ResumeHoldingStation();
+			NavSwStateP = NavSwUnknown;
+		}
+
+		F.GPSPosUpdated = true; // for telemetry
+
+		F.NewNavUpdate = F.NavigationEnabled = F.NavigationActive;
+
+		UpdateWhere();
 	}
 
 	if (!F.Emulation)
@@ -568,20 +579,13 @@ void UpdateInertial(void) {
 //____________________________________________________________________________
 
 
-void CheckNavEnable(void) {
+void UpdateWhere(void) {
 
-	if ((mSClock() > mS[NavActiveTime]) && !F.NavigationActive) {
-		F.NavigationActive = true;
-		ResumeHoldingStation();
-		NavSwStateP = NavSwUnknown;
-	}
+	Nav.Distance = sqrtf(Sqr(Nav.C[EastC].Pos) + Sqr(Nav.C[NorthC].Pos));
+	Nav.Bearing = Make2Pi(atan2f(Nav.C[EastC].Pos, Nav.C[NorthC].Pos));
+	Nav.Elevation = MakePi(atan2f(Altitude, Nav.Distance));
+	Nav.Hint = MakePi((Nav.Bearing - PI) - Heading);
 
-	//	if (!F.NavigationEnabled)
-	//		AcquireHoldPosition();
-
-	F.GPSPosUpdated = true; // for telemetry
-	F.NewNavUpdate = F.NavigationEnabled;
-
-} // CheckNavEnable
+} // UpdateWhere
 
 

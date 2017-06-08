@@ -24,9 +24,10 @@
 
 void Navigate(WPStruct * W);
 real32 WPDistance(WPStruct * W);
+void ZeroNavCorrections(void);
+
 
 extern boolean ResetNavHold;
-extern real32 NavCorr[2];
 
 #endif
 

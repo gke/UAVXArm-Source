@@ -94,7 +94,7 @@ uint8 spiSendzzz(SPI_TypeDef * SPIx, uint8 d) {
 	while (SPI_I2S_GetFlagStatus(SPIx, SPI_I2S_FLAG_TXE) == RESET) {
 		if ((spiTimeout--) == 0) {
 			spiErrors++;
-			NV.Stats[SPIFailS] = spiErrors;
+			setStat(SPIFailS, spiErrors);
 			return (0);
 		}
 		//Delay1uS(2); ???
@@ -106,7 +106,7 @@ uint8 spiSendzzz(SPI_TypeDef * SPIx, uint8 d) {
 		if ((spiTimeout--) == 0) {
 			F.spiFatal |= true;
 			spiErrors++;
-			NV.Stats[SPIFailS] = spiErrors;
+			setStat(SPIFailS, spiErrors);
 			return (0);
 		}
 		//Delay1uS(2); ???

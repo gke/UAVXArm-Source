@@ -259,9 +259,9 @@ void ShowDrives(uint8 s) {
 
 void ShowAttitude(uint8 s) {
 
-	TxESCi16(s, A[Roll].Desired * 1000.0f);
-	TxESCi16(s, A[Pitch].Desired * 1000.0f);
-	TxESCi16(s, A[Yaw].Desired * 1000.0f);
+	TxESCi16(s, A[Roll].Stick * 1000.0f);
+	TxESCi16(s, A[Pitch].Stick * 1000.0f);
+	TxESCi16(s, A[Yaw].Stick * 1000.0f);
 
 	TxESCi16(s, Rate[Roll] * 1000.0f);
 	TxESCi16(s, Rate[Pitch] * 1000.0f);
@@ -270,11 +270,11 @@ void ShowAttitude(uint8 s) {
 	TxESCi16(s, A[Roll].Angle * 1000.0f);
 	TxESCi16(s, A[Pitch].Angle * 1000.0f);
 
-	TxESCi16(s, A[Yaw].Angle * 1000.0f);
+	TxESCi16(s, HeadingE * 1000.0f); // A[Yaw].Angle
 
 	TxESCi16(s, Acc[BF] * 1000.0f * GRAVITY_MPS_S_R);
 	TxESCi16(s, Acc[LR] * 1000.0f * GRAVITY_MPS_S_R);
-	TxESCi16(s, Acc[UD] * 1000.0f * GRAVITY_MPS_S_R); //
+	TxESCi16(s, Acc[UD] * 1000.0f * GRAVITY_MPS_S_R);
 
 } // ShowAttitude
 
@@ -293,11 +293,11 @@ void SendFlightPacket(uint8 s) {
 	TxESCu8(s, State);
 
 	TxESCi16(s, BatteryVolts * 100.0f);
-	TxESCi16(s, BatteryCurrent * 100.0f);
+	TxESCi16(s, Limit(BatteryCurrent * 100.0f, 0, 32000));
 
-	TxESCi16(s, BatteryChargeUsedmAH);
+	TxESCi16(s, Limit(BatteryChargeUsedmAH, 0, 32000));
 
-	TxESCi16(s, NV.Stats[RCGlitchesS]);
+	TxESCi16(s, currStat(RCGlitchesS));
 	TxESCi16(s, NetThrottle * 1000.0f); // was DesiredThrottle
 
 	ShowAttitude(s);
@@ -330,10 +330,20 @@ void SendFlightPacket(uint8 s) {
 	ShowDrives(s);
 
 	// 	TxESCi16(s, MPU6XXXTemperature * 10.0f); // 0.1C
-	TxESCi24(s, mSClock() - mS[StartTime]);
+	TxESCi24(s, mSClock());
 
 	SendPacketTrailer(s);
 } // SendFlightPacket
+
+void SendNavState(uint8 s) {
+
+	if (F.Bypass)
+		TxESCu8(s, BypassControl);
+	else if(F.UsingRateControl)
+		TxESCu8(s, RateControl);
+	else
+		TxESCu8(s, NavState);
+} // SendNavState
 
 void SendControlPacket(uint8 s) {
 
@@ -351,7 +361,7 @@ void SendControlPacket(uint8 s) {
 	ShowDrives(s);
 
 	//TxESCi16(s, MPU6XXXTemperature * 10.0f); // 0.1C
-	TxESCi24(s, mSClock() - mS[StartTime]);
+	TxESCi24(s, mSClock());
 
 	SendPacketTrailer(s);
 
@@ -364,8 +374,8 @@ void SendNavPacket(uint8 s) {
 	TxESCu8(s, UAVXNavPacketTag);
 	TxESCu8(s, 57);
 
-	TxESCu8(s, NavState);
-	TxESCu8(s, FailState);
+	SendNavState(s);
+	TxESCu8(s, AlarmState);
 	TxESCu8(s, GPS.noofsats);
 	TxESCu8(s, GPS.fix);
 
@@ -383,11 +393,11 @@ void SendNavPacket(uint8 s) {
 	TxESCi16(s, Make2Pi(GPS.heading) * 1000.0f); // milliRadians
 
 	TxESCi24(s, GPS.altitude * 100.0f);
-	TxESCi32(s, GPS.Raw[NorthC]); // 1.0-7 degrees
-	TxESCi32(s, GPS.Raw[EastC]);
+	TxESCi32(s, GPS.C[NorthC].Raw); // 1.0-7 degrees
+	TxESCi32(s, GPS.C[EastC].Raw);
 
-	TxESCi32(s, Nav.PosE[NorthC] * 10.0f); // dM
-	TxESCi32(s, Nav.PosE[EastC] * 10.0f);
+	TxESCi32(s, Nav.C[NorthC].PosE * 10.0f); // dM
+	TxESCi32(s, Nav.C[EastC].PosE * 10.0f);
 
 	TxESCi24(s, mS[NavStateTimeout] - mSClock()); // mS
 
@@ -454,26 +464,6 @@ void SendFusionPacket(uint8 s) {
 
 } // SendFusionPacket
 
-void SendPIDPacket(uint8 s) {
-
-	SendPacketHeader(s);
-
-	TxESCu8(s, UAVXPIDPacketTag);
-	TxESCu8(s, 15);
-
-	TxESCi16(s, AccZ * 1000.0f);
-
-	TxESCi24(s, FAltitude * 100.0f);
-	TxESCi16(s, FROC * 100.0f);
-	TxESCi16(s, NV.AccCal.DynamicAccBias[Z] * 1000.0f);
-
-	TxESCi16(s, 0);
-	TxESCi16(s, 0);
-	TxESCi16(s, 0);
-
-	SendPacketTrailer(s);
-
-} // SendPIDPacket
 
 void SendCalibrationPacket(uint8 s) {
 	SendPacketHeader(s);
@@ -517,12 +507,19 @@ void SendParamsPacket(uint8 s, uint8 GUIPS) {
 
 				SendPacketHeader(s);
 
+				uint8 len = strlen(Revision);
+
 				TxESCu8(s, UAVXParamPacketTag);
-				TxESCu8(s, 1 + MAX_PARAMETERS);
+				TxESCu8(s, 1 + MAX_PARAMETERS + len + 1);
 
 				TxESCu8(s, NV.CurrPS);
 				for (p = 0; p < MAX_PARAMETERS; p++)
 					TxESCi8(s, NV.P[NV.CurrPS][p]);
+
+				TxESCu8(s, len);
+
+				for (p = 0; p < len;p++)
+					TxESCu8(s, Revision[p]);
 
 				SendPacketTrailer(s);
 
@@ -550,26 +547,21 @@ void SendRCChannelsPacket(uint8 s) {
 } // SendRCChannelsPacket
 
 void SendStatsPacket(uint8 s) {
-	uint8 i, len;
-
-	len = strlen(Revision);
+#if defined(INC_STATS_TEL)
+	uint8 i;
 
 	SendPacketHeader(s);
 
 	TxESCu8(s, UAVXStatsPacketTag);
-	TxESCu8(s, MAX_STATS * 2 + 1 + 1 + len);
+	TxESCu8(s, MAX_STATS * 2 + 1);
 
 	for (i = 0; i < MAX_STATS; i++)
-		TxESCi16(s, NV.Stats[i]);
+		TxESCi16(s, currStat(i));
 
 	TxESCu8(s, UAVXAirframe | 0x80);
 
-	TxESCu8(s, len);
-	for (i = 0; i < len; i++)
-		TxESCu8(s, Revision[i]);
-
 	SendPacketTrailer(s);
-
+#endif
 } // SendStatsPacket
 
 void SendBBPacket(uint8 s, int32 seqNo, uint8 l, int8 * B) {
@@ -607,17 +599,18 @@ void SendDFTPacket(uint8 s) {
 
 void SendMinPacket(uint8 s) {
 	uint8 b;
+	uint8 len = strlen(Revision);
 
 	SendPacketHeader(s);
 
 	TxESCu8(s, UAVXMinPacketTag);
-	TxESCu8(s, 33 + TELEMETRY_FLAG_BYTES);
+	TxESCu8(s, len + 32 + TELEMETRY_FLAG_BYTES);
 	for (b = 0; b < TELEMETRY_FLAG_BYTES; b++)
 		TxESCu8(s, F.AllFlags[b]);
 
 	TxESCu8(s, State);
-	TxESCu8(s, NavState);
-	TxESCu8(s, FailState);
+	SendNavState(s);
+	TxESCu8(s, AlarmState);
 
 	TxESCi16(s, BatteryVolts * 100.0f);
 	TxESCi16(s, BatteryCurrent * 100.0f);
@@ -631,13 +624,12 @@ void SendMinPacket(uint8 s) {
 
 	TxESCi16(s, Make2Pi(Heading) * 1000.0f);
 
-	TxESCi32(s, GPS.Raw[NorthC]);
-	TxESCi32(s, GPS.Raw[EastC]);
+	TxESCi32(s, GPS.C[NorthC].Raw);
+	TxESCi32(s, GPS.C[EastC].Raw);
 
 	TxESCu8(s, UAVXAirframe | 0x80);
-	TxESCu8(s, 0); // Orientation);
 
-	TxESCi24(s, mSClock() - mS[StartTime]);
+	TxESCi24(s, mSClock());
 
 	SendPacketTrailer(s);
 
@@ -648,7 +640,7 @@ void SendMinimOSDPacket(uint8 s) {
 	SendPacketHeader(s);
 
 	TxESCu8(s, UAVXMinimOSDPacketTag);
-	TxESCu8(s, 41);
+	TxESCu8(s, 48);
 
 	TxESCi16(s, BatteryVolts * 1000.0f); //2
 	TxESCi16(s, BatteryCurrent * 10.0f); // ??
@@ -657,28 +649,30 @@ void SendMinimOSDPacket(uint8 s) {
 	TxESCi16(s, RadiansToDegrees(A[Roll].Angle));
 	TxESCi16(s, RadiansToDegrees(A[Pitch].Angle));
 
-	TxESCi24(s, Altitude);
+	TxESCi24(s, Altitude * 100.0f);
+	TxESCi24(s, DesiredAltitude * 100.0f);
 	TxESCi16(s, ROC * 10.0);
 
 	TxESCi16(s, GPS.gspeed * 10.0f);
 
 	TxESCi16(s, RadiansToDegrees(Make2Pi(Heading)));
+	TxESCi16(s, RadiansToDegrees(Make2Pi(GPS.heading)));
 
-	TxESCi32(s, GPS.Raw[NorthC]);
-	TxESCi32(s, GPS.Raw[EastC]);
+	TxESCi32(s, GPS.C[NorthC].Raw);
+	TxESCi32(s, GPS.C[EastC].Raw);
 
 	TxESCu8(s, GPS.noofsats);
 	TxESCu8(s, GPS.fix);
+	TxESCi16(s, GPS.hAcc * 100.0f);
 
 	TxESCu8(s, CurrWPNo);
 	TxESCi16(s, RadiansToDegrees(Nav.WPBearing));
-	TxESCi16(s, Nav.WPDistance);
-	TxESCi16(s, Nav.CrossTrackE);
+	TxESCi16(s, Nav.WPDistance * 10.0f);
+	TxESCi16(s, Nav.CrossTrackE * 10.0f);
 
-	TxESCu8(s, Armed());
 	TxESCi16(s, NetThrottle * 100.0f);
-
-	TxESCu8(s, NavState);
+	TxESCu8(s, Armed());
+	SendNavState(s);
 	TxESCu8(s, UAVXAirframe | 0x80);
 
 	SendPacketTrailer(s);
@@ -1075,7 +1069,8 @@ void CheckTelemetry(uint8 s) {
 	if (!(F.UsingMAVLink && Armed()))
 		UAVXPollRx(s);
 
-	BlackBoxEnabled = true;
+	BlackBoxEnabled =  Armed() && (State == InFlight) && ((Altitude > NAV_MIN_ALT_M)
+			|| !IsFixedWing) && !F.Bypass;
 
 	NowmS = mSClock();
 	if (!Armed()) {
@@ -1092,13 +1087,16 @@ void CheckTelemetry(uint8 s) {
 			if (NowmS >= mS[TelemetryUpdate]) {
 				mSTimer(NowmS, TelemetryUpdate, UAVX_MIN_TEL_INTERVAL_MS);
 				SendMinPacket(s);
+				if (State == Warmup)
+					SendCalibrationPacket(s);
 			}
 			break;
 		case UAVXMinimOSDTelemetry:
-			SetTelemetryBaudRate(s, 57600);
+			SetTelemetryBaudRate(s, 115200); //57600);
 			if (NowmS >= mS[TelemetryUpdate]) {
 				mSTimer(NowmS, TelemetryUpdate, UAVX_MINIMOSD_TEL_INTERVAL_MS);
 				SendMinimOSDPacket(s);
+				SendGuidancePacket(s);
 				SendRCChannelsPacket(s); // TODO: alternate?
 			}
 			break;

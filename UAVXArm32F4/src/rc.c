@@ -104,7 +104,7 @@ void RCSerialISR(uint32 TimerVal) {
 			RCInp[Channel].Raw = Width;
 		else {
 			// preserve old value i.e. default hold
-			NV.Stats[RCGlitchesS]++;
+			incStat(RCGlitchesS);
 			F.RCFrameOK = false;
 		}
 
@@ -176,7 +176,7 @@ void RCParallelISR(TIM_TypeDef *tim) {
 					RCPtr->Raw = Width;
 					OKChannels++;
 				} else
-					NV.Stats[RCGlitchesS]++;
+					incStat(RCGlitchesS);
 
 				if (c == 0) {
 
@@ -291,7 +291,7 @@ void SpektrumSBusISR(uint8 v) { // based on MultiWii
 				SignalCount++;
 			} else {
 				SignalCount -= RC_GOOD_RATIO;
-				NV.Stats[RCGlitchesS]++;
+				incStat(RCGlitchesS);
 			}
 
 			SignalCount = Limit1(SignalCount, RC_GOOD_BUCKET_MAX);
@@ -529,21 +529,21 @@ void InitRC(void) {
 		SpekChanShift = 2;
 		SpekChanMask = 0x03;
 		SpekScale = 1.2f;
-		SpekOffset = 1500-988;
+		SpekOffset = 1500 - 988;
 		RxEnabled[RCSerial] = true;
 		break;
 	case Spektrum2048_M7to10:
 		SpekChanShift = 3;
 		SpekChanMask = 0x07;
 		SpekScale = 0.6f;
-		SpekOffset = (1500-988)*2;
+		SpekOffset = (1500 - 988) * 2;
 		RxEnabled[RCSerial] = true;
 		break;
 	case BadDM9_M7to10:
 		SpekChanShift = 2;
 		SpekChanMask = 0x03;
 		SpekScale = 1.2f;
-		SpekOffset = 1500-910;
+		SpekOffset = 1500 - 910;
 		RxEnabled[RCSerial] = true;
 		break;
 	default:
@@ -568,16 +568,15 @@ void InitRC(void) {
 	RC[CamPitchRC] = RCp[CamPitchRC] = RC_NEUTRAL;
 
 	DesiredCamPitchTrim = 0;
-	Nav.Sensitivity = 0.0f;
 	F.ReturnHome = F.Navigate = F.AltControlEnabled = false;
 
 	mS[StickChangeUpdate] = NowmS;
 	mSTimer(NowmS, RxFailsafeTimeout, RC_NO_CHANGE_TIMEOUT_MS);
-	F.SticksUnchangedFailsafe = false;
 
 	DesiredThrottle = StickThrottle = 0.0f;
 
-	Channel = NV.Stats[RCGlitchesS] = 0;
+	Channel = 0;
+	setStat(RCGlitchesS, 0);
 	SignalCount = -RC_GOOD_BUCKET_MAX;
 	F.Signal = F.RCNewValues = false;
 
@@ -606,7 +605,6 @@ void CheckSticksHaveChanged(void) {
 	if (F.ReturnHome || F.Navigate) {
 		Change = true;
 		mS[RxFailsafeTimeout] = NowmS + RC_NO_CHANGE_TIMEOUT_MS;
-		F.SticksUnchangedFailsafe = false;
 	} else {
 		if (NowmS > mS[StickChangeUpdate]) {
 			mS[StickChangeUpdate] = NowmS + 500;
@@ -615,24 +613,6 @@ void CheckSticksHaveChanged(void) {
 			for (c = ThrottleC; c <= RTHRC; c++) {
 				Change |= Abs( RC[c] - RCp[c]) > RC_MOVEMENT_STICK;
 				RCp[c] = RC[c];
-			}
-		}
-
-		if (Change) {
-			mSTimer(NowmS, RxFailsafeTimeout, RC_NO_CHANGE_TIMEOUT_MS);
-			mS[NavStateTimeout] = NowmS;
-			F.SticksUnchangedFailsafe = false;
-
-			if (FailState == Monitoring) {
-				if (F.LostModel) {
-					F.LostModel = false;
-				}
-			}
-		} else if (NowmS > mS[RxFailsafeTimeout]) {
-			if (!F.SticksUnchangedFailsafe && (State == InFlight)) {
-				mSTimer(NowmS, NavStateTimeout, (uint32) P(DescentDelayS)
-						* 1000);
-				F.SticksUnchangedFailsafe = true;
 			}
 		}
 	}
@@ -751,7 +731,7 @@ void SpekLoopback(boolean HiRes) {
 			SpekByte = SpekCh * 2;
 			// 180..512..854 + 988 offset 332 342
 
-			v =  (real32) (SP[SpekCh] - 1500) / SpekScale + SpekOffset;
+			v = (real32) (SP[SpekCh] - 1500) / SpekScale + SpekOffset;
 
 			LBFrame[SpekByte] = (SpekCh << SpekChanShift) | ((v >> 8)
 					& SpekChanMask);
@@ -831,12 +811,11 @@ void UpdateControls(void) {
 		// Attitude
 
 		// normalise from +/- 0.5
-		A[Roll].Desired = (RC[RollRC] - RC_NEUTRAL) * STICK_SCALE;
-		A[Pitch].Desired = (RC[PitchRC] - RC_NEUTRAL) * STICK_SCALE;
-		A[Yaw].Desired = (RC[YawRC] - RC_NEUTRAL) * STICK_SCALE;
+		A[Roll].Stick = (RC[RollRC] - RC_NEUTRAL) * STICK_SCALE;
+		A[Pitch].Stick = (RC[PitchRC] - RC_NEUTRAL) * STICK_SCALE;
+		A[Yaw].Stick = (RC[YawRC] - RC_NEUTRAL) * STICK_SCALE;
 
-		CurrMaxRollPitchStick
-				= Max(Abs(A[Roll].Desired), Abs(A[Pitch].Desired));
+		CurrMaxRollPitchStick = Max(Abs(A[Roll].Stick), Abs(A[Pitch].Stick));
 
 		F.AttitudeHold = CurrMaxRollPitchStick < ATTITUDE_HOLD_LIMIT_STICK;
 
@@ -863,22 +842,15 @@ void UpdateControls(void) {
 		if (DiscoveredRCChannels > Map[RTHRC]) {
 			NavSwState = Limit((uint8)(RC[RTHRC] * 3.0f), NavSwLow, NavSwHigh);
 			UpdateRTHSwState();
-		} else {
+		} else
 			F.ReturnHome = F.Navigate = F.NavigationEnabled
 					= F.NavigationActive = false;
-		}
 
 		if (DiscoveredRCChannels > Map[NavGainRC]) {
-			real32 sens = RC[NavGainRC];
-			sens = Limit(sens, 0.0f, RC_MAXIMUM);
-			F.AltControlEnabled = ((sens > NAV_SENS_ALT_THRESHOLD_STICK)
-					&& !F.UseManualAltHold) || F.FailsafesEnabled;
-			Nav.Sensitivity
-					= Limit(sens - NAV_SENS_THRESHOLD_STICK, 0.0f, 1.0f);
-		} else {
-			Nav.Sensitivity = 0.0f; //zzzFromPercent(50);
-			F.AltControlEnabled = false; //zzztrue;
-		}
+			Nav.Sensitivity = 0.25f + RC[NavGainRC] * 0.75f;
+			Nav.Sensitivity = Limit(Nav.Sensitivity, 0.25f, 1.0f);
+		} else
+			Nav.Sensitivity = 1.0f;
 
 		DesiredCamPitchTrim
 				= DiscoveredRCChannels > Map[CamPitchRC] ? RC[CamPitchRC]
@@ -891,9 +863,7 @@ void UpdateControls(void) {
 		swState = (DiscoveredRCChannels > Map[BypassRC]) && (RC[BypassRC]
 				> FromPercent(70));
 
-		F.Bypass
-				= (IsFixedWing) && (DiscoveredRCChannels <= Map[BypassRC]) ? false
-						: swState;
+		F.Bypass = (DiscoveredRCChannels <= Map[BypassRC]) ? false : swState;
 
 		TuningScale
 				= ((DiscoveredRCChannels > Map[TuneRC]) && Tuning) ? Limit(RC[TuneRC] + 0.5f, 0.5f, 1.5f)

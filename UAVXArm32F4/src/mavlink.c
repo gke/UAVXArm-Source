@@ -51,6 +51,20 @@ enum PX4_CUSTOM_SUB_MODE_AUTO {
 // Takeoff, PIC, AcquiringAltitude,
 // NavStateUndefined
 
+//char* mode_str = "";
+//if ( base_mode < 192 ) mode_str = "disa";//Disarmed
+
+enum AQcustomstates {
+	AQboot = 0, ////Stabilize
+	AQstdby = 1, //Disarmed
+	AQarmed = 2, //Manual
+	AQalthold = 4, //old althold
+	AQposhold = 12, //Position Hold
+	AQdvh = 28, //DVH
+	AQmiss = 32
+//Return to Launch
+};
+
 mavlink_system_t mavlink_system_rx, mavlink_system;
 
 uint8 system_type;
@@ -104,7 +118,7 @@ void InitMAVLink(void) {
 
 	// Define the system type
 	system_type = MAVAFTypes[UAVXAirframe];
-	autopilot_type = MAV_AUTOPILOT_PX4;
+	autopilot_type = 0; //MAV_AUTOPILOT_PX4;
 
 	system_mode = PX4_CUSTOM_MAIN_MODE_AUTO;
 	custom_mode = PX4_CUSTOM_SUB_MODE_AUTO_READY; // Custom mode, can be defined by user/adopter
@@ -159,9 +173,10 @@ void mavlinkSendNavController(uint8 s) {
 void mavlinkSendGPSRaw(uint8 s) {
 
 	mavlink_msg_gps_raw_int_pack(mavlink_system.sysid, mavlink_system.compid,
-			&msg, uSClock(), GPS.fix, GPS.Raw[NorthC], GPS.Raw[EastC],
-			GPS.altitude * 1000.0f, GPS.hAcc * 100.0f, GPS.vAcc * 100.0f,
-			GPS.gspeed, RadiansToDegrees(GPS.heading), GPS.noofsats);
+			&msg, uSClock(), GPS.fix, GPS.C[NorthC].Raw, GPS.C[EastC].Raw,
+			GPS.altitude * 1000.0f, Limit(GPS.hAcc * 100.0f, 0, 255), GPS.vAcc * 100.0f,
+			GPS.gspeed * 100.0f, RadiansToDegrees(GPS.heading), // cog scaling reduce from 100
+			GPS.noofsats);
 
 	mavlinkTx(s, buffer, mavlink_msg_to_send_buffer(buffer, &msg));
 
@@ -188,10 +203,21 @@ void mavlinkSendMissionWP(uint8 s, uint8 wp) {
 
 
 void mavlinkSendHeartbeat(uint8 s) {
+	uint8 Mode;
+
+	if (F.Bypass)
+		Mode = BypassControl;
+	else if (F.UsingRateControl)
+		Mode = RateControl;
+	else
+		Mode = NavState;
 
 	mavlink_msg_heartbeat_pack(mavlink_system.sysid, mavlink_system.compid,
-			&msg, system_type, autopilot_type, MAV_MODE_FLAG_SAFETY_ARMED,
-			custom_mode, MAV_STATE_ACTIVE);
+			&msg, system_type, //
+			0, // autopilot_type, // 5
+			Armed() << 7, //MAV_MODE_FLAG_SAFETY_ARMED, // 6 base mode
+			Mode, // 7 custom mode
+			0); //MAV_STATE_ACTIVE); // 8 status
 
 	mavlinkTx(s, buffer, mavlink_msg_to_send_buffer(buffer, &msg));
 
@@ -216,17 +242,18 @@ void mavlinkSendSysStatus(uint8 s) {
 			|| !F.MagnetometerFailure << 2 || !F.IMUFailure << 1
 			|| !F.IMUFailure;
 
-	mavlink_msg_sys_status_pack(mavlink_system.sysid, mavlink_system.compid,
+	mavlink_msg_sys_status_pack(mavlink_system.sysid,
+			mavlink_system.compid,
 			&msg, //
 			sensorspresent, // uint32 onboard_control_sensors_present,
 			sensorspresent, // uint32 onboard_control_sensors_enabled,
 			sensorshealth, // uint32 onboard_control_sensors_health,
 			(uint16) NV.Stats[UtilisationS], // uint16 load,
 			(uint16) (BatteryVolts * 1000.0f), // voltage_battery mV,
-			-1, // int16_t current_battery 10mAH,
-			-1, // int8_t battery_remaining %,
+			(uint16) (Limit(BatteryCurrent, 0, 100) * 100.0f), // int16_t current_battery 10mAH,
+			(int8) Limit(ToPercent((BatteryCapacitymAH-BatteryChargeUsedmAH), BatteryCapacitymAH), 0, 100), // int8_t battery_remaining %,
 			0, // uint16_t drop_rate_comm,
-			NV.Stats[I2CFailS] + NV.Stats[SPIFailS], // uint16_t errors_comm,
+			0, // uint16_t errors_comm,
 			0, // uint16_t errors_count1,
 			0, // uint16_t errors_count2,
 			0, // uint16_ errors_count3,
@@ -241,10 +268,10 @@ void mavlinkSendVFRHUD(uint8 s) {
 
 	mavlink_msg_vfr_hud_pack(mavlink_system.sysid, mavlink_system.compid,
 			&msg,
-			0.0f, // airspeed,
+			Airspeed, // airspeed,
 			GPS.gspeed, // groundspeed,
-			(int16_t)RadiansToDegrees(Heading), DesiredThrottle * 100.0f,
-			Altitude, ROC);
+			(int16) RadiansToDegrees(Heading), DesiredThrottle * 100, Altitude,
+			ROC); // MSL?
 
 	mavlinkTx(s, buffer, mavlink_msg_to_send_buffer(buffer, &msg));
 
@@ -296,7 +323,7 @@ void mavlinkPollRx(uint8 s) {
 				mavlinkSendMissionWP(s, wp);
 				break;
 			case MAVLINK_MSG_ID_MISSION_ACK:
-				// igonore for now
+				// ignore for now
 				break;
 			default:
 				break;
@@ -313,6 +340,10 @@ void mavlinkUpdate(uint8 s) {
 	uint32 NowmS;
 
 	NowmS = mSClock();
+
+	if (LastHeartbeatmS <= 0)
+		LastHeartbeatmS = NowmS - 1000;
+
 	// 2hz for waypoints, GPS raw, fence data, current waypoint
 	// 2hz for VFR_Hud data )
 	// 2hz for raw imu sensor data )
@@ -335,12 +366,10 @@ void mavlinkUpdate(uint8 s) {
 		mSTimer(NowmS, TelemetryUpdate, 100);
 
 		if ((Tick % 2) == 0) { // 5Hz
-			Probe(1);
 			mavlinkSendAttitude(s);
 			mavlinkSendVFRHUD(s);
 			mavlinkSendRCRaw(s);
-			// mavlinkSendScaledPressure(s);
-			Probe(0);
+			mavlinkSendScaledPressure(s);
 		}
 
 		if ((Tick % 5) == 0) { // 2Hz

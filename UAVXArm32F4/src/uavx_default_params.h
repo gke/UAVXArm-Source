@@ -66,7 +66,7 @@ const ParamStruct_t
 								MadgwickIMU } }, // IMU 13
 						{ MadgwickKpMag, { 50, 50, 50, 50 } }, //  32
 						{ MadgwickKpAcc, { 20, 20, 20, 20 } }, //  39c
-						{ AccConfSD, { 4, 4, 4, 4 } }, //  53c
+						{ AccConfSD, { 4, 4, 6, 6 } }, //  53c was 4
 						{ SensorHint, { UAVXArm32IMU, UAVXArm32IMU,
 								UAVXArm32IMU, UAVXArm32IMU } }, // ,35c
 						{ GyroLPF, { MPU_RA_DLPF_BW_98, MPU_RA_DLPF_BW_98,
@@ -95,9 +95,10 @@ const ParamStruct_t
 						{ NavPosKi, { 5, 5, 5, 5 } }, //  61
 						{ NavPosIntLimit, { 3, 3, 12, 12 } }, // 41
 
-						{ NavVelKp, { 20, 20, 20, 20 } }, //  29
+						{ NavVelKp, { 10, 10, 10, 10 } }, //  29
 						{ NavMaxAngle, { 45, 45, 45, 45 } }, // 69,
 
+						{ NavHeadingTurnout, { 60,60,60,60, } }, // 79,
 						{ NavCrossTrackKp, { 4, 4, 4, 4 } }, //  49
 
 						{ NavRTHAlt, { 15, 10, 30, 30 } }, //  33
@@ -117,7 +118,7 @@ const ParamStruct_t
 						{ Horizon, { 30, 30, 0, 0 } }, //  % 31
 						{ Balance, { 50, 50, 50, 50 } }, //  % 59
 						{ StickHysteresis, { 2, 2, 2, 2 } }, //  % 21c
-						{ CruiseThr, { 50, 50, 30, 30 } }, //  20c
+						{ EstCruiseThr, { 50, 50, 20, 20, } }, //  20c
 						{ PercentIdleThr, { 10, 7, 0, 0 } }, //  23c
 
 						// Fixed Wing
@@ -134,8 +135,8 @@ const ParamStruct_t
 						{ Config1Bits, { UseRTHDescendMask, UseRTHDescendMask,
 								UseRapidDescentMask, UseRapidDescentMask } }, //  16c
 						{ Config2Bits, { UseFastStartMask, UseFastStartMask,
-								UseManualAltHoldMask | UseFastStartMask,
-								UseManualAltHoldMask | UseFastStartMask } }, //  74
+								UseFastStartMask,
+								UseFastStartMask } }, //  74
 						{ ComboPort1Config, { CPPM_GPS_M7to10, CPPM_GPS_M7to10,
 								CPPM_GPS_M7to10, CPPM_GPS_M7to10 } }, //  15
 #if defined(V4_BOARD)
@@ -147,19 +148,17 @@ const ParamStruct_t
 #endif
 						{ AFType, { QuadXAF, QuadXAF, AileronSpoilerFlapsAF,
 								ElevonAF } }, // ,44c
-						{ TelemetryType, { UAVXTelemetry, UAVXTelemetry,
+						{ TelemetryType, { UAVXMinTelemetry, UAVXMinTelemetry,
 								FrSkyTelemetry, MAVLinkTelemetry } }, //  45c
 						{ ESCType, { ESCUnknown, ESCUnknown, ESCUnknown,
 								ESCUnknown } }, //  36c
 
 						// Battery
 						{ LowVoltThres, { 51, 17, 51, 51 } }, //  MAGIC NUMBERS 18c
-						{ BatteryCapacity, { 22, 22, 22, 22 } }, //  *100 mAH 54c
+						{ BatteryCapacity, { 22, 2, 22, 22 } }, //  *100 mAH 54c
 
 						// Unused
 
-
-						{ P79, { 0, } }, // 79,
 						{ P80, { 0, } }, // 80,
 						{ P81, { 0, } }, // 81,
 						{ P82, { 0, } }, // 82,

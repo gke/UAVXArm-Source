@@ -173,7 +173,7 @@ boolean StillFlying(void) {
 
 	Flying = true;
 
-	if (F.FailsafesEnabled && IsMulticopter ) {
+	if (IsMulticopter) {
 		if ((Abs(A[Roll].Angle) < CRASHED_ANGLE_RAD) && (Abs(A[Pitch].Angle)
 				< CRASHED_ANGLE_RAD)) {
 			mSTimer(mSClock(), CrashedTimeout, CRASHED_TIMEOUT_MS);

@@ -252,16 +252,16 @@ void TxFrSkyGPSStat(uint8 s) {
 void TxFrSkyGPSCoords(uint8 s) {
 	pair_rec c;
 
-	GPStoDDDMM_MMMM(GPS.Raw[NorthC], &c);
+	GPStoDDDMM_MMMM(GPS.C[NorthC].Raw, &c);
 	TxFrSkyPacket(s, FS_ID_GPS_LAT_BP, c.bp);
 	TxFrSkyPacket(s, FS_ID_GPS_LAT_AP, c.ap);
-	TxFrSkyPacket(s, FS_ID_GPS_LAT_NS, GPS.Raw[NorthC] < 0 ? 'S' : 'N');
+	TxFrSkyPacket(s, FS_ID_GPS_LAT_NS, GPS.C[NorthC].Raw < 0 ? 'S' : 'N');
 
 
-	GPStoDDDMM_MMMM(GPS.Raw[EastC], &c);
+	GPStoDDDMM_MMMM(GPS.C[EastC].Raw, &c);
 	TxFrSkyPacket(s, FS_ID_GPS_LONG_BP, c.bp);
 	TxFrSkyPacket(s, FS_ID_GPS_LONG_AP, c.ap);
-	TxFrSkyPacket(s, FS_ID_GPS_LONG_EW, GPS.Raw[EastC] < 0 ? 'W' : 'E');
+	TxFrSkyPacket(s, FS_ID_GPS_LONG_EW, GPS.C[EastC].Raw < 0 ? 'W' : 'E');
 
 } // TxFrSkyGPS
 

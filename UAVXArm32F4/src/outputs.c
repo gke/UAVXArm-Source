@@ -207,9 +207,9 @@ void UpdateDrives(void) {
 		} else {
 
 			if (F.Bypass) {
-				Rl = -A[Roll].Desired * STICK_SCALE_R; // direct stick values +/- 0.5
-				Pl = -A[Pitch].Desired * STICK_SCALE_R;
-				Yl = A[Yaw].Desired * STICK_SCALE_R;
+				Rl = -A[Roll].Stick * STICK_SCALE_R; // direct stick values +/- 0.5
+				Pl = -A[Pitch].Stick * STICK_SCALE_R;
+				Yl = A[Yaw].Stick * STICK_SCALE_R;
 				Sl = 0.0f; //zzz
 			} else {
 				Rl = Limit1(A[Roll].Out, OUT_NEUTRAL);

@@ -74,7 +74,7 @@ boolean ReadMagnetometer(void) {
 
 	r = (RawMag[0] != -4096) && (RawMag[1] != -4096) && (RawMag[2] != -4096);
 	if (!r)
-		NV.Stats[CompassFailS]++;
+		incStat(CompassFailS);
 
 	return (r);
 } // ReadMagnetometer

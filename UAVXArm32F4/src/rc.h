@@ -40,12 +40,9 @@
 
 //#define RC_THRES_STOP_STICK FromPercent(2)
 #define RC_THRES_START_STICK	FromPercent(1)
-
 #define THR_MAXIMUM FromPercent(90)
-
 #define RC_FRAME_TIMEOUT_US 25000
 #define RC_SIGNAL_TIMEOUT_US  (RC_FRAME_TIMEOUT_US * 5)
-#define RC_THR_MAX  RC_MAXIMUM
 
 #define RXBUF_SIZE	64
 

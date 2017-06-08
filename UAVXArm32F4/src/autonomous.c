@@ -24,7 +24,7 @@
 
 real32 NavdT;
 
-uint8 NavState, FailState;
+uint8 NavState, AlarmState;
 
 uint8 LandingState = InitDescent;
 
@@ -91,12 +91,12 @@ boolean DoLanding(void) {
 
 
 void InitiateShutdown(uint8 s) {
-	ZeroCompensation();
+	ZeroThrottleCompensation();
 	DesiredThrottle = 0.0f;
 	StopDrives();
 	F.NavigationActive = false;
 	NavState = s;
-	FailState = Monitoring;
+	AlarmState = NoAlarms;
 	State = Shutdown;
 } // InitiateShutdown
 
@@ -110,18 +110,9 @@ void DoAutoLanding(void) {
 
 
 void CheckFence(void) {
-	static int32 CurrSwState = NavSwUnknown;
 
-	if (F.FenceFailsafe) {
-		if (CurrSwState != NavSwState)
-			F.FenceFailsafe = false;
-	} else {
-		if (((Nav.Distance > Nav.FenceRadius) || (Altitude > NAV_CEILING_M))
-				&& F.OriginValid) {
-			CurrSwState = NavSwState;
-			F.FenceFailsafe = true;
-		}
-	}
+	F.FenceAlarm = (((Nav.Distance > Nav.FenceRadius) || (Altitude
+			> NAV_CEILING_M)) && F.OriginValid);
 
 } // CheckFence
 
@@ -133,33 +124,12 @@ void CheckRapidDescentHazard(void) {
 
 } // CheckRapidDescentHazard
 
-boolean FailsafeLanding(void) {
-	boolean v;
-	//NoFailsafes, Monitoring, BatteryLow, LostSignal, HitFenceRTH
-
-	if (F.FailsafesEnabled) {
-		if (F.FenceFailsafe)
-			FailState = HitFenceRTH;
-		else if (F.BatteryFailsafe)
-			FailState = BatteryLow;
-		else if (F.SticksUnchangedFailsafe)
-			FailState = LostSignal;
-		else
-			FailState = Monitoring;
-		v = F.BatteryFailsafe || F.SticksUnchangedFailsafe || F.FenceFailsafe;
-	} else {
-		FailState = NoFailsafes;
-		v = false;
-	}
-
-	return (v);
-
-} // FailsafeLanding
-
 void AcquireHoldPosition(void) {
 
-	HP.Pos[NorthC] = Nav.Pos[NorthC];
-	HP.Pos[EastC] = Nav.Pos[EastC];
+	if (F.OriginValid) {
+		HP.Pos[NorthC] = Nav.C[NorthC].Pos;
+		HP.Pos[EastC] = Nav.C[EastC].Pos;
+	}
 
 } // AcquireHoldPosition
 
@@ -190,86 +160,64 @@ void ResumeHoldingStation(void) {
 
 
 void UpdateRTHSwState(void) { // called in rc.c on every rx packet
+
 	static uint32 NextNavSwUpdatemS = 0;
 	uint32 NowmS;
 
 	NowmS = mSClock();
-	if (NowmS > NextNavSwUpdatemS) {
+	if (F.Bypass || (State != InFlight)) {
+
+		//if (FirstBypass) { // realy only needs to be done once
+		NavSwStateP = NavSwUnknown;
+		ZeroThrottleCompensation();
+		ZeroNavCorrections();
+
+		F.Glide = F.Navigate = F.ReturnHome = false;
+
+		AcquireHoldPosition();
+		NextNavSwUpdatemS = NowmS; // immediately
+		NavState = PIC;
+
+	} else if (NowmS > NextNavSwUpdatemS) {
+
 		if (NavSwState != NavSwStateP) {
 			NextNavSwUpdatemS = NowmS + 1500;
-
-			if (F.UsingWPNavigation) {
-				F.NavigationEnabled = F.NavigationActive;
-				switch (NavSwState) {
-				case NavSwLow:
-					F.NavigationEnabled = F.Navigate = F.ReturnHome = F.Glide
-							= false;
-					F.Navigate = F.ReturnHome = false;
-					NavState = IsFixedWing ? PIC : HoldingStation;
+			F.Glide = F.Navigate = F.ReturnHome = false;
+			switch (NavSwState) {
+			case NavSwLow:
+				AcquireHoldPosition();
+				NavState = PIC;
+				break;
+			case NavSwMiddle:
+				CaptureHomePosition();
+				if (F.OriginValid) {
 					AcquireHoldPosition();
-					break;
-				case NavSwMiddle:
-					F.ReturnHome = F.Glide = false;
+					ResumeHoldingStation();
 					F.Navigate = true;
-					NavState = IsFixedWing ? HoldingStation : PIC;
-					break;
-				case NavSwHigh:
-					F.Navigate = F.Glide = false;
-					F.ReturnHome = true;
-					break;
-				} // switch
-			} else {
-				switch (NavSwState) {
-				case NavSwLow:
-					F.NavigationEnabled = F.Navigate = F.ReturnHome = F.Glide
-							= false;
-					if (State == InFlight)
-						DesiredAltitude = Altitude;
-					NavState = PIC;
-					break;
-				case NavSwMiddle:
-					F.NavigationEnabled = F.NavigationActive;
-					F.ReturnHome = F.Navigate = false;
-					if (UsingGliderStrategy)
-						F.Glide = true;
-					else
-						AcquireHoldPosition();
-					NavState = IsFixedWing ? HoldingStation : PIC;
-					break;
-				case NavSwHigh:
-					F.NavigationEnabled = F.ReturnHome = F.NavigationActive;
-					F.Navigate = F.Glide = false;
-					break;
-				} // switch
-			}
+				}
+				break;
+			case NavSwHigh:
+				CaptureHomePosition(); // just in case the switch change is FAST
+				if (F.OriginValid)
+					ConditionReturnHome();
+			} // switch
+
 			NavSwStateP = NavSwState;
 		}
 	}
 } // UpdateRTHSwState
 
+
 void DoNavigation(void) {
 
 	if (UAVXAirframe == Instrumentation) {
-		if (F.NavigationEnabled) {
-			Nav.Distance = sqrtf(Sqr(Nav.Pos[EastC]) + Sqr(Nav.Pos[NorthC]));
-			Nav.Bearing = Make2Pi(atan2f(Nav.Pos[EastC], Nav.Pos[NorthC]));
-			Nav.Elevation = MakePi(atan2f(Altitude, Nav.Distance));
-			Nav.Hint = MakePi((Nav.Bearing - PI) - Heading);
-
-			F.LostModel = F.SticksUnchangedFailsafe = F.NewNavUpdate = false;
-		}
+		if (F.NavigationEnabled)
+			F.NewNavUpdate = false;
 	} else {
-		if (F.NavigationEnabled && (Nav.Sensitivity > 0.0f)
-				&& !(F.UsingRateControl || F.Bypass)) {
-			F.LostModel = F.SticksUnchangedFailsafe = false;
+		if (F.NavigationEnabled && !(F.UsingRateControl || F.Bypass)) {
+
 			if (F.NewNavUpdate) {
 				F.NewNavUpdate = false;
-
-				Nav.Distance
-						= sqrtf(Sqr(Nav.Pos[EastC]) + Sqr(Nav.Pos[NorthC]));
-				Nav.Bearing = Make2Pi(atan2f(Nav.Pos[EastC], Nav.Pos[NorthC]));
-				Nav.Elevation = MakePi(atan2f(Altitude, Nav.Distance));
-				Nav.Hint = MakePi((Nav.Bearing - PI) - Heading);
 
 				CheckFence();
 
@@ -277,57 +225,52 @@ void DoNavigation(void) {
 				case AltitudeLimiting:
 					// don't do hold as we may need to escape thermal
 
-					if (F.ReturnHome || FailsafeLanding())
-						ConditionReturnHome();
-					else if (Altitude < AltMaxM) { //set best glide pitch
+					if (Altitude < AltMaxM) { //set best glide pitch
 						Sl = 0.0f;
 						NavState = JustGliding;
 					}
-
-					// flaps/Spoilers set in altitude hold
-
 					break;
 				case BoostClimb:
 					Navigate(&HP);
-					if (F.ReturnHome || FailsafeLanding())
-						ConditionReturnHome();
-					else if (Altitude > AltCutoffM) {
-						//set best glide pitch
+
+					if (Altitude > AltCutoffM) //set best glide pitch
 						NavState = JustGliding;
-					}
 					break;
 				case JustGliding:
 				case UsingThermal:
-					if (F.ReturnHome || FailsafeLanding())
-						ConditionReturnHome();
-					else if (Altitude > AltMaxM) // TODO: pitch a function of Fl
+
+					if (Altitude > AltMaxM) // TODO: pitch a function of Fl
 						NavState = AltitudeLimiting;
-					else if (Altitude < AltMinM) {
-						//set best climb pitch
-						NavState = BoostClimb;
-					} else {
-						if (NavState == JustGliding) {
-							if (CommenceThermalling()) { // after cruise timeout
-								InitThermalling();
-								AcquireHoldPosition();
-								F.Soaring = true;
-								mSTimer(mSClock(), ThermalTimeout,
-										THERMAL_MIN_MS);
-								NavState = UsingThermal;
+					else {
+						if (Altitude < AltMinM) //set best climb pitch
+							NavState = BoostClimb;
+						else {
+							if (NavState == JustGliding) {
+								if (CommenceThermalling()) { // after cruise timeout
+									InitThermalling();
+									AcquireHoldPosition();
+									F.Soaring = true;
+									mSTimer(mSClock(), ThermalTimeout,
+											THERMAL_MIN_MS);
+									NavState = UsingThermal;
+								} else {
+									Navigate(&HP);
+								}
 							} else {
-								Navigate(&HP);
-							}
-						} else {
-							if (ResumeGlide()) {
-								F.Soaring = false;
-								mSTimer(mSClock(), CruiseTimeout, CRUISE_MIN_MS);
-								ResumeHoldingStation();
-								NavState = JustGliding;
-							} else {
-								UpdateThermalEstimate();
-								TH.Pos[NorthC] = Nav.Pos[NorthC] + ekf.X[2];
-								TH.Pos[EastC] = Nav.Pos[EastC] + ekf.X[3];
-								Navigate(&TH);
+								if (ResumeGlide()) {
+									F.Soaring = false;
+									mSTimer(mSClock(), CruiseTimeout,
+											CRUISE_MIN_MS);
+									ResumeHoldingStation();
+									NavState = JustGliding;
+								} else {
+									UpdateThermalEstimate();
+									Soar.Th[NorthC].Pos = Nav.C[NorthC].Pos
+											+ ekf.X[2];
+									Soar.Th[EastC].Pos = Nav.C[EastC].Pos
+											+ ekf.X[3];
+									Navigate(&TH);
+								}
 							}
 						}
 					}
@@ -335,28 +278,17 @@ void DoNavigation(void) {
 				case Takeoff:
 					RefreshNavWayPoint();
 					Navigate(&WP);
-					if (FailsafeLanding()) {
-						DoAutoLanding();
-					} else {
-						if (Altitude > NAV_MIN_ALT_M) {
-							if (F.ReturnHome || FailsafeLanding())
-								ConditionReturnHome();
-							else
-								NavState = NextWPState();
-						}
-					}
+
+					if (Altitude > NAV_MIN_ALT_M)
+						NavState = NextWPState();
 					break;
 				case Perching:
-					if (F.ReturnHome || FailsafeLanding()) {
+					if (mSClock() > mS[NavStateTimeout]) {
+						DesiredAltitude = WP.Pos[DownC];
 						NavState = Takeoff;
 					} else {
-						if (mSClock() > mS[NavStateTimeout]) {
-							DesiredAltitude = WP.Pos[DownC];
-							NavState = Takeoff;
-						} else {
-							A[Pitch].NavCorr = A[Roll].NavCorr = 0.0f;
-							DesiredAltitude = -100.0f; // override WP
-						}
+						A[Pitch].NavCorr = A[Roll].NavCorr = 0.0f;
+						DesiredAltitude = -100.0f; // override WP
 					}
 					break;
 				case Touchdown:
@@ -367,21 +299,14 @@ void DoNavigation(void) {
 					RefreshNavWayPoint();
 					Navigate(&WP);
 
-					if (F.Navigate || F.ReturnHome || FailsafeLanding()) {
-						if ((WP.Action == navPerch) && !FailsafeLanding()) {
-							if (F.ReturnHome) {
-								NavState = Takeoff;
-							} else {
-								if (DoLanding()) {
-									mSTimer(mSClock(), NavStateTimeout,
-											WP.Loiter * 1000);
-									NavState = Perching;
-								}
-							}
-						} else
-							DoAutoLanding();
+					if (WP.Action == navPerch) {
+						if (DoLanding()) {
+							mSTimer(mSClock(), NavStateTimeout, WP.Loiter
+									* 1000);
+							NavState = Perching;
+						}
 					} else
-						ResumeHoldingStation();
+						DoAutoLanding();
 					break;
 				case AtHome:
 					Navigate(&WP);
@@ -389,38 +314,32 @@ void DoNavigation(void) {
 					CheckRapidDescentHazard();
 
 					if (F.RapidDescentHazard) // || !F.WayPointCentred)
-						mSTimer(mSClock(), NavStateTimeout,
-								FailsafeLanding() ? 5000 : (int32) WP.Loiter
-										* 1000);
+						mSTimer(mSClock(), NavStateTimeout, (int32) WP.Loiter
+								* 1000);
 
-					if (F.Navigate || F.ReturnHome || FailsafeLanding()) {
-						if (IsFixedWing) {
+					if (IsFixedWing) {
 
-							// no autoland for fixed wing!!! zzz
+						// no autoland for fixed wing yet so orbit
 
-						} else {
-							if ((F.AltControlEnabled && F.UsingRTHAutoDescend)
-									&& (mSClock() > mS[NavStateTimeout])) {
-								F.RapidDescentHazard = false;
-								InitiateDescent();
-							}
+					} else {
+						if ((F.AltControlEnabled && F.UsingRTHAutoDescend)
+								&& (mSClock() > mS[NavStateTimeout])) {
+							F.RapidDescentHazard = false;
+							InitiateDescent();
 						}
-					} else
-						ResumeHoldingStation();
+					}
 					break;
 				case ReturningHome:
 					RefreshNavWayPoint();
 					Navigate(&WP);
 
-					if (F.Navigate || F.ReturnHome || FailsafeLanding()) {
-						if (F.WayPointCentred) {
-							mSTimer(mSClock(), NavStateTimeout,
-									FailsafeLanding() ? 5000
-											: (int32) WP.Loiter * 1000);
-							NavState = AtHome;
-						}
-					} else
-						ResumeHoldingStation();
+					// need check for already on the ground
+
+					if (F.WayPointCentred) {
+						mSTimer(mSClock(), NavStateTimeout, (int32) WP.Loiter
+								* 1000);
+						NavState = AtHome;
+					}
 					break;
 				case AcquiringAltitude:
 					RefreshNavWayPoint();
@@ -428,21 +347,14 @@ void DoNavigation(void) {
 
 					CheckRapidDescentHazard();
 
-					if (F.ReturnHome || FailsafeLanding()) {
-						ConditionReturnHome();
-					} else {
-						if (F.Navigate) {
-							if (F.WayPointAchieved) {
-								mSTimer(mSClock(), NavStateTimeout,
-										(int32) WP.Loiter * 1000);
-								if ((WP.Action == navPerch) && !IsFixedWing)
-									InitiateDescent();
-								else
-									NavState = OrbitingPOI;
-								F.RapidDescentHazard = false;
-							}
-						} else
-							ResumeHoldingStation();
+					if (F.WayPointAchieved) {
+						mSTimer(mSClock(), NavStateTimeout, (int32) WP.Loiter
+								* 1000);
+						if ((WP.Action == navPerch) && !IsFixedWing)
+							InitiateDescent();
+						else
+							NavState = OrbitingPOI;
+						F.RapidDescentHazard = false;
 					}
 					break;
 				case Loitering:
@@ -450,64 +362,48 @@ void DoNavigation(void) {
 					RefreshNavWayPoint();
 					Navigate(&WP);
 
-					if (F.ReturnHome || FailsafeLanding()) {
-						ConditionReturnHome();
-					} else {
-						if (F.Navigate) {
-							switch (WP.Action) {
-							case navOrbit:
-								NavState = OrbitingPOI;
-								OrbitCamAngle = HALF_PI - atan2f(Altitude
-										- WP.OrbitAltitude, WP.OrbitRadius);
-								OrbitCamAngle
-										= Limit(OrbitCamAngle, 0.0f, HALF_PI);
-								break;
-							case navVia:
-							case navPerch: // fixed wing
-							default:
-								OrbitCamAngle = 0.0f;
-								break;
-							} // switch
-							if (mSClock() > mS[NavStateTimeout])
-								NavState = NextWPState();
-						} else
-							ResumeHoldingStation();
-					}
+					switch (WP.Action) {
+					case navOrbit:
+						OrbitCamAngle = HALF_PI - atan2f(Altitude
+								- WP.OrbitAltitude, WP.OrbitRadius);
+						OrbitCamAngle = Limit(OrbitCamAngle, 0.0f, HALF_PI);
+						NavState = OrbitingPOI;
+						break;
+					case navVia:
+					case navPerch: // fixed wing just orbits
+					default:
+						OrbitCamAngle = 0.0f;
+						break;
+					} // switch
+					if (mSClock() > mS[NavStateTimeout])
+						NavState = NextWPState();
+
 					break;
 				case Transiting:
 					RefreshNavWayPoint();
 					Navigate(&WP);
 
-					if (F.ReturnHome || FailsafeLanding()) {
-						ConditionReturnHome();
-					} else {
-						if (F.Navigate) {
-							if (F.WayPointCentred)
-								NavState = AcquiringAltitude;
-						} else
-							ResumeHoldingStation();
-					}
+					if (F.WayPointCentred)
+						NavState = AcquiringAltitude;
 					break;
 				case PIC:
 				case HoldingStation:
-					if (IsMulticopter || !F.Bypass)
-						Navigate(&HP); // maintain hold point
-
-					if (F.Glide)
+					if (IsFixedWing && F.Glide)
 						NavState = JustGliding;
-					else if (F.Navigate) {
-						CurrWPNo = 0;
-						NavState = NextWPState(); // start navigating
-					} else if (F.ReturnHome || FailsafeLanding())
-						ConditionReturnHome();
 					else {
-						if (!F.AttitudeHold)
+						if (F.AttitudeHold) {
+							if (NV.Mission.NoOfWayPoints == 0)
+								Navigate(&HP); // maintain hold point
+							else {
+								CurrWPNo = 0;
+								NavState = NextWPState(); // start navigating
+							}
+						} else { // allow override
+							DecayPosCorr();
 							AcquireHoldPosition();
+						}
 					}
 					break;
-
-					//zzz separate PIC
-
 				} // switch NavState
 
 				F.OrbitingWP = (NavState == OrbitingPOI) && (WP.Action
@@ -517,57 +413,15 @@ void DoNavigation(void) {
 
 			DecayPosCorr();
 
-			Nav.Distance = Nav.Bearing = Nav.Elevation = 0.0f;
-			Nav.Hint = 0;
-			F.OrbitingWP = F.NewNavUpdate = F.NavSaturation = false;
+			F.OrbitingWP = false;
 			Nav.DesiredHeading = Heading; // zzz
-
-			if (F.NavigationEnabled && (Nav.Sensitivity > 0.0f)
-					&& F.NewNavUpdate && !(F.Bypass || F.UsingRateControl)) {
+			if (F.NewNavUpdate)
 				F.NewNavUpdate = false;
-				ResumeHoldingStation();
-			} else {
-				if (F.FailsafesEnabled)
-					switch (NavState) {
-					case Touchdown:
-						//
-						break;
-					case Descending:
-						if (F.ReturnHome || F.Navigate || FailsafeLanding()) {
-							if (F.AltControlEnabled && (mSClock()
-									> mS[NavStateTimeout]) && !F.Bypass)
-								DoAutoLanding();
-						} else {
-							//gkeAltComp = 0.0f;
-							//F.HoldingAlt = false;
-							NavState = PIC;
-						}
-						break;
-					case AcquiringAltitude:
-					case HoldingStation:
-					case PIC:
-					default:
-						NavState = PIC;
-						if (F.ReturnHome || F.Navigate || FailsafeLanding()) //&& F.NewCommands  && ( StickThrottle >= IdleThrottle ) )
-						{
-							F.LostModel = FailsafeLanding();
-							if (IsFixedWing) {
-								// landing config for control surfaces zzz
-							} else {
-								// just land
-							}
-							mSTimer(mSClock(), NavStateTimeout,
-									FailsafeLanding() ? 5000 : P(DescentDelayS));
-							InitiateDescent();
-						}
-						break;
-					} // switch NavState
-				else
-					NavState = PIC;
-			}
-		}
 
+			ResumeHoldingStation();
+		}
 	}
+
 	F.NewCommands = false; // Navigate modifies Desired Roll, Pitch and Yaw values.
 
 } // DoNavigation

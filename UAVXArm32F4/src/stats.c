@@ -20,6 +20,24 @@
 
 #include "UAVX.h"
 
+__attribute__((always_inline))     inline void incStat(uint8 s) {
+#if defined(INC_STATS_TEL)
+	NV.Stats[s]++;
+#endif
+} // incStats
+
+__attribute__((always_inline))     inline void setStat(uint8 s, int16 v) {
+#if defined(INC_STATS_TEL)
+	NV.Stats[s] = v;
+#endif
+} // setStats
+
+
+__attribute__((always_inline))     inline int16 currStat(uint8 s) {
+
+	return NV.Stats[s];
+
+} // currStats
 
 void ZeroStats(void) {
 	uint16 s;
@@ -28,12 +46,12 @@ void ZeroStats(void) {
 	for (s = 0; s < MAX_STATS; s++)
 		NV.Stats[s] = 0;
 
-	NV.Stats[MinhAccS] = INIT_MIN;
-	NV.Stats[MaxhAccS] = 0;
-	NV.Stats[MinROCS] = INIT_MIN;
-	NV.Stats[MaxROCS] = 0;
-	NV.Stats[GPSMinSatsS] = INIT_MIN;
-	NV.Stats[GPSMaxSatsS] = 0;
+	setStat(MinhAccS, INIT_MIN);
+	setStat(MaxhAccS, 0);
+	setStat(MinROCS, INIT_MIN);
+	setStat(MaxROCS, 0);
+	setStat(GPSMinSatsS, INIT_MIN);
+	setStat(GPSMaxSatsS, 0);
 
 	for (s = 0; s < MAG_MAX_HIST; s++)
 		for (a = 0; a < 4; a++)
@@ -44,17 +62,17 @@ void ZeroStats(void) {
 
 void StatsMinMax(int16 v, uint8 l, uint8 u) {
 
-	if (v > NV.Stats[u])
-		NV.Stats[u] = v;
-	else if (v < NV.Stats[l])
-		NV.Stats[l] = v;
+	if (v > currStat(u))
+		setStat(u, v);
+	else if (v < currStat(l))
+		setStat(l, v);
 
 } // StatsMaxMin
 
 void StatsMax(int16 v, uint8 u) {
 
-	if (v > NV.Stats[u])
-		NV.Stats[u] = v;
+	if (v > currStat(u))
+		setStat(u, v);
 
 } // StatsMax
 

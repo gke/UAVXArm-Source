@@ -42,7 +42,7 @@ typedef struct {
 	int32 missionTime, startTime;
 	int32 lastVelUpdatemS, lastPosUpdatemS;
 	real32 altitude, relAltitude, originAltitude, geoidheight;
-	real32 Pos[3], PosP[3], Vel[3], VelP[3], Raw[3], OriginRaw[3];
+	GPSCoord C[3];
 	real32 longitudeCorrection;
 	real32 Distance, Direction;
 	int8 Hint;
@@ -121,7 +121,6 @@ extern real32 GPSdT, GPSdTR;
 extern uint32 LastGPSUpdatemS;
 extern uint8 nll, cc, lo, hi;
 extern boolean EmptyField;
-extern int16 ValidGPSSentences;
 extern real32 GPSLag;
 
 extern uint8 CurrGyroLPF;

@@ -50,7 +50,6 @@ enum mSTimes {
 	RCSignalTimeout,
 	BeeperTimeout,
 	ThrottleIdleTimeout,
-	FailsafeTimeout,
 	AbortTimeout,
 	NavStateTimeout,
 	DescentUpdate,
@@ -100,7 +99,7 @@ typedef union {
 	struct { // Order of these flags subject to change
 		uint8 // 0
 				AltControlEnabled :1,
-				NavSaturation :1,
+				UnusedNavSaturation :1,
 				RapidDescentHazard :1,
 				LostModel :1,
 				NearLevel :1,
@@ -136,7 +135,7 @@ typedef union {
 				MagnetometerLocked :1,
 				DrivesArmed :1,
 				NavigationActive :1,
-				SticksUnchangedFailsafe :1,
+				Unused_3_7 :1,
 
 				// 4
 				Signal :1,
@@ -156,7 +155,7 @@ typedef union {
 				NewAltitudeValue :1,
 				IMUCalibrated :1,
 				CrossTrackActive :1,
-				FailsafesEnabled :1,
+				Unused_5_7 :1,
 
 				// 6
 				NewBaroValue :1,
@@ -175,19 +174,19 @@ typedef union {
 				NewNavUpdate :1,
 				HaveExtMem :1,
 				UsingRapidDescent :1, // was MPU6050
-				UseManualAltHold :1,
+				Unused_7_6 :1,
 				Glide:1,
 
 				// 8
-				NewMagValues :1, TxToBuffer :1, UsingAnalogGyros :1,
+				NewMagValues :1, GPSToLaunchRequired :1, UsingAnalogGyros :1,
 				i2cFatal :1, GPSPacketReceived :1, ThrottleOpen :1,
-				FenceFailsafe :1,
+				FenceAlarm :1,
 				NavigationEnabled :1,
 
 				// 9
-				UsingWPNavigation :1, GPSPosUpdated :1,
+				UnusedUsingWPNavigation :1, GPSPosUpdated :1,
 				EnforceDriveSymmetry :1, RCFrameOK :1, spiFatal :1,
-				BatteryFailsafe :1, UsingMAVLink :1, UsingConvPropSense :1; // MAXED OUT
+				Unused_9_5 :1, UsingMAVLink :1, UsingConvPropSense :1; // MAXED OUT
 	};
 } Flags;
 

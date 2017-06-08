@@ -54,7 +54,7 @@ void CheckInitEmulation(void) {
 
 	if (F.Emulation) {
 		for (a = Pitch; a <= Yaw; a++)
-			GPS.Pos[a] = GPS.Vel[a] = Aircraft[a].Pos = Aircraft[a].Vel
+			GPS.C[a].Pos = GPS.C[a].Vel = Aircraft[a].Pos = Aircraft[a].Vel
 					= Aircraft[a].Acc = 0.0f;
 
 		DesiredAltitude = Altitude = RangefinderAltitude = FakeAltitude = ROC
@@ -82,8 +82,8 @@ real32 Thermal(real32 East, real32 North) {
 
 	if (State == InFlight)
 		for (t = 0; t < NT; t++)
-			Uplift += T[t].Strength * exp(-(Sqr(Nav.Pos[NorthC] - T[t].NorthPos)
-					/ (2.0f * Sqr(T[t].Radius)) + Sqr(Nav.Pos[EastC] - T[t].EastPos)
+			Uplift += T[t].Strength * exp(-(Sqr(Nav.C[NorthC].Pos - T[t].NorthPos)
+					/ (2.0f * Sqr(T[t].Radius)) + Sqr(Nav.C[EastC].Pos - T[t].EastPos)
 					/ (2.0f * Sqr(T[t].Radius))));
 
 	return Uplift;
@@ -116,9 +116,9 @@ void DoEmulation(void) {
 		ROC = (dThrottle * 10.0f); // + EffSink);
 
 		ROC = Limit(ROC, EffSink, 1000.0f);
-
-		ROC += Thermal(Nav.Pos[EastC], Nav.Pos[NorthC]);
-
+#if defined(USE_THERMALS)
+		ROC += Thermal(Nav.C[EastC].Pos, Nav.C[NorthC].Pos);
+#endif
 	} else {
 		Thrust = (DesiredThrottle + AltComp) * EM_MAX_THRUST;
 		Accel = (Thrust - EM_MASS * GRAVITY_MPS_S - Drag(ROC)) * EM_MASS_R;
@@ -136,7 +136,7 @@ void DoEmulation(void) {
 
 	if (FakeAltitude <= 0.05f) {
 		for (a = Pitch; a <= Yaw; a++)
-			Aircraft[a].Vel = Aircraft[a].Acc = GPS.Vel[a] = Rate[a] = Acc[a]
+			Aircraft[a].Vel = Aircraft[a].Acc = GPS.C[a].Vel = Rate[a] = Acc[a]
 					= A[a].Angle = A[a].Out = 0.0f;
 	} else {
 
@@ -169,25 +169,25 @@ void DoEmulation(void) {
 			Rate[Yaw] = Limit1(Rate[Yaw], DegreesToRadians(180.0f));
 		}
 
-		Rotate(&GPS.Vel[NorthC], &GPS.Vel[EastC], -Aircraft[Pitch].Vel,
+		Rotate(&GPS.C[NorthC].Vel, &GPS.C[EastC].Vel, -Aircraft[Pitch].Vel,
 				Aircraft[Roll].Vel, -Heading);
 
 		Acc[BF] = sinf(A[Pitch].Angle) * GRAVITY_MPS_S; // TODO: needs further work to cover lateral acc.
 		Acc[LR] = -sinf(A[Roll].Angle) * GRAVITY_MPS_S;
 
 		for (a = NorthC; a <= EastC; a++) {
-			GPS.Vel[a] += Wind[a];
-			GPS.Pos[a] += GPS.Vel[a] * dT;
+			GPS.C[a].Vel += Wind[a];
+			GPS.C[a].Pos += GPS.C[a].Vel * dT;
 		}
 	}
 
 	Acc[UD] = -sqrtf(Sqr(GRAVITY_MPS_S) - (Sqr(Acc[BF]) + Sqr(Acc[LR]))); // needs scaling
 
-	GPS.Raw[EastC] = GPS.OriginRaw[EastC] + MToGPS(GPS.Pos[EastC])
+	GPS.C[EastC].Raw = GPS.C[EastC].OriginRaw + MToGPS(GPS.C[EastC].Pos)
 			/ GPS.longitudeCorrection;
-	GPS.Raw[NorthC] = GPS.OriginRaw[NorthC] + MToGPS(GPS.Pos[NorthC]);
+	GPS.C[NorthC].Raw = GPS.C[NorthC].OriginRaw + MToGPS(GPS.C[NorthC].Pos);
 
-	GPS.gspeed = sqrtf(Sqr(GPS.Vel[EastC]) + Sqr(GPS.Vel[NorthC]));
+	GPS.gspeed = sqrtf(Sqr(GPS.C[EastC].Vel) + Sqr(GPS.C[NorthC].Vel));
 
 } // DoEmulation
 

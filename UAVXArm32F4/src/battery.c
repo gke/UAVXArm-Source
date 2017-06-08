@@ -62,10 +62,6 @@ void CheckBatteries(void) {
 	};
 	uint32 NowmS;
 	uint16 dTmS;
-#if defined(USE_BATTERY_FAILSAFE)
-	static uint8 lvcState = lvcMonitor;
-	static int16 bucketmS = LVC_FULL_BUCKET_MS;
-#endif
 
 	NowmS = mSClock();
 
@@ -94,32 +90,7 @@ void CheckBatteries(void) {
 		BatteryChargeUsedmAH += BatteryCurrent * (real32) dTmS * (1.0f
 				/ 3600.0f);
 
-#if defined(USE_BATTERY_FAILSAFE) // // abandoned - Now Pilot Responsibility
-		switch (lvcState) {
-			case lvcMonitor:
-			F.LowBatt = false;
-			if (BatteryVolts <= BatteryVoltsLimit)
-			lvcState = lvcWarning;
-			else
-			bucketmS = Limit(bucketmS + dTmS, 0, LVC_FULL_BUCKET_MS);
-			break;
-			case lvcWarning:
-			if (BatteryVolts > BatteryVoltsLimit)
-			lvcState = lvcMonitor;
-			else if (bucketmS <= 0) {
-				F.LowBatt = true;
-				lvcState = lvcLand;
-			} else
-			bucketmS -= dTmS;
-			break;
-			case lvcLand:
-			F.BatteryFailsafe = true;
-			break;
-		} // switch
-#else
 		F.LowBatt = BatteryVolts <= BatteryVoltsLimit;
-		F.BatteryFailsafe = false;
-#endif
 	}
 } // CheckBatteries
 
