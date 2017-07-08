@@ -685,8 +685,11 @@ void SelectAltitudeSensor(void) {
 			}
 			WasUsingRF = true;
 		} else {
-			Altitude = UsingBeall ? FAltitude - OriginAltitude : BaroAltitude
-					- OriginAltitude;
+			if (F.UsingGPSAltitude && F.OriginValid)
+				Altitude = GPS.altitude - GPS.originAltitude;
+			else
+				Altitude = UsingBeall ? FAltitude - OriginAltitude
+						: BaroAltitude - OriginAltitude;
 			if (F.HoldingAlt && WasUsingRF) {
 				AltitudeP = Altitude;
 				F.HoldingAlt = false;
@@ -714,11 +717,16 @@ void UpdateAltitudeEstimates(void) {
 
 		SelectAltitudeSensor();
 
-		ROC = (Altitude - AltitudeP) * AltdTR;
-		AltitudeP = Altitude;
+		if (F.UsingGPSAltitude && F.OriginValid)
+			ROC = -GPS.velD;
+		else {
 
-		ROC = LPFilter(&ROCLPF, ROC, AltLPFHz, AltdT);
-		ROC = DeadZone(ROC, ALT_ROC_THRESHOLD_MPS);
+			ROC = (Altitude - AltitudeP) * AltdTR;
+			AltitudeP = Altitude;
+
+			ROC = LPFilter(&ROCLPF, ROC, AltLPFHz, AltdT);
+			ROC = DeadZone(ROC, ALT_ROC_THRESHOLD_MPS);
+		}
 
 		if (UAVXAirframe == Instrumentation)
 			ROC = Limit1(ROC, 20.0f);

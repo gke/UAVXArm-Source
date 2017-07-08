@@ -39,6 +39,10 @@ real32 CalculateAccConfidence(real32 AccMag) {
 
 	accNorm = AccMag * GRAVITY_MPS_S_R;
 	conf = expf(-0.5f * Sqr(Abs(accNorm - 1.0f) * AccConfidenceSDevR));
+
+	//TODO: if (IsFixedWing && (Acc[BF] * GRAVITY_MPS_S_R > 0.5f) && (accNorm > Sqr(1.2f)))
+	//	conf = 0.0f;
+
 	confp = HardFilter(confp, conf);
 
 	return (confp);
@@ -210,17 +214,26 @@ void UpdateHeading(void) {
 	EstMagHeading += Rate[Yaw] * dT;
 	EstMagHeading = Make2Pi(EstMagHeading);
 
+	GetMagnetometer(); // do it anyway
+
 	if (F.Emulation) {
 		MagHeading = EstMagHeading;
 		Heading = Make2Pi(MagHeading + MagVariation);
-	} else if (CurrStateEst == MadgwickIMU) {
-		GetMagnetometer();
-		if (F.NewMagValues) {
-			CalculateMagneticHeading();
-			Heading = Make2Pi(MagHeading + MagVariation);
+	} else {
+		if (CurrStateEst == MadgwickIMU) {
+			if (F.NewMagValues) {
+				CalculateMagneticHeading();
+				Heading = Make2Pi(MagHeading + MagVariation);
+			}
+		} else
+			Heading = Make2Pi(A[Yaw].Angle + MagVariation);
+
+		// override
+		if (F.GPSValid && (IsFixedWing || (UAVXAirframe == Instrumentation))
+				&& (GPS.gspeed > 1.0f)) { // no wind adjustment for now
+			Heading = GPS.heading;
 		}
-	} else
-		Heading = Make2Pi(A[Yaw].Angle + MagVariation);
+	}
 
 	MagLockE = MakePi(MagHeading - A[Yaw].Angle);
 	F.MagnetometerLocked = Abs(RadiansToDegrees(MagLockE) < 5.0f);

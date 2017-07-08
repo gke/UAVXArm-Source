@@ -298,7 +298,7 @@ void SendFlightPacket(uint8 s) {
 	TxESCi16(s, Limit(BatteryChargeUsedmAH, 0, 32000));
 
 	TxESCi16(s, currStat(RCGlitchesS));
-	TxESCi16(s, NetThrottle * 1000.0f); // was DesiredThrottle
+	TxESCi16(s, NetThrottle * 1000.0f);
 
 	ShowAttitude(s);
 
@@ -599,12 +599,11 @@ void SendDFTPacket(uint8 s) {
 
 void SendMinPacket(uint8 s) {
 	uint8 b;
-	uint8 len = strlen(Revision);
 
 	SendPacketHeader(s);
 
 	TxESCu8(s, UAVXMinPacketTag);
-	TxESCu8(s, len + 32 + TELEMETRY_FLAG_BYTES);
+	TxESCu8(s, 32 + TELEMETRY_FLAG_BYTES);
 	for (b = 0; b < TELEMETRY_FLAG_BYTES; b++)
 		TxESCu8(s, F.AllFlags[b]);
 
@@ -1066,14 +1065,13 @@ void CheckTelemetry(uint8 s) {
 
 	uint32 NowmS;
 
-	if (!(F.UsingMAVLink && Armed()))
+	if (!(F.UsingMAVLink && (Armed() || (UAVXAirframe == Instrumentation))))
 		UAVXPollRx(s);
 
-	BlackBoxEnabled =  Armed() && (State == InFlight) && ((Altitude > NAV_MIN_ALT_M)
-			|| !IsFixedWing) && !F.Bypass;
+	BlackBoxEnabled =  (Armed() || (UAVXAirframe == Instrumentation)) && (State == InFlight);
 
 	NowmS = mSClock();
-	if (!Armed()) {
+	if (!(Armed() || (UAVXAirframe == Instrumentation))) {
 		SetTelemetryBaudRate(s, 115200);
 		UseUAVXTelemetry(s);
 	} else

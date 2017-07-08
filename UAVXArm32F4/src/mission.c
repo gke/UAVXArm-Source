@@ -44,7 +44,7 @@ const WPStruct TestWP[] = { { { 0, 0, 15 }, 3, 30, 0, 0, 0, 0 }, {
 void CaptureHomePosition(void) {
 	uint8 a;
 
-	if (F.GPSValid && !F.OriginValid) {
+	if (F.GPSValid && (GPS.hAcc <= GPSMinhAcc) && !F.OriginValid) {
 
 		mS[LastGPS] = mSClock();
 
@@ -60,6 +60,7 @@ void CaptureHomePosition(void) {
 			GPS.C[a].Pos = GPS.C[a].Vel = GPS.C[a].PosP = 0.0f;
 
 		GPS.originAltitude = GPS.altitude;
+		F.HoldingAlt = false;
 
 		NV.Mission.OriginAltitude = GPS.altitude;
 		NV.Mission.OriginLatitude = GPS.C[NorthC].OriginRaw;
@@ -67,12 +68,18 @@ void CaptureHomePosition(void) {
 
 		setStat(OriginValidS, true);
 
-		mS[BeeperTimeout] = mSClock() + 500;
-		BeeperOn();
-
-		F.OriginValid =  true;
+		F.OriginValid = true;
 
 		AcquireHoldPosition();
+
+		if (F.GPSToLaunchRequired) {
+			Delay1mS(500);
+			DoBeep(2, 2);
+			DoBeep(6, 2);
+		} else {
+			mS[BeeperTimeout] = mSClock() + 1500;
+			BeeperOn();
+		}
 	}
 } // CaptureHomePosition
 

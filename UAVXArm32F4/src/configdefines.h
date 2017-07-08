@@ -116,9 +116,10 @@
 #define NAV_MIN_VEL_MPS 0.1f
 #define NAV_MAX_ANGLE_RAD DegreesToRadians(35)
 
-#define NAV_CORR_DECAY 1.0f	// decay to zero /S of nav corrections
+#define NAV_CORR_DECAY 2.0f	// decay to zero /S of nav corrections
 
 #define NAV_SENS_THRESHOLD_STICK FromPercent(20)// No GPS Nav if Ch7 is less than this
+#define NAV_ALT_THRESHOLD_STICK FromPercent(10)// No Alt Hold if Ch7 is less than this
 
 #define NAV_ATTITUDE_SLEW_RAD_S DegreesToRadians(20)
 #define NAV_YAW_MAX_SLEW_RAD_S DegreesToRadians(60)
@@ -132,7 +133,7 @@
 
 #define GPS_TIMEOUT_MS 2000 // mS.
 #define GPS_MIN_SATELLITES 6 // preferably > 5 for 3D fix
-#define GPS_MIN_FIX 3 // must be 3D
+#define GPS_MIN_FIX 6 // must be 3D
 #define GPS_MIN_HACC 5.0f
 #define GPS_MIN_SACC 1.0f
 #define GPS_HDOP_TO_HACC 4.0f // crude approximation for NMEA GPS units

@@ -136,7 +136,7 @@ void DMA2_Stream2_IRQHandler(void) {
 	// Transfer completed
 	if (DMA_GetITStatus(DMA2_Stream2, DMA_IT_TCIF2)) {
 		DMA_ClearITPendingBit(DMA2_Stream2, DMA_IT_TCIF2);
-		wsUpdateBuffer(wsPWMBuffer + (PWM_BUFFER_SIZE / 2));
+		wsUpdateBuffer(wsPWMBuffer + (wsBufferSize >> 1));
 	}
 
 } // DMA2_Stream2_IRQHandler

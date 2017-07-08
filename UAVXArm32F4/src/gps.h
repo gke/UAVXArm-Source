@@ -122,6 +122,7 @@ extern uint32 LastGPSUpdatemS;
 extern uint8 nll, cc, lo, hi;
 extern boolean EmptyField;
 extern real32 GPSLag;
+extern real32 GPSMinhAcc;
 
 extern uint8 CurrGyroLPF;
 extern uint8 CurrGPSType;

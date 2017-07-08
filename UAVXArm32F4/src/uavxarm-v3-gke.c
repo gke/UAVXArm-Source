@@ -145,11 +145,6 @@ int main() {
 	while (true) {
 
 		if ((UAVXAirframe == Instrumentation) || (UAVXAirframe == IREmulation)) {
-			// Force everything!
-#if defined(V4_BOARD)
-			CurrTelType = FrSkyTelemetry;
-			ArmingMethod = SwitchArming;
-#endif
 			F.Signal = true;
 			StickThrottle = 0.0f;
 			RCStart = 0;
@@ -197,11 +192,8 @@ int main() {
 
 					DoBeep(8, 2);
 
-					FirstPass = F.OriginValid = F.NavigationActive
-							= false;
-
+					FirstPass = F.OriginValid = F.NavigationActive = false;
 					AlarmState = NoAlarms;
-
 					InitialThrottle = StickThrottle;
 
 					State = Ready;
@@ -209,7 +201,7 @@ int main() {
 
 				break;
 			case Ready:
-				if (Armed()) {
+				if (Armed() || (UAVXAirframe == Instrumentation)) {
 					LEDOn(LEDYellowSel);
 					RxLoopbackEnabled = false;
 					State = Starting;
@@ -235,9 +227,7 @@ int main() {
 					ErectGyros(5);
 
 				ZeroStats();
-
 				F.IsArmed = true;
-
 				mSTimer(mSClock(), WarmupTimeout, WARMUP_TIMEOUT_MS);
 
 				State = Warmup;
@@ -263,8 +253,9 @@ int main() {
 				break;
 			case Landed:
 				ZeroThrottleCompensation();
+				ZeroNavCorrections();
 
-				if (Armed()) {
+				if (Armed() || (UAVXAirframe == Instrumentation)) {
 					F.DrivesArmed = CurrESCType == DCMotorsWithIdle;
 					DesiredThrottle
 							= CurrESCType == F.DrivesArmed ? IdleThrottle
@@ -273,6 +264,7 @@ int main() {
 					CheckInitEmulation();
 
 					ZeroPIDIntegrals();
+
 					DesiredHeading = Nav.TakeoffBearing = Nav.DesiredHeading
 							= Heading;
 
@@ -282,8 +274,11 @@ int main() {
 					if (UAVXAirframe == Instrumentation) {
 						CaptureHomePosition();
 						if (F.OriginValid) { // for now only works with GPS
+
 							LEDsOff();
 							UbxSaveConfig(GPSTxSerial);
+							F.DrivesArmed = false;
+
 							State = InFlight;
 						}
 					} else {
@@ -294,9 +289,7 @@ int main() {
 								CaptureHomePosition();
 
 							if ((StickThrottle >= IdleThrottle)
-									&& (F.OriginValid
-											|| (!F.GPSToLaunchRequired)
-											|| (!F.HaveGPS))) {
+									&& (F.OriginValid || !F.GPSToLaunchRequired)) {
 
 								ResetMainTimeouts();
 								setStat(RCGlitchesS, 0);
@@ -361,18 +354,14 @@ int main() {
 
 				LEDChaser();
 
+				DoNavigation();
+
 				if (UAVXAirframe == Instrumentation) {
-
-					F.NavigationEnabled = true;
-					DoNavigation();
-
-					// stay in inflight mode until power cycle or disarm
-					if (!Armed())
-						State = Preflight;
+					if (F.NavigationEnabled)
+						F.NewNavUpdate = false;
 				} else {
 
 					DoNavigation();
-
 					if (StillFlying()) {
 						if ((StickThrottle < IdleThrottle)
 								&& (IsMulticopter || ((ArmingMethod
@@ -394,7 +383,9 @@ int main() {
 						// roll/pitch > 90deg for more than a second! => kill motors
 						InitiateShutdown(PIC);
 				}
+
 				break;
+
 			case IREmulate:
 				if (!Armed())
 					State = Preflight;
@@ -414,6 +405,7 @@ int main() {
 		DoCalibrationAlarm();
 
 		CheckTelemetry(TelemetrySerial);
+		UpdatewsLed();
 
 	} // while true
 

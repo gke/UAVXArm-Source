@@ -25,7 +25,8 @@
 const ParamStruct_t
 		DefaultParams[] = { //
 
-				{ TuneParamSel, { NoTuning, NoTuning, NoTuning, NoTuning } }, // 78
+						{ TuneParamSel, { NoTuning, NoTuning, NoTuning,
+								NoTuning } }, // 78
 
 						{ RollAngleKp, { 25, 25, 25, 25 } }, //  03
 						{ RollAngleKi, { 3, 3, 3, 3 } }, //  24
@@ -66,7 +67,7 @@ const ParamStruct_t
 								MadgwickIMU } }, // IMU 13
 						{ MadgwickKpMag, { 50, 50, 50, 50 } }, //  32
 						{ MadgwickKpAcc, { 20, 20, 20, 20 } }, //  39c
-						{ AccConfSD, { 4, 4, 6, 6 } }, //  53c was 4
+						{ AccConfSD, { 4, 4, 4, 4 } }, //  53c
 						{ SensorHint, { UAVXArm32IMU, UAVXArm32IMU,
 								UAVXArm32IMU, UAVXArm32IMU } }, // ,35c
 						{ GyroLPF, { MPU_RA_DLPF_BW_98, MPU_RA_DLPF_BW_98,
@@ -98,7 +99,7 @@ const ParamStruct_t
 						{ NavVelKp, { 10, 10, 10, 10 } }, //  29
 						{ NavMaxAngle, { 45, 45, 45, 45 } }, // 69,
 
-						{ NavHeadingTurnout, { 60,60,60,60, } }, // 79,
+						{ NavHeadingTurnout, { 60, 60, 60, 60, } }, // 79,
 						{ NavCrossTrackKp, { 4, 4, 4, 4 } }, //  49
 
 						{ NavRTHAlt, { 15, 10, 30, 30 } }, //  33
@@ -109,6 +110,10 @@ const ParamStruct_t
 						{ NavMagVar, { 13, 13, 13, 13 } }, //  34c 13 Melbourne
 						{ ASSensorType, { NoASSensor, NoASSensor, NoASSensor,
 								NoASSensor } }, //  72
+
+						{ MinhAcc, { GPS_MIN_HACC * 10.0f,
+								GPS_MIN_HACC * 10.0f, GPS_MIN_HACC * 10.0f,
+								GPS_MIN_HACC * 10.0f } }, // 81,
 
 						// Control
 
@@ -132,11 +137,16 @@ const ParamStruct_t
 						// Configuration
 						{ ArmingMode, { RollStickArming, RollStickArming,
 								RollStickArming, RollStickArming } }, //  04
-						{ Config1Bits, { UseRTHDescendMask, UseRTHDescendMask,
-								UseRapidDescentMask, UseRapidDescentMask } }, //  16c
-						{ Config2Bits, { UseFastStartMask, UseFastStartMask,
-								UseFastStartMask,
-								UseFastStartMask } }, //  74
+						{ Config1Bits, { UseRapidDescentMask
+								| UseRTHDescendMask | GPSToLaunchRequiredMask,
+								UseRapidDescentMask | UseRTHDescendMask
+										| GPSToLaunchRequiredMask,
+								UseRapidDescentMask | GPSToLaunchRequiredMask,
+								UseRapidDescentMask | GPSToLaunchRequiredMask } }, //  16c
+						{ Config2Bits, { UseConfigRebootMask,
+								UseConfigRebootMask, UseFastStartMask
+										| UseConfigRebootMask, UseFastStartMask
+										| UseConfigRebootMask } }, //  74
 						{ ComboPort1Config, { CPPM_GPS_M7to10, CPPM_GPS_M7to10,
 								CPPM_GPS_M7to10, CPPM_GPS_M7to10 } }, //  15
 #if defined(V4_BOARD)
@@ -148,10 +158,16 @@ const ParamStruct_t
 #endif
 						{ AFType, { QuadXAF, QuadXAF, AileronSpoilerFlapsAF,
 								ElevonAF } }, // ,44c
-						{ TelemetryType, { UAVXMinTelemetry, UAVXMinTelemetry,
+#if defined(V4_BOARD)
+						{	TelemetryType, {UAVXTelemetry, UAVXTelemetry,
+								FrSkyTelemetry, MAVLinkTelemetry}}, //  45c
+#else
+						{ TelemetryType, { UAVXTelemetry, UAVXTelemetry,
 								FrSkyTelemetry, MAVLinkTelemetry } }, //  45c
+#endif
 						{ ESCType, { ESCUnknown, ESCUnknown, ESCUnknown,
 								ESCUnknown } }, //  36c
+						{ WS2812Leds, { 0, 0, 0, 0 } }, // 80,
 
 						// Battery
 						{ LowVoltThres, { 51, 17, 51, 51 } }, //  MAGIC NUMBERS 18c
@@ -159,8 +175,6 @@ const ParamStruct_t
 
 						// Unused
 
-						{ P80, { 0, } }, // 80,
-						{ P81, { 0, } }, // 81,
 						{ P82, { 0, } }, // 82,
 						{ P83, { 0, } }, // 83,
 						{ P84, { 0, } }, // 84,

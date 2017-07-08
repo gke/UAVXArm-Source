@@ -72,10 +72,11 @@ boolean FailPreflight(void) {
 			|| !F.MagnetometerActive //
 			|| !F.IMUCalibrated //
 			|| !F.MagnetometerCalibrated //
+			|| (RC[RTHRC] > FromPercent(20)) //
 			|| F.LowBatt //
 			|| F.spiFatal //
 			|| F.i2cFatal //
-			|| ((F.ReturnHome || F.Navigate) && !F.Bypass);
+			|| (F.ReturnHome || F.Navigate);
 
 	PreflightFail = F.ThrottleOpen || F.ReturnHome || F.Navigate || !F.Signal;
 
@@ -154,6 +155,7 @@ void CheckAlarms(void) {
 	}
 
 } // CheckAlarms
+
 
 void Catastrophe(void) {
 

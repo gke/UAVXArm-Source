@@ -168,6 +168,7 @@ extern real32 DesiredCamPitchTrim;
 extern real32 ThrLow, ThrHigh, ThrNeutral;
 extern uint8 NoOfControls;
 extern int8 RCStart;
+extern uint32 NextNavSwUpdatemS;
 
 extern boolean RxLoopbackEnabled;
 

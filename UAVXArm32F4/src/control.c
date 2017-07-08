@@ -54,7 +54,6 @@ real32 NavHeadingTurnoutRad, FWRollPitchFFFrac, FWAileronDifferentialFrac,
 		FWMaxClimbAngleRad, FWFlapDecayS, BestROCMPS;
 real32 FWGlideAngleOffsetRad = 0.0f;
 
-
 void ZeroThrottleCompensation(void) {
 	AltComp = 0.0f;
 	BattThrFFComp = TiltThrFFComp = 1.0f;
@@ -203,8 +202,7 @@ void AltitudeControlFW(void) {
 			AltComp = -1.0f;
 		}
 	} else {
-		if (((NavState
-				!= HoldingStation) && (NavState != PIC))) { // Navigating - using CruiseThrottle
+		if (((NavState != HoldingStation) && (NavState != PIC))) { // Navigating - using CruiseThrottle
 			F.HoldingAlt = true;
 			AcquireAltitudeFW();
 		} else {
@@ -243,8 +241,7 @@ void AcquireAltitude(void) {
 
 void AltitudeControl(void) {
 
-	if (((NavState
-			!= HoldingStation) && (NavState != PIC))) { // Navigating - using CruiseThrottle
+	if (((NavState != HoldingStation) && (NavState != PIC))) { // Navigating - using CruiseThrottle
 		F.HoldingAlt = true;
 		AcquireAltitude();
 	} else {
@@ -265,8 +262,6 @@ void AltitudeControl(void) {
 
 void DoAltitudeControl(void) {
 
-	F.AltControlEnabled = !F.Bypass;
-
 	if (F.NewAltitudeValue) { // every AltdT
 		F.NewAltitudeValue = false;
 
@@ -281,11 +276,12 @@ void DoAltitudeControl(void) {
 		} else {
 			//zzz check
 			F.RapidDescentHazard = ROC < DESCENT_MIN_ROC_MPS;
-			DesiredAltitude = Altitude; // zzz redundant
+			DesiredAltitude = Altitude;
 			AltComp = DecayX(AltComp, AltCompDecayS, AltdT);
 			Sl = DecayX(Sl, FWFlapDecayS, AltdT);
 			F.HoldingAlt = false;
 		}
+
 	}
 
 } // DoAltitudeControl
@@ -333,6 +329,7 @@ void ZeroPIDIntegrals(void) {
 
 } // ZeroPIDIntegrals
 
+#define MAGIC 2.0f
 
 void DoRateControl(int32 a) {
 	real32 AngleRateMix;
@@ -346,7 +343,7 @@ void DoRateControl(int32 a) {
 		AngleRateMix
 				= Limit(1.0f - (CurrMaxRollPitchStick / HorizonTransPoint), 0.0f, 1.0f);
 
-		C->O.Desired = Limit1(C->Control * AngleRateMix, C->O.Max);
+		C->O.Desired = Limit1(C->Control * MAGIC * AngleRateMix, C->O.Max);
 
 		C->O.E = C->O.Desired - C->Angle;
 
@@ -376,7 +373,7 @@ void DoAngleControl(int32 a) { // with Ming Liu
 
 	C = &A[a];
 
-	C->O.Desired = Limit1(C->Control, C->O.Max);
+	C->O.Desired = Limit1(C->Control * MAGIC, C->O.Max); // magic number zzz
 
 	//	if (UsingVTOLMode) {
 	//		// TODO: needs a transition - MORE THOUGHT
@@ -461,11 +458,8 @@ static void DoYawControlFW(void) {
 
 	if (F.YawActive) {
 		DesiredHeading = Heading;
-		KpScale = 1.0f;
-	} else if (NavState != PIC) {
+	} else if (NavState != PIC)
 		DesiredHeading = Nav.DesiredHeading;
-		KpScale = 1.0f;
-	}
 
 	C->O.E = HeadingE = MinimumTurn(DesiredHeading);
 	C->O.E = Limit1(C->O.E, NavHeadingTurnoutRad); // 150 30

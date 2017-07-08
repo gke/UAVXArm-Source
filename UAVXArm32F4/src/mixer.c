@@ -71,10 +71,12 @@ void DoMix(void) {
 #define OUT_MAX_SPOILER 0.3f // so we still have some aileron control left
 	real32 TempRudder, TempElevator, TempAileron, TempSpoilerFlaps;
 
-	PW[ThrottleC]
-			= NetThrottle
-					= ThrottleSuppressed ? 0.0f
-							: Limit((DesiredThrottle + AltComp) * OUT_MAXIMUM, 0.0f, 1.0f);
+	if (F.Bypass)
+		PW[ThrottleC] = DesiredThrottle;
+	else
+		PW[ThrottleC] = ThrottleSuppressed ? 0.0f : DesiredThrottle + AltComp;
+
+	NetThrottle = PW[ThrottleC] = Limit(PW[ThrottleC] * OUT_MAXIMUM, 0.0f, 1.0f);
 
 	switch (UAVXAirframe) {
 	case Heli120AF:

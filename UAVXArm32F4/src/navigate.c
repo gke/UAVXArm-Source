@@ -496,6 +496,7 @@ void CheckProximity(void) {
 			< NV.Mission.ProximityAltitude);
 } // CheckProximity
 
+
 void DecayPosCorr(void) {
 	static uint32 LastUpdateuS = 0;
 	real32 dT, Decay;
@@ -504,10 +505,11 @@ void DecayPosCorr(void) {
 	dT = dTUpdate(uSClock(), &LastUpdateuS);
 	Decay = NAV_CORR_DECAY;
 
-	for (a = Pitch; a <= Yaw; a++) {
+	for (a = NorthC; a <= EastC; a++)
+		Nav.C[a].Corr = Nav.C[a].CorrP = Nav.C[a].PosIntE = 0.0f;
+
+	for (a = Pitch; a <= Yaw; a++)
 		A[a].NavCorr = DecayX(A[a].NavCorr, Decay, dT);
-		Nav.C[a].CorrP = Nav.C[a].PosIntE = 0.0f;
-	}
 
 	F.WayPointAchieved = F.WayPointCentred = false;
 } // DecayPosCorr
@@ -641,25 +643,28 @@ void Navigate(WPStruct * W) {
 
 	CheckProximity();
 
-	if (IsFixedWing) {
+	if (Nav.Sensitivity > NAV_SENS_THRESHOLD_STICK)
+		if (IsFixedWing) {
 
-		A[Pitch].NavCorr = A[Yaw].NavCorr = 0.0f;
-		Nav.DesiredHeading = MakePi(Nav.WPBearing);
-		// control is by yaw rate in control.c
+			A[Pitch].NavCorr = A[Yaw].NavCorr = 0.0f;
+			Nav.DesiredHeading = MakePi(Nav.WPBearing);
+			// control is by yaw rate in control.c
 
-	} else {
+		} else {
 
-		NavYaw(W);
+			NavYaw(W);
 
-		VelScale[NorthC] = Abs(cosf(Nav.WPBearing));
-		VelScale[EastC] = Abs(sinf(Nav.WPBearing));
+			VelScale[NorthC] = Abs(cosf(Nav.WPBearing));
+			VelScale[EastC] = Abs(sinf(Nav.WPBearing));
 
-		NavPI_P();
+			NavPI_P();
 
-		Rotate(&A[Pitch].NavCorr, &A[Roll].NavCorr, -Nav.C[NorthC].Corr,
-				Nav.C[EastC].Corr, -Heading);
+			Rotate(&A[Pitch].NavCorr, &A[Roll].NavCorr, -Nav.C[NorthC].Corr,
+					Nav.C[EastC].Corr, -Heading);
 
-	}
+		}
+	else
+		DecayPosCorr();
 
 } // Navigate
 
@@ -676,7 +681,7 @@ void InitNavigation(void) {
 
 	ZeroNavCorrections();
 
-	Nav.Sensitivity = 0.5f;
+	Nav.Sensitivity = 1.0f;
 
 	Nav.Elevation = Nav.Bearing = Nav.Distance = Nav.TakeoffBearing
 			= Nav.WPDistance = Nav.WPBearing = Nav.CrossTrackE = 0.0f;

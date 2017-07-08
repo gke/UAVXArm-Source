@@ -214,8 +214,8 @@ enum Params { // MAX 64
 	MaxAttitudeAngle, // 77
 	TuneParamSel, // 78
 	NavHeadingTurnout, // 79
-	P80,
-	P81,
+	WS2812Leds, // 80
+	MinhAcc, // 81
 	P82,
 	P83,
 	P84,
@@ -241,10 +241,10 @@ typedef struct {
 // Config1
 #define UseInvertMagMask 		0x01
 #define	UseRTHDescendMask		(1<<1)
-#define UseExtLEDsMask 			(1<<2)
+#define UseManualAltHoldMask 	(1<<2)
 #define EmulationEnableMask		(1<<3)
 #define GPSToLaunchRequiredMask (1<<4)
-//#define	UnusedUseFailsafeMask			(1<<5)
+#define	UseGPSAltMask			(1<<5)
 #define	UseRapidDescentMask		(1<<6)
 
 // Config2

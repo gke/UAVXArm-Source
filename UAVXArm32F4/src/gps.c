@@ -48,6 +48,7 @@ const uint32 UBXGPSBaud = 115200; //230400;
 
 real32 GPSdT, GPSdTR;
 real32 GPSLag = 1.0f; // MTK 0.5 for UBlox
+real32 GPSMinhAcc = GPS_MIN_HACC;
 
 uint32 LastGPSUpdatemS = 0;
 
@@ -1354,7 +1355,7 @@ void ProcessGPSSentence(void) {
 			incStat(GPSInvalidS);
 	}
 
-	F.GPSFailure = (GPS.hAcc > GPS_MIN_HACC); // || (GPS.sAcc > GPS_MIN_SACC);
+	F.GPSFailure = (GPS.hAcc > GPSMinhAcc); // || (GPS.sAcc > GPS_MIN_SACC);
 
 } // ProcessGPSSentence
 

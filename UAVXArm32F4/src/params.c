@@ -89,9 +89,10 @@ void DoConfigBits(void) {
 	F.InvertMagnetometer = (P(Config1Bits) & UseInvertMagMask) != 0;
 	F.UsingRapidDescent = (P(Config1Bits) & UseRapidDescentMask) != 0;
 	F.Emulation = (P(Config1Bits) & EmulationEnableMask) != 0;
-	UsingExtLEDs = (P(Config1Bits) & UseExtLEDsMask) != 0;
+	F.UseManualAltHold = (P(Config1Bits) & UseManualAltHoldMask) != 0;
+	F.UsingGPSAltitude = (P(Config1Bits) & UseGPSAltMask) != 0;
+
 	// Config2
-	//  (P(Config2Bits) & UnusedMask_2_1) != 0;
 	UsingFastStart = (P(Config2Bits) & UseFastStartMask) != 0;
 	UsingBLHeliPrograming = (P(Config2Bits) & UseBLHeliMask) != 0;
 	UsingGliderStrategy = ((P(Config2Bits) & UseGliderStrategyMask) != 0)
@@ -138,7 +139,6 @@ void RegeneratePIDCoeffs(void) {
 	C->I.Kd = (real32) P(PitchRateKd) * IKd;
 
 	C->I.Max = DEFAULT_ROLLPITCH_RATE_RADPS;
-
 
 	// Yaw
 	C = &A[Yaw];
@@ -210,8 +210,8 @@ void UpdateParameters(void) {
 					|| (CurrTuningSel != P(TuneParamSel)) //
 					|| (CurrRFSensorType != P(RFSensorType)) //
 					|| (CurrASSensorType != P(ASSensorType)) //
-					|| (CurrGPSType != P(GPSProtocol))) //
-			{
+					|| (CurrGPSType != P(GPSProtocol)) //
+					|| (CurrwsNoOfLeds != P(WS2812Leds))) {
 				if ((P(Config2Bits) & UseConfigRebootMask) != 0)
 					NVIC_SystemReset();
 				else
@@ -235,7 +235,8 @@ void UpdateParameters(void) {
 
 		// Throttle
 
-		Temp = Limit((int16)P(PercentIdleThr),5 , 20);
+		Temp = Limit((int16)P(PercentIdleThr) ,0 ,20);
+		SetP(PercentIdleThr, Temp);
 		IdleThrottle = FromPercent(Temp);
 		IdleThrottlePW = FromPercent(Temp);
 
@@ -264,7 +265,8 @@ void UpdateParameters(void) {
 
 		if (P(NavHeadingTurnout) <= 0)
 			SetP(NavHeadingTurnout, RadiansToDegrees(DEFAULT_TURNOUT_RAD));
-		NavHeadingTurnoutRad = DegreesToRadians(Limit(P(NavHeadingTurnout), 10, 90));
+		NavHeadingTurnoutRad
+				= DegreesToRadians(Limit(P(NavHeadingTurnout), 10, 90));
 
 		MaxAttitudeAngleRad = DegreesToRadians(P(MaxAttitudeAngle));
 		FWMaxClimbAngleRad = DegreesToRadians(P(FWMaxClimbAngle));
@@ -303,6 +305,7 @@ void UpdateParameters(void) {
 		MinROCMPS = -(real32) P(MaxDescentRateDmpS) * 0.1f;
 
 		AccConfidenceSDevR = 1.0f / (Limit(P(AccConfSD), 0, 100) * 0.01f);
+		F.UsingGPSAltitude = F.UsingGPSAltitude  & IsFixedWing && ((CurrGPSType == UBXBinGPS) || ( CurrGPSType == UBXBinGPSInit));
 
 		// Nav
 
@@ -318,6 +321,12 @@ void UpdateParameters(void) {
 		 } else
 		 MagVariation = DegreesToRadians((real32)P(NavMagVar));
 		 */
+
+		if (P(MinhAcc) <= 0) {
+			GPSMinhAcc = GPS_MIN_HACC;
+			SetP(MinhAcc, GPS_MIN_HACC * 10.0f);
+		} else
+			GPSMinhAcc = P(MinhAcc) * 0.1f;
 
 		InitServoSense();
 		InitBattery();
@@ -610,8 +619,8 @@ void InitParameters(void) {
 	CurrPIDCycleuS = CurrESCType == ESCSyncPWM ? PID_SYNCPWM_CYCLE_US
 			: PID_CYCLE_US;
 
-	if (UsingExtLEDs)
-		wsInit();
+	CurrwsNoOfLeds = Limit(P(WS2812Leds), 0, MAX_WS2812_LEDS);
+	wsInit();
 
 	if (GPSRxSerial != TelemetrySerial)
 		InitGPS();

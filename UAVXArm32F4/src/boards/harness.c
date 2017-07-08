@@ -876,7 +876,7 @@ void InitRCComboPort(void) {
 		CurrMaxPWMOutputs = 4;
 
 #if defined(V4_BOARD)
-	if (UsingExtLEDs) // temporary KLUDGE - need to remap gimbal function
+	if (CurrwsNoOfLeds > 0) // temporary KLUDGE - need to remap gimbal function
 	CurrMaxPWMOutputs = 4;
 #endif
 	InitRCPins(CurrNoOfRCPins);

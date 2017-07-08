@@ -99,7 +99,7 @@ typedef union {
 	struct { // Order of these flags subject to change
 		uint8 // 0
 				AltControlEnabled :1,
-				UnusedNavSaturation :1,
+				UsingGPSAltitude :1,
 				RapidDescentHazard :1,
 				LostModel :1,
 				NearLevel :1,
@@ -135,7 +135,7 @@ typedef union {
 				MagnetometerLocked :1,
 				DrivesArmed :1,
 				NavigationActive :1,
-				Unused_3_7 :1,
+				UseManualAltHold :1,
 
 				// 4
 				Signal :1,

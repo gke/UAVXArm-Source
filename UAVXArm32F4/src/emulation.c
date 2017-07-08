@@ -188,8 +188,10 @@ void DoEmulation(void) {
 	GPS.C[NorthC].Raw = GPS.C[NorthC].OriginRaw + MToGPS(GPS.C[NorthC].Pos);
 
 	GPS.gspeed = sqrtf(Sqr(GPS.C[EastC].Vel) + Sqr(GPS.C[NorthC].Vel));
+	GPS.velD = -ROC;
 
 } // DoEmulation
+
 
 
 void GPSEmulation(void) {
@@ -211,7 +213,7 @@ void GPSEmulation(void) {
 		GPS.hDOP = 0.9f;
 		GPS.hAcc = GPS.hDOP * GPS_HDOP_TO_HACC;
 		GPS.sAcc = 1.0f;
-		F.GPSValid = F.GPSPacketReceived = true;
+		F.GPSValid = F.GPSPacketReceived = F.NewGPSPosition = true;
 	}
 
 } // GPSEmulation

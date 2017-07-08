@@ -70,6 +70,7 @@ real32 DesiredCamPitchTrim;
 real32 ThrLow, ThrHigh, ThrNeutral;
 real32 CurrMaxRollPitchStick;
 int8 RCStart;
+uint32 NextNavSwUpdatemS = 0;
 
 boolean RxLoopbackEnabled = false;
 
@@ -794,9 +795,17 @@ void CheckRxLoopback(void) {
 
 } // CheckRxLoopback
 
+boolean ActiveCh(uint8 r) {
+	return DiscoveredRCChannels > Map[r];
+} // ActiveCh
+
+boolean Triggered(uint8 r) {
+
+	return ActiveCh(r) && (RC[r] > FromPercent(70));
+
+} // Triggered
 
 void UpdateControls(void) {
-	boolean swState;
 
 	CheckRC();
 	if (F.RCNewValues) {
@@ -821,57 +830,38 @@ void UpdateControls(void) {
 
 		//_________________________________________________________________________________________
 
-		// Throttle
+		// Switch Processing
 
 		StickThrottle = RC[ThrottleRC];
 		F.ThrottleOpen = StickThrottle >= RC_THRES_START_STICK;
 
-		if (F.AltControlEnabled && (NavState != HoldingStation) && (NavState
-				!= PIC) && (NavState != Touchdown))
-			StickThrottle = CruiseThrottle;
+		F.Bypass = Triggered(BypassRC);
 
-		DesiredThrottle = StickThrottle;
-
-		if ((!F.HoldingAlt) && (!(F.Navigate || F.ReturnHome))) // override current altitude hold setting
-			DesiredAltitude = Altitude;
-
-		//_________________________________________________________________________________________
-
-		// Switch Processing
-
-		if (DiscoveredRCChannels > Map[RTHRC]) {
+		if (ActiveCh(RTHRC))
 			NavSwState = Limit((uint8)(RC[RTHRC] * 3.0f), NavSwLow, NavSwHigh);
-			UpdateRTHSwState();
-		} else
+		else {
+			NavSwState = NavSwLow;
 			F.ReturnHome = F.Navigate = F.NavigationEnabled
 					= F.NavigationActive = false;
+		}
 
-		if (DiscoveredRCChannels > Map[NavGainRC]) {
-			Nav.Sensitivity = 0.25f + RC[NavGainRC] * 0.75f;
-			Nav.Sensitivity = Limit(Nav.Sensitivity, 0.25f, 1.0f);
-		} else
-			Nav.Sensitivity = 1.0f;
+		UpdateRTHSwState();
 
-		DesiredCamPitchTrim
-				= DiscoveredRCChannels > Map[CamPitchRC] ? RC[CamPitchRC]
-						- RC_NEUTRAL : 0;
+		F.UsingRateControl = Triggered(RateControlRC) && (NavSwState
+				== NavSwLow);
 
-		F.UsingRateControl = (DiscoveredRCChannels > Map[RateControlRC])
-				&& (RC[RateControlRC] > FromPercent(70)) && !(F.ReturnHome
-				|| F.Navigate);
+		Nav.Sensitivity = ActiveCh(NavGainRC) ? RC[NavGainRC]
+				: 1.0f;
 
-		swState = (DiscoveredRCChannels > Map[BypassRC]) && (RC[BypassRC]
-				> FromPercent(70));
-
-		F.Bypass = (DiscoveredRCChannels <= Map[BypassRC]) ? false : swState;
+		DesiredCamPitchTrim = ActiveCh(CamPitchRC) ? RC[CamPitchRC]
+				- RC_NEUTRAL : 0;
 
 		TuningScale
-				= ((DiscoveredRCChannels > Map[TuneRC]) && Tuning) ? Limit(RC[TuneRC] + 0.5f, 0.5f, 1.5f)
+				= (ActiveCh(TuneRC) && Tuning) ? Limit(RC[TuneRC] + 0.5f, 0.5f, 1.5f)
 						: 1.0f;
 
-		UsingVTOLMode = (DiscoveredRCChannels > Map[TransitionRC])
-				&& (RC[TransitionRC] > FromPercent(70)) && (UAVXAirframe
-				== VTOLAF);
+		UsingVTOLMode = Triggered(TransitionRC) && (UAVXAirframe == VTOLAF);
+
 		//_________________________________________________________________________________________
 
 		// Rx has gone to failsafe
