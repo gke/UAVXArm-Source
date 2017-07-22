@@ -210,7 +210,7 @@ void UpdateRTHSwState(void) { // called in rc.c on every rx packet
 		if ((!F.HoldingAlt) && !(F.Navigate || F.ReturnHome))
 			DesiredAltitude = Altitude;
 
-		if (!((NavState == HoldingStation) || (NavState == PIC) || (NavState
+		if (F.AltControlEnabled && !((NavState == HoldingStation) || (NavState == PIC) || (NavState
 				== Touchdown)))
 			StickThrottle = CruiseThrottle;
 	}

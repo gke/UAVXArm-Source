@@ -41,7 +41,6 @@ __attribute__((always_inline))     inline int16 currStat(uint8 s) {
 
 void ZeroStats(void) {
 	uint16 s;
-	int32 a;
 
 	for (s = 0; s < MAX_STATS; s++)
 		NV.Stats[s] = 0;
@@ -52,11 +51,6 @@ void ZeroStats(void) {
 	setStat(MaxROCS, 0);
 	setStat(GPSMinSatsS, INIT_MIN);
 	setStat(GPSMaxSatsS, 0);
-
-	for (s = 0; s < MAG_MAX_HIST; s++)
-		for (a = 0; a < 4; a++)
-			NV.MagCal.Stats[s][a] = 0;
-	MagSample = 0;
 
 } // ZeroStats
 

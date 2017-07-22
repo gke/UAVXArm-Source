@@ -23,7 +23,7 @@
 #define _telemetry_h
 
 enum MiscComms {
-	miscCalIMU, miscCalMag, miscLB, miscUnused, miscBBDump, miscGPSBypass
+	miscCalIMU, miscCalMag, miscLB, miscUnused, miscBBDump, miscGPSBypass, miscCalAcc, miscCalGyro
 };
 
 enum PacketTags {

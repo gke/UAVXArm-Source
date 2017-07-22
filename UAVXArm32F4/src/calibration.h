@@ -19,24 +19,21 @@
 //    If not, see http://www.gnu.org/licenses/
 
 
-#ifndef _alarms_h
-#define _alarms_h
+#ifndef _calibration_h
+#define _calibration_h
 
-void Probe(uint8);
-void Marker(void);
+#define ACC_CAL_CYCLES 400
+#define ACC_CAL_SPHERE_CYCLES 150
+#define MAG_CAL_CYCLES 400
 
-boolean Armed();
-boolean FailPreflight(void);
-void DoBeep(uint8, uint8);
-void DoBeeps(uint8);
-void DoCalibrationAlarm(void);
-void CheckAlarms(void);
-void Catastrophe(void);
-boolean UpsideDownMulticopter(void);
+uint16 SphereFit(real32 d[][3], uint16 N, uint16 MaxIterations,
+		real32 Err, real32 SphereOrigin[3],
+		real32 *SphereRadius);
 
-extern boolean FirstPass;
-extern uint8 ArmingMethod;
+int8 getCurrDir(real32 s[3]);
+
+void CalibrateAccSixPoint(uint8 s);
+void CalibrateAccSixPointSphere(uint8 s);
 
 #endif
-
 

@@ -39,7 +39,7 @@ const real32 GyroScale[] = { //
 				0.001064225154f, // FreeIMU
 				0.001064225154f };
 
-const real32 AccScale = GRAVITY_MPS_S / MPU_1G;
+real32 AccScale[3] = { GRAVITY_MPS_S / MPU_1G, GRAVITY_MPS_S / MPU_1G, GRAVITY_MPS_S / MPU_1G};
 
 uint8 CurrAttSensorType = UAVXArm32IMU;
 boolean UsingInvertedBoard = false;
@@ -69,9 +69,9 @@ void GetIMU(void) {
 		// TODO: bias and scale from where? track max min with decay???
 
 	} else {
-		Acc[BF] = (RawAcc[Y] - AccBias[Y]) * AccScale;
-		Acc[LR] = (RawAcc[X] - AccBias[X]) * AccScale;
-		Acc[UD] = -(RawAcc[Z] - AccBias[Z]) * AccScale;
+		Acc[BF] = (RawAcc[Y] - AccBias[Y]) * AccScale[Y];
+		Acc[LR] = (RawAcc[X] - AccBias[X]) * AccScale[X];
+		Acc[UD] = -(RawAcc[Z] - AccBias[Z]) * AccScale[Z];
 	}
 
 	F.IMUFailure = !F.IMUCalibrated;
@@ -163,7 +163,9 @@ void InitIMU(void) {
 	for (a = X; a <= Z; a++)
 		r &= NV.AccCal.C[a] == 0.0f;
 
-	F.IMUCalibrated = !r;
+	F.AccCalibrated = F.IMUCalibrated = !r;
 
 } // InitIMU
+
+
 

@@ -55,7 +55,7 @@ extern const real32 MPUSign[];
 
 extern real32 AccBias[];
 extern real32 GyroBias[];
-extern const real32 AccScale;
+extern real32 AccScale[];
 extern const real32 GyroScale[];
 extern uint8 CurrAttSensorType;
 extern boolean UsingInvertedBoard;

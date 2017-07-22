@@ -58,9 +58,7 @@
 #define MAG_MAX_SLEW_RAD_S  (DegreesToRadians(720.0f))
 #define COMPASS_TIME_MS		50			// 20Hz
 
-#define MAG_HALF_HIST (MAG_MAX_HIST>>1)
-#define MAG_MAX_SAMPLES 1000
-#define MAG_MAX_HIST_SAMPLES 100
+#define MAG_MAX_SAMPLES (8*50) // must be divisible by 8
 
 #define ALT_UPDATE_HZ 20
 #define ALT_UPDATE_MS (1000/ALT_UPDATE_HZ)
@@ -122,6 +120,7 @@
 #define NAV_ALT_THRESHOLD_STICK FromPercent(10)// No Alt Hold if Ch7 is less than this
 
 #define NAV_ATTITUDE_SLEW_RAD_S DegreesToRadians(20)
+#define NAV_FW_ATTITUDE_SLEW_RAD_S DegreesToRadians(20)
 #define NAV_YAW_MAX_SLEW_RAD_S DegreesToRadians(60)
 
 #define NAV_LAND_M 5.0f // altitude below which motor shutoff armed for autoland

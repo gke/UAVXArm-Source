@@ -775,9 +775,7 @@ void ReceiverTest(uint8 s) {
 
 void ShowStat(uint8 s) {
 	int32 a;
-#if defined(INC_MAG_HIST)
-	uint16 h;
-#endif // INC_MAG_HIST
+
 	TxString(s, "\r\nFlight Stats\r\n");
 
 	if (currStat(BadS) != 0) {
@@ -868,27 +866,6 @@ void ShowStat(uint8 s) {
 	else
 		TxString(s, "Nav DISABLED (No fix at launch)\r\n");
 
-#if defined(INC_MAG_HIST)
-	TxString(s, "\r\nMag Offset Hist\r\n");
-	TxString(s, "\r\n\tX\t\tY\t\tZ\t\tMag\r\n");
-	for (h = 0; h < MAG_MAX_HIST; h++) {
-		TxChar(s, ASCII_HT);
-		for (a = X; a <= Z; a++) {
-			TxVal32(s, (int16) NV.MagCal.Bias[a] + h - MAG_HALF_HIST, 0,
-					ASCII_HT);
-			if (NV.MagCal.Stats[h][a] != 0)
-				TxVal32(s, (int32) NV.MagCal.Stats[h][a], 0, ASCII_HT);
-			else
-				TxChar(s, ASCII_HT);
-		}
-		TxVal32(s, (int16) NV.MagCal.Magnitude + h - MAG_HALF_HIST, 0, ASCII_HT);
-		if (NV.MagCal.Stats[h][3] != 0)
-			TxVal32(s, (int32) NV.MagCal.Stats[h][3], 0, ASCII_HT);
-		else
-			TxChar(s, ASCII_HT);
-		TxNextLine(s);
-	}
-#endif // INC_MAG_HIST
 } // ShowStats
 
 

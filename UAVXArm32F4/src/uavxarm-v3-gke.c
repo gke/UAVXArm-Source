@@ -223,7 +223,7 @@ int main() {
 				CheckInitEmulation();
 				InitNavigation();
 
-				if (F.UsingAnalogGyros || !UsingFastStart) // most do as we don't have temperature drift compensation
+				if (F.UsingAnalogGyros || !UsingFastStart)
 					ErectGyros(5);
 
 				ZeroStats();
@@ -361,27 +361,25 @@ int main() {
 						F.NewNavUpdate = false;
 				} else {
 
-					DoNavigation();
-					if (StillFlying()) {
-						if ((StickThrottle < IdleThrottle)
-								&& (IsMulticopter || ((ArmingMethod
-										== SwitchArming) && !Armed()))) {
-							ZeroThrottleCompensation();
-							mSTimer(mSClock(), ThrottleIdleTimeout,
-									THR_LOW_DELAY_MS);
-							State = Landing;
-						} else { // fixed wing so no exit when using roll/yaw stick arming
+					// no exit for fixed wing when using roll/yaw stick arming
 
+					if ((StickThrottle < IdleThrottle) && (IsMulticopter
+							|| ((ArmingMethod == SwitchArming) && !Armed()))) {
+						ZeroThrottleCompensation();
+						mSTimer(mSClock(), ThrottleIdleTimeout,
+								THR_LOW_DELAY_MS);
+						State = Landing;
+					} else {
+						if (UpsideDownMulticopter())
+							InitiateShutdown(Touchdown);
+						else {
 							RateEnergySum
 									+= Sqr(Abs(Rate[X]) + Abs(Rate[Y]) + Abs(Rate[Z]));
 							RateEnergySamples++;
 							DFT8(RawAcc[X], DFT); // 145uS
-							UpdateMagHist(); // ~1uS?
 							DoAltitudeControl();
 						}
-					} else
-						// roll/pitch > 90deg for more than a second! => kill motors
-						InitiateShutdown(PIC);
+					}
 				}
 
 				break;

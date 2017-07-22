@@ -59,7 +59,7 @@ typedef struct {
 	// stats
 	real32 RateD, RateDp;
 	HistStruct RateF, RateDF;
-	real32 Control, NavCorr;
+	real32 Control, NavCorr, NavCorrP;
 	real32 Out;
 } AxisStruct;
 
@@ -95,7 +95,7 @@ real32 OrientationRad, OrientS, OrientC;
 
 real32 NavHeadingTurnoutRad, FWRollPitchFFFrac, FWAileronDifferentialFrac,
 		FWPitchThrottleFFFrac, MaxAltHoldCompFrac, FWMaxClimbAngleRad, MaxRollAngleRad,
-		FWGlideAngleOffsetRad, FWFlapDecayS, BestROCMPS;
+		FWGlideAngleOffsetRad, FWBoardPitchAngleRad, FWFlapDecayS, BestROCMPS;
 
 real32 GS;
 

@@ -506,10 +506,10 @@ void DecayPosCorr(void) {
 	Decay = NAV_CORR_DECAY;
 
 	for (a = NorthC; a <= EastC; a++)
-		Nav.C[a].Corr = Nav.C[a].CorrP = Nav.C[a].PosIntE = 0.0f;
+		Nav.C[a].Corr = Nav.C[a].PosIntE = 0.0f;
 
 	for (a = Pitch; a <= Yaw; a++)
-		A[a].NavCorr = DecayX(A[a].NavCorr, Decay, dT);
+		A[a].NavCorr = A[a].NavCorrP = DecayX(A[a].NavCorr, Decay, dT);
 
 	F.WayPointAchieved = F.WayPointCentred = false;
 } // DecayPosCorr
@@ -613,17 +613,13 @@ void NavPI_P(void) {
 		Pvel = Nav.C[a].VelE * Nav.I.Kp * Nav.Sensitivity;
 		Nav.C[a].Corr = Pvel;
 
-		Nav.C[a].Corr = Limit1(Nav.C[a].Corr, Nav.MaxAngle);
-
-		Nav.C[a].Corr = SlewLimit(Nav.C[a].CorrP, Nav.C[a].Corr,
-				NAV_ATTITUDE_SLEW_RAD_S, NavdT);
-		Nav.C[a].CorrP = Nav.C[a].Corr;
 	}
 
 } // NavPI_P
 
 
 void Navigate(WPStruct * W) {
+	uint8 a;
 
 	NavdT = dTUpdate(uSClock(), &LastNavUpdateuS);
 	NavdTR = 1.0f / NavdT;
@@ -643,12 +639,19 @@ void Navigate(WPStruct * W) {
 
 	CheckProximity();
 
-	if (Nav.Sensitivity > NAV_SENS_THRESHOLD_STICK)
+	if ((State == InFlight) && (Nav.Sensitivity > NAV_SENS_THRESHOLD_STICK))
 		if (IsFixedWing) {
 
 			A[Pitch].NavCorr = A[Yaw].NavCorr = 0.0f;
 			Nav.DesiredHeading = MakePi(Nav.WPBearing);
-			// control is by yaw rate in control.c
+
+			A[Roll].NavCorr = atanf(Nav.DesiredHeading * Airspeed * GRAVITY_MPS_S_R
+					* Nav.Sensitivity);
+
+			A[Roll].NavCorr = Limit1(A[Roll].NavCorr, Nav.MaxAngle);
+			A[Roll].NavCorr = SlewLimit(A[Roll].NavCorrP, A[Roll].NavCorr,
+					Nav.AttitudeSlewRate, NavdT);
+			A[Roll].NavCorrP = A[Roll].NavCorr;
 
 		} else {
 
@@ -662,6 +665,14 @@ void Navigate(WPStruct * W) {
 			Rotate(&A[Pitch].NavCorr, &A[Roll].NavCorr, -Nav.C[NorthC].Corr,
 					Nav.C[EastC].Corr, -Heading);
 
+			for (a = Pitch; a <= Roll; a++) {
+				A[a].NavCorr = Limit1(A[a].NavCorr, Nav.MaxAngle);
+
+				A[a].NavCorr = SlewLimit(A[a].NavCorrP, A[a].NavCorr,
+						Nav.AttitudeSlewRate, NavdT);
+				A[a].NavCorrP = A[a].NavCorr;
+			}
+
 		}
 	else
 		DecayPosCorr();
@@ -672,7 +683,10 @@ void ZeroNavCorrections(void) {
 	uint8 a;
 
 	for (a = Pitch; a <= Yaw; a++)
-		A[a].NavCorr = Nav.C[a].CorrP = Nav.C[a].PosIntE = 0.0f;
+		A[a].NavCorr = A[a].NavCorrP = 0.0f;
+
+	for (a = NorthC; a <= EastC; a++)
+		Nav.C[a].Corr = 0.0f;
 } // ZeroNavCorrections
 
 void InitNavigation(void) {

@@ -216,7 +216,7 @@ enum Params { // MAX 64
 	NavHeadingTurnout, // 79
 	WS2812Leds, // 80
 	MinhAcc, // 81
-	P82,
+	FWBoardPitchAngle, // 82,
 	P83,
 	P84,
 	P85,

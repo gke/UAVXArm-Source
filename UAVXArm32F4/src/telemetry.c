@@ -456,7 +456,7 @@ void SendFusionPacket(uint8 s) {
 	TxESCi16(s, FROC * 100.0f);
 	TxESCi16(s, NV.AccCal.DynamicAccBias[Z] * 1000.0f);
 
-	TxESCi16(s, RateEnergySum / (real32) RateEnergySamples);
+	TxESCi16(s, Limit((100.0 * RateEnergySum) / (real32) RateEnergySamples, 0, 32000));
 	TxESCi16(s, RadiansToDegrees(FWGlideAngleOffsetRad) * 10.0f);
 	TxESCi16(s, NewParameterTuning);
 
@@ -480,8 +480,8 @@ void SendCalibrationPacket(uint8 s) {
 		TxESCi16(s, RadiansToDegrees(NV.GyroCal.C[a])
 				* GyroScale[CurrAttSensorType] * 1000.0f);
 
-		TxESCi16(s, NV.AccCal.M[a] * 1000.0f * AccScale * GRAVITY_MPS_S_R);
-		TxESCi16(s, NV.AccCal.C[a] * 1000.0f * AccScale * GRAVITY_MPS_S_R);
+		TxESCi16(s, NV.AccCal.M[a] * 1000.0f * AccScale[a] * GRAVITY_MPS_S_R);
+		TxESCi16(s, NV.AccCal.C[a] * 1000.0f * AccScale[a] * GRAVITY_MPS_S_R);
 
 		TxESCi16(s, NV.MagCal.Scale[a] * 1000.0f);
 		TxESCi16(s, NV.MagCal.Bias[a] * 1000.0f);
@@ -591,7 +591,7 @@ void SendDFTPacket(uint8 s) {
 
 	TxESCi16(s, 1000000 / CurrPIDCycleuS);
 	for (i = 0; i < 8; i++)
-		TxESCi16(s, DFT[i] * AccScale * GRAVITY_MPS_S_R * 1000.0);
+		TxESCi16(s, DFT[i] * 1000.0 / MPU_1G);
 
 	SendPacketTrailer(s);
 #endif
@@ -944,6 +944,14 @@ void ProcessRxPacket(uint8 s) {
 			switch (UAVXPacket[3]) {
 			case miscCalIMU:
 				CalibrateAccAndGyro(s);
+				SendCalibrationPacket(s);
+				break;
+			case miscCalAcc:
+#if defined(CLASSIC_6_POINT_ACC_CAL)
+				CalibrateAccSixPoint(s);
+#else
+				CalibrateAccSixPointSphere(s);
+#endif
 				SendCalibrationPacket(s);
 				break;
 			case miscCalMag:

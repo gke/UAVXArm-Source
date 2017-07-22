@@ -51,7 +51,7 @@ int8 BeepTick = 0;
 
 real32 NavHeadingTurnoutRad, FWRollPitchFFFrac, FWAileronDifferentialFrac,
 		FWPitchThrottleFFFrac, MaxAltHoldCompFrac, MaxAttitudeAngleRad,
-		FWMaxClimbAngleRad, FWFlapDecayS, BestROCMPS;
+		FWMaxClimbAngleRad, FWBoardPitchAngleRad, FWFlapDecayS, BestROCMPS;
 real32 FWGlideAngleOffsetRad = 0.0f;
 
 void ZeroThrottleCompensation(void) {
@@ -287,27 +287,6 @@ void DoAltitudeControl(void) {
 } // DoAltitudeControl
 
 
-void DetermineControl(void) {
-
-	A[Pitch].Control = Threshold(A[Pitch].Stick, THRESHOLD_STICK)
-			* MaxAttitudeAngleRad;
-	A[Roll].Control = Threshold(A[Roll].Stick, THRESHOLD_STICK)
-			* MaxAttitudeAngleRad;
-	A[Yaw].Control = Threshold(A[Yaw].Stick, THRESHOLD_STICK)
-			* YawStickScaleRadPS;
-
-	F.YawActive = IsFixedWing ? Max(Abs(A[Roll].Control), Abs(A[Yaw].Control))
-			> YawStickThreshold : Abs(A[Yaw].Control) > YawStickThreshold;
-
-	if (F.NavigationEnabled) {
-		A[Pitch].Control += A[Pitch].NavCorr;
-		A[Roll].Control += A[Roll].NavCorr;
-		// not used A[Yaw].Control += A[Yaw].NavCorr;
-	}
-
-} // DetermineControl
-
-
 real32 ComputeRateDerivative(AxisStruct *C) {
 	real32 r;
 
@@ -338,6 +317,9 @@ void DoRateControl(int32 a) {
 
 	C = &A[a];
 
+	C->Control = Threshold(C->Stick, THRESHOLD_STICK) * MaxAttitudeAngleRad
+			+ C->NavCorr;
+
 	if (P(Horizon) > 0) { // hybrid that panics back to angle when sticks centred
 
 		AngleRateMix
@@ -345,7 +327,10 @@ void DoRateControl(int32 a) {
 
 		C->O.Desired = Limit1(C->Control * MAGIC * AngleRateMix, C->O.Max);
 
+		if (IsFixedWing && (a == Pitch))  C->O.Desired += FWBoardPitchAngleRad;
+
 		C->O.E = C->O.Desired - C->Angle;
+
 
 		Pa = C->O.E * C->O.Kp;
 		C->O.IntE = 0.0f; // for flip back to angle mode
@@ -373,16 +358,20 @@ void DoAngleControl(int32 a) { // with Ming Liu
 
 	C = &A[a];
 
-	C->O.Desired = Limit1(C->Control * MAGIC, C->O.Max); // magic number zzz
+	C->Control = Threshold(C->Stick, THRESHOLD_STICK) * MaxAttitudeAngleRad;
+
+	C->O.Desired = Limit1(C->Control * MAGIC + C->NavCorr, C->O.Max); // magic number zzz
 
 	//	if (UsingVTOLMode) {
 	//		// TODO: needs a transition - MORE THOUGHT
 	//		C->O.E = C->O.Desired - (C->Angle - DegreesToRadians(90));
 	//	} else
+
+	if (IsFixedWing && (a == Pitch)) C->O.Desired += FWBoardPitchAngleRad;
+
 	C->O.E = C->O.Desired - C->Angle;
 
 	if (false) { //UsingSpecial) {
-
 		Pa = C->O.E * C->O.Kp;
 
 		C->O.IntE += C->O.E * C->O.Ki * dT;
@@ -396,9 +385,7 @@ void DoAngleControl(int32 a) { // with Ming Liu
 			C->O.IntE = S * (Abs(C->O.IntE) - Windup);
 			C->I.Desired = S * C->I.Max;
 		}
-
 	} else {
-
 		Pa = C->O.E * C->O.Kp;
 
 		C->O.IntE += C->O.E * C->O.Ki * dT;
@@ -406,7 +393,6 @@ void DoAngleControl(int32 a) { // with Ming Liu
 		Ia = C->O.IntE;
 
 		C->I.Desired = Limit1(Pa + Ia, C->I.Max);
-
 	}
 
 	C->I.E = Rate[a] - C->I.Desired;
@@ -448,36 +434,38 @@ real32 MinimumTurn(real32 Desired) {
 
 } // MinimumTurn
 
-static void DoYawControlFW(void) {
+
+static void DoRudderControl(void) {
 	real32 Pa, Pr;
-	static real32 KpScale = 1.0f;
-	real32 NewRollCorr;
 	AxisStruct *C;
+	static real32 FWKpScale = 0.1f;
+
+	// TODO: needs a lot more thought e.g. rudder elevator basically coordination
 
 	C = &A[Yaw];
 
-	if (F.YawActive) {
+	C->Control = Threshold(C->Stick, THRESHOLD_STICK) * YawStickScaleRadPS;
+
+	F.YawActive = (Abs(C->Control) > YawStickThreshold)
+			|| (Abs(A[Roll].Control) > YawStickThreshold);
+	if (F.YawActive)
 		DesiredHeading = Heading;
-	} else if (NavState != PIC)
+	else if (NavState != PIC)
 		DesiredHeading = Nav.DesiredHeading;
 
 	C->O.E = HeadingE = MinimumTurn(DesiredHeading);
-	C->O.E = Limit1(C->O.E, NavHeadingTurnoutRad); // 150 30
+	C->O.E = Limit1(C->O.E, NavHeadingTurnoutRad);
 
-	Pa = C->O.E * C->O.Kp * 0.1f * KpScale; //60deg * 20 * 0.1 * 0.8 -> 12
+	Pa = C->O.E * C->O.Kp * FWKpScale;
 
-	C->I.Desired = Pa;
+	C->I.Desired = Limit1(Pa, C->I.Max);
 
 	C->I.E = (C->I.Desired + C->Control) - Rate[Yaw];
 	Pr = C->I.E * C->I.Kp;
 
-	C->Out = Limit1(Pr, 1.0); // needs to be driven by LR acc
+	C->Out = Limit1(Pr, 1.0f);
 
-	NewRollCorr = atanf(C->I.Desired * Airspeed * GRAVITY_MPS_S_R);
-	A[Roll].NavCorr = Limit1(NewRollCorr, Nav.MaxAngle);
-
-} // DoYawControlFW
-
+} // DoRudderControl
 
 static void DoYawControl(void) {
 	real32 Pa, Pr;
@@ -485,33 +473,26 @@ static void DoYawControl(void) {
 
 	C = &A[Yaw];
 
-	if (F.UsingRateControl) {
+	C->Control = Threshold(C->Stick, THRESHOLD_STICK) * YawStickScaleRadPS;
 
-		C->I.Desired = Limit1(C->Control, C->I.Max);
-		C->I.E = C->I.Desired - Rate[Yaw];
-		Pr = C->I.E * C->I.Kp;
+	F.YawActive = Abs(C->Control) > YawStickThreshold;
 
-		C->Out = Limit1(Pr, 1.0);
+	if (F.YawActive)
+		DesiredHeading = Heading;
+	else if (F.OrbitingWP || F.RapidDescentHazard || F.UsingPOI)
+		DesiredHeading = Nav.DesiredHeading;
 
-	} else {
+	C->O.E = HeadingE = MinimumTurn(DesiredHeading);
+	C->O.E = Limit1(C->O.E, NavHeadingTurnoutRad);
 
-		if (F.YawActive)
-			DesiredHeading = Heading;
-		else if (F.OrbitingWP || F.RapidDescentHazard || F.UsingPOI)
-			DesiredHeading = Nav.DesiredHeading;
+	Pa = C->O.E * C->O.Kp;
 
-		C->O.E = HeadingE = MinimumTurn(DesiredHeading);
-		C->O.E = Limit1(C->O.E, NavHeadingTurnoutRad);
+	C->I.Desired = Limit1(Pa, C->I.Max);
 
-		Pa = C->O.E * C->O.Kp;
+	C->I.E = (C->I.Desired + C->Control) - Rate[Yaw];
+	Pr = C->I.E * C->I.Kp;
 
-		C->I.Desired = Limit1(Pa, C->I.Max);
-
-		C->I.E = (C->I.Desired + C->Control) - Rate[Yaw];
-		Pr = C->I.E * C->I.Kp;
-
-		C->Out = Limit1(Pr, 1.0f);
-	}
+	C->Out = Limit1(Pr, 1.0f);
 
 } // DoYawControl
 
@@ -525,10 +506,8 @@ void DoControl(void) {
 	//CalcTiltThrFFComp();
 	//CalcBattThrComp();
 
-	DetermineControl();
-
 	if (IsFixedWing)
-		DoYawControlFW(); // must do first for fixed wing turn coordination
+		DoRudderControl();
 	else
 		DoYawControl();
 
@@ -558,6 +537,7 @@ void InitControl(void) {
 		C->I.Dp = 0.0f;
 
 		C->NavCorr = 0.0f;
+		C->NavCorrP = 0.0f;
 		C->RateF.Primed = false;
 		C->RateDF.Primed = false;
 
@@ -567,6 +547,7 @@ void InitControl(void) {
 	Acc[Z] = -GRAVITY_MPS_S;
 
 } // InitControl
+
 
 //#define MATRIXPILOT
 
@@ -665,7 +646,7 @@ static real32 relativeLoading;
 // It is better to compute the lift as a feed forward term.
 // It can be shown that wing lift divided by mass times gravity during a helical turn is
 // equal to (Z + X * (X/Z)), where X, Y, and Z are the 3 elements
-// of the bottom row of the direction cosine matrix, in real (floating point) values.
+// of the bottom row of the direction cosine matrix, in real (real32ing point) values.
 // Note: In principle, X/Z can be computed from X and Z, but since X, Z, and X/Z are already available
 // in the helical turn control computations, it is more efficient to supply X/Z rather than recompute it.
 // The computation of lift can use a mix of actual and desired values of X, Z and X/Z.

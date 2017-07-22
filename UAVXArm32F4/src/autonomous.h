@@ -30,7 +30,7 @@ typedef struct {
 	real32 Acc;
 	real32 DesPos, Pos, PosE, PosIntE;
 	real32 DesVel, Vel, VelE;
-	real32 Corr, CorrP;
+	real32 Corr;
 } NavCoordStruct;
 
 typedef struct {
@@ -53,6 +53,7 @@ typedef struct {
 
 	real32 MaxVelocity;
 	real32 MaxAngle;
+	real32 AttitudeSlewRate;
 	real32 YawKp;
 } NavStruct;
 

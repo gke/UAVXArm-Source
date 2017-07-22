@@ -26,6 +26,8 @@
 
 #define MAX_BLHELI_ESCS 4
 
+#define CLASSIC_6_POINT_ACC_CAL
+
 //#define USE_ATT_BATT_COMP
 
 #define CHECK_INVERTED
@@ -40,17 +42,11 @@
 //#define USE_WS2812B
 
 #define INC_DFT
-//#define INC_MAG_HIST
 //#define INC_STATS_TEL
 #define INC_RC_TEL
 
-//#define TUNE_TAU
-//#define TUNE_RLS
-//#define TUNE_ZN
-//#define TUNE_GAIN for tuning PID parameters specifically alt hold but could be generalised
-
 #define INC_BARO_FULL_MATH
-//#define USE_NEWTON_SPHERE
+
 #endif
 
 #define VOLT_MEASUREMENT_ONBOARD
@@ -59,8 +55,6 @@
 #define AILERON_DIFF 0 // 100 is NO down deflection
 
 #define HAVE_CURRENT_SENSOR
-
-#define UUU
 
 //__________________
 
@@ -124,6 +118,7 @@
 #include "altitude.h"
 #include "battery.h"
 #include "blackbox.h"
+#include "calibration.h"
 #include "clocks.h"
 #include "control.h"
 #include "autonomous.h"

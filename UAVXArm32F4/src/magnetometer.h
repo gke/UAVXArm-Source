@@ -22,17 +22,15 @@
 #ifndef _magnetometer_h
 #define _magnetometer_h
 
-#define MAG_MAX_HIST 31
-
 typedef struct {
 	real32 Magnitude;
 	real32 Scale[3];
 	real32 Bias[3];
 
-	real32 Max[3], Min[3], Bias2[3], Scale2[3];
+	//real32 Max[3], Min[3], Bias2[3], Scale2[3];
 
 	uint16 Population[2][3];
-	uint16 Stats[MAG_MAX_HIST][4];
+	uint16 UnusedMagStats[128];
 } MagCalStruct;
 
 extern int16 RawMag[];
@@ -59,10 +57,6 @@ boolean MagnetometerIsActive(void);
 
 void WriteMagCalNV(void);
 void UpdateMagHist(void);
-
-uint16 SphereFit(real32 d[][3], uint16 N, uint16 MaxIterations,
-		real32 Err, uint16 Population[][3], real32 SphereOrigin[3],
-		real32 *SphereRadius);
 
 extern real32 MagVariation, MagVariationWMM2010;
 extern real32 MagLockE, MagHeading, DesiredHeading, Heading,

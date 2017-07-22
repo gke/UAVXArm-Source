@@ -270,6 +270,7 @@ void UpdateParameters(void) {
 
 		MaxAttitudeAngleRad = DegreesToRadians(P(MaxAttitudeAngle));
 		FWMaxClimbAngleRad = DegreesToRadians(P(FWMaxClimbAngle));
+		FWBoardPitchAngleRad = DegreesToRadians(P(FWBoardPitchAngle));
 
 		RollPitchStickScaleRadPS
 				= Limit(P(StickScaleRollPitch) * 0.1f, 0.25f, 4.0f)
@@ -311,6 +312,10 @@ void UpdateParameters(void) {
 
 		Nav.MaxAngle = DegreesToRadians(P(NavMaxAngle));
 		Nav.CrossTrackKp = P(NavCrossTrackKp) * 0.01f;
+
+		Nav.AttitudeSlewRate = IsFixedWing ? NAV_FW_ATTITUDE_SLEW_RAD_S
+				: NAV_ATTITUDE_SLEW_RAD_S;
+
 
 		Nav.FenceRadius = NAV_DEFAULT_FENCE_M; // TODO: from Default Mission
 
@@ -565,6 +570,9 @@ void InitParameters(void) {
 
 	NV.CurrPS = 0; // zzz force it
 
+
+	ClassifyAFType(P(AFType));
+
 	// must have these
 	CurrStateEst = P(StateEst);
 	ArmingMethod = P(ArmingMode);
@@ -584,8 +592,6 @@ void InitParameters(void) {
 		SetP(ESCType, PWMDAC);
 		CurrESCType = PWMDAC;
 	}
-
-	ClassifyAFType(P(AFType));
 
 	DoConfigBits();
 

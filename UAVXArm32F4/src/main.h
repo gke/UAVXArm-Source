@@ -155,7 +155,7 @@ typedef union {
 				NewAltitudeValue :1,
 				IMUCalibrated :1,
 				CrossTrackActive :1,
-				Unused_5_7 :1,
+				AccCalibrated :1,
 
 				// 6
 				NewBaroValue :1,

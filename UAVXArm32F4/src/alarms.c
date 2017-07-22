@@ -169,27 +169,24 @@ void Catastrophe(void) {
 } // Catastrophe
 
 
-boolean StillFlying(void) {
-	static real32 CrashAltitude = -100.0f;
-	static boolean Flying;
+boolean UpsideDownMulticopter(void) {
+	static boolean UpsideDown;
 
-	Flying = true;
+	UpsideDown = false;
 
 	if (IsMulticopter) {
 		if ((Abs(A[Roll].Angle) < CRASHED_ANGLE_RAD) && (Abs(A[Pitch].Angle)
-				< CRASHED_ANGLE_RAD)) {
+				< CRASHED_ANGLE_RAD))
 			mSTimer(mSClock(), CrashedTimeout, CRASHED_TIMEOUT_MS);
-			CrashAltitude = Altitude;
-		} else {
-			if ((mSClock() > mS[CrashedTimeout])
-					&& (Abs(CrashAltitude - Altitude) < 0.5f)
-					&& (DesiredThrottle > IdleThrottle) && !F.UsingRateControl)
-				Flying = false;
+		else {
+			if ((mSClock() > mS[CrashedTimeout]) && (DesiredThrottle
+					> IdleThrottle) && !F.UsingRateControl)
+				UpsideDown = true;
 		}
 	}
 
-	return (Flying);
+	return (UpsideDown);
 
-} // StillFlying
+} // UpsideDownMulticopter
 
 

@@ -127,10 +127,11 @@ const ParamStruct_t
 						{ PercentIdleThr, { 10, 7, 0, 0 } }, //  23c
 
 						// Fixed Wing
-						{ FWMaxClimbAngle, { 60, 60, 15, 15 } }, // 68
+						{ FWMaxClimbAngle, { 60, 60, 15, 15 } }, // deg. 68
 						{ FWRollPitchFF, { 0, 0, 25, 25 } }, //  % 65
 						{ FWPitchThrottleFF, { 0, 0, 10, 10 } }, //  % 66
 						{ FWAileronDifferential, { 0, 0, 30, 0 } }, //  % 71
+						{ FWBoardPitchAngle, { 0, 0, 5, 5 } }, // deg. 82,
 
 						{ FWFlapDecayTime, { 0, 0, 15, 0 } }, //  *10 70
 
@@ -175,7 +176,6 @@ const ParamStruct_t
 
 						// Unused
 
-						{ P82, { 0, } }, // 82,
 						{ P83, { 0, } }, // 83,
 						{ P84, { 0, } }, // 84,
 						{ P85, { 0, } }, // 85,
