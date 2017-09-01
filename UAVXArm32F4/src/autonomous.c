@@ -92,9 +92,9 @@ boolean DoLanding(void) {
 
 void InitiateShutdown(uint8 s) {
 	ZeroThrottleCompensation();
+	ZeroNavCorrections();
 	DesiredThrottle = 0.0f;
 	StopDrives();
-	F.NavigationActive = false;
 	NavState = s;
 	AlarmState = NoAlarms;
 	State = Shutdown;
@@ -124,39 +124,37 @@ void CheckRapidDescentHazard(void) {
 
 } // CheckRapidDescentHazard
 
-void AcquireHoldPosition(void) {
+void CapturePosition(void) {
 
 	if (F.OriginValid) {
 		HP.Pos[NorthC] = Nav.C[NorthC].Pos;
 		HP.Pos[EastC] = Nav.C[EastC].Pos;
 	}
 
-} // AcquireHoldPosition
+} // CapturePosition
 
-void ConditionReturnHome(void) {
+void InitiateRTH(void) {
 
 	F.RapidDescentHazard = F.NewNavUpdate = F.WayPointAchieved
 			= F.WayPointCentred = false;
 	CurrWPNo = 0;
 	PrevWPNo = 255;
-	ResetNavHold = true;
 	RefreshNavWayPoint();
 	NavState = ReturningHome;
+	F.ReturnHome = true;
 
-} // ConditionReturnHome
+} // InitiateRTH
 
-void ResumeHoldingStation(void) {
-
-	F.NewNavUpdate = false;
+void InitiatePH(void) {
 
 	CurrWPNo = 0;
-	AcquireHoldPosition();
 	DesiredAltitude = Altitude;
-	ResetNavHold = true;
+	CapturePosition();
+	DesiredHeading = Heading;
+	NavState = HoldingStation;
+	F.Navigate = true;
 
-	NavState = F.NavigationEnabled ? HoldingStation : PIC;
-
-} // ResumeHoldingStation
+} // InitiatePH
 
 
 void UpdateRTHSwState(void) { // called in rc.c on every rx packet
@@ -168,13 +166,11 @@ void UpdateRTHSwState(void) { // called in rc.c on every rx packet
 
 		F.AltControlEnabled = F.HoldingAlt = false;
 		DesiredAltitude = Altitude;
-
 		ZeroThrottleCompensation();
-		DecayPosCorr();
+		ZeroNavCorrections();
 
-		F.Glide = F.Navigate = F.ReturnHome = false;
-
-		AcquireHoldPosition(); // keep tracking current position
+		if (F.OriginValid)
+			CapturePosition();
 
 		NavState = PIC;
 
@@ -184,34 +180,33 @@ void UpdateRTHSwState(void) { // called in rc.c on every rx packet
 			F.Glide = F.Navigate = F.ReturnHome = false;
 			switch (NavSwState) {
 			case NavSwLow:
-				AcquireHoldPosition();
+				ZeroNavCorrections();
+				CapturePosition();
 				NavState = PIC;
 				break;
 			case NavSwMiddle:
 				CaptureHomePosition();
-				if (F.OriginValid) {
-					AcquireHoldPosition();
-					ResumeHoldingStation();
-					F.Navigate = true;
-				}
+				if (F.OriginValid)
+					InitiatePH();
 				break;
 			case NavSwHigh:
 				CaptureHomePosition();
 				if (F.OriginValid)
-					ConditionReturnHome();
+					InitiateRTH();
 			} // switch
 
 			NavSwStateP = NavSwState;
 		}
 
-		F.AltControlEnabled = !(F.UseManualAltHold || (Nav.Sensitivity < NAV_ALT_THRESHOLD_STICK)
+		F.AltControlEnabled = !(F.UseManualAltHold || (Nav.Sensitivity
+				< NAV_ALT_THRESHOLD_STICK)
 				|| (IsFixedWing && (NavState == PIC)));
 
 		if ((!F.HoldingAlt) && !(F.Navigate || F.ReturnHome))
 			DesiredAltitude = Altitude;
 
-		if (F.AltControlEnabled && !((NavState == HoldingStation) || (NavState == PIC) || (NavState
-				== Touchdown)))
+		if (F.AltControlEnabled && !((NavState == HoldingStation) || (NavState
+				== PIC) || (NavState == Touchdown)))
 			StickThrottle = CruiseThrottle;
 	}
 
@@ -222,7 +217,9 @@ void UpdateRTHSwState(void) { // called in rc.c on every rx packet
 
 void DoNavigation(void) {
 
-	if (F.NavigationEnabled && !(F.UsingRateControl || F.Bypass)) {
+	if ((NavState != PIC) && F.NavigationEnabled
+			&& (F.Navigate || F.ReturnHome)
+			&& !(F.UsingRateControl || F.Bypass)) {
 
 		if (F.NewNavUpdate) {
 			F.NewNavUpdate = false;
@@ -256,19 +253,18 @@ void DoNavigation(void) {
 						if (NavState == JustGliding) {
 							if (CommenceThermalling()) { // after cruise timeout
 								InitThermalling();
-								AcquireHoldPosition();
+								CapturePosition();
 								F.Soaring = true;
 								mSTimer(mSClock(), ThermalTimeout,
 										THERMAL_MIN_MS);
 								NavState = UsingThermal;
-							} else {
+							} else
 								Navigate(&HP);
-							}
 						} else {
 							if (ResumeGlide()) {
 								F.Soaring = false;
 								mSTimer(mSClock(), CruiseTimeout, CRUISE_MIN_MS);
-								ResumeHoldingStation();
+								CapturePosition();
 								NavState = JustGliding;
 							} else {
 								UpdateThermalEstimate();
@@ -353,7 +349,7 @@ void DoNavigation(void) {
 
 				CheckRapidDescentHazard();
 
-				if (F.WayPointAchieved) {
+				if (F.WayPointCentred) {
 					mSTimer(mSClock(), NavStateTimeout, (int32) WP.Loiter
 							* 1000);
 					if ((WP.Action == navPerch) && !IsFixedWing)
@@ -404,29 +400,24 @@ void DoNavigation(void) {
 							NavState = NextWPState(); // start navigating
 						}
 					} else { // allow override
-						DecayPosCorr();
-						AcquireHoldPosition();
+						DecayNavCorrections();
+						CapturePosition();
 					}
 				}
 				break;
-			case PIC:
-				AcquireHoldPosition();
+			default:
+				// should not happen
 				break;
 			} // switch NavState
 
 			F.OrbitingWP = (NavState == OrbitingPOI) && (WP.Action == navOrbit);
 		}
-	} else {
+	} else { // PIC
 
-		DecayPosCorr();
-
-		F.OrbitingWP = false;
-		Nav.DesiredHeading = Heading; // zzz
-
+		NavState = PIC;
 		if (F.NewNavUpdate)
 			F.NewNavUpdate = false;
-
-		ResumeHoldingStation();
+		Nav.WPBearing = DesiredHeading;
 	}
 
 	F.NewCommands = false; // Navigate modifies Desired Roll, Pitch and Yaw values.

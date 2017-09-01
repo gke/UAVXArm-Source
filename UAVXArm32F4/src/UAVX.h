@@ -22,6 +22,10 @@
 #ifndef _uavx_h
 #define _uavx_h
 
+//#define BLACKBOX
+#define STATIC_UNIT_TESTED
+#define timeUs_t int
+
 //#define USE_THERMALS
 
 #define MAX_BLHELI_ESCS 4
@@ -42,7 +46,7 @@
 //#define USE_WS2812B
 
 #define INC_DFT
-//#define INC_STATS_TEL
+#define INC_STATS_TEL
 #define INC_RC_TEL
 
 #define INC_BARO_FULL_MATH
@@ -50,7 +54,6 @@
 #endif
 
 #define VOLT_MEASUREMENT_ONBOARD
-//#define USE_FIXED_WING_HOLD
 
 #define AILERON_DIFF 0 // 100 is NO down deflection
 
@@ -99,15 +102,15 @@
 
 #endif // STM32F1
 
-#include "misctypesandmacros.h"
-#include "configdefines.h"
+#include "misctypes.h"
+#include "config.h"
 
 #include "boards/harness.h"
 
 #include "escprog/serial_4way_impl.h"
 #include "escprog/serial_4way.h"
-#include "escprog/serial_4way_stk500v2.h"
-#include "escprog/serial_4way_avrootloader.h"
+#include "escprog/serial_4way_stk.h"
+#include "escprog/serial_4way_avr.h"
 
 
 #include "main.h"
@@ -122,16 +125,16 @@
 #include "clocks.h"
 #include "control.h"
 #include "autonomous.h"
-#include "emulation.h"
+#include "emu.h"
 #include "frsky.h"
 #include "gps.h"
-#include "gyrosandaccelerometers.h"
+#include "imu.h"
 #include "inertial.h"
-#include "invensense.h"
+#include "mpu6xxx.h"
 #include "isr.h"
 #include "i2c.h"
 #include "leds.h"
-#include "magnetometer.h"
+#include "mag.h"
 #include "magvar.h"
 #include "mavlink.h"
 #include "mission.h"
@@ -152,8 +155,8 @@
 #include "tune.h"
 
 
-#include "soaring/ExtendedKalmanFilter.h"
-#include "soaring/SoaringController.h"
+#include "soar/ekf.h"
+#include "soar/soar.h"
 
 //#include "utils.h"
 

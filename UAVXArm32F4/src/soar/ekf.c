@@ -1,7 +1,7 @@
 #include "UAVX.h"
 
-#include "soaring/MatrixMath.h"
-#include "soaring/ExtendedKalmanFilter.h"
+#include "soar/MatrixMath.h"
+#include "soar/ekf.h"
 
 real32 EKFmeasurementpredandjacobian(real32* A) {
 	//This function computes the jacobian using equations from

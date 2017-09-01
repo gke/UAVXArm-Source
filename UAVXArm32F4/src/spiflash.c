@@ -78,7 +78,7 @@ boolean flashInit(void) {
 
 
 void flashShowStatus(uint8 s) {
-	uint8 i;
+	idx i;
 
 	TxString(s, "0x");
 	TxValH(s, flashStatus1);
@@ -131,7 +131,7 @@ uint8 flashReadStatus(uint8 devSel) {
 
 boolean flashDeviceInfoValid(uint8 devSel) {
 	const uint8 expflashInfo[5] = { 0x1f, 0x28, 0x00, 0x01, 0x00 };
-	uint8 i;
+	idx i;
 	SPI_TypeDef * s;
 	boolean r;
 

@@ -37,13 +37,17 @@ real32 CalculateAccConfidence(real32 AccMag) {
 	static real32 confp = 1.0f;
 	real32 conf, accNorm;
 
-	accNorm = AccMag * GRAVITY_MPS_S_R;
-	conf = expf(-0.5f * Sqr(Abs(accNorm - 1.0f) * AccConfidenceSDevR));
+	if (F.Emulation)
+		confp = 1.0f;
+	else {
+		accNorm = AccMag * GRAVITY_MPS_S_R;
+		conf = expf(-0.5f * Sqr(Abs(accNorm - 1.0f) * AccConfidenceSDevR));
 
-	//TODO: if (IsFixedWing && (Acc[BF] * GRAVITY_MPS_S_R > 0.5f) && (accNorm > Sqr(1.2f)))
-	//	conf = 0.0f;
+		//TODO: if (IsFixedWing && (Acc[BF] * GRAVITY_MPS_S_R > 0.5f) && (accNorm > Sqr(1.2f)))
+		//	conf = 0.0f;
 
-	confp = HardFilter(confp, conf);
+		confp = HardFilter(confp, conf);
+	}
 
 	return (confp);
 } // CalculateAccConfidence
@@ -540,49 +544,42 @@ void TrackPitchAttitude(void) {
 void UpdateInertial(void) {
 	int32 a;
 
-	if (F.Emulation)
+	if (F.Emulation && (State == InFlight))
 		DoEmulation(); // produces ROC, Altitude etc.
 	else
-		GetIMU();
+		GetIMU(); // 397uS !!!!!!!!!!!!!!!!!!
 
 	if (CurrStateEst == MadgwickMARG)
 		MadgwickMARGUpdate(Rate[Roll], Rate[Pitch], Rate[Yaw], Acc[BF],
 				Acc[LR], Acc[UD], Mag[X], Mag[Y], Mag[Z]);
-	else
+	else // IMU = 41uS
 		MadgwickUpdate(CurrStateEst == MadgwickAHRS, Rate[Roll], Rate[Pitch],
 				Rate[Yaw], Acc[BF], Acc[LR], Acc[UD], Mag[X], Mag[Y], Mag[Z]);
 
 	DoControl();
 
 	// one cycle delay OK
-	UpdateHeading();
+	UpdateHeading(); // 225uS!!!
 
 	UpdateGPS();
 	if (F.NewGPSPosition) {
 		F.NewGPSPosition = false;
+
 		for (a = NorthC; a <= DownC; a++) {
 			Nav.C[a].Pos = GPS.C[a].Pos;
 			Nav.C[a].Vel = GPS.C[a].Vel;
 		}
 
-		if (!F.NavigationActive) { // (mSClock() > mS[NavActiveTime]) &&
-			F.NavigationActive = true;
-			ResumeHoldingStation();
-			NavSwStateP = NavSwUnknown;
-		}
-
-		F.GPSPosUpdated = true; // for telemetry
-
-		F.NewNavUpdate = F.NavigationEnabled = F.NavigationActive;
-
 		UpdateWhere();
+
+		F.NavigationEnabled = true;
+		F.NewNavUpdate = Nav.Sensitivity > NAV_SENS_THRESHOLD_STICK;
 	}
 
-	if (!F.Emulation)
+	if (!F.Emulation) {
 		UpdateAltitudeEstimates();
-
-	if (!IsMulticopter)
 		UpdateAirspeed();
+	}
 
 	TrackPitchAttitude();
 

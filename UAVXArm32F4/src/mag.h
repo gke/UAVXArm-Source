@@ -19,11 +19,51 @@
 //    If not, see http://www.gnu.org/licenses/
 
 
-#ifndef _emulation_h
-#define _emulation_h
+#ifndef _magnetometer_h
+#define _magnetometer_h
 
-void CheckInitEmulation(void);
-void DoEmulation(void);
-void GPSEmulation(void);
+typedef struct {
+	real32 Magnitude; // retained for field strength measure - maybe used for gain setting
+	real32 UnusedScale[3]; // not stored in Flash
+	real32 Bias[3];
+	int16 CalSamples; // used to check whether calibrated or not
+} MagCalStruct;
+
+extern int16 RawMag[];
+extern real32 MagScale[];
+
+// HMC5XXX Honeywell Magnetometer
+
+#define HMC5XXX_ID 	(0x1e*2)
+
+boolean ReadMagnetometer(void);
+void GetMagnetometer(void);
+void CalculateMagneticHeading(void);
+
+void CalibrateHMC5XXX(uint8 s);
+void CalibrateMagnetometer(uint8 s);
+void CheckMagnetometerIsCalibrated(void);
+
+void InitMagnetometer(void);
+void InitMagnetometerBias(void);
+
+void TrackMaxMin(void);
+
+void MagnetometerTest(uint8 s);
+boolean MagnetometerIsActive(void);
+
+void WriteMagCalNV(void);
+void UpdateMagHist(void);
+
+extern real32 MagVariation, MagVariationWMM2010;
+extern real32 MagLockE, MagHeading, DesiredHeading, Heading,
+		CompassOffset;
+extern uint8 CompassType;
+
+extern real32 Mag[];
+extern volatile uint16 MagSample;
+extern real32 MagTemperature;
+extern real32 MagdT;
 
 #endif
+

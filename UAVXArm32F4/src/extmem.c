@@ -104,7 +104,7 @@ void ReadBlockExtMem(uint32 a, uint16 l, int8 * v) {
 
 boolean WriteBlockExtMem(uint32 a, uint16 l, int8 *v) {
 	boolean r = true;
-	uint8 i;
+	uint16 i;
 	uint8 b[66]; // I2C implementation restriction
 	uint8 bank;
 	i8u8u u;
@@ -133,7 +133,6 @@ boolean WriteBlockExtMem(uint32 a, uint16 l, int8 *v) {
 boolean EraseExtMem(void) {
 	uint32 TimeoutmS;
 	uint32 a;
-	uint8 i;
 	int8 B[MEM_BUFFER_SIZE];
 	boolean r = true;
 
@@ -142,8 +141,7 @@ boolean EraseExtMem(void) {
 	LEDOn(LEDBlueSel);
 
 	if (F.HaveExtMem) {
-		for (i = 0; i < MEM_BUFFER_SIZE; i++)
-			B[i] = -1;
+		memset(&B, -1, sizeof(B));
 		TimeoutmS = mSClock();
 		for (a = 0; a < MEM_SIZE; a += MEM_BUFFER_SIZE) {
 			r &= WriteBlockExtMem(a, MEM_BUFFER_SIZE, B);
@@ -165,7 +163,8 @@ boolean EraseExtMem(void) {
 
 
 void ReadBlockExtMem(uint32 a, uint16 l, int8 * v) {
-	uint8 bank, i;
+	idx i;
+	uint8 bank;
 	uint8 b[2];
 
 	if (F.HaveExtMem) {

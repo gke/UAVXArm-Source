@@ -35,6 +35,7 @@ SPI_TypeDef * spiSetBaudRate(uint8 devSel, boolean R) {
 	SPI_Cmd(SPIx, DISABLE);
 
 	devRate = R ? spiDef[devSel].ReadRate : spiDef[devSel].WriteRate;
+
 	SPIx->CR1 = (SPIx->CR1 & 0b1111111111000111) | devRate;
 	/*
 	 if (spiDef[devSel].ClockHigh != lastDevClockHigh) {
@@ -51,6 +52,8 @@ SPI_TypeDef * spiSetBaudRate(uint8 devSel, boolean R) {
 	 Delay1uS(5); // ???? zzzz
 	 }
 	 */
+	Delay1uS(5);
+
 	SPI_Cmd(SPIx, ENABLE);
 
 	return (SPIx);
@@ -117,7 +120,7 @@ uint8 spiSendzzz(SPI_TypeDef * SPIx, uint8 d) {
 } // spiSend
 
 boolean spiReadBlock(uint8 devSel, uint8 id, uint8 d, uint8 len, uint8* data) {
-	uint8 i;
+	idx i;
 	SPI_TypeDef * s;
 	uint32 r;
 	uint8 Prefix;
@@ -152,7 +155,7 @@ boolean spiReadBlock(uint8 devSel, uint8 id, uint8 d, uint8 len, uint8* data) {
 
 
 boolean spiWriteBlock(uint8 devSel, uint8 id, uint8 d, uint8 len, uint8 *data) {
-	uint8 i;
+	idx i;
 	SPI_TypeDef * s;
 	uint32 r;
 

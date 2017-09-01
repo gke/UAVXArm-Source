@@ -63,7 +63,7 @@ void i2c_er_handler(uint8 i2cCurr) {
 
 void i2c_ev_handler(uint8 i2cCurr) {
 	// Original source unknown but based on those in baseflight by TimeCop
-	static int8 index; //index is signed -1==send the sub-address
+	static int8 i; //index is signed -1==send the sub-address
 	uint8 SReg_1; //read the status register here
 	I2CPortDef * d;
 
@@ -74,7 +74,7 @@ void i2c_ev_handler(uint8 i2cCurr) {
 	if (SReg_1 & 0x0001) { //we just sent a start - EV5 in reference manual
 		d->I2C->CR1 &= ~0x0800; //reset the POS bit so ACK/NACK applied to the current byte
 		I2C_AcknowledgeConfig(d->I2C, ENABLE); //make sure ACK is on
-		index = 0; //reset the index
+		i = 0; //reset the index
 		if (i2cState[i2cCurr].reading && (i2cState[i2cCurr].subaddress_sent
 				|| (0xff == i2cState[i2cCurr].reg))) { //we have sent the sub-address
 			i2cState[i2cCurr].subaddress_sent = true; //make sure this is set in case of no sub-address, so following code runs correctly
@@ -86,7 +86,7 @@ void i2c_ev_handler(uint8 i2cCurr) {
 			I2C_Send7bitAddress(d->I2C, i2cState[i2cCurr].addr,
 					I2C_Direction_Transmitter); //send the address and set hardware mode
 			if (i2cState[i2cCurr].reg != 0xff) //0xff as sub-address means it will be ignored, in Tx or Rx mode
-				index = -1; //send a sub-address
+				i = -1; //send a sub-address
 		}
 	} else if (SReg_1 & 0x0002) { //we just sent the address - EV6 in ref manual
 		//Read SR1,2 to clear ADDR
@@ -120,19 +120,19 @@ void i2c_ev_handler(uint8 i2cCurr) {
 		if (i2cState[i2cCurr].reading && i2cState[i2cCurr].subaddress_sent) { //EV7_2, EV7_3
 			if (i2cState[i2cCurr].bytes > 2) { //EV7_2
 				I2C_AcknowledgeConfig(d->I2C, DISABLE); //turn off ACK
-				i2cState[i2cCurr].read_p[index++] = I2C_ReceiveData(d->I2C); //read data N-2
+				i2cState[i2cCurr].read_p[i++] = I2C_ReceiveData(d->I2C); //read data N-2
 				I2C_GenerateSTOP(d->I2C, ENABLE);
 				i2cState[i2cCurr].final_stop = true; //required to fix hardware
-				i2cState[i2cCurr].read_p[index++] = I2C_ReceiveData(d->I2C); //read data N-1
+				i2cState[i2cCurr].read_p[i++] = I2C_ReceiveData(d->I2C); //read data N-1
 				I2C_ITConfig(d->I2C, I2C_IT_BUF, ENABLE); //enable TXE to allow the final EV7
 			} else { //EV7_3
 				if (i2cState[i2cCurr].final_stop)
 					I2C_GenerateSTOP(d->I2C, ENABLE);
 				else
 					I2C_GenerateSTART(d->I2C, ENABLE); //repeated start
-				i2cState[i2cCurr].read_p[index++] = I2C_ReceiveData(d->I2C); //read data N-1
-				i2cState[i2cCurr].read_p[index++] = I2C_ReceiveData(d->I2C); //read data N
-				index++; //to show job completed
+				i2cState[i2cCurr].read_p[i++] = I2C_ReceiveData(d->I2C); //read data N-1
+				i2cState[i2cCurr].read_p[i++] = I2C_ReceiveData(d->I2C); //read data N
+				i++; //to show job completed
 			}
 		} else { //EV8_2, which may be due to a sub-address sent or a write completion
 			if (i2cState[i2cCurr].subaddress_sent
@@ -141,7 +141,7 @@ void i2c_ev_handler(uint8 i2cCurr) {
 					I2C_GenerateSTOP(d->I2C, ENABLE);
 				else
 					I2C_GenerateSTART(d->I2C, ENABLE); //repeated start
-				index++; //to show that the job is complete
+				i++; //to show that the job is complete
 			} else { //send a sub-address
 				I2C_GenerateSTART(d->I2C, ENABLE); //repeated Start
 				i2cState[i2cCurr].subaddress_sent = true; //this is set back to zero upon completion of the current task
@@ -151,24 +151,24 @@ void i2c_ev_handler(uint8 i2cCurr) {
 		while (d->I2C->CR1 & 0x0100) {
 		}
 	} else if (SReg_1 & 0x0040) { //Byte received - EV7
-		i2cState[i2cCurr].read_p[index++] = I2C_ReceiveData(d->I2C);
-		if (i2cState[i2cCurr].bytes == (index + 3))
+		i2cState[i2cCurr].read_p[i++] = I2C_ReceiveData(d->I2C);
+		if (i2cState[i2cCurr].bytes == (i + 3))
 			I2C_ITConfig(d->I2C, I2C_IT_BUF, DISABLE); //disable TXE to allow the buffer to flush so we can get an EV7_2
-		if (i2cState[i2cCurr].bytes == index) //We have completed a final EV7
-			index++; //to show job is complete
+		if (i2cState[i2cCurr].bytes == i) //We have completed a final EV7
+			i++; //to show job is complete
 	} else if (SReg_1 & 0x0080) { //Byte transmitted -EV8/EV8_1
-		if (index != -1) { //we don't have a sub-address to send
-			I2C_SendData(d->I2C, i2cState[i2cCurr].write_p[index++]);
-			if (i2cState[i2cCurr].bytes == index) //we have sent all the data
+		if (i != -1) { //we don't have a sub-address to send
+			I2C_SendData(d->I2C, i2cState[i2cCurr].write_p[i++]);
+			if (i2cState[i2cCurr].bytes == i) //we have sent all the data
 				I2C_ITConfig(d->I2C, I2C_IT_BUF, DISABLE); //disable TXE to allow the buffer to flush
 		} else {
-			index++;
+			i++;
 			I2C_SendData(d->I2C, i2cState[i2cCurr].reg); //send the sub-address
 			if (i2cState[i2cCurr].reading || (i2cState[i2cCurr].bytes == 0)) //if receiving or sending 0 bytes, flush now
 				I2C_ITConfig(d->I2C, I2C_IT_BUF, DISABLE); //disable TXE to allow the buffer to flush
 		}
 	}
-	if (index == i2cState[i2cCurr].bytes + 1) { //we have completed the current job
+	if (i == i2cState[i2cCurr].bytes + 1) { //we have completed the current job
 		//Completion Tasks go here
 		//End of completion tasks
 		i2cState[i2cCurr].subaddress_sent = false; //reset this here
@@ -183,7 +183,7 @@ void i2c_ev_handler(uint8 i2cCurr) {
 boolean i2cReadBlock(uint8 i2cSel, uint8 id, uint8 reg, uint8 len, uint8* buf) {
 	// Original source unknown but based on those in baseflight by TimeCop
 	uint32 timeout = I2C_DEFAULT_TIMEOUT;
-	uint8 i2cCurr;
+	idx i2cCurr;
 	I2CPortDef * d;
 
 	i2cCurr = i2cMap[i2cSel] - 1;
@@ -224,9 +224,9 @@ boolean i2cReadBlock(uint8 i2cSel, uint8 id, uint8 reg, uint8 len, uint8* buf) {
 boolean i2cWriteBlock(uint8 i2cSel, uint8 id, uint8 reg, uint8 len_,
 		uint8 *data) {
 	// Original source unknown but based on those in baseflight by TimeCop
-	uint8 i, my_data[128]; // TODO: magic number
+	idx i, i2cCurr;
+	uint8 my_data[128]; // TODO: magic number
 	uint32 timeout = I2C_DEFAULT_TIMEOUT;
-	uint8 i2cCurr;
 	I2CPortDef * d;
 
 	if (len_ > 127)

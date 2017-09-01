@@ -21,15 +21,22 @@
 
 #include "UAVX.h"
 
-// mpu60xxSel, ms56xxSel, hmc5xxxSel, memSel, gpsSel, rfSel, escSel, flowSel, assel
+// mpu60xxSel, ms56xxSel, hmc5xxxSel, memSel, gpsSel, rfSel, escSel, flowSel, asSel
 // 20 20 8 20 20 unused MBaud
 
 const uint8 spiMap[] = {2, 2, 2, 2, 2, 2, 2, 2, 2}; // SPI2
 
+
 const spiDefStruct spiDef[] = {
+#if defined(GO_FAST) && defined(V4_BOARD)
+		{false, spi_21, spi_0_65625},
+		{false, spi_10_5, spi_10_5},
+		{true, spi_10_5, spi_10_5},
+#else
 		{false, spi_10_5, spi_0_65625},
 		{false, spi_10_5, spi_10_5},
 		{true, spi_5_250, spi_5_250},
+#endif
 		{false, spi_10_5, spi_10_5},
 		{false, spi_10_5, spi_10_5},
 		{false, spi_10_5, spi_10_5},

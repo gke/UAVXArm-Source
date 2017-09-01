@@ -19,49 +19,36 @@
 //    If not, see http://www.gnu.org/licenses/
 
 
-#ifndef _gyrosandaccelerometers_h
-#define _gyrosandaccelerometers_h
+#ifndef _invensense_h
+#define _invensense_h
 
-enum GyroTypes {
-	MLX90609Gyro,
-	ADXRS150Gyro,
-	LY530Gyro,
-	ADXRS300Gyro,
-	UAVXArm32IMU,
-	FreeIMU,
-	InfraRedAngle,
-	GyroUnknown
-};
+#define MPU_0x68_ID (0x68*2)
+#define MPU_0x69_ID (0x69*2)
 
-void InertialTest(uint8 s);
+extern uint8 MPU6XXXId;
+extern uint8 MPU6XXXRev;
+extern const uint16 MPULPFHz[];
+extern const uint16 MPUAccLPFHz[];
+extern const uint8 MPUDLPFMask[];
+extern const char * DHPFName[];
 
-void GetGyros(void);
-void CalculateGyroRates(void);
-void InitRatesAndAngles(void);
-void ErectGyros(int32 d);
+extern uint8 MPU6XXXDLPF;
+extern uint8 MPU6XXXDHPF;
+extern uint8 MPU6XXXAccDLPF;
+extern real32 MPU6XXXTemperature;
 
-#define ACC_TRIM_STEP 20
+void CalibrateAccAndGyro(uint8 s);
+void InitMPU6XXX(void);
+void CheckMPU6XXXActive(void);
+void ReadAccAndGyro(boolean UseSelectedAttSensors);
+void UpdateGyroTempComp(void);
 
-void ShowAccType(uint8 s);
-void ShowGyroType(uint8 s, uint8 g);
-void CaptureAccTrimOffsets(void);
-void GetAccelerations(void);
-void CalibrateAccsAndGyros(uint8 s);
-void CalculateAccelerations(void);
-void InitIMU(void);
-
-extern const uint8 MPUMap[];
-extern const real32 MPUSign[];
-
-extern real32 AccBias[];
-extern real32 GyroBias[];
-extern real32 AccScale[];
-extern const real32 GyroScale[];
-extern uint8 CurrAttSensorType;
-extern boolean UsingInvertedBoard;
-extern real32 Acc[], Rate[];
-extern real32 RateEnergySum;
-extern uint32 RateEnergySamples;
+extern uint8 MPU_ID;
+extern uint32 mpu6xxxLastUpdateuS;
+extern real32 RawAcc[], RawGyro[];
+extern boolean NewAccUpdate;
+extern uint8 CurrGyroLPFSel, CurrAccLPFSel;
 
 #endif
+
 

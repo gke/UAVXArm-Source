@@ -33,7 +33,9 @@
 extern volatile uint32 mS[];
 extern volatile uint32 uS[];
 extern real32 dT, dTR, dTOn2, dTROn2;
+extern uint8 CurrPIDTimeSel;
 extern uint32 CurrPIDCycleuS;
+extern real32 CurrPIDCycleS;
 extern uint32 StartCycleuS;
 extern uint32 LastUpdateuS;
 extern const char SerHello[];
@@ -41,6 +43,7 @@ extern const char SerHello[];
 enum uSTimes {
 	NextCycleUpdate, MemReady, LastCycleTime, uSLastArrayEntry
 };
+
 
 enum mSTimes {
 	StartTime,
@@ -134,7 +137,7 @@ typedef union {
 				Emulation :1,
 				MagnetometerLocked :1,
 				DrivesArmed :1,
-				NavigationActive :1,
+				UnusedNavigationActive :1,
 				UseManualAltHold :1,
 
 				// 4
@@ -184,7 +187,7 @@ typedef union {
 				NavigationEnabled :1,
 
 				// 9
-				UnusedUsingWPNavigation :1, GPSPosUpdated :1,
+				UnusedUsingWPNavigation :1, UnusedGPSPosUpdated :1,
 				EnforceDriveSymmetry :1, RCFrameOK :1, spiFatal :1,
 				Unused_9_5 :1, UsingMAVLink :1, UsingConvPropSense :1; // MAXED OUT
 	};

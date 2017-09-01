@@ -291,7 +291,7 @@ static void solveLGS(real32 A[4][4], real32 x[4], real32 b[4]) {
 
 void solveBias(sensorStateStruct * state, real32 result[3]) {
 	real32 beta[4];
-	uint8 a;
+	idx a;
 
 	solveLGS(state->XtX, beta, state->XtY);
 
@@ -300,7 +300,7 @@ void solveBias(sensorStateStruct * state, real32 result[3]) {
 } // solveBias
 
 void solveScale(sensorStateStruct * state, real32 result[3]) {
-	uint8 a;
+	idx a;
 	real32 beta[4];
 
 	solveLGS(state->XtX, beta, state->XtY);
@@ -324,15 +324,22 @@ int8 getCurrDir(real32 s[3]) {
 } // getCurrDir
 
 
+#if defined(STM32F1)
+
+void CalibrateAccSixPoint(uint8 s) {
+
+
+} // CalibrateAccSixPoint
+
+#else
+
 real32 sp[ACC_CAL_SPHERE_CYCLES * 6][3];
 
 void CalibrateAccSixPointSphere(uint8 s) {
 	int16 calDirCnt = 0;
-	uint8 a;
+	idx a;
 	int8 Currdp, dp;
-
 	uint16 N;
-
 	real32 SphereOrigin[3];
 	real32 SphereRadius;
 
@@ -403,18 +410,11 @@ void CalibrateAccSixPointSphere(uint8 s) {
 			&SphereRadius);
 
 	for (a = X; a <= Z; a++) {
-		AccScale[a] = SphereRadius * GRAVITY_MPS_S / (real32) MPU_1G;
-		AccBias[a] = SphereOrigin[a];
+		NV.AccCal.Scale[a] = SphereRadius * GRAVITY_MPS_S / (real32) MPU_1G;
+		NV.AccCal.Bias[a] = SphereOrigin[a];
 	}
 
-	/*
-	for (a = X; a <= Z; a++) {
-		TxVal32(s, AccScale[a] * 100000.0, 5, ',');
-		TxVal32(s, AccBias[a] * 1000.0, 3, ',');
-		TxNextLine(s);
-	}
-	*/
-
+	NVChanged = true;
 	UpdateNV();
 
 	F.AccCalibrated = true;
@@ -499,32 +499,24 @@ void CalibrateAccSixPoint(uint8 s) {
 
 	LEDsOff();
 
-	solveBias(&calState, AccBias);
+	solveBias(&calState, NV.AccCal.Bias);
 
 	resetState(&calState);
 
 	for (d = 0; d < 6; d++) {
 		for (a = X; a <= Z; a++)
 			sensorSample[a] = sensorSamples[d][a] / (real32) ACC_CAL_CYCLES
-					- AccBias[a];
+					- NV.AccCal.Scale[a];
 
 		pushForScaleCalc(&calState, d >> 1, sensorSample, (real32) MPU_1G);
 	}
 
-	solveScale(&calState, AccScale);
+	solveScale(&calState, NV.AccCal.Scale);
 
 	for (a = X; a <= Z; a++)
-		AccScale[a] *= (GRAVITY_MPS_S / (real32) MPU_1G);
+		NV.AccCal.Scale[a] *= (GRAVITY_MPS_S / (real32) MPU_1G);
 
-	/*
-	for (a = X; a <= Z; a++) {
-
-		TxVal32(s, AccScale[a] * 100000.0, 5, ',');
-		TxVal32(s, AccBias[a] * 1000.0, 3, ',');
-		TxNextLine(s);
-	}
-	*/
-
+	NVChanged = true;
 	UpdateNV();
 
 	F.AccCalibrated = true;
@@ -535,5 +527,7 @@ void CalibrateAccSixPoint(uint8 s) {
 	RestoreLEDs();
 
 } // CalibrateAccSixPoint
+
+#endif
 
 

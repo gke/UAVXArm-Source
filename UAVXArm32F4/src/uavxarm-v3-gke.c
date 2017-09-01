@@ -22,7 +22,9 @@
 
 Flags F;
 uint8 State;
-uint32 CurrPIDCycleuS = PID_CYCLE_US;
+uint8 CurrPIDTimeSel;
+uint32 CurrPIDCycleuS = PID_CYCLE_2000US;
+real32 CurrPIDCycleS;
 volatile uint32 uS[uSLastArrayEntry];
 volatile uint32 mS[mSLastArrayEntry];
 
@@ -30,7 +32,7 @@ uint8 ch;
 int8 i, m;
 
 void InitMisc(void) {
-	uint8 i;
+	idx i;
 
 	State = Preflight;
 
@@ -118,6 +120,7 @@ int main() {
 
 	InitControl();
 
+	InitEmulation();
 	InitNavigation();
 	InitTemperature();
 
@@ -157,10 +160,13 @@ int main() {
 		NowuS = uSClock();
 		if (NowuS >= uS[NextCycleUpdate]) {
 
-			Probe(1);
+			//	Probe(1);
 
 			//---------------
 			CalculatedT(NowuS);
+
+			UpdateDrives(); // from previous cycle - one cycle lag
+
 			UpdateInertial();
 			//---------------
 
@@ -192,7 +198,7 @@ int main() {
 
 					DoBeep(8, 2);
 
-					FirstPass = F.OriginValid = F.NavigationActive = false;
+					FirstPass = F.OriginValid = F.NavigationEnabled = false;
 					AlarmState = NoAlarms;
 					InitialThrottle = StickThrottle;
 
@@ -220,7 +226,6 @@ int main() {
 				InitBlackBox();
 
 				InitControl();
-				CheckInitEmulation();
 				InitNavigation();
 
 				if (F.UsingAnalogGyros || !UsingFastStart)
@@ -260,8 +265,6 @@ int main() {
 					DesiredThrottle
 							= CurrESCType == F.DrivesArmed ? IdleThrottle
 									: 0.0f;
-
-					CheckInitEmulation();
 
 					ZeroPIDIntegrals();
 
@@ -325,7 +328,7 @@ int main() {
 						F.DrivesArmed = CurrESCType == DCMotorsWithIdle;
 						DesiredThrottle = F.DrivesArmed ? IdleThrottle : 0.0f;
 
-						ResetNavHold = true;
+						ZeroNavCorrections();
 						if (NavState != Perching)
 							F.OriginValid = false;
 						ZeroThrottleCompensation(); // to catch cycles between Rx updates
@@ -390,12 +393,10 @@ int main() {
 				break;
 			} // switch state
 
-			F.GPSPosUpdated = false;
-
 			setStat(UtilisationS, State == InFlight ? ((uSClock() - NowuS)
 					* 100.0f) / CurrPIDCycleuS : 0);
 
-			Probe(0);
+			// Probe(0);
 		} // if next cycle
 
 		CheckBatteries();

@@ -42,7 +42,7 @@ const WPStruct TestWP[] = { { { 0, 0, 15 }, 3, 30, 0, 0, 0, 0 }, {
 		0, navVia }, { { NAV_LEG_LENGTH, 0, 15 }, 3, 60, 8, 0, 2, navOrbit } };
 
 void CaptureHomePosition(void) {
-	uint8 a;
+	idx a;
 
 	if (F.GPSValid && (GPS.hAcc <= GPSMinhAcc) && !F.OriginValid) {
 
@@ -70,7 +70,7 @@ void CaptureHomePosition(void) {
 
 		F.OriginValid = true;
 
-		AcquireHoldPosition();
+		CapturePosition();
 
 		if (F.GPSToLaunchRequired) {
 			Delay1mS(500);
@@ -129,7 +129,7 @@ boolean NavMissionSanityCheck(MissionStruct * M) {
 
 uint8 NextWPState(void) {
 
-	ResetNavHold = true;
+//zzz
 	CurrWPNo++;
 	RefreshNavWayPoint();
 

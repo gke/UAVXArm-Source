@@ -22,12 +22,11 @@
 #ifndef _navigate_h
 #define _navigate_h
 
+real32 MinimumTurn(real32 Desired);
 void Navigate(WPStruct * W);
 real32 WPDistance(WPStruct * W);
 void ZeroNavCorrections(void);
-
-
-extern boolean ResetNavHold;
+void DecayNavCorrections(void);
 
 #endif
 

@@ -104,7 +104,8 @@ void StartBaro(boolean ReadPressure) {
 // Measurement Specialities MS5611/5607 Barometers
 
 void ReadBaroCalibration(void) {
-	uint8 i, B[2];
+	idx i;
+	uint8 B[2];
 
 	// clumsy but device does not have address auto increment
 
@@ -310,7 +311,8 @@ void GetBaro(void) {
 
 boolean BaroCheckCRC(void) {
 	uint16 crc = 0, zerocheck = 0;
-	uint8 i, k, crc_save;
+	idx i, k;
+	uint8 crc_save;
 
 	crc_save = (uint8) (ms56xx_c[7] & 0xf); // Save last 4 bit
 	ms56xx_c[7] = 0xff00 & ms56xx_c[7]; // Last byte must be cleared for crc calculation
@@ -724,7 +726,7 @@ void UpdateAltitudeEstimates(void) {
 			ROC = (Altitude - AltitudeP) * AltdTR;
 			AltitudeP = Altitude;
 
-			ROC = LPFilter(&ROCLPF, ROC, AltLPFHz, AltdT);
+			ROC = LPFilter(&ROCLPF, 1, ROC, AltLPFHz, AltdT);
 			ROC = DeadZone(ROC, ALT_ROC_THRESHOLD_MPS);
 		}
 

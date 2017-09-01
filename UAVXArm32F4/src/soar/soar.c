@@ -3,7 +3,7 @@
 
 #include "UAVX.h"
 
-#include "ExtendedKalmanFilter.h"
+#include "ekf.h"
 
 // EKF
 #define INIT_STRENGTH_COVARIANCE 0.0049f

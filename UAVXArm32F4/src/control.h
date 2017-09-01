@@ -46,13 +46,11 @@ enum ControlModes {
 	AngleMode, RateMode, RelayAngleMode, RelayRateMode
 };
 
-typedef struct {
-	real32 Desired, Kp, Ki, E, IntE, IL, Kd, Dp, Max;
-} PIDStruct;
 
 typedef struct {
-	real32 Stick;
-	PIDStruct O, I;
+	real32 Stick, StickP, StickD;
+	real32 AngleDesired, AngleE, AngleKp, AngleKi, AngleIntE, AngleIL, AngleMax,
+			RateDesired, RateE, RateKp, RateKd, RateMax, CompassRateMax;
 	// controls
 	// body frame sensors
 	real32 Ratep, DriftCorr, Angle;
@@ -64,39 +62,43 @@ typedef struct {
 } AxisStruct;
 
 typedef struct {
-	PIDStruct O, I;
+	real32 PosKp, PosKi, PosE, PosIntE, PosIL, VelKp, VelKd, VelE; // does not include altitude and ROC
 } AltStruct;
+
+AltStruct Alt;
 
 void ZeroThrottleCompensation(void);
 void DoAltitudeControl(void);
 void ZeroPIDIntegrals(void);
+real32 ComputeRateDerivative(AxisStruct *C);
 
 void DoControl(void);
 void InitControl(void);
 
 AxisStruct A[3];
-AltStruct Alt;
+
 real32 TiltThrFFFrac;
+real32 DerivativeLPFreqHz;
+idx DerivativeLPFOrder;
 
 real32 CameraAngle[3], OrbitCamAngle;
 
 real32 CurrMaxTiltAngle;
-int16 AttitudeHoldResetCount;
 real32 DesiredAltitude, Altitude, DesiredROC;
 real32 AltComp, AltCompDecayS, ROC, MinROCMPS;
 real32 CruiseThrottle;
 real32 BattThrFFComp, TiltThrFFComp;
 real32 AltAccComp;
 real32 HorizonTransPoint;
-real32 YawStickScaleRadPS, RollPitchStickScaleRadPS;
-real32 MaxAttitudeAngleRad;
-real32 YawStickThreshold;
+real32 StickDeadZone;
 real32 OrientationRad, OrientS, OrientC;
 
-real32 NavHeadingTurnoutRad, FWRollPitchFFFrac, FWAileronDifferentialFrac,
-		FWPitchThrottleFFFrac, MaxAltHoldCompFrac, FWMaxClimbAngleRad, MaxRollAngleRad,
-		FWGlideAngleOffsetRad, FWBoardPitchAngleRad, FWFlapDecayS, BestROCMPS;
-
+real32 FWRollPitchFFFrac, FWAileronDifferentialFrac,
+		FWPitchThrottleFFFrac, MaxAltHoldCompFrac, FWMaxClimbAngleRad,
+		MaxRollAngleRad, FWGlideAngleOffsetRad, FWBoardPitchAngleRad,
+		FWSpoilerDecayS, FWAileronRudderFFFrac,
+		FWAltSpoilerFFFrac, BestROCMPS;
+real32 ThrottleGain;
 real32 GS;
 
 #endif

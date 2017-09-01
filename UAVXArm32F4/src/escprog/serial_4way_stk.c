@@ -67,8 +67,10 @@ static uint8_t ckSumOut;
 #define IRQ_ON  // dummy
 //static
 void StkSendByte(uint8_t dat) {
+	int i;
 	ckSumOut ^= dat;
-	for (uint8_t i = 0; i < 8; i++) {
+
+	for (i = 0; i < 8; i++) {
 		if (dat & 0x01) {
 			// 1-bits are encoded as 64.0us high, 72.8us low (135.8us total).
 			ESC_SET_HI;
@@ -131,8 +133,9 @@ static int8_t StkReadBit(void) {
 }
 
 static int StkReadByte(void) {
+	int i;
 	uint8_t byte = 0;
-	for (int i = 0; i < 8; i++) {
+	for (i = 0; i < 8; i++) {
 		int8_t bit = StkReadBit();
 		if (bit < 0)
 			return -1; // timeout
@@ -143,6 +146,7 @@ static int StkReadByte(void) {
 }
 
 static uint8_t StkReadLeader(void) {
+	int i;
 
 	// Reset learned timing
 	hiLoTsh = BIT_HI_US + BIT_LO_US;
@@ -163,7 +167,7 @@ static uint8_t StkReadLeader(void) {
 		goto timeout;
 
 	// Skip the first bits
-	for (int i = 0; i < 10; i++)
+	for (i = 0; i < 10; i++)
 		if (StkReadBit() < 0)
 			goto timeout;
 
@@ -182,6 +186,7 @@ static uint8_t StkReadLeader(void) {
 }
 
 static uint8_t StkRcvPacket(uint8_t *pstring, int maxLen) {
+	int i;
 	int byte;
 	int len;
 
@@ -203,7 +208,7 @@ static uint8_t StkRcvPacket(uint8_t *pstring, int maxLen) {
 		goto Err;
 	if ((byte = StkReadByte()) < 0 || (byte != STATUS_CMD_OK))
 		goto Err;
-	for (int i = 0; i < len - 2; i++) {
+	for (i = 0; i < len - 2; i++) {
 		if ((byte = StkReadByte()) < 0)
 			goto Err;
 		if (i < maxLen) // limit saved length (buffer is only 256B, but memory read reply contains additional status + 1 unknown byte)
@@ -267,6 +272,8 @@ static uint8_t _CMD_READ_MEM_ISP(ioMem_t *pMem) {
 }
 
 static uint8_t _CMD_PROGRAM_MEM_ISP(ioMem_t *pMem) {
+	int i;
+
 	StkSendPacketHeader(pMem->len + 10);
 	StkSendByte(StkCmd);
 	StkSendByte(pMem->len >> 8);
@@ -278,7 +285,7 @@ static uint8_t _CMD_PROGRAM_MEM_ISP(ioMem_t *pMem) {
 	StkSendByte(0); // cmd3
 	StkSendByte(0); // poll1
 	StkSendByte(0); // poll2
-	for (int i = 0; i < pMem->len; i++)
+	for (i = 0; i < pMem->len; i++)
 		StkSendByte(pMem->data[i]);
 	StkSendPacketFooter();
 	return StkRcvPacket(stkInBuf, sizeof(stkInBuf));
@@ -293,17 +300,19 @@ uint8_t Stk_SignOn(void) {
 }
 
 uint8_t Stk_ConnectEx(escDeviceInfo_t *pDeviceInfo) {
+	uint32 i;
+
 	if (!Stk_SignOn())return 0;
-		Probe(1);
+
 		uint8_t signature[3]; // device signature, MSB first
-		for (unsigned i = 0; i < sizeof(signature); i++)
+		for (i = 0; i < sizeof(signature); i++)
 			if (!_CMD_SPI_MULTI_EX(&signature[i], SPI_SIGNATURE_READ, i))
 				return 0;
 
 		// convert signature to little endian
 		pDeviceInfo->signature = (signature[1] << 8) | signature[2];
 		pDeviceInfo->signature2 = signature[0];
-		Probe(0);
+
 		return 1;
 }
 

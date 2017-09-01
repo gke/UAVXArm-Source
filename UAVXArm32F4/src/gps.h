@@ -124,7 +124,6 @@ extern boolean EmptyField;
 extern real32 GPSLag;
 extern real32 GPSMinhAcc;
 
-extern uint8 CurrGyroLPF;
 extern uint8 CurrGPSType;
 
 extern uint8 ll, ss, tt, RxCh;

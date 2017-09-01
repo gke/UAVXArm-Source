@@ -22,7 +22,7 @@
 
 #if defined(COMMISSIONING_TEST)
 
-uint8 i;
+index i;
 
 void OK(uint8 s, boolean b) {
 	if (b)
@@ -39,7 +39,7 @@ void Calibrated(uint8 s, boolean b) {
 
 void CommissioningTest(uint8 s) {
 	uint32 Timeout;
-	uint8 k, i;
+	index k, i;
 	int8 pattern[32];
 	uint8 info[32];
 
@@ -523,7 +523,7 @@ void MagnetometerTest(uint8 s) {
 
 
 void BaroTest(uint8 s) {
-	uint8 i;
+	index i;
 	TxString(s, "\r\nAltitude test\r\n");
 
 	TxVal32(s, ms56xx_ManufacturersData, 0, ' ');
@@ -653,9 +653,8 @@ void InertialTest(uint8 s) {
 		TxChar(s, 'X' + a);
 		TxChar(s, ASCII_HT);
 		TxVal32(s, RawAcc[a], 0, ASCII_HT);
-		TxVal32(s, AccBias[a] * 10.0f, 1, ASCII_HT);
-		TxVal32(s, NV.AccCal.C[a] * 10.0f, 1, ASCII_HT);
-		TxVal32(s, NV.AccCal.M[a] * 1000.0f, 3, 0);
+		TxVal32(s, NV.AccCal.Bias[a] * 10.0f, 1, ASCII_HT);
+		TxVal32(s, NV.AccCal.Scale[a] * 1000.0f, 3, 0);
 		TxNextLine(s);
 	}
 

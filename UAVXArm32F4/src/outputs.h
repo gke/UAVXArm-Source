@@ -24,9 +24,8 @@
 
 #define PWServoFilter		MediumFilter
 
-
 void InitPWM(void);
-void pwmWrite(uint8 p, real32 pulseWidth, uint16 pulsemin,
+void pwmWrite(idx p, real32 pulseWidth, uint16 pulsemin,
 		uint16 pulsemax);
 
 void ShowESCType(uint8 s);
@@ -37,10 +36,22 @@ void InitDrives(void);
 
 void DoI2CESCs(void);
 
-void ProgramSlaveAddress(uint8 s, uint8 addr);
+void ProgramSlaveAddress(idx s, uint8 addr);
 void ConfigureESCs(uint8 s);
 
-void driveWrite(uint8 channel, real32 v);
+void driveWrite(idx channel, real32 v);
+
+enum ESCTypes {
+	ESCPWM,
+	ESCSyncPWM,
+	ESCSyncPWMDiv8,
+	ESCI2C,
+	DCMotors,
+	DCMotorsWithIdle,
+	ESCSPI,
+	PWMDAC,
+	ESCUnknown
+};
 
 enum PWMCamTags {
 	CamRollC = 8, CamPitchC = 9
@@ -89,9 +100,9 @@ enum PWMTagsAileron {
 	RightAileronC,
 	LeftAileronC,
 	ElevatorC,
-	LeftFlapC = 7, // only available for non-parallel Rx
+	LeftSpoilerC = 7, // only available for non-parallel Rx
 	RudderC = 8,
-	RightFlapC = 9
+	RightSpoilerC = 9
 };
 enum PWMTagsElevon {
 	RightElevonC = 1, LeftElevonC = 2
@@ -104,9 +115,14 @@ enum PWMTags {
 };
 
 extern uint8 CurrESCType;
-//extern uint32 ESCI2CFail[];
 
 extern real32 Rl, Pl, Yl, Sl;
+
+typedef struct {
+	real32 RollKp, PitchKp;
+} CamStruct;
+
+CamStruct Cam;
 
 extern uint8 const DrivesUsed[];
 extern uint8 NoOfDrives;
@@ -118,7 +134,7 @@ extern real32 PW[], PWp[];
 extern real32 PWSense[];
 extern const uint8 PWMOutputsUsed[];
 extern uint8 CurrMaxPWMOutputs;
-extern PIDStruct CamRoll, CamPitch;
+
 extern real32 DFT[];
 extern real32 CGOffset;
 

@@ -32,7 +32,7 @@ const real32 AFOrientation[AFUnknown + 1] = { // K1 arm relative to board North
 				0 }; // AFUnknown
 
 const uint8 SM[] = { ThrottleC, RightAileronC, LeftAileronC, ElevatorC,
-		RudderC, RightFlapC, LeftFlapC };
+		RudderC, RightSpoilerC, LeftSpoilerC };
 
 real32 PWSense[MAX_PWM_OUTPUTS];
 real32 FWAileronDifferentialFrac = 0.0f;
@@ -44,8 +44,6 @@ real32 IdleThrottlePW;
 real32 NetThrottle;
 real32 CGOffset;
 boolean UsingVTOLMode = false;
-
-PIDStruct CamRoll, CamPitch;
 
 void RotateOrientation(real32 * nx, real32 * ny, real32 x, real32 y) {
 	real32 Temp;
@@ -98,8 +96,8 @@ void DoMix(void) {
 		PW[LeftElevonC] = PWSense[LeftElevonC] * (-TempElevator + TempRudder
 				+ Rl) + OUT_NEUTRAL;
 
-		PW[RightFlapC] = PWSense[RightFlapC] * Sl;
-		PW[LeftFlapC] = -PW[RightFlapC];
+		PW[RightSpoilerC] = PWSense[RightSpoilerC] * Sl;
+		PW[LeftSpoilerC] = -PW[RightSpoilerC];
 		break;
 	case AileronAF:
 		PW[RudderC] = PWSense[RudderC] * Yl + OUT_NEUTRAL;
@@ -115,8 +113,8 @@ void DoMix(void) {
 		PW[ElevatorC] = PWSense[ElevatorC] * (F.Bypass ? Pl : (Pl
 				+ FWRollPitchFFFrac * Abs(Rl))) + OUT_NEUTRAL;
 
-		PW[RightFlapC] = PWSense[RightFlapC] * Sl + OUT_NEUTRAL;
-		PW[LeftFlapC] = -PWSense[RightFlapC] * Sl + OUT_NEUTRAL;
+		PW[RightSpoilerC] = PWSense[RightSpoilerC] * Sl + OUT_NEUTRAL;
+		PW[LeftSpoilerC] = -PWSense[RightSpoilerC] * Sl + OUT_NEUTRAL;
 		break;
 	case AileronSpoilerFlapsAF:
 
@@ -128,7 +126,7 @@ void DoMix(void) {
 		PW[RightAileronC] *= PWSense[RightAileronC];
 		PW[LeftAileronC] *= -PWSense[LeftAileronC];
 
-		TempSpoilerFlaps = -PWSense[RightFlapC] * Sl * OUT_MAX_SPOILER;
+		TempSpoilerFlaps = -PWSense[RightSpoilerC] * Sl * OUT_MAX_SPOILER;
 		PW[RightAileronC] = (TempSpoilerFlaps + PW[RightAileronC])
 				+ OUT_NEUTRAL;
 		PW[LeftAileronC] += (-TempSpoilerFlaps + PW[LeftAileronC])
@@ -144,8 +142,8 @@ void DoMix(void) {
 		PW[ElevatorC] = PWSense[ElevatorC] * (F.Bypass ? Pl : (Pl
 				+ FWRollPitchFFFrac * Abs(Rl))) + OUT_NEUTRAL;
 
-		PW[RightFlapC] = PWSense[RightFlapC] * Sl + OUT_NEUTRAL;
-		PW[LeftFlapC] = -PWSense[RightFlapC] * Sl + OUT_NEUTRAL;
+		PW[RightSpoilerC] = PWSense[RightSpoilerC] * Sl + OUT_NEUTRAL;
+		PW[LeftSpoilerC] = -PWSense[RightSpoilerC] * Sl + OUT_NEUTRAL;
 		break;
 	case VTOLAF: //  elevon with axis swap
 	case DeltaAF:
@@ -160,8 +158,8 @@ void DoMix(void) {
 				+ OUT_NEUTRAL;
 
 		if (UAVXAirframe == DeltaAF) {
-			PW[RightFlapC] = PWSense[RightFlapC] * Sl;
-			PW[LeftFlapC] = -PWSense[RightFlapC] * Sl;
+			PW[RightSpoilerC] = PWSense[RightSpoilerC] * Sl;
+			PW[LeftSpoilerC] = -PWSense[RightSpoilerC] * Sl;
 		}
 		break;
 	default:
@@ -350,12 +348,12 @@ void MixAndLimitCam(void) {
 
 			PW[CamRollC] = PW[CamPitchC] = OUT_NEUTRAL;
 		} else {
-			NewCamRoll = A[Roll].Angle * CamRoll.Kp + (real32) P(CamRollTrim)
+			NewCamRoll = A[Roll].Angle * Cam.RollKp + (real32) P(RollCamTrim)
 					* 0.01f;
 			NewCamRoll = (real32) PWSense[CamRollC] * NewCamRoll * OUT_MAXIMUM
 					+ OUT_NEUTRAL;
 
-			NewCamPitch = A[Pitch].Angle * CamPitch.Kp + OrbitCamAngle
+			NewCamPitch = A[Pitch].Angle * Cam.PitchKp + OrbitCamAngle
 					+ DesiredCamPitchTrim;
 			NewCamPitch = PWSense[CamPitchC] * NewCamPitch * OUT_MAXIMUM
 					+ OUT_NEUTRAL;
@@ -373,7 +371,7 @@ void InitServoSense(void) {
 		PWSense[m] = 1.0f;
 
 	b = P(ServoSense);
-	for (m = 1; m <= 6; m++) { // RightAileronC .. LeftFlapC
+	for (m = 1; m <= 6; m++) { // RightAileronC .. LeftSpoilerC
 		PWSense[SM[m]] = ((b & 1) ? -1.0f : 1.0f);
 		b >>= 1;
 	}

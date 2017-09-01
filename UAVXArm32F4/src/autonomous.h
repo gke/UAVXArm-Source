@@ -34,6 +34,8 @@ typedef struct {
 } NavCoordStruct;
 
 typedef struct {
+
+	real32 PosKp, PosKi, VelKp, VelKi, VelIL;
 	NavCoordStruct C[3];
 
 	real32 Sensitivity;
@@ -49,11 +51,11 @@ typedef struct {
 	real32 FenceRadius;
 
 	real32 LPFCutOffHz;
-	PIDStruct O, I;
 
 	real32 MaxVelocity;
 	real32 MaxAngle;
-	real32 AttitudeSlewRate;
+	real32 HeadingTurnoutRad;
+
 	real32 YawKp;
 } NavStruct;
 
@@ -115,9 +117,9 @@ extern void DoNavigation(void);
 extern void InitNavigation(void);
 
 extern void UpdateRTHSwState(void);
-extern void CheckProximity(void);
-extern void ResumeHoldingStation(void);
-extern void AcquireHoldPosition(void);
+extern void CheckProximity(real32 V, real32 H);
+extern void InitiatePH(void);
+extern void CapturePosition(void);
 extern void CheckRapidDescentHazard(void);
 
 extern void DecayPosCorr(void);

@@ -32,7 +32,7 @@
 #define POWER_SCALE (3.3f)
 
 real32 BatteryVolts, BatterySagR, StartupVolts, BatteryCurrent, BatteryVoltsLimit, BatteryChargeUsedmAH;
-
+real32 VoltScaleTrim, CurrentScaleTrim;
 real32 BatteryCurrentADCZero;
 
 real32 BatteryCapacitymAH;
@@ -73,13 +73,13 @@ void CheckBatteries(void) {
 			BatteryVolts = MockBattery() * BatteryCellCount;
 		} else {
 #if defined(HAVE_CURRENT_SENSOR)
-			real32 Temp = -((analogRead(BattCurrentAnalogSel) - BatteryCurrentADCZero )) * (3.3f/0.04f);
+			real32 Temp = -((analogRead(BattCurrentAnalogSel) - BatteryCurrentADCZero )) * (3.3f/0.04f) *CurrentScaleTrim;
 					//* CURRENT_SENSOR_MAX;
 			BatteryCurrent = HardFilter(BatteryCurrent, Temp);
 #endif
 
 			BatteryVolts
-					= MediumFilter(BatteryVolts, analogRead(BattVoltsAnalogSel) * VOLTS_SCALE);
+					= MediumFilter(BatteryVolts, analogRead(BattVoltsAnalogSel) * VOLTS_SCALE * VoltScaleTrim);
 		}
 
 		dTmS = NowmS - mS[LastBattery];
@@ -97,17 +97,20 @@ void CheckBatteries(void) {
 
 void InitBattery(void) {
 
+	CurrentScaleTrim = P(CurrentScale) * 0.01f;
+	VoltScaleTrim = P(VoltScale) * 0.01f;
+
 	if (F.Emulation) {
 		BatteryCellCount = 3.0;
 		StartupVolts = BatteryVolts = 12.6f;
 	} else {
-		StartupVolts = BatteryVolts = analogRead(BattVoltsAnalogSel) * VOLTS_SCALE;
+		StartupVolts = BatteryVolts = analogRead(BattVoltsAnalogSel) * VOLTS_SCALE * VoltScaleTrim;
 		BatteryCellCount = (int16)(BatteryVolts / 3.7f); // OK for 3-6 cell LiPo if charged!
 	}
 
 	BatterySagR = 1.0f;
 
-	BatteryVoltsLimit = P(LowVoltThres) * 0.2f;
+	BatteryVoltsLimit = P(LowVoltThres) * 0.1f;
 	BatteryCapacitymAH = (P(BatteryCapacity) * 100.0f);
 	BatteryVolts = BatteryVoltsLimit;
 	BatteryCurrent = BatteryChargeUsedmAH = 0.0f;

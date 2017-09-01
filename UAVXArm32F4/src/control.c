@@ -24,13 +24,13 @@
 #define NAV_RTH_LOCKOUT_ANGLE_RAD DegreesToRadians(10)
 
 AxisStruct A[3];
-AltStruct Alt;
 
 real32 CameraAngle[3];
 real32 OrbitCamAngle = 0.0f;
 real32 AngleE, RateE;
-int16 AttitudeHoldResetCount;
 real32 TiltThrFF;
+real32 CurrDerivativeLPFreqHz;
+idx DerivativeLPFOrder;
 
 real32 DesiredAltitude, Altitude;
 real32 AltComp, ROC, MinROCMPS, EffMinROCMPS;
@@ -40,19 +40,35 @@ real32 BattThrFFComp = 1.0f;
 real32 AltAccComp = 0.0f;
 real32 HorizonTransPoint;
 real32 AngleRateMix = 1.0f;
-real32 YawStickScaleRadPS, RollPitchStickScaleRadPS;
-real32 MaxAttitudeAngleRad;
-real32 YawStickThreshold;
+real32 StickDeadZone;
 real32 DesiredROC = 0.0f;
 real32 CruiseThrottle = 0.5f;
 real32 CurrMaxTiltAngle = 0.0f;
 real32 TuneKpScale;
 int8 BeepTick = 0;
 
-real32 NavHeadingTurnoutRad, FWRollPitchFFFrac, FWAileronDifferentialFrac,
-		FWPitchThrottleFFFrac, MaxAltHoldCompFrac, MaxAttitudeAngleRad,
-		FWMaxClimbAngleRad, FWBoardPitchAngleRad, FWFlapDecayS, BestROCMPS;
+AltStruct Alt;
+
+real32 FWRollPitchFFFrac, FWAileronDifferentialFrac, FWPitchThrottleFFFrac,
+		MaxAltHoldCompFrac, FWMaxClimbAngleRad, FWBoardPitchAngleRad,
+		FWSpoilerDecayS, FWAileronRudderFFFrac, FWAltSpoilerFFFrac, BestROCMPS;
 real32 FWGlideAngleOffsetRad = 0.0f;
+real32 ThrottleGain, gainScale;
+
+void determineGainScale(void) {
+
+	gainScale
+			= ((ThrottleGain > 0.0f) && (DesiredThrottle > CruiseThrottle)) ? ThrottleGain
+					* (DesiredThrottle - CruiseThrottle) / (1.0f
+					- CruiseThrottle)
+					: 1.0f;
+} // determineGainScale
+
+real32 conditionOut(real32 v) {
+
+	return (Limit1(v * gainScale, 1.0f));
+
+} // conditionOut
 
 void ZeroThrottleCompensation(void) {
 	AltComp = 0.0f;
@@ -67,7 +83,7 @@ void CalcTiltThrFFComp(void) {
 	if (IsMulticopter && (State == InFlight) && !F.UsingRateControl) { // forget near level check
 		Temp = (1.0f / AttitudeCosine() - 1.0) * TiltThrFFFrac + 1.0f;
 		Temp = Limit(Temp, 1.0f, TiltFFLimit);
-		TiltThrFFComp = SlewLimit(TiltThrFFComp, Temp, TiltFFLimit, dT);
+		TiltThrFFComp = SlewLimit(&TiltThrFFComp, Temp, TiltFFLimit, dT);
 	} else
 		TiltThrFFComp = 1.0f;
 
@@ -88,67 +104,53 @@ void CalcBattThrComp(void) {
 void TrackCruiseThrottle(void) {
 
 	if (F.Emulation)
-		CruiseThrottle = IsFixedWing ? THR_DEFAULT_CRUISE_FW
-				: THR_DEFAULT_CRUISE;
+		CruiseThrottle = IsFixedWing ? THR_DEFAULT_CRUISE_FW_STICK
+				: THR_DEFAULT_CRUISE_STICK;
 	else {
-		//	if (IsFixedWing)
-		//		CruiseThrottle = THR_DEFAULT_CRUISE_FW;
-		//	else {
 		if ((Abs(ROC) < ALT_HOLD_MAX_ROC_MPS) && (DesiredThrottle
-				> THR_MIN_CRUISE)) {
-			CruiseThrottle += (DesiredThrottle > CruiseThrottle ? 0.002f
-					: -0.002f) * AltdT;
+				> THR_MIN_ALT_HOLD_STICK)) {
 			CruiseThrottle
-					= Limit(CruiseThrottle, THR_MIN_CRUISE, THR_MAX_CRUISE );
+					+= (((DesiredThrottle + AltComp) > CruiseThrottle) ? 0.002f
+							: -0.002f) * AltdT;
+			CruiseThrottle
+					= Limit(CruiseThrottle, THR_MIN_ALT_HOLD_STICK, THR_MAX_ALT_HOLD_STICK);
 			SetP(EstCruiseThr, CruiseThrottle * 100.0f);
 		}
-		//	}
 	}
 } // TrackCruiseThrottle
 
 
 void DoROCControl(real32 DesiredROC, real32 MinROCMPS, real32 MaxROCMPS) {
-	real32 Pr, Dr, ROCE;
+	real32 Pr, Dr;
 
-	ROCE = Limit(DesiredROC, MinROCMPS, MaxROCMPS) - ROC;
+	Alt.VelE = Limit(DesiredROC, MinROCMPS, MaxROCMPS) - ROC;
 
-	Pr = ROCE * Alt.I.Kp;
-	Dr = AltAccComp = Limit1(AccZ * Alt.I.Kd, 0.2f);
+	Pr = Alt.VelE * Alt.VelKp;
+	Dr = AltAccComp = Limit1(AccZ * Alt.VelKd, 0.2f);
 
-	AltComp = Limit1(Pr + Dr, IsFixedWing ? 0.5f : MaxAltHoldCompFrac);
+	AltComp = Limit1(Pr + Dr, MaxAltHoldCompFrac);
 
 } // DoROCControl
 
 
-void AltitudeHold(real32 AltE, real32 MinROCMPS, real32 MaxROCMPS) {
-	real32 Pa, Ia;
+void AltitudeHold(real32 MinROCMPS, real32 MaxROCMPS) {
+	real32 Pa, Ia, AltE, S, Windup, ROCLimit;
 
-	if (UsingSpecial) {
+	AltE = Limit1(Alt.PosE, ALT_HOLD_BAND_M);
 
-		Pa = Limit(AltE * Alt.O.Kp, MinROCMPS, MaxROCMPS);
+	Pa = Limit(AltE * Alt.PosKp, MinROCMPS, MaxROCMPS);
 
-		Alt.O.IntE += AltE * Alt.O.Ki * AltdT;
-		Ia = Alt.O.IntE;
+	Alt.PosIntE += AltE * Alt.PosKi * AltdT;
+	Ia = Alt.PosIntE;
 
-		DesiredROC = Pa + Ia;
+	DesiredROC = Pa + Ia;
 
-		if (DesiredROC > MaxROCMPS) {
-			Alt.O.IntE = DesiredROC - MaxROCMPS;
-			DesiredROC = MaxROCMPS;
-		} else if (DesiredROC < MinROCMPS) {
-			Alt.O.IntE = DesiredROC - MinROCMPS;
-			DesiredROC = MinROCMPS;
-		}
-
-	} else {
-
-		Pa = AltE * Alt.O.Kp;
-
-		Alt.O.IntE += AltE * Alt.O.Ki * AltdT;
-		Alt.O.IntE = Limit1(Alt.O.IntE, Alt.O.IL);
-		Ia = Alt.O.IntE;
-
-		DesiredROC = Pa + Ia;
+	ROCLimit = DesiredROC > 0.0f ? MaxROCMPS : -MinROCMPS;
+	Windup = Abs(DesiredROC) - ROCLimit;
+	if (Windup > 0.0f) {
+		S = Sign(DesiredROC);
+		Alt.PosIntE = S * (Abs(Alt.PosIntE) - Windup);
+		DesiredROC = S * ROCLimit;
 	}
 
 	DoROCControl(DesiredROC, MinROCMPS, MaxROCMPS);
@@ -161,7 +163,7 @@ void AltitudeHold(real32 AltE, real32 MinROCMPS, real32 MaxROCMPS) {
 
 void DeploySpoilers(real32 a) {
 
-	Sl = Limit(a * 0.05f, 0.0, 1.0f);
+	Sl = Limit(a * FWAltSpoilerFFFrac/ALT_HOLD_BAND_M, 0.0, FWAltSpoilerFFFrac);
 	if (Sl > 0.0f)
 		AltComp = -1.0f;
 
@@ -169,14 +171,14 @@ void DeploySpoilers(real32 a) {
 
 void AcquireAltitudeFW(void) {
 
-	real32 AltE = DesiredAltitude - Altitude; // negative then too high => descend
+	Alt.PosE = DesiredAltitude - Altitude; // negative then too high => descend
 
 	CheckRapidDescentHazard();
 	if (F.RapidDescentHazard)
-		DeploySpoilers((-AltE) - DESCENT_ALT_DIFF_M);
+		DeploySpoilers(-Alt.PosE - ALT_HOLD_BAND_M);
 	else {
-		AltitudeHold(AltE, -BestROCMPS, BestROCMPS);
-		Sl = DecayX(Sl, FWFlapDecayS, AltdT);
+		AltitudeHold(-BestROCMPS, BestROCMPS);
+		Sl = DecayX(Sl, FWSpoilerDecayS, AltdT);
 	}
 
 } // AcquireAltitudeFW
@@ -210,7 +212,7 @@ void AltitudeControlFW(void) {
 			if (F.ThrottleMoving || (ROCTooHigh(1.0f) && !F.HoldingAlt)) {
 				F.HoldingAlt = false;
 				DesiredAltitude = Altitude;
-				Alt.O.IntE = Sl = 0.0f;
+				Alt.PosIntE = Sl = 0.0f;
 				AltComp = DecayX(AltComp, AltCompDecayS, AltdT);
 			} else {
 				F.HoldingAlt = true;
@@ -225,16 +227,15 @@ void AltitudeControlFW(void) {
 
 
 void AcquireAltitude(void) {
-	real32 AltE;
 	// Synchronised to baro intervals independent of active altitude source
 	real32 EffMinROCMPS;
+
+	Alt.PosE = DesiredAltitude - Altitude;
 
 	EffMinROCMPS = (F.RapidDescentHazard || (NavState == ReturningHome)
 			|| (NavState == Transiting)) ? DESCENT_MIN_ROC_MPS : MinROCMPS;
 
-	AltE = DesiredAltitude - Altitude;
-
-	AltitudeHold(AltE, EffMinROCMPS, ALT_MAX_ROC_MPS);
+	AltitudeHold(EffMinROCMPS, ALT_MAX_ROC_MPS);
 
 } // AcquireAltitude
 
@@ -249,7 +250,7 @@ void AltitudeControl(void) {
 		if (F.ThrottleMoving || (ROCTooHigh(0.25f) && !F.HoldingAlt)) {
 			F.HoldingAlt = false;
 			DesiredAltitude = Altitude;
-			Alt.O.IntE = 0.0f;
+			Alt.PosIntE = 0.0f;
 			AltComp = DecayX(AltComp, AltCompDecayS, AltdT);
 		} else {
 			F.HoldingAlt = true;
@@ -278,7 +279,7 @@ void DoAltitudeControl(void) {
 			F.RapidDescentHazard = ROC < DESCENT_MIN_ROC_MPS;
 			DesiredAltitude = Altitude;
 			AltComp = DecayX(AltComp, AltCompDecayS, AltdT);
-			Sl = DecayX(Sl, FWFlapDecayS, AltdT);
+			Sl = DecayX(Sl, FWSpoilerDecayS, AltdT);
 			F.HoldingAlt = false;
 		}
 
@@ -288,12 +289,10 @@ void DoAltitudeControl(void) {
 
 
 real32 ComputeRateDerivative(AxisStruct *C) {
-	real32 r;
 
-	r = LPFilter(&C->RateF, C->I.E, PROP_LP_FREQ_HZ, dT);
-	C->RateD = (r - C->Ratep) * dTR;
-	C->Ratep = r;
-	C->RateD = Smoothr32xn(&C->RateDF, 4, C->RateD);
+	C->RateD = PavelDifferentiator(&C->RateDF, C->RateE) * dTR;
+	C->RateD = LPFilter(&C->RateF, DerivativeLPFOrder, C->RateD,
+			DerivativeLPFreqHz, dT);
 
 	return (C->RateD);
 
@@ -301,204 +300,142 @@ real32 ComputeRateDerivative(AxisStruct *C) {
 
 
 void ZeroPIDIntegrals(void) {
-	int32 a;
+	idx a;
 
 	for (a = Pitch; a <= Yaw; a++)
-		A[a].O.IntE = A[a].I.IntE = 0.0f; // TODO: I.IntE unused
+		A[a].AngleIntE = 0.0f;
 
 } // ZeroPIDIntegrals
 
-#define MAGIC 2.0f
 
-void DoRateControl(int32 a) {
-	real32 AngleRateMix;
-	real32 Pa, Pr, Dr;
+void DoRateControl(idx a) {
 	AxisStruct *C;
 
 	C = &A[a];
 
-	C->Control = Threshold(C->Stick, THRESHOLD_STICK) * MaxAttitudeAngleRad
-			+ C->NavCorr;
+	real32 AngleRateMix;
+	real32 Pa, Pr, Dr;
+
+	C->Control = Threshold(C->Stick, StickDeadZone);
 
 	if (P(Horizon) > 0) { // hybrid that panics back to angle when sticks centred
+
+		C->AngleDesired = C->Control * C->AngleMax;
+		if (IsFixedWing && (a == Pitch))
+			C->AngleDesired += FWBoardPitchAngleRad;
+
+		C->AngleDesired = Limit1(C->AngleDesired, C->AngleMax);
+
+		C->AngleE = C->AngleDesired - C->Angle;
+		Pa = C->AngleE * C->AngleKp;
+
+		C->AngleIntE = 0.0f; // for flip back to angle mode
 
 		AngleRateMix
 				= Limit(1.0f - (CurrMaxRollPitchStick / HorizonTransPoint), 0.0f, 1.0f);
 
-		C->O.Desired = Limit1(C->Control * MAGIC * AngleRateMix, C->O.Max);
+		C->RateDesired = Pa * AngleRateMix + C->Control * C->RateMax * (1.0f
+				- AngleRateMix);
 
-		if (IsFixedWing && (a == Pitch))  C->O.Desired += FWBoardPitchAngleRad;
-
-		C->O.E = C->O.Desired - C->Angle;
-
-
-		Pa = C->O.E * C->O.Kp;
-		C->O.IntE = 0.0f; // for flip back to angle mode
-
-		C->I.Desired = Pa + C->Control * (RollPitchStickScaleRadPS
-				/ MaxAttitudeAngleRad) * (1.0f - AngleRateMix);
 	} else
 		// pure rate control
-		C->I.Desired = C->Control * (RollPitchStickScaleRadPS
-				/ MaxAttitudeAngleRad);
+		C->RateDesired = C->Control * C->RateMax;
 
-	C->I.E = Rate[a] - Limit1(C->I.Desired, C->I.Max);
+	C->RateE = Rate[a] - C->RateDesired;
 
-	Pr = C->I.E * C->I.Kp;
-	Dr = ComputeRateDerivative(C) * C->I.Kd;
+	Pr = C->RateE * C->RateKp;
+	Dr = ComputeRateDerivative(C) * C->RateKd;
 
-	C->Out = Limit1(Pr + Dr, 1.0f);
+	C->Out = conditionOut(Pr + Dr);
 
 } // DoRateControl
 
 
-void DoAngleControl(int32 a) { // with Ming Liu
+void DoAngleControl(idx a) { // with Ming Liu
 	real32 Pa, Ia, Pr, Dr, S, Windup;
 	AxisStruct *C;
 
 	C = &A[a];
 
-	C->Control = Threshold(C->Stick, THRESHOLD_STICK) * MaxAttitudeAngleRad;
+	C->AngleDesired = C->Control = Threshold(C->Stick, StickDeadZone)
+			* C->AngleMax;
 
-	C->O.Desired = Limit1(C->Control * MAGIC + C->NavCorr, C->O.Max); // magic number zzz
+	C->AngleDesired += C->NavCorr;
 
-	//	if (UsingVTOLMode) {
-	//		// TODO: needs a transition - MORE THOUGHT
-	//		C->O.E = C->O.Desired - (C->Angle - DegreesToRadians(90));
-	//	} else
+	if (IsFixedWing && (a == Pitch))
+		C->AngleDesired += FWBoardPitchAngleRad;
 
-	if (IsFixedWing && (a == Pitch)) C->O.Desired += FWBoardPitchAngleRad;
+	C->AngleDesired = Limit1(C->AngleDesired, C->AngleMax);
 
-	C->O.E = C->O.Desired - C->Angle;
+	C->AngleE = C->AngleDesired - C->Angle;
+	Pa = C->AngleE * C->AngleKp;
 
-	if (false) { //UsingSpecial) {
-		Pa = C->O.E * C->O.Kp;
+	C->AngleIntE += C->AngleE * C->AngleKi * dT;
 
-		C->O.IntE += C->O.E * C->O.Ki * dT;
-		Ia = C->O.IntE;
+	Ia = C->AngleIntE;
+	C->RateDesired = Pa + Ia;
 
-		C->I.Desired = Pa + Ia;
-
-		Windup = Abs(C->I.Desired) - C->I.Max;
-		if (Windup > 0.0f) {
-			S = Sign(C->I.Desired);
-			C->O.IntE = S * (Abs(C->O.IntE) - Windup);
-			C->I.Desired = S * C->I.Max;
-		}
-	} else {
-		Pa = C->O.E * C->O.Kp;
-
-		C->O.IntE += C->O.E * C->O.Ki * dT;
-		C->O.IntE = Limit1(C->O.IntE, C->O.IL);
-		Ia = C->O.IntE;
-
-		C->I.Desired = Limit1(Pa + Ia, C->I.Max);
+	Windup = Abs(C->RateDesired) - C->RateMax;
+	if (Windup > 0.0f) {
+		S = Sign(C->RateDesired);
+		C->AngleIntE = S * (Abs(C->AngleIntE) - Windup);
+		C->RateDesired = S * C->RateMax;
 	}
 
-	C->I.E = Rate[a] - C->I.Desired;
+	C->RateE = Rate[a] - C->RateDesired;
 
-	Pr = C->I.E * C->I.Kp;
-	Dr = ComputeRateDerivative(C) * C->I.Kd;
+	Pr = C->RateE * C->RateKp;
+	Dr = ComputeRateDerivative(C) * C->RateKd;
 
-	C->Out = Limit1(Pr + Dr, 1.0f);
+	C->Out = conditionOut(Pr + Dr);
 
 } // DoAngleControl
 
 
-real32 MinimumTurn(real32 Desired) {
-	real32 HE, absHE;
-	static real32 TurnSign;
-	static boolean TurnCommit = false;
+real32 DesiredYawRate(void) {
 
-	HE = MakePi(Desired - Heading);
+	F.YawActive = ((IsFixedWing && ((NavState == PIC) || (Abs(A[Roll].Stick)
+			> StickDeadZone))) || (Abs(A[Yaw].Stick) > StickDeadZone));
+
+	if (F.YawActive) {
+		DesiredHeading = Heading;
+		A[Yaw].AngleE = 0.0f;// for log
+		A[Yaw].Control = Threshold(A[Yaw].Stick, StickDeadZone)
+				* A[Yaw].RateMax;
+		return (A[Yaw].Control);
+	} else {
+		if ((F.Navigate || F.ReturnHome) && !IsFixedWing)
+			DesiredHeading = Nav.DesiredHeading;
+
+		A[Yaw].AngleE
+				= Limit1(MinimumTurn(DesiredHeading), Nav.HeadingTurnoutRad);
+		return (Limit1(A[Yaw].AngleE * A[Yaw].AngleKp, A[Yaw].CompassRateMax));
+	}
+} // DesiredYawRate
+
+
+static void DoTurnControl(void) {
+	real32 Pr, Dr;
+
+	A[Yaw].RateDesired = DesiredYawRate();
+
+	A[Yaw].RateE = A[Yaw].RateDesired - Rate[Yaw];
+	Pr = A[Yaw].RateE * A[Yaw].RateKp;
+	Dr = ComputeRateDerivative(&A[Yaw]) * A[Yaw].RateKd;
+
+	A[Yaw].Out = Pr + Dr;
 
 	if (IsFixedWing) {
-		if (NavState == UsingThermal) {
-			TurnCommit = true;
-			TurnSign = 1.0f;
-			HE = Make2Pi(Desired - Heading); // turn right
-		} else {
-			HE = MakePi(Desired - Heading);
-			absHE = fabsf(HE);
-			if (absHE > DegreesToRadians(160)) {
-				TurnCommit = true;
-				TurnSign = Sign(HE);
-			} else if (absHE < DegreesToRadians(135))
-				TurnCommit = false;
-
-			if (TurnCommit)
-				HE = TurnSign * absHE;
-		}
+		A[Yaw].Out *= FWAileronRudderFFFrac;
+		A[Roll].NavCorr
+				= Limit1(A[Yaw].RateE * Airspeed * GRAVITY_MPS_S_R, Nav.MaxAngle)
+						* Nav.Sensitivity;
 	}
-	return (HE);
-
-} // MinimumTurn
-
-
-static void DoRudderControl(void) {
-	real32 Pa, Pr;
-	AxisStruct *C;
-	static real32 FWKpScale = 0.1f;
-
-	// TODO: needs a lot more thought e.g. rudder elevator basically coordination
-
-	C = &A[Yaw];
-
-	C->Control = Threshold(C->Stick, THRESHOLD_STICK) * YawStickScaleRadPS;
-
-	F.YawActive = (Abs(C->Control) > YawStickThreshold)
-			|| (Abs(A[Roll].Control) > YawStickThreshold);
-	if (F.YawActive)
-		DesiredHeading = Heading;
-	else if (NavState != PIC)
-		DesiredHeading = Nav.DesiredHeading;
-
-	C->O.E = HeadingE = MinimumTurn(DesiredHeading);
-	C->O.E = Limit1(C->O.E, NavHeadingTurnoutRad);
-
-	Pa = C->O.E * C->O.Kp * FWKpScale;
-
-	C->I.Desired = Limit1(Pa, C->I.Max);
-
-	C->I.E = (C->I.Desired + C->Control) - Rate[Yaw];
-	Pr = C->I.E * C->I.Kp;
-
-	C->Out = Limit1(Pr, 1.0f);
-
-} // DoRudderControl
-
-static void DoYawControl(void) {
-	real32 Pa, Pr;
-	AxisStruct *C;
-
-	C = &A[Yaw];
-
-	C->Control = Threshold(C->Stick, THRESHOLD_STICK) * YawStickScaleRadPS;
-
-	F.YawActive = Abs(C->Control) > YawStickThreshold;
-
-	if (F.YawActive)
-		DesiredHeading = Heading;
-	else if (F.OrbitingWP || F.RapidDescentHazard || F.UsingPOI)
-		DesiredHeading = Nav.DesiredHeading;
-
-	C->O.E = HeadingE = MinimumTurn(DesiredHeading);
-	C->O.E = Limit1(C->O.E, NavHeadingTurnoutRad);
-
-	Pa = C->O.E * C->O.Kp;
-
-	C->I.Desired = Limit1(Pa, C->I.Max);
-
-	C->I.E = (C->I.Desired + C->Control) - Rate[Yaw];
-	Pr = C->I.E * C->I.Kp;
-
-	C->Out = Limit1(Pr, 1.0f);
-
-} // DoYawControl
+} // DoTurnControl
 
 
 void DoControl(void) {
-	int32 a;
+	idx a;
 
 	CurrMaxTiltAngle = Max(Abs(A[Roll].Angle), Abs(A[Pitch].Angle));
 	F.NearLevel = CurrMaxTiltAngle < NAV_RTH_LOCKOUT_ANGLE_RAD;
@@ -506,10 +443,16 @@ void DoControl(void) {
 	//CalcTiltThrFFComp();
 	//CalcBattThrComp();
 
-	if (IsFixedWing)
-		DoRudderControl();
-	else
-		DoYawControl();
+#if defined(BARE_METAL)
+	for (a = Pitch; a <= Yaw; a++) {
+		A[a].RateDesired = A[a].StickD * A[a].RateMax * 200.0f;
+		A[a].Out = conditionOut(A[a].RateDesired * A[a].RateKp);
+	}
+#else
+
+	determineGainScale(); // primitive gain scheduling
+
+	DoTurnControl(); // MUST BE BEFORE ROLL CONTROL
 
 	for (a = Pitch; a <= Roll; a++)
 		if (F.UsingRateControl)
@@ -517,29 +460,31 @@ void DoControl(void) {
 		else
 			DoAngleControl(a);
 
-	UpdateDrives();
+#endif
+
+	// move to start of cycle to reduce jitter UpdateDrives();
 
 } // DoControl
 
 
 void InitControl(void) {
-	int32 a;
+	idx a;
 	AxisStruct *C;
 
-	A[Roll].O.E = Sl = 0.0f;
+	A[Roll].AngleE = Sl = 0.0f;
 	ZeroThrottleCompensation();
 
 	for (a = Pitch; a <= Yaw; a++) {
 		C = &A[a];
-		C->O.IntE = 0.0f;
-		C->O.Dp = 0.0f;
+		C->AngleIntE = 0.0f;
 		C->Ratep = 0.0f;
-		C->I.Dp = 0.0f;
+		C->RateDp = 0.0f;
 
 		C->NavCorr = 0.0f;
-		C->NavCorrP = 0.0f;
 		C->RateF.Primed = false;
 		C->RateDF.Primed = false;
+
+		C->StickP = C->StickD = 0.0f;
 
 		C->Out = 0.0f;
 	}
@@ -549,407 +494,3 @@ void InitControl(void) {
 } // InitControl
 
 
-//#define MATRIXPILOT
-
-#if defined(MATRIXPILOT)
-// This file is part of MatrixPilot.
-//
-//    http://code.google.com/p/gentlenav/
-//
-// Copyright 2009-2011 MatrixPilot Team
-// See the AUTHORS.TXT file for a list of authors of MatrixPilot.
-//
-// MatrixPilot is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// MatrixPilot is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with MatrixPilot.  If not, see <http://www.gnu.org/licenses/>.
-
-
-#include "defines.h"
-#include "states.h"
-#include "config.h"
-#include "navigate.h"
-#include "behaviour.h"
-#include "servoPrepare.h"
-#include "airspeedCntrl.h"
-#include "altitudeCntrl.h"
-#include "helicalTurnCntrl.h"
-#include "../libDCM/deadReckoning.h"
-#include "../libDCM/mathlibNAV.h"
-#include "../libDCM/rmat.h"
-#include <math.h>
-#include <stdlib.h> // for declaration of function abs() under gcc
-#include "options_airspeed.h"
-
-//#ifndef RTL_PITCH_DOWN
-//#define RTL_PITCH_DOWN (0.0)
-//#endif // RLT_PITCH_DOWN
-
-//#ifndef ANGLE_OF_ATTACK_NORMAL
-//#define ANGLE_OF_ATTACK_NORMAL (0.0)
-//#endif // ANGLE_OF_ATTACK_NORMAL
-
-//#ifndef ANGLE_OF_ATTACK_INVERTED
-//#define ANGLE_OF_ATTACK_INVERTED (0.0)
-//#endif // ANGLE_OF_ATTACK_INVERTED
-
-//#ifndef ELEVATOR_TRIM_NORMAL
-//#define ELEVATOR_TRIM_NORMAL (0.0)
-//#endif // ELEVATOR_TRIM_NORMAL
-
-//#ifndef ELEVATOR_TRIM_INVERTED
-//#define ELEVATOR_TRIM_INVERTED (0.0)
-//#endif // ELEVATOR_TRIM_INVERTED
-
-//#ifndef CRUISE_SPEED
-//#define CRUISE_SPEED (12.0)
-//#endif // CRUISE_SPEED
-
-#ifndef INVERTED_NEUTRAL_PITCH
-#define INVERTED_NEUTRAL_PITCH (0.0)
-#endif
-
-#define RTLKICK            ((real32)(gains.RtlPitchDown*(RMAX/57.3)))
-#define INVNPITCH          ((real32)(INVERTED_NEUTRAL_PITCH*(RMAX/57.3)))
-#define AOA_NORMAL         ((real32)(turns.AngleOfAttackNormal*(RMAX/57.3)))
-#define AOA_INVERTED       ((real32)(turns.AngleOfAttackInverted*(RMAX/57.3)))
-#define ELEV_TRIM_NORMAL   ((real32)SERVORANGE*turns.ElevatorTrimNormal)
-#define ELEV_TRIM_INVERTED ((real32)SERVORANGE*turns.ElevatorTrimInverted)
-#define STALL_SPEED_MPS 	((real32)turns.RefSpeed*50.0) // assume stall speed approximately 1/2 of reference speed
-#define AOA_OFFSET           ((real32)((AOA_NORMAL + AOA_INVERTED)*0.5f)) // offset is the average of the two values
-#define AOA_SLOPE            ((real32)((AOA_NORMAL - AOA_INVERTED)*0.25f)) // multiply by 4 because base speed is 1/2 of cruise
-#define ELEVATOR_TRIM_OFFSET ((real32)((ELEV_TRIM_NORMAL + ELEV_TRIM_INVERTED)*0.5f)) // offset is the average of the two values
-#define ELEVATOR_TRIM_SLOPE  ((real32)((ELEV_TRIM_NORMAL - ELEV_TRIM_INVERTED)*0.25f)) // multiply by 4 because base speed is 1/2 of cruise
-#define MAX_INPUT            (1.0f) // maximum input in pwm units
-#define TURN_CALC_MINIMUM_AIRSPEED     (5.0f) // minimum value of airspeed in cm/sec to be used in tilt computation,
-// mainly used for ground testing of turning tilt, which would go to zero at zero airspeed
-
-real32 tiltError[3];
-real32 desiredRotationRateRadians[3];
-real32 rotationRateError[3];
-//real32 angleOfAttack;
-
-static real32 estimatedLift;
-static real32 relativeLoading;
-
-// Compute estimated wing lift based on orientation.
-// This information can be determined directly from the accelerometers,
-// but this creates an unstable feedback loop through the elevator.
-// It is better to compute the lift as a feed forward term.
-// It can be shown that wing lift divided by mass times gravity during a helical turn is
-// equal to (Z + X * (X/Z)), where X, Y, and Z are the 3 elements
-// of the bottom row of the direction cosine matrix, in real (real32ing point) values.
-// Note: In principle, X/Z can be computed from X and Z, but since X, Z, and X/Z are already available
-// in the helical turn control computations, it is more efficient to supply X/Z rather than recompute it.
-// The computation of lift can use a mix of actual and desired values of X, Z and X/Z.
-// The selection of the mix of actual and desired values for X, Z and X/Z is done when the routine is called.
-// The following routine computes 1/16 of the ratio of wing loading divided by mass*gravity.
-// The scale factor of 1/16 was selected to handle a fractional representation of a maximum lift/mg of more than 4.
-
-static real32 wingLift(real32 X, real32 Z, real32 XoverZ) {
-	// compute (1/16*(Z + X *(X/Z)))*2^16
-
-	return X * XoverZ + Z;
-}
-
-// Compute relative wing loading, 2**15*(Load/(mass*Gravity))*(V0/V)**2
-// This number ranges from -2**15 to +2**15. Either extreme represents stall conditions.
-// Typical values for relative wing loading under normal conditions are around 1/8 to 1/4 of the stall value.
-// V0 is stall speed in centimeters per second during level flight, V is airspeed in centimeters per second.
-// Load is wing loading in acceleration units, G is gravity.
-// Relative wing loading is 2**15 when airspeed is equal to stall speed during level, unaccelerated flight
-//
-// Implement as 8*((2**16)*(a/(16g))*(V0/V)**2
-//
-
-static real32 relativeWingLoading(real32 wingLoad, real32 airSpeed) {
-	// wingLoad is(2**16)*((wing_load / mass*gravity) / 16)
-	// stallSpeed is the stall speed in centimeters per second
-	// airSpeed is the air speed in centimeters per second
-
-	real32 result\;
-	real32 Temp;
-
-	if (airSpeed > stallSpeed) {
-		Temp = Sqr(STALL_SPEED_MPS / airSpeed) * wingLoad;
-		result = (abs(Temp) < 4095) ? Temp : (wingLoad > 0) ? 32767 : -32767;
-	} else
-	result = 0;
-
-	return result;
-}
-
-// helicalTurnCntrl determines the values of the elements of the bottom row of rmat
-// as well as the required rotation rates in the body frame that are required to make a coordinated turn.
-// The required values for the bottom row of rmat are placed in the vector desiredTilt.
-// Desired tilt is computed from the helical turn parameters from desired climb rate, turn rate, and airspeed.
-// The cross product of rmat[6,7,8] with the desiredTilt produces the orientation error.
-// The desired rotation rate in the body frame is computed by multiplying desired turn rate times actual tilt vector.
-// The rotation rate error is the actual rotation rate vector in the body frame minus the desired rotation rate vector.
-// The tilt and rate vectors are then used by roll, pitch, and yaw control to deflect control surfaces.
-
-void helicalTurnCntrl(void) {
-	union longww Temp;
-	real32 pitchAdjustAngleOfAttack;
-	real32 rollErrorVector[3];
-	real32 rtlkick;
-	real32 desiredPitch;
-	real32 steeringInput;
-	real32 desiredTurnRateRadians;
-	real32 desiredTiltVector[3];
-	real32 desiredRotationRateGyro[3];
-	real32 airSpeed;
-	union longww desiredTilt;
-	real32 desiredPitchVector[2];
-	real32 desiredPerpendicularPitchVector[2];
-	real32 actualPitchVector[2];
-	real32 pitchDot;
-	real32 pitchCross;
-	real32 pitchError;
-	real32 pitchEarthBodyProjection[2];
-	real32 angleOfAttack;
-#ifdef TestGains
-	state_flags._.GPS_steering = false; // turn off navigation
-	state_flags._.pitch_feedback = true; // turn on stabilization
-	airSpeed = 9.81f; // for testing purposes, an airspeed is needed
-#else
-	airSpeed = air_speed_3DIMU;
-	if (airSpeed < TURN_CALC_MINIMUM_AIRSPEED)
-	airSpeed = TURN_CALC_MINIMUM_AIRSPEED;
-#endif
-
-	// determine the desired turn rate as the sum of navigation and fly by wire.
-	// this allows the pilot to override navigation if needed.
-	steeringInput = 0; // just in case no airframe type is specified or radio is off
-	if (udb_flags._.radio_on == 1) {
-#if ( (AIRFRAME_TYPE == AIRFRAME_STANDARD) || (AIRFRAME_TYPE == AIRFRAME_GLIDER) )
-		if (AILERON_INPUT_CHANNEL != CHANNEL_UNUSED) // compiler is smart about this
-		{
-			steeringInput = udb_pwIn[AILERON_INPUT_CHANNEL]
-			- udb_pwTrim[AILERON_INPUT_CHANNEL];
-			steeringInput = REVERSE_IF_NEEDED(AILERON_CHANNEL_REVERSED,
-					steeringInput);
-		} else if (RUDDER_INPUT_CHANNEL != CHANNEL_UNUSED) {
-			steeringInput = udb_pwIn[RUDDER_INPUT_CHANNEL]
-			- udb_pwTrim[RUDDER_INPUT_CHANNEL];
-			steeringInput = REVERSE_IF_NEEDED(RUDDER_CHANNEL_REVERSED,
-					steeringInput);
-		} else
-		steeringInput = 0;
-
-#endif // AIRFRAME_STANDARD
-#if (AIRFRAME_TYPE == AIRFRAME_VTAIL)
-		// use aileron channel if it is available, otherwise use rudder
-		if (AILERON_INPUT_CHANNEL != CHANNEL_UNUSED) // compiler is smart about this
-		{
-			steeringInput = udb_pwIn[AILERON_INPUT_CHANNEL]
-			- udb_pwTrim[AILERON_INPUT_CHANNEL];
-			steeringInput = REVERSE_IF_NEEDED(AILERON_CHANNEL_REVERSED,
-					steeringInput);
-		} else if (RUDDER_INPUT_CHANNEL != CHANNEL_UNUSED) {
-			// unmix the Vtail
-			real32 rudderInput = REVERSE_IF_NEEDED(RUDDER_CHANNEL_REVERSED,
-					(udb_pwIn[RUDDER_INPUT_CHANNEL]
-							- udb_pwTrim[RUDDER_INPUT_CHANNEL]));
-			real32 elevatorInput = REVERSE_IF_NEEDED(ELEVATOR_CHANNEL_REVERSED,
-					(udb_pwIn[ELEVATOR_INPUT_CHANNEL]
-							- udb_pwTrim[ELEVATOR_INPUT_CHANNEL]));
-			steeringInput = (-rudderInput + elevatorInput);
-		} else
-		steeringInput = 0;
-
-#endif // AIRFRAME_VTAIL
-#if (AIRFRAME_TYPE == AIRFRAME_DELTA)
-		// delta wing must have an aileron input, so use that
-		// unmix the elevons
-		real32 aileronInput = REVERSE_IF_NEEDED(AILERON_CHANNEL_REVERSED,
-				(udb_pwIn[AILERON_INPUT_CHANNEL]
-						- udb_pwTrim[AILERON_INPUT_CHANNEL]));
-		real32 elevatorInput = REVERSE_IF_NEEDED(ELEVATOR_CHANNEL_REVERSED,
-				(udb_pwIn[ELEVATOR_INPUT_CHANNEL]
-						- udb_pwTrim[ELEVATOR_INPUT_CHANNEL]));
-		steeringInput = REVERSE_IF_NEEDED(ELEVON_VTAIL_SURFACES_REVERSED,
-				((elevatorInput - aileronInput)));
-#endif // AIRFRAME_DELTA
-	}
-
-	steeringInput = Limit1(steeringInput, MAX_INPUT);
-
-	// note that total steering is the sum of pilot input and waypoint navigation,
-	// so that the pilot always has some say in the matter
-
-	Temp = (steeringInput * turngainfbw) / (2.0f * MAX_INPUT);
-
-	if ((settings._.AileronNavigation || settings._.RudderNavigation)
-			&& state_flags._.GPS_steering)
-	Temp += (real32) navigate_determine_deflection('t');
-
-	desiredTurnRateRadians = Limit(Temp, -2.0f * (RMAX + 1),
-			2.0f * (RMAX - 1));
-
-	// compute the desired tilt from desired turn rate and air speed
-	// range for acceleration is plus minus 4 times gravity
-	// range for turning rate is plus minus 4 radians per second
-
-	// desiredTilt is the ratio(-rmat[6]/rmat[8]), times RMAX/2 required for the turn
-	// desiredTilt = desiredTurnRate * airSpeed / gravity
-	// desiredTilt = RMAX/2*"real desired tilt"
-	// desiredTurnRate = RMAX/2*"real desired turn rate", desired turn rate in radians per second
-	// airSpeed is air speed centimeters per second
-	// gravity is 981 centimeters per second per second
-
-	desiredTilt = -(desiredTurnRateRadians * airSpeed) / GRAVITY_MPS_S;
-
-	// limit the lateral acceleration to +- 4 times gravity, total wing loading approximately 4.12 times gravity
-
-	desiredTilt = Limit(desiredTilt, -2.0 * RMAX + 1,
-			2.0 * RMAX - 1);
-
-	desiredTurnRateRadians = (desiredTilt * GRAVITY_MPS_S) / airSpeed;
-
-	// Compute the amount of lift needed to perform the desired turn
-	// Tests show that the best estimate of lift is obtained using
-	// actual values of rmat[6] and rmat[8], and the commanded value of their ratio
-	estimatedLift = wingLift(rmat[6], rmat[8], desiredTilt);
-
-	// compute angle of attack and elevator trim based on relative wing loading.
-	// relative wing loading is the ratio of wing loading divided by the stall wing loading, as a function of air speed
-	// both angle of attack and trim are computed by a linear approximation as a function of relative loading:
-	// y = (2m)*(x/2) + b, y is either angle of attack or elevator trim.
-	// x is relative wing loading. (x/2 is computed instead of x)
-	// 2m and b are determined from values of angle of attack and trim at stall speed, normal and inverted.
-	// b =  (y_normal + y_inverted) / 2.
-	// 2m = (y_normal - y_inverted).
-
-	// If airspeed is greater than stall speed, compute angle of attack and elevator trim,
-	// otherwise set AoA and trim to zero.
-
-	if (air_speed_3DIMU > STALL_SPEED_MPS) {
-		// compute "x/2", the relative wing loading
-		relativeLoading = relativeWingLoading(estimatedLift, air_speed_3DIMU);
-
-		// add mx to b
-		angleOfAttack = AOA_SLOPE * relativeLoading + AOA_OFFSET;
-
-		// project angle of attack into the earth frame
-		pitchAdjustAngleOfAttack = angleOfAttack * rmat[8];
-
-		// similarly, compute elevator trim
-		Temp = ELEVATOR_TRIM_SLOPE * relativeLoading;
-		elevatorLoadingTrim = ELEVATOR_TRIM_OFFSET + Temp;
-	} else {
-		angleOfAttack = 0;
-		pitchAdjustAngleOfAttack = 0;
-		elevatorLoadingTrim = 0;
-	}
-
-	// compute desired rotation rate vector in body frame, scaling is same as gyro signal
-
-	VectorScale(3, desiredRotationRateGyro, &rmat[6], desiredTurnRateRadians); // this operation has side effect of dividing by 2
-
-	// compute desired rotation rate vector in body frame, scaling is in RMAX/2*radians/sec
-
-	VectorScale(3, desiredRotationRateRadians, &rmat[6], desiredTurnRateRadians); // this produces half of what we want
-	VectorAdd(3, desiredRotationRateRadians, desiredRotationRateRadians,
-			desiredRotationRateRadians); // double
-
-	// incorporate roll into desired tilt vector
-
-	desiredTiltVector[0] = desiredTilt;
-	desiredTiltVector[1] = 0;
-	desiredTiltVector[2] = RMAX * 0.5f; // the divide by 2 is to account for the RMAX/2 scaling in both tilt and rotation rate
-	vector3_normalize(desiredTiltVector, desiredTiltVector); // make sure tilt vector has magnitude RMAX
-
-	// incorporate pitch into desired tilt vector
-	// compute return to launch pitch down kick for unpowered RTL
-	rtlkick = (!udb_flags._.radio_on && state_flags._.GPS_steering) ? RTLKICK
-	: 0;
-
-#if (GLIDE_AIRSPEED_CONTROL == 1)
-	// Compute Matt's glider pitch adjustment
-	fractional aspd_pitch_adj = gliding_airspeed_pitch_adjust();
-	// Compute total desired pitch
-	desiredPitch = - rtlkick + aspd_pitch_adj + pitchAltitudeAdjust;
-#else
-	desiredPitch = -rtlkick + pitchAltitudeAdjust;
-#endif
-
-	// Adjustment for inverted flight
-	if (!canStabilizeInverted() || !desired_behavior._.inverted)
-	desiredTiltVector[1] = -desiredPitch - pitchAdjustAngleOfAttack;
-	else {
-		// inverted flight
-		desiredTiltVector[0] = -desiredTiltVector[0];
-		desiredTiltVector[1] = -desiredPitch - pitchAdjustAngleOfAttack
-		- INVNPITCH; // only one of the adjustments is not zero
-		desiredTiltVector[2] = -desiredTiltVector[2];
-	}
-
-	vector3_normalize(desiredTiltVector, desiredTiltVector); // make sure tilt vector has magnitude RMAX
-
-	// compute roll error
-
-	VectorCross(rollErrorVector, &rmat[6], desiredTiltVector); // compute tilt orientation error
-	if (VectorDotProduct(3, &rmat[6], desiredTiltVector) < 0) // more than 90 degree error
-	vector3_normalize(rollErrorVector, rollErrorVector); // for more than 90 degrees, make the tilt error vector parallel to desired axis, with magnitude RMAX
-
-	tiltError[1] = rollErrorVector[1];
-
-	// compute pitch error
-
-	// start by computing the projection of earth frame pitch error to body frame
-
-	pitchEarthBodyProjection[0] = rmat[6];
-	pitchEarthBodyProjection[1] = rmat[8];
-
-	// normalize the projection vector and compute the cosine of the actual pitch as a side effect
-
-	actualPitchVector[1] = (real32) vector2_normalize(pitchEarthBodyProjection,
-			pitchEarthBodyProjection);
-
-	// complete the actual pitch vector
-
-	actualPitchVector[0] = rmat[7];
-
-	// compute the desired pitch vector
-
-	desiredPitchVector[0] = -desiredPitch;
-	desiredPitchVector[1] = RMAX;
-	vector2_normalize(desiredPitchVector, desiredPitchVector);
-
-	// rotate desired pitch vector by 90 degrees to be able to compute cross product using VectorDot
-
-	desiredPerpendicularPitchVector[0] = desiredPitchVector[1];
-	desiredPerpendicularPitchVector[1] = -desiredPitchVector[0];
-
-	// compute pitchDot, the dot product of actual and desired pitch vector
-	// (the 2* that appears in several of the following expressions is a result of the Q2.14 format)
-
-	pitchDot = 2.0f
-	* VectorDotProduct(2, actualPitchVector, desiredPitchVector);
-
-	// compute pitchCross, the cross product of the actual and desired pitch vector
-
-	pitchCross = 2.0f * VectorDotProduct(2, actualPitchVector,
-			desiredPerpendicularPitchVector);
-
-	pitchError = (pitchDot > 0) ? pitchCross : (pitchCross > 0) ? RMAX : -RMAX;
-
-	// multiply the normalized rmat[6], rmat[8] vector by the pitch error
-	VectorScale(2, pitchEarthBodyProjection, pitchEarthBodyProjection,
-			pitchError);
-	tiltError[0] = 2.0f * pitchEarthBodyProjection[1];
-	tiltError[2] = -2.0f * pitchEarthBodyProjection[0];
-
-	// compute the rotation rate error vector
-	VectorSubtract(3, rotationRateError, omegaAccum, desiredRotationRateGyro);
-}
-#endif

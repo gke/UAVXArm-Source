@@ -98,17 +98,29 @@ void DoCalibrationAlarm(void) {
 } // DoAccCalibrationAlarm
 
 void DoBeep(uint8 t, uint8 d) {
+	int32 i;
+
 	if (UsingFastStart)
 		d /= 2;
 
 	BeeperOn();
-	Delay1mS(t * 100);
+	for (i = 0; i < (t * 100); i++) {
+		Probe(1);
+		Delay1mS(1);
+		GetBaro(); // hammer it to warm it up!
+		Probe(0);
+	}
 	BeeperOff();
-	Delay1mS(d * 100);
+	for (i = 0; i < (d * 100); i++) {
+		Probe(1);
+		Delay1mS(1);
+		GetBaro();
+		Probe(0);
+	}
 } // DoBeep
 
 void DoBeeps(uint8 b) {
-	uint8 i;
+	idx i;
 
 	for (i = 0; i < b; i++)
 		if (UsingFastStart)

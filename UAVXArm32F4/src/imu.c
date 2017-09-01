@@ -39,39 +39,64 @@ const real32 GyroScale[] = { //
 				0.001064225154f, // FreeIMU
 				0.001064225154f };
 
-real32 AccScale[3] = { GRAVITY_MPS_S / MPU_1G, GRAVITY_MPS_S / MPU_1G, GRAVITY_MPS_S / MPU_1G};
+//real32 AccScale[3] = { DEF_ACC_SCALE, DEF_ACC_SCALE, DEF_ACC_SCALE };
 
 uint8 CurrAttSensorType = UAVXArm32IMU;
 boolean UsingInvertedBoard = false;
 
-real32 AccBias[3], GyroBias[3];
+HistStruct AccF[3];
+HistStruct GyroF[3];
+boolean UsingSWFilters;
+
+real32 GyroBias[3];
 real32 Acc[3], Rate[3];
 real32 RateEnergySum;
 uint32 RateEnergySamples;
+
+real32 GyroLPFreqHz, AccLPFreqHz;
+idx RollPitchLPFOrder;
 
 // NED
 // P,R,Y
 // BF, LR, UD
 
-
 void GetIMU(void) {
+	idx a;
 
 	ReadAccAndGyro(true);
 
-	UpdateAccAndGyroBias();
+	if (UsingSWFilters)
+		for (a = X; a <= Z; a++) {
+			// TODO: perhaps add slewlimiter?
+			RawGyro[a] = LPFilter(&GyroF[a], RollPitchLPFOrder, RawGyro[a], GyroLPFreqHz,
+					CurrPIDCycleS);
+		}
+
+	UpdateGyroTempComp();
 
 	Rate[Pitch] = (RawGyro[X] - GyroBias[X]) * GyroScale[CurrAttSensorType];
 	Rate[Roll] = (RawGyro[Y] - GyroBias[Y]) * GyroScale[CurrAttSensorType];
 	Rate[Yaw] = -(RawGyro[Z] - GyroBias[Z]) * GyroScale[CurrAttSensorType];
 
-	if (CurrAttSensorType == InfraRedAngle) {
+	if (NewAccUpdate) {
+		NewAccUpdate = false;
 
-		// TODO: bias and scale from where? track max min with decay???
+#if defined(V4_BOARD)
+		if (UsingSWFilters)
+#endif
+		for (a = X; a <= Z; a++)
+			RawAcc[a] = LPFilter(&AccF[a], RollPitchLPFOrder, RawAcc[a], AccLPFreqHz,
+					CurrPIDCycleS);
 
-	} else {
-		Acc[BF] = (RawAcc[Y] - AccBias[Y]) * AccScale[Y];
-		Acc[LR] = (RawAcc[X] - AccBias[X]) * AccScale[X];
-		Acc[UD] = -(RawAcc[Z] - AccBias[Z]) * AccScale[Z];
+		if (CurrAttSensorType == InfraRedAngle) {
+
+			// TODO: bias and scale from where? track max min with decay???
+
+		} else {
+			Acc[BF] = (RawAcc[Y] - NV.AccCal.Bias[Y]) * NV.AccCal.Scale[Y];
+			Acc[LR] = (RawAcc[X] - NV.AccCal.Bias[X]) * NV.AccCal.Scale[X];
+			Acc[UD] = -(RawAcc[Z] - NV.AccCal.Bias[Z]) * NV.AccCal.Scale[Z];
+		}
 	}
 
 	F.IMUFailure = !F.IMUCalibrated;
@@ -80,7 +105,8 @@ void GetIMU(void) {
 
 void ErectGyros(int32 TS) {
 	const int32 IntervalmS = 2;
-	int32 i, g;
+	idx g;
+	int32 i;
 	real32 MaxRawGyro[3], MinRawGyro[3], Av[3];
 	int32 s = TS * 1000 / IntervalmS;
 	boolean Moving = false;
@@ -119,7 +145,7 @@ void ErectGyros(int32 TS) {
 	if (Moving) {
 		SaveLEDs();
 		LEDsOff();
-		for (int i = 0; i < 4; i++) {
+		for (i = 0; i < 4; i++) {
 			LEDToggle(LEDYellowSel);
 			DoBeep(8, 2);
 		}
@@ -139,9 +165,16 @@ void ErectGyros(int32 TS) {
 
 } // ErectGyros
 
+void InitSWFilters(void) {
+	idx a;
+
+	for (a = X; a <= Z; a++)
+		AccF[a].Primed = GyroF[a].Primed = false;
+} // InitSWFilters
+
 
 void InitIMU(void) {
-	int32 a;
+	idx a;
 	boolean r;
 
 	InitMPU6XXX();
@@ -157,15 +190,16 @@ void InitIMU(void) {
 
 	}
 
+	InitSWFilters();
+
 	GetIMU();
 
 	r = true;
 	for (a = X; a <= Z; a++)
-		r &= NV.AccCal.C[a] == 0.0f;
+		r &= NV.AccCal.Bias[a] == 0.0f;
 
 	F.AccCalibrated = F.IMUCalibrated = !r;
 
 } // InitIMU
-
 
 

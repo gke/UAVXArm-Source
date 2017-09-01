@@ -22,7 +22,7 @@
 #include "UAVX.h"
 
 // 0.97, 2.9, 3.9, 5.9, 9.9, 17.85, 33.48ms
-const uint16 MPULPFHz[] = { 256, 188, 98, 42, 20, 10, 5, 3600 };
+const uint16 MPUGyroLPFHz[] = { 250, 184, 98, 41, 20, 10, 5, 3600 };
 
 // 1.94, 5.8, 7.8, 11.8, 19.8, 35.7, 66.96, 1.94ms
 const uint16 MPUAccLPFHz[] = { 480, 184, 92, 41, 20, 10, 5, 460 };
@@ -34,8 +34,6 @@ const uint8 MPUDLPFMask[] = { MPU_RA_DLPF_BW_256, MPU_RA_DLPF_BW_188,
 const char * DHPFName[] = { "Reset/0Hz", "5Hz", "2.5Hz", "1.25Hz", "0.63Hz",
 		"?", "?", "Hold" };
 
-uint8 MPUAccDLPFSel = 4;
-
 uint8 MPU6XXXId;
 uint8 MPU6XXXRev;
 uint8 MPU6XXXDLPF = 0;
@@ -45,10 +43,13 @@ uint8 MPU6XXXDHPF = 0;
 real32 MPU6XXXTemperature = 25.0f;
 uint8 MPU_ID = MPU_0x68_ID;
 uint32 mpu6xxxLastUpdateuS = 0;
-uint8 CurrGyroLPF;
 
+boolean NewAccUpdate;
 real32 RawAcc[3], RawGyro[3];
-HistStruct AccF[3];
+uint8 DisableAccDLPF = 0;
+uint8 DisableGyroDLPF = 0;
+
+uint8 CurrAccLPFSel, CurrGyroLPFSel;
 
 void ComputeMPU6XXXTemperature(int16 T) {
 
@@ -67,14 +68,6 @@ void ReadAccAndGyro(boolean UseSelectedAttSensors) { // Roll Right +, Pitch Up +
 
 	mpu6xxxLastUpdateuS = uSClock();
 
-#if !defined(V4_BOARD)
-	int32 a;
-	for (a = 0; a <= 2; a++)
-		B[a]
-				= LPFilter(&AccF[a], B[a], MPUAccLPFHz[MPUAccDLPFSel],
-						PID_CYCLE_S); // close enough to CurrPIDCycleuS
-#endif
-
 	if ((CurrAttSensorType == InfraRedAngle) && !IsMulticopter) {
 
 		// scale reading for angle arcsin(adc)
@@ -92,6 +85,8 @@ void ReadAccAndGyro(boolean UseSelectedAttSensors) { // Roll Right +, Pitch Up +
 			RawAcc[2] = (real32) B[2];
 		}
 	}
+
+	NewAccUpdate = true;  //TODO: need to restrict this to 1KHz
 
 	ComputeMPU6XXXTemperature(B[3]);
 
@@ -151,7 +146,7 @@ void CalibrateAccAndGyro(uint8 s) {
 	for (c = X; c <= Z; c++) {
 		for (i = 0; i < 2; i++)
 			a[i][c] = g[i][c] = t[i] = 0.0f;
-		AccBias[c] = GyroBias[c] = 0.0f;
+		GyroBias[c] = 0.0f;
 	}
 
 	ts = 0;
@@ -164,8 +159,8 @@ void CalibrateAccAndGyro(uint8 s) {
 				t[ts] += MPU6XXXTemperature;
 				RawAcc[Z] -= MPU_1G;
 				for (c = X; c <= Z; c++) {
-					a[ts][c] += RawAcc[c];
 					g[ts][c] += RawGyro[c];
+					a[ts][c] += RawAcc[c];
 				}
 			}
 			ts++;
@@ -185,21 +180,23 @@ void CalibrateAccAndGyro(uint8 s) {
 		}
 		t[ts] *= SamplesR;
 	}
-	NV.AccCal.TRef = NV.GyroCal.TRef = t[0];
+
+	NV.GyroCal.TRef = t[0];
 	TempDiff = t[1] - t[0];
 
 	for (c = X; c <= Z; c++) {
-		NV.AccCal.M[c] = (a[1][c] - a[0][c]) / TempDiff;
-		AccBias[c] = NV.AccCal.C[c] = a[0][c];
-
+		NV.AccCal.Scale[c] = DEF_ACC_SCALE;
+		NV.AccCal.Bias[c] = (a[0][c] + a[1][c]) * 0.5f;
 		NV.GyroCal.M[c] = (g[1][c] - g[0][c]) / TempDiff;
 		GyroBias[c] = NV.GyroCal.C[c] = g[0][c]; // use starting temperature
 	}
 
-	F.IMUCalibrated = Abs(TempDiff) < (RangeT * 2.0f);
+	F.IMUCalibrated = Abs(TempDiff) < (RangeT * 2.0f); // check if too fast!!!
 	if (F.IMUCalibrated) {
+
+		NVChanged = true;
 		UpdateNV();
-		UpdateAccAndGyroBias();
+		UpdateGyroTempComp();
 		DoBeep(8, 1);
 		LEDOff(LEDBlueSel);
 		SendAckPacket(s, UAVXMiscPacketTag, 1);
@@ -211,23 +208,41 @@ void CalibrateAccAndGyro(uint8 s) {
 } // CalibrateAccAndGyro
 
 
-void UpdateAccAndGyroBias(void) {
+void UpdateGyroTempComp(void) {
 	int32 a;
 
-	for (a = X; a <= Z; a++) {
-		AccBias[a] = NV.AccCal.C[a];
-		if (!F.UsingAnalogGyros) // keep using erection bias if analog gyros
+	if (!F.UsingAnalogGyros) // keep using erection bias if analog gyros
+		for (a = X; a <= Z; a++)
 			GyroBias[a] = NV.GyroCal.C[a] + NV.GyroCal.M[a]
 					* (MPU6XXXTemperature - NV.GyroCal.TRef);
-	}
-} // UpdateAccAndGyroBias
+
+} // UpdateGyroTempComp
 
 
 void InitMPU6XXX(void) {
+
+
+	// VERY IMPORTANT: ACCELEROMETER MAX SAMPLING RATE IS 1KHZ. IF READ FASTER THEN VALUES REPEAT.
+	// GYROS ARE SAMPLED AT 1KHZ UNLESS DISABLED WHEN THE SAMPLING RATE IS 8KHZ
+	// THE UPDATING OF REGISTERS IS ASYNCHRONOUS
+	// THE MPU6050 HAS COMMON DLPF CONFIG, THE MPU6500 HAS A SEPARATE DLPF CONFIG FOR ACC
+
+
 #if !defined(V4_BOARD)
-	int32 a;
 	uint8 v;
 #endif
+
+	if (UsingSWFilters) {
+		DisableAccDLPF = DisableGyroDLPF = 1; // Gyro 1 -> 8800Hz 2 -> 3600Hz, Acc 1KHz
+		RollPitchLPFOrder = 2;
+	} else {
+		DisableAccDLPF = DisableGyroDLPF = 0; // 1KHz for Acc and Gyro
+		RollPitchLPFOrder = 1;
+	}
+
+	GyroLPFreqHz = MPUGyroLPFHz[CurrGyroLPFSel];
+	AccLPFreqHz = MPUGyroLPFHz[CurrAccLPFSel];
+	DerivativeLPFreqHz = GyroLPFreqHz;
 
 	CheckMPU6XXXActive();
 	Delay1mS(100); // was 5
@@ -241,9 +256,9 @@ void InitMPU6XXX(void) {
 		Delay1mS(100);
 	}
 
-	sioWrite(SIOIMU, MPU_ID, MPU_RA_FIFO_EN, 0); // disable FIFOs
+	sioWrite(SIOIMU, MPU_ID, MPU_RA_FIFO_EN, 0); // DISABLE FIFOs
 
-	sioWrite(SIOIMU, MPU_ID, MPU_RA_SMPLRT_DIV, 0);
+	sioWrite(SIOIMU, MPU_ID, MPU_RA_SMPLRT_DIV, 0); // NO sampling rate division - full speed
 	sioWrite(SIOIMU, MPU_ID, MPU_RA_PWR_MGMT_1, MPU_RA_CLOCK_PLL_XGYRO);
 
 	MPU6XXXRev = sioRead(SIOIMU, MPU_ID, MPU_RA_PRODUCT_ID);
@@ -254,9 +269,9 @@ void InitMPU6XXX(void) {
 	sioWriteataddr(SIOIMU, MPU_ID, MPU_RA_ACC_CONFIG, (MPUAccFS << 3)
 			| MPU_RA_DHPF_1P25);
 
-#if defined(V4_BOARD)
+#if defined(V4_BOARD) // MPU6500
 
-	sioWriteataddr(SIOIMU, MPU_ID, MPU_RA_ACC_CONFIG2, MPUDLPFMask[MPUAccDLPFSel]);
+	sioWriteataddr(SIOIMU, MPU_ID, MPU_RA_ACC_CONFIG2, (DisableAccDLPF << 3) & MPUDLPFMask[CurrAccLPFSel]);
 
 #else
 
@@ -270,14 +285,12 @@ void InitMPU6XXX(void) {
 	bitSet(v, MPU_RA_INTCFG_I2C_BYPASS_EN_BIT);
 	sioWrite(SIOIMU, MPU_ID, MPU_RA_INT_PIN_CFG, v);
 
-	for (a = X; a <= Z; a++)
-		AccF[a].Primed = false;
-
 #endif
 
 	Delay1mS(100);
 
-	sioWriteataddr(SIOIMU, MPU_ID, MPU_RA_CONFIG, MPUDLPFMask[CurrGyroLPF]);
+	sioWriteataddr(SIOIMU, MPU_ID, MPU_RA_CONFIG, (DisableGyroDLPF << 3)
+			& MPUDLPFMask[CurrGyroLPFSel]);
 
 	Delay1mS(100);
 

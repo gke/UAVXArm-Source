@@ -175,6 +175,8 @@ enum Colours { // RGB order
 
 // LEDYellowSel, LEDRedSel, LEDBlueSel, LEDGreenSel, LEDNone
 
+uint8 CurrwsNoOfLeds, wsNoOfLeds;
+
 #if defined(USE_WS2812) || defined(USE_WS2812B)
 
 // Y/O, R, B, G
@@ -188,7 +190,6 @@ uint8 wsGroupSize;
 uint16 wsBufferSize;
 boolean incomplete = false;
 
-uint8 CurrwsNoOfLeds, wsNoOfLeds;
 
 static void wsInitBuffers(void) {
 	int16 i;
@@ -467,6 +468,9 @@ boolean wsLEDIsOn(uint8 l) {
 
 void wsLEDToggle(uint8 l) {
 } // wsLEDToggle
+
+void UpdatewsLed(void) {
+} // UpdatewsLed
 
 #endif
 

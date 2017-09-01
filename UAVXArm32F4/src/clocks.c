@@ -76,6 +76,16 @@ void Delay1mS(uint16 d) {
 
 } // Delay1mS
 
+void delay(uint16 d) {
+	// TODO: needs round up
+	uint32 TimeOut;
+
+	TimeOut = mSClock() + d + 1; // clock may be rolling over
+	while (mSClock() < TimeOut) {
+	};
+
+} // delay
+
 real32 dTUpdate(uint32 NowuS, uint32 * LastUpdateuS) {
 	real32 dT;
 

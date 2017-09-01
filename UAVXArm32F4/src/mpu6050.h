@@ -145,6 +145,7 @@
 #define MPU_RA_DLPF_BW_20          0x04
 #define MPU_RA_DLPF_BW_10          0x05
 #define MPU_RA_DLPF_BW_5           0x06
+#define MPU_RA_DLPF_BW_3600        0x07 //
 
 #define MPU_RA_GCONFIG_FS_SEL_BIT      4
 #define MPU_RA_GCONFIG_FS_SEL_LENGTH   2

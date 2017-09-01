@@ -33,21 +33,22 @@
 real32 MagTemperature = 0.0f;
 real32 MagVariation = 0.0f;
 real32 MagVariationWMM2010 = 0.0f;
-real32 MagLockE, MagHeading, Heading, DesiredHeading, HeadingE, CompassOffset;
+real32 MagLockE, MagHeading, Heading, DesiredHeading, CompassOffset;
 //DesiredHeading,
 uint8 MagnetometerType;
 real32 MagdT;
 
 real32 Mag[3];
 int16 RawMag[3];
-real32 d[MAG_MAX_SAMPLES][3];
+real32 MagScale[3] = {1.0,};
+real32 d[MAG_CAL_SAMPLES][3];
 uint16 SphereIterations;
 
 void WriteVerifyMag(uint8 a, uint8 v) {
 	// idea due to Bill Nesbitt from AQ - seems he also found
 	// write transactions to the HMC5XXX to be problematic
 	// although it may have just been MPU6500 feed through
-	// low cost so leave TODO
+	// low cost so leave TODO:
 	uint8 r;
 
 	do {
@@ -95,13 +96,13 @@ void GetMagnetometer(void) {
 		if (ReadMagnetometer()) {
 
 			if (F.InvertMagnetometer || UsingInvertedBoard) {
-				Mag[BF] = (real32) RawMag[MX] * NV.MagCal.Scale[MX]; // -
-				Mag[LR] = -(real32) RawMag[MY] * NV.MagCal.Scale[MY];
-				Mag[UD] = (real32) RawMag[MZ] * NV.MagCal.Scale[MZ];
+				Mag[BF] = (real32) RawMag[MX] * MagScale[MX]; // -
+				Mag[LR] = -(real32) RawMag[MY] * MagScale[MY];
+				Mag[UD] = (real32) RawMag[MZ] * MagScale[MZ];
 			} else {
-				Mag[BF] = (real32) RawMag[MY] * NV.MagCal.Scale[MY];
-				Mag[LR] = (real32) RawMag[MX] * NV.MagCal.Scale[MX];
-				Mag[UD] = -(real32) RawMag[MZ] * NV.MagCal.Scale[MZ];
+				Mag[BF] = (real32) RawMag[MY] * MagScale[MY];
+				Mag[LR] = (real32) RawMag[MX] * MagScale[MX];
+				Mag[UD] = -(real32) RawMag[MZ] * MagScale[MZ];
 			}
 
 			for (a = X; a <= Z; a++)
@@ -136,7 +137,8 @@ void CalculateMagneticHeading(void) {
 		xh = Mag[BF] * cP + sP * (Mag[UD] * cR - Mag[LR] * sR);
 		yh = Mag[LR] * cR + Mag[UD] * sR;
 
-		MagHeading = -atan2f(yh, xh);
+		MagHeading = -atan2f(yh, xh); // filtering is difficult because of 360deg discontinuity
+
 	}
 
 } // CalculateMagneticHeading
@@ -158,7 +160,7 @@ void InitMagnetometer(void) {
 
 	const uint8 Samples = 20;
 	uint8 ActualSamples;
-	uint8 i, a;
+	idx i, a;
 
 	FatalTimeoutmS = mSClock() + 10000;
 	do {
@@ -166,7 +168,7 @@ void InitMagnetometer(void) {
 		F.MagnetometerActive = MagnetometerIsActive();
 	} while (!(mSClock() > FatalTimeoutmS) && !F.MagnetometerActive);
 
-	NV.MagCal.Scale[BF] = NV.MagCal.Scale[LR] = NV.MagCal.Scale[UD] = 0.0f;
+	MagScale[BF] = MagScale[LR] = MagScale[UD] = 0.0f;
 
 	if (F.MagnetometerActive) {
 
@@ -186,9 +188,9 @@ void InitMagnetometer(void) {
 			Delay1mS(50);
 
 			if (ReadMagnetometer()) {
-				NV.MagCal.Scale[MX] += Abs(1264.4f / RawMag[MX]);
-				NV.MagCal.Scale[MY] += Abs(1264.4f / RawMag[MY]);
-				NV.MagCal.Scale[MZ] += Abs(1177.2f / RawMag[MZ]);
+				MagScale[MX] += Abs(1264.4f / RawMag[MX]);
+				MagScale[MY] += Abs(1264.4f / RawMag[MY]);
+				MagScale[MZ] += Abs(1177.2f / RawMag[MZ]);
 				ActualSamples++;
 			}
 
@@ -197,7 +199,7 @@ void InitMagnetometer(void) {
 
 		if (ActualSamples > 0) {
 			for (a = X; a <= Z; a++)
-				NV.MagCal.Scale[a] /= (real32) (Samples * 2);
+				MagScale[a] /= (real32) (Samples * 2);
 
 			Delay1mS(50);
 
@@ -230,48 +232,41 @@ void InitMagnetometer(void) {
 } // InitMagnetometer
 
 void CheckMagnetometerIsCalibrated(void) {
-	boolean r;
-	int32 a;
 
-	r = true;
-	for (a = X; a <= Z; a++)
-		r &= (NV.MagCal.Population[0][a] == 0) && (NV.MagCal.Population[1][a]
-				== 0);
-
-	F.MagnetometerCalibrated = !r;
+	F.MagnetometerCalibrated = NV.MagCal.CalSamples == MAG_CAL_SAMPLES;
 
 } // CheckMagnetometerIsCalibrated
 
 void InitMagnetometerBias(void) {
-	int32 a;
+	idx a;
 
 	// Nominal x/y 766, z 660 @1Ga
-	for (a = X; a <= Z; a++) {
-		NV.MagCal.Population[0][a] = NV.MagCal.Population[1][a] = 0;
+	for (a = X; a <= Z; a++)
 		NV.MagCal.Bias[a] = 0.0f;
-	}
+
+	NV.MagCal.CalSamples = 0;
 
 } // InitMagnetometerBias
 
 void GetMagSample(int16 i) {
 
 	if (F.InvertMagnetometer || UsingInvertedBoard) {
-		d[i][BF] = (real32) RawMag[MX] * NV.MagCal.Scale[MX]; // -
-		d[i][LR] = -(real32) RawMag[MY] * NV.MagCal.Scale[MY];
-		d[i][UD] = (real32) RawMag[MZ] * NV.MagCal.Scale[MZ];
+		d[i][BF] = (real32) RawMag[MX] * MagScale[MX]; // -
+		d[i][LR] = -(real32) RawMag[MY] * MagScale[MY];
+		d[i][UD] = (real32) RawMag[MZ] * MagScale[MZ];
 	} else {
-		d[i][BF] = (real32) RawMag[MY] * NV.MagCal.Scale[MY];
-		d[i][LR] = (real32) RawMag[MX] * NV.MagCal.Scale[MX];
-		d[i][UD] = -(real32) RawMag[MZ] * NV.MagCal.Scale[MZ];
+		d[i][BF] = (real32) RawMag[MY] * MagScale[MY];
+		d[i][LR] = (real32) RawMag[MX] * MagScale[MX];
+		d[i][UD] = -(real32) RawMag[MZ] * MagScale[MZ];
 	}
 } // GetMagSample
 
-#define Xsign(i) (i>0?1:0)
+#define I2(i) (i>0?1:0)
 
 void CalibrateHMC5XXX(uint8 s) {
-	uint16 i,j,k;
 	real32 MagOrigin[3];
-	int16 Population[2][2][2];
+	uint16 Population[2][2][2];
+	uint16 a, ss;
 
 	LEDOn(LEDBlueSel);
 
@@ -279,13 +274,10 @@ void CalibrateHMC5XXX(uint8 s) {
 
 		InitMagnetometerBias();
 
-		for (i = 0; i<=1;i++)
-			for (j = 0; j<=1;j++)
-				for (k = 0; k<=1;k++)
-			Population[i][j][k] =  0;
+		memset(&Population, 0, sizeof(Population));
 
-		i = 0;
-		while (i < MAG_MAX_SAMPLES) {
+		ss = 0;
+		while (ss < MAG_CAL_SAMPLES) {
 
 			mSTimer(mSClock(), MagnetometerUpdate, MAG_TIME_MS);
 			while (mSClock() < mS[MagnetometerUpdate]) {
@@ -294,14 +286,14 @@ void CalibrateHMC5XXX(uint8 s) {
 			LEDToggle(LEDBlueSel);
 
 			if (ReadMagnetometer()) {
-				GetMagSample(i);
+				GetMagSample(ss);
 
-				if (Population[Xsign(d[i][X])][Xsign(d[i][Y])][Xsign(d[i][Z])] < (MAG_MAX_SAMPLES
-						/ 7)) { // not all equal but a good spread ;)
+				if (Population[I2(d[ss][X])][I2(d[ss][Y])][I2(d[ss][Z])]
+						< (MAG_CAL_SAMPLES / 7)) { // should be 8
 					LEDOff(LEDYellowSel);
 					LEDOn(LEDGreenSel);
-					Population[Xsign(d[i][X])][Xsign(d[i][Y])][Xsign(d[i][Z])]++;
-					i++;
+					Population[I2(d[ss][X])][I2(d[ss][Y])][I2(d[ss][Z])]++;
+					ss++;
 				} else {
 					LEDOn(LEDYellowSel);
 					LEDOff(LEDGreenSel);
@@ -309,15 +301,20 @@ void CalibrateHMC5XXX(uint8 s) {
 			}
 		}
 
+
 		// Actually it will be an ellipsoid due to hard iron effects
-		SphereIterations = SphereFit(d, MAG_MAX_SAMPLES, 200, 0.01f, MagOrigin,
+		SphereIterations = SphereFit(d, MAG_CAL_SAMPLES, 200, 0.01f, MagOrigin,
 				&NV.MagCal.Magnitude);
 
-		for (i = X; i <= Z; i++)
-			NV.MagCal.Bias[i] = MagOrigin[i];
+		NV.MagCal.CalSamples = MAG_CAL_SAMPLES;
+
+		for (a = X; a <= Z; a++)
+			NV.MagCal.Bias[a] = MagOrigin[a];
+
+		NVChanged = true;
+		UpdateNV();
 
 		DoBeep(8, 1);
-		UpdateNV();
 
 		LEDsOff();
 

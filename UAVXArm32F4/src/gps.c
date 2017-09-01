@@ -34,7 +34,6 @@ const uint8 NMEATags[MAX_NMEA_SENTENCES][5] = {
 		};
 
 uint8 CurrGPSType;
-uint8 CurrGyroLPF;
 
 uint8 RxState = WaitSentinel;
 
@@ -1085,7 +1084,8 @@ void RxMTKPacket(void) {
 } // RxMTKPacket
 
 void InitMTKGPS(uint8 s, boolean UseNMEA) {
-	uint8 i, cs;
+	idx i;
+	uint8 cs;
 
 	for (i = 0; i < DEFAULT_BAUD_RATES; i++) {
 		serialBaudRate(s, DefaultBaud[i]);
@@ -1135,7 +1135,7 @@ int32 MToGPS(real32 c) {
 } // MToGPS
 
 int32 I32(uint8 lo, uint8 hi) {
-	uint8 i;
+	idx i;
 	int32 r;
 
 	r = 0;
@@ -1149,7 +1149,7 @@ int32 I32(uint8 lo, uint8 hi) {
 
 int32 ConvertLatLon(uint8 lo, uint8 hi) {
 	int32 dd, mm, dm, r;
-	uint8 dp;
+	idx dp;
 
 	r = 0;
 	if (!EmptyField) {
@@ -1475,9 +1475,10 @@ void UpdateGPS(void) {
 
 	} else {
 		if (NowmS > mS[GPSTimeout]) {
-			DecayPosCorr();
 
-			F.NavigationActive = false;
+			F.NavigationEnabled = false;
+			ZeroNavCorrections();
+			NavState = PIC;
 
 			LEDOff(LEDBlueSel);
 			LEDOn(LEDRedSel);
@@ -1494,20 +1495,15 @@ void InitGPS(void) {
 
 	mS[FakeGPSUpdate] = 0;
 	F.OriginValid = F.GPSValid = F.HaveGPS = F.GPSPacketReceived
-			= F.GPSPosUpdated = false;
-
-	GPS.year = 0; // no auto variation with MTK
-
-	//	GPS.lag = 1.0f;
-
-	//	GPS.Raw[NorthC] = GPS.C[NorthC].OriginRaw = 0;
-	// done in memset	GPS.Raw[EastC] = GPS.C[EastC].OriginRaw = 0;
+			= false;
 
 	if (F.Emulation) {
-		GPS.C[NorthC].OriginRaw = DEFAULT_HOME_LAT;
-		GPS.C[EastC].OriginRaw = DEFAULT_HOME_LON;
+		GPS.C[NorthC].OriginRaw = GPS.C[NorthC].Raw = DEFAULT_HOME_LAT;
+		GPS.C[EastC].OriginRaw = GPS.C[EastC].Raw = DEFAULT_HOME_LON;
 		GPS.longitudeCorrection = DEFAULT_LON_CORR;
 	}
+
+	GPS.year = 0; // no auto variation with MTK
 
 	LEDOn(LEDBlueSel);
 
@@ -1518,6 +1514,7 @@ void InitGPS(void) {
 	case UBXBinGPS:
 		InitUbxGPS(GPSTxSerial);
 		break;
+#if !defined(STM32F1)
 	case MTKBinGPS:
 		InitMTKGPS(GPSTxSerial, false);
 		break;
@@ -1526,7 +1523,9 @@ void InitGPS(void) {
 		break;
 	case NMEAGPS:
 		serialBaudRate(GPSRxSerial, GPSBaud);
+#endif
 	default:
+		InitUbxGPS(GPSTxSerial);
 		break;
 	} // switch
 

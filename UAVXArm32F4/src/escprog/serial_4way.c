@@ -75,11 +75,11 @@ static void setDisconnected(void) {
 	deviceInfo.signature = 0;
 }
 
-__attribute__((always_inline))                                   inline boolean isEscHi(uint8_t selEsc) {
+__attribute__((always_inline))                                    inline boolean isEscHi(uint8_t selEsc) {
 	return digitalRead(&PWMPins[selEsc]);
 }
 
-__attribute__((always_inline))                                   inline boolean isEscLo(uint8_t selEsc) {
+__attribute__((always_inline))                                    inline boolean isEscLo(uint8_t selEsc) {
 	return !digitalRead(&PWMPins[selEsc]);
 }
 
@@ -129,9 +129,10 @@ int esc4wayInit(void) {
 // start BLHeli 4way interface
 // sets all ESC lines as output + hi
 void esc4wayStart(void) {
+	int i;
 
 	//pwmDisableMotors();    // prevent updating PWM registers
-	for (int i = 0; i < NoOfDrives; i++) {
+	for (i = 0; i < NoOfDrives; i++) {
 		setEscInput(i);
 		setEscHi(i);
 	}
@@ -140,8 +141,8 @@ void esc4wayStart(void) {
 // stops BLHeli 4way interface
 // returns all claimed pins back to PWM drivers, re-enables PWM
 void esc4wayRelease(void) {
-
-	for (int i = 0; i < NoOfDrives; i++) {
+	int i;
+	for (i = 0; i < NoOfDrives; i++) {
 		setEscOutput(i);
 		setEscLo(i);
 	}
@@ -232,7 +233,9 @@ static uint8_t currentInterfaceMode;
 // Try connecting to device
 // 3 attempts are made, trying both STK and BL protocols.
 uint8_t connect(escDeviceInfo_t *pDeviceInfo) {
-	for (int try = 0; try < 3; try++) {
+	int try;
+
+	for (try = 0; try < 3; try++) {
 		if (Stk_ConnectEx(pDeviceInfo) && signatureMatch(
 				pDeviceInfo->signature, signaturesAtmel)) {
 			currentInterfaceMode = imSK;
@@ -281,6 +284,7 @@ void writeByteCrc(uint8_t b) {
 // esc4wayStart / esc4wayRelease in called internally
 // 256 bytes buffer is allocated on stack
 void esc4wayProcess(uint8 s) {
+	int i;
 	uint8_t command;
 	uint16_t addr;
 	int inLen;
@@ -314,7 +318,7 @@ void esc4wayProcess(uint8 s) {
 				if (inLen == 0)
 					inLen = 0x100; // len ==0 -> param is 256B
 
-				for (int i = 0; i < inLen; i++)
+				for (i = 0; i < inLen; i++)
 					paramBuf[i] = readByteCrc();
 
 				readByteCrc();
@@ -338,7 +342,7 @@ void esc4wayProcess(uint8 s) {
 				writeByteCrc(addr >> 8);
 				writeByteCrc(addr & 0xff);
 				writeByteCrc(outLen & 0xff); // only low byte is send, 0x00 -> 256B
-				for (int i = 0; i < outLen; i++)
+				for (i = 0; i < outLen; i++)
 					writeByteCrc(paramBuf[i]);
 				writeByteCrc(replyAck);
 				writeByte(crcOut >> 8);
@@ -624,6 +628,7 @@ void mspFooter(uint8_t s) {
 }
 
 boolean DoMSPCmds(uint8_t s) {
+	int i,l;
 	boolean mspContinue = true;
 
 #define MSP_PROTOCOL_VERSION	0
@@ -708,7 +713,7 @@ boolean DoMSPCmds(uint8_t s) {
 				int ll = 7 - strlen(BLRev) - 3;
 				TxString(s, BLRev);
 				if (ll > 0)
-					for (int l = 0; l < ll; l++)
+					for (l = 0; l < ll; l++)
 						TxBin8(s, ' ');
 				mspFooter(s);
 				break;
@@ -753,7 +758,7 @@ boolean DoMSPCmds(uint8_t s) {
 				break;
 			case MSP_MOTOR:
 				mspHeader(s, 16, MSP_MOTOR);
-				for (int i = 0; i < 8; i++)
+				for (i = 0; i < 8; i++)
 					TxBin16(s, i < NoOfDrives ? PW[i] : 0); // TODO: CurrMax?
 				mspFooter(s);
 				break;

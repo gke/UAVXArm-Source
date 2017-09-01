@@ -214,7 +214,7 @@ void RCParallelISR(TIM_TypeDef *tim) {
 
 
 void DoSBus(void) {
-	uint8 i;
+	idx i;
 
 	RCInp[0].Raw = RCFrame.u.c.c1;
 	RCInp[1].Raw = RCFrame.u.c.c2;
@@ -327,7 +327,8 @@ void SpektrumSBusISR(uint8 v) { // based on MultiWii
 
 boolean CheckDeltang(void) {
 	// http://www.deltang.co.uk/serial.htm
-	uint8 i, CheckSum;
+	idx i;
+	uint8 CheckSum;
 	boolean OK = true;
 
 	if (CurrComboPort1Config == Deltang1024_M7to10) {
@@ -442,7 +443,7 @@ void doSpektrumBinding(void) {
 #define SLAVE_RX_PULSES 		6
 
 void DoSpektrumBind(void) {
-	uint8 i;
+	idx i;
 	PinDef p;
 
 	p.Port = SerialPorts[RCSerial].Port;
@@ -593,7 +594,11 @@ void MapRC(void) { // re-maps captured PPM to Rx channel sequence
 		cc = RMap[c];
 		RCp[cc] = RC[cc];
 		Temp = (RCInp[c].Raw - 1000) * 0.001;
+#if defined(BARE_METAL)
+		RC[cc] = Temp;
+#else
 		RC[cc] = RCFilter(RCp[cc], Temp);
+#endif
 	}
 } // MapRC
 
@@ -663,7 +668,7 @@ void SBusLoopback(void) {
 	static boolean Primed = false;
 	static uint16 Wiggle = 0;
 	static uint32 NextWigglemS = 0;
-	uint8 i;
+	idx i;
 
 	if (!Primed) {
 
@@ -720,12 +725,12 @@ void SpekLoopback(boolean HiRes) {
 	static boolean TicTac = true;
 	static uint16 Wiggle = 0;
 	static uint32 NextWigglemS = 0;
-	uint8 i;
+	idx i;
 
 	uint8 Channels = HiRes ? 12 : 7;
 
 	if (!Primed) {
-		for (uint8 i = 0; i < 56; i++)
+		for (i = 0; i < 56; i++)
 			LBFrame[i] = 0xff;
 
 		for (SpekCh = 0; SpekCh < Channels; SpekCh++) {
@@ -800,9 +805,7 @@ boolean ActiveCh(uint8 r) {
 } // ActiveCh
 
 boolean Triggered(uint8 r) {
-
 	return ActiveCh(r) && (RC[r] > FromPercent(70));
-
 } // Triggered
 
 void UpdateControls(void) {
@@ -819,11 +822,19 @@ void UpdateControls(void) {
 
 		// Attitude
 
-		// normalise from +/- 0.5
-		A[Roll].Stick = (RC[RollRC] - RC_NEUTRAL) * STICK_SCALE;
-		A[Pitch].Stick = (RC[PitchRC] - RC_NEUTRAL) * STICK_SCALE;
-		A[Yaw].Stick = (RC[YawRC] - RC_NEUTRAL) * STICK_SCALE;
+#if defined(BARE_METAL)
+		for (idx a = Pitch; a <= Yaw; a++)
+			A[a].StickP = A[a].Stick;
+#endif
+		// normalise from 0-1.0 -> -1.0-1.0
+		A[Roll].Stick = (RC[RollRC] - RC_NEUTRAL) * 2.0f;
+		A[Pitch].Stick = (RC[PitchRC] - RC_NEUTRAL) * 2.0f;
+		A[Yaw].Stick = (RC[YawRC] - RC_NEUTRAL) * 2.0f;
 
+#if defined(BARE_METAL)
+		for (idx a = Pitch; a <= Yaw; a++)
+			A[a].StickD = (A[a].StickP - A[a].Stick) / (RCLastFrameuS * 1.0E-6);
+#endif
 		CurrMaxRollPitchStick = Max(Abs(A[Roll].Stick), Abs(A[Pitch].Stick));
 
 		F.AttitudeHold = CurrMaxRollPitchStick < ATTITUDE_HOLD_LIMIT_STICK;
@@ -841,8 +852,7 @@ void UpdateControls(void) {
 			NavSwState = Limit((uint8)(RC[RTHRC] * 3.0f), NavSwLow, NavSwHigh);
 		else {
 			NavSwState = NavSwLow;
-			F.ReturnHome = F.Navigate = F.NavigationEnabled
-					= F.NavigationActive = false;
+			F.ReturnHome = F.Navigate = F.NavigationEnabled = false;
 		}
 
 		UpdateRTHSwState();
@@ -850,8 +860,7 @@ void UpdateControls(void) {
 		F.UsingRateControl = Triggered(RateControlRC) && (NavSwState
 				== NavSwLow);
 
-		Nav.Sensitivity = ActiveCh(NavGainRC) ? RC[NavGainRC]
-				: 1.0f;
+		Nav.Sensitivity = ActiveCh(NavGainRC) ? RC[NavGainRC] : 1.0f;
 
 		DesiredCamPitchTrim = ActiveCh(CamPitchRC) ? RC[CamPitchRC]
 				- RC_NEUTRAL : 0;
@@ -885,9 +894,10 @@ void CheckThrottleMoved(void) {
 	if (NowmS < mS[ThrottleUpdate])
 		ThrNeutral = DesiredThrottle;
 	else {
-		ThrLow = ThrNeutral - THR_MIDDLE_STICK;
+		ThrLow = ThrNeutral - THR_MIDDLE_WINDOW_STICK;
 		ThrLow = Max(ThrLow, THR_MIN_ALT_HOLD_STICK);
-		ThrHigh = ThrNeutral + THR_MIDDLE_STICK;
+		ThrHigh = ThrNeutral + THR_MIDDLE_WINDOW_STICK;
+
 		if ((DesiredThrottle <= ThrLow) || (DesiredThrottle >= ThrHigh)) {
 			mSTimer(NowmS, ThrottleUpdate, THR_UPDATE_MS);
 			F.ThrottleMoving = true;

@@ -57,6 +57,7 @@
 #define START_BIT_TIME    (BIT_TIME_3_4)
 
 static int suart_getc(void) {
+	int bit;
     uint32_t btime;
     uint32_t start_time;
 
@@ -71,7 +72,7 @@ static int suart_getc(void) {
     start_time = uSClock();
     btime = start_time + START_BIT_TIME;
     uint16_t bitmask = 0;
-    for(int bit = 0; bit < 10; bit++) {
+    for(bit = 0; bit < 10; bit++) {
         while (uSClock() < btime);
         if (ESC_IS_HI)
             bitmask |= (1 << bit);
@@ -103,8 +104,9 @@ void suart_putc(uint8_t byte) {
 }
 
 static uint16_t crc16Byte(uint16_t from, uint8_t byte) {
+	int i;
     uint16_t crc16 = from;
-    for (int i = 0; i < 8; i++) {
+    for (i = 0; i < 8; i++) {
         if (((byte & 0x01) ^ (crc16 & 0x0001)) != 0) {
             crc16 >>= 1;
             crc16 ^= 0xA001;
@@ -117,11 +119,12 @@ static uint16_t crc16Byte(uint16_t from, uint8_t byte) {
 }
 
 static uint8_t BL_ReadBuf(uint8_t *pstring, int len, boolean checkCrc) {
+    int i;
     int crc = 0;
     int c;
 
     uint8_t  lastACK = BR_NONE;
-    for(int i = 0; i < len; i++) {
+    for(i = 0; i < len; i++) {
         int c;
         if ((c = suart_getc()) < 0) goto timeout;
         crc = crc16Byte(crc, c);
@@ -130,7 +133,7 @@ static uint8_t BL_ReadBuf(uint8_t *pstring, int len, boolean checkCrc) {
 
     if(checkCrc) {
         // With CRC read 3 more
-        for(int i = 0; i < 2; i++) {  // checksum 2 CRC bytes
+        for(i = 0; i < 2; i++) {  // checksum 2 CRC bytes
             if ((c = suart_getc()) < 0) goto timeout;
             crc = crc16Byte(crc, c);
         }
@@ -147,9 +150,10 @@ timeout:
 }
 
 static void BL_SendBuf(uint8_t *pstring, int len, boolean appendCrc) {
+	int i;
     ESC_OUTPUT;
     uint16_t crc = 0;
-    for(int i = 0; i < len; i++) {
+    for(i = 0; i < len; i++) {
         suart_putc(pstring[i]);
         crc = crc16Byte(crc, pstring[i]);
     }
@@ -196,9 +200,9 @@ uint8_t BL_SendCMDKeepAlive(void) {
     BL_SendBuf(sCMD, sizeof(sCMD), true);
     if (BL_GetACK(1) != BR_ERRORCOMMAND)
         return 0;
-    Probe(1);
+
     return 1;
-    Probe(0);
+
 }
 
 void BL_SendCMDRunRestartBootloader(void) {

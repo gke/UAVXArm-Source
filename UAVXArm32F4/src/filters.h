@@ -31,13 +31,14 @@ void InitSmoothr32xn(HistStruct * F);
 real32 Smoothr32xn(HistStruct * F, uint8 n, real32 v);
 uint32 Smoothuint32xn(uint32HistStruct * F, uint8 n, uint32 v);
 
-void InitLPFilter(HistStruct * F);
-real32 LPFilter(HistStruct * F, real32 v, real32 CutHz, real32 dT);
+real32 LPFilter(HistStruct * F, const idx Order, real32 v, real32 CutHz, real32 dT);
 real32 LPFilterBW(HistStruct * F, real32 v, real32 CutHz, real32 dT);
+real32 PavelDifferentiator(HistStruct *F, real32 v);
+
 real32 Threshold(real32 v, real32 t);
 real32 DeadZone(real32 v, real32 t);
-real32 SlewLimit(real32 Old, real32 New, real32 Rate, real32 dT);
-real32 SlewLimitLPFilter(real32 Old, real32 New, real32 Slew, real32 F,
+real32 SlewLimit(real32 * Old, real32 New, real32 Rate, real32 dT);
+real32 SlewLimitLPFilter(real32 * Old, real32 New, real32 Slew, real32 F,
 		real32 dT);
 
 real32 Make2Pi(real32);

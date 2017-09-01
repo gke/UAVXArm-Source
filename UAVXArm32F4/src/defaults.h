@@ -25,42 +25,56 @@
 const ParamStruct_t
 		DefaultParams[] = { //
 
+#if defined(V4_BOARD)
+						{ PIDTimeSel, { 1, 1, 1, 1} }, // P92
+#else
+						{ PIDTimeSel, { 0, 0, 0, 0} }, // P92
+#endif
+
 						{ TuneParamSel, { NoTuning, NoTuning, NoTuning,
 								NoTuning } }, // 78
 
-						{ RollAngleKp, { 25, 25, 25, 25 } }, //  03
-						{ RollAngleKi, { 3, 3, 3, 3 } }, //  24
-						{ RollIntLimit, { 40, 20, 40, 40 } }, //  05
+						// Attitude
+
+						{ ThrottleGainRate, { 0, 0, 0, 0} }, // 93 PID overall gain above throttle cruise
+
+						{ MaxRollAngle, { 60, 60, 45, 60 } }, // deg 77
+						{ RollAngleKp, { 25, 25, 20, 25 } }, //  03
+						{ RollAngleKi, { 3, 3, 1, 1 } }, //  24
+						{ RollIntLimit, { 10, 10, 10, 10 } }, //  05
 						{ RollRateKp, { 20, 40, 6, 6 } }, //  01
-						{ RollRateKd, { 45, 75, 20, 20 } }, //  12
+						{ RollRateKd, { 45, 75, 0, 0 } }, //  12
+						{ MaxRollRate, { 60, 60, 60, 60 } }, // x10 deg/S 83
 
-						{ PitchAngleKp, { 25, 25, 25, 25 } }, //  08
-						{ PitchAngleKi, { 3, 3, 3, 3 } }, //  25
-						{ PitchIntLimit, { 40, 20, 40, 40 } }, //  10
+						{ MaxPitchAngle, { 60, 60, 45, 60 } }, // deg  75
+						{ PitchAngleKp, { 25, 25, 20, 25 } }, //  08
+						{ PitchAngleKi, { 3, 3, 1, 1 } }, //  25
+						{ PitchIntLimit, { 10, 10, 10, 10 } }, //  10
 						{ PitchRateKp, { 20, 40, 6, 6 } }, //  06
-						{ PitchRateKd, { 45, 75, 20, 20 } }, //  28
+						{ PitchRateKd, { 45, 75, 0, 0 } }, //  28
+						{ MaxPitchRate, { 60, 60, 30, 30 } }, // x10 deg/S 84
 
-						{ MaxAttitudeAngle, { 60, 60, 60, 60 } }, // 77
-
-						{ YawAngleKp, { 8, 10, 16, 16 } }, // (Compass) 27
-						{ YawRateKp, { 20, 20, 20, 20 } }, //  11
+						{ YawRateKp, { 20, 20, 10, 10 } }, //  11
+						{ YawRateKd, { 45, 45, 0, 0 } }, // // 91
+						{ MaxCompassYawRate, { 9, 9, 24, 24 } }, // 10 deg/S 89,
+						{ MaxYawRate, { 36, 36, 9, 9 } }, //  *10 deg/S 64
 
 						// Altitude Hold
-						{ AltPosKp, { 21, 21, 21, 21 } }, //  07
-						{ AltPosKi, { 0, 0, 0, 0 } }, //  02
-						{ AltVelKp, { 14, 14, 14, 14, } }, //  30
+						{ AltPosKp, { 16, 16, 16, 16 } }, //  07
+						{ AltPosKi, { 12, 12, 12, 12 } }, //  02
+						{ AltVelKp, { 9, 9, 9, 9, } }, //  30
 						{ AltVelKd, { 0, 0, 0, 0 } }, //  14
 						{ AltLPF, { 10, 10, 10, 10 } }, //  *10 58
-						{ MaxAltHoldComp, { 40, 40, 10, 10 } }, //  67
-						{ AltCompDecayTime, { 15, 15, 15, 15 } }, //  22
+						{ MaxAltHoldComp, { 40, 40, 15, 15 } }, //  % 67
+						{ AltCompDecayTime, { 15, 15, 15, 15 } }, //  *0.1S 22
 
 						{ RFSensorType, { UnknownRF, UnknownRF, UnknownRF,
 								UnknownRF } }, // 09
 
 						// Camera (Legacy)
-						{ CamRollKp, { 10, 10, 0, 0 } }, //  19c
-						{ CamRollTrim, { 0, 0, 0, 0 } }, //  40c
-						{ CamPitchKp, { 10, 10, 10, 10 } }, //  26c
+						{ RollCamKp, { 10, 10, 0, 0 } }, //  19c
+						{ RollCamTrim, { 0, 0, 0, 0 } }, //  40c
+						{ PitchCamKp, { 10, 10, 0, 0 } }, //  26c
 
 						// Estimator
 						{ StateEst, { MadgwickIMU, MadgwickIMU, MadgwickIMU,
@@ -70,8 +84,11 @@ const ParamStruct_t
 						{ AccConfSD, { 4, 4, 4, 4 } }, //  53c
 						{ SensorHint, { UAVXArm32IMU, UAVXArm32IMU,
 								UAVXArm32IMU, UAVXArm32IMU } }, // ,35c
-						{ GyroLPF, { MPU_RA_DLPF_BW_98, MPU_RA_DLPF_BW_98,
-								MPU_RA_DLPF_BW_98, MPU_RA_DLPF_BW_98 } }, // GyroLPF 48
+
+						{ GyroLPFSel, { MPU_RA_DLPF_BW_98, MPU_RA_DLPF_BW_98,
+								MPU_RA_DLPF_BW_98, MPU_RA_DLPF_BW_98 } }, // 48
+
+						{ AccLPFSel, { 4, 4, 4, 4} }, // P90,
 
 						// Rx
 						{ RCChannels, { 7, 7, 7, 7 } }, //  37c
@@ -97,7 +114,7 @@ const ParamStruct_t
 						{ NavPosIntLimit, { 3, 3, 12, 12 } }, // 41
 
 						{ NavVelKp, { 10, 10, 10, 10 } }, //  29
-						{ NavMaxAngle, { 45, 45, 45, 45 } }, // 69,
+						{ NavMaxAngle, { 15, 15, 30, 45 } }, // 69,
 
 						{ NavHeadingTurnout, { 60, 60, 60, 60, } }, // 79,
 						{ NavCrossTrackKp, { 4, 4, 4, 4 } }, //  49
@@ -118,8 +135,7 @@ const ParamStruct_t
 						// Control
 
 						{ TiltThrottleFF, { 0, 0, 0, 0 } }, //  % 63
-						{ StickScaleRollPitch, { 10, 10, 10, 10 } }, //  *10 75
-						{ StickScaleYaw, { 10, 50, 10, 10 } }, //  *10 64
+
 						{ Horizon, { 30, 30, 0, 0 } }, //  % 31
 						{ Balance, { 50, 50, 50, 50 } }, //  % 59
 						{ StickHysteresis, { 2, 2, 2, 2 } }, //  % 21c
@@ -131,9 +147,11 @@ const ParamStruct_t
 						{ FWRollPitchFF, { 0, 0, 25, 25 } }, //  % 65
 						{ FWPitchThrottleFF, { 0, 0, 10, 10 } }, //  % 66
 						{ FWAileronDifferential, { 0, 0, 30, 0 } }, //  % 71
-						{ FWBoardPitchAngle, { 0, 0, 5, 5 } }, // deg. 82,
+						{ FWBoardPitchAngle, { 0, 0, 5, 5 } }, // deg. 82
+						{ FWAileronRudderMix, { 0, 0, 15, 0 }}, // % 87
+						{ FWAltSpoilerFF, { 0, 0, 50, 50 }}, // % 88
 
-						{ FWFlapDecayTime, { 0, 0, 15, 0 } }, //  *10 70
+						{ FWSpoilerDecayTime, { 0, 0, 15, 15 } }, //  *10 70
 
 						// Configuration
 						{ ArmingMode, { RollStickArming, RollStickArming,
@@ -142,8 +160,8 @@ const ParamStruct_t
 								| UseRTHDescendMask | GPSToLaunchRequiredMask,
 								UseRapidDescentMask | UseRTHDescendMask
 										| GPSToLaunchRequiredMask,
-								UseRapidDescentMask | GPSToLaunchRequiredMask,
-								UseRapidDescentMask | GPSToLaunchRequiredMask } }, //  16c
+								UseRapidDescentMask |  UseManualAltHoldMask,
+								UseRapidDescentMask |  UseManualAltHoldMask } }, //  16c
 						{ Config2Bits, { UseConfigRebootMask,
 								UseConfigRebootMask, UseFastStartMask
 										| UseConfigRebootMask, UseFastStartMask
@@ -171,22 +189,14 @@ const ParamStruct_t
 						{ WS2812Leds, { 0, 0, 0, 0 } }, // 80,
 
 						// Battery
-						{ LowVoltThres, { 51, 17, 51, 51 } }, //  MAGIC NUMBERS 18c
-						{ BatteryCapacity, { 22, 2, 22, 22 } }, //  *100 mAH 54c
+						{ LowVoltThres, { 102, 34, 102, 102 } }, //  0.1V
+						{ BatteryCapacity, { 22, 3, 22, 22 } }, //  *100 mAH 54c
+						{ CurrentScale, {100, 100,100,100}}, // x0.01 85,
+						{ VoltScale, { 100, 100,100,100} }, // x0.01 86,
 
 						// Unused
 
-						{ P83, { 0, } }, // 83,
-						{ P84, { 0, } }, // 84,
-						{ P85, { 0, } }, // 85,
-						{ P86, { 0, } }, // 86,
-						{ P87, { 0, } }, // 87,
-						{ P88, { 0, } }, // 88,
-						{ P89, { 0, } }, // 89,
-						{ P90, { 0, } }, // 90,
-						{ P91, { 0, } }, // 91,
-						{ P92, { 0, } }, // 92,
-						{ P93, { 0, } }, // 93
+						{ UnusedYawAngleKp, { 0, } } // (Compass) 27
 
 				};
 

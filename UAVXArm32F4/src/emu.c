@@ -25,13 +25,13 @@
 #define EM_MASS  1.2f // Kg
 #define EM_ARM_LEN 0.3f // M
 #define EM_MASS_R (1.0f/EM_MASS)
-#define EM_MAX_THRUST ((EM_MASS/THR_DEFAULT_CRUISE)*GRAVITY_MPS_S)
+#define EM_MAX_THRUST ((EM_MASS/THR_DEFAULT_CRUISE_STICK)*GRAVITY_MPS_S)
 #define EM_MAX_YAW_THRUST (EM_MAX_THRUST*0.015f) // TODO: tweak!
 #define EM_CRUISE_MPS ((AS_MIN_MPS+AS_MAX_MPS)*0.5f)
 //#define EM_DRAG_SCALE 1.0f
 #define EM_DRAG_SCALE (EM_MAX_THRUST/(AS_MAX_MPS*AS_MAX_MPS)) // 0.004f?
 #define EM_MASS_FW 2.0f //Kg
-#define EM_MAX_THRUST_FW ((EM_MASS_FW/THR_DEFAULT_CRUISE_FW)*GRAVITY_MPS_S)
+#define EM_MAX_THRUST_FW ((EM_MASS_FW/THR_DEFAULT_CRUISE_FW_STICK)*GRAVITY_MPS_S)
 
 const real32 Wind[2] = { 0.0f, 1.0f };
 
@@ -49,7 +49,7 @@ real32 NorthHP, EastHP;
 real32 ROC = 0.0f;
 real32 FakeAltitude = 0.0f;
 
-void CheckInitEmulation(void) {
+void InitEmulation(void) {
 	int32 a;
 
 	if (F.Emulation) {
@@ -57,11 +57,15 @@ void CheckInitEmulation(void) {
 			GPS.C[a].Pos = GPS.C[a].Vel = Aircraft[a].Pos = Aircraft[a].Vel
 					= Aircraft[a].Acc = 0.0f;
 
+		GPS.C[NorthC].OriginRaw = GPS.C[NorthC].Raw = DEFAULT_HOME_LAT;
+		GPS.C[EastC].OriginRaw = GPS.C[EastC].Raw = DEFAULT_HOME_LON;
+		GPS.longitudeCorrection = DEFAULT_LON_CORR;
+
 		DesiredAltitude = Altitude = RangefinderAltitude = FakeAltitude = ROC
 				= 0.0f;
 		BaroAltitude = OriginAltitude;
 	}
-} // CheckInitEmulation
+} // InitEmulation
 
 real32 Drag(real32 v) {
 	return (Sign(v) * Sqr(v) * EM_DRAG_SCALE);
@@ -82,9 +86,11 @@ real32 Thermal(real32 East, real32 North) {
 
 	if (State == InFlight)
 		for (t = 0; t < NT; t++)
-			Uplift += T[t].Strength * exp(-(Sqr(Nav.C[NorthC].Pos - T[t].NorthPos)
-					/ (2.0f * Sqr(T[t].Radius)) + Sqr(Nav.C[EastC].Pos - T[t].EastPos)
-					/ (2.0f * Sqr(T[t].Radius))));
+			Uplift += T[t].Strength * exp(
+					-(Sqr(Nav.C[NorthC].Pos - T[t].NorthPos) / (2.0f
+							* Sqr(T[t].Radius))
+							+ Sqr(Nav.C[EastC].Pos - T[t].EastPos) / (2.0f
+									* Sqr(T[t].Radius))));
 
 	return Uplift;
 
@@ -93,8 +99,8 @@ real32 Thermal(real32 East, real32 North) {
 
 void DoEmulation(void) {
 
-	const real32 RollPitchInertiaR = (12.0f / (EM_MASS * EM_ARM_LEN
-			* EM_ARM_LEN));
+
+	const real32 RollPitchInertiaR = (12.0f / (EM_MASS * Sqr(EM_ARM_LEN)));
 	const real32 InertiaR[3] = { RollPitchInertiaR, RollPitchInertiaR,
 			RollPitchInertiaR * 3.0f };
 	real32 Temp, Accel, Thrust;
@@ -113,7 +119,7 @@ void DoEmulation(void) {
 
 		EffSink = (EXP_THERMAL_SINK_MPS + Sl * DESCENT_MIN_ROC_MPS) / cosf(
 				A[Roll].Angle);
-		ROC = (dThrottle * 10.0f); // + EffSink);
+		ROC = (dThrottle * 30.0f); // + EffSink);
 
 		ROC = Limit(ROC, EffSink, 1000.0f);
 #if defined(USE_THERMALS)
@@ -142,16 +148,20 @@ void DoEmulation(void) {
 
 		if (IsFixedWing) { // no inertial effects for fixed wing
 			for (a = Pitch; a <= Roll; a++)
-				Rate[a] -= (A[a].Out * DegreesToRadians(60)) * dT;
+				Rate[a] -= (A[a].Out * DegreesToRadians(30)) * dT; // was 60
+
 
 			if (Airspeed > 0.0f)
-				Rate[Yaw] = A[Yaw].Out * DegreesToRadians(30)
-				//+ A[Roll].Angle / (2.0f * NAV_MAX_ANGLE_RAD);
-						+ tanf(Limit1(A[Roll].Angle, NAV_MAX_ANGLE_RAD))
-								* GRAVITY_MPS_S / Airspeed;
+				Rate[Yaw] = A[Yaw].Out * A[Yaw].RateMax
+				//+ A[Roll].Angle / (2.0f
+				//		* A[Roll].AngleMax);
+				+ Limit1(A[Roll].Angle, A[Roll].AngleMax)
+						/ (Airspeed * GRAVITY_MPS_S_R);
 			else
 				Rate[Yaw] = 0.0f;
+
 			Aircraft[Pitch].Vel = -Airspeed; //-EM_CRUISE_MPS;
+
 		} else {
 
 			for (a = Pitch; a <= Roll; a++) {
@@ -181,7 +191,7 @@ void DoEmulation(void) {
 		}
 	}
 
-	Acc[UD] = -sqrtf(Sqr(GRAVITY_MPS_S) - (Sqr(Acc[BF]) + Sqr(Acc[LR]))); // needs scaling
+	Acc[UD] = -GRAVITY_MPS_S;
 
 	GPS.C[EastC].Raw = GPS.C[EastC].OriginRaw + MToGPS(GPS.C[EastC].Pos)
 			/ GPS.longitudeCorrection;
@@ -191,7 +201,6 @@ void DoEmulation(void) {
 	GPS.velD = -ROC;
 
 } // DoEmulation
-
 
 
 void GPSEmulation(void) {

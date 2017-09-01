@@ -40,6 +40,7 @@ typedef double real64;
 typedef void (*voidFuncPtr)(void);
 typedef void (*i16FuncPtr)(int16 * v);
 typedef unsigned char BYTE;
+typedef int idx; // mainly short structure/loop indexing - was uint8 but Arm is native 32
 
 /*
  typedef struct {

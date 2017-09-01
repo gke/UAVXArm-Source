@@ -270,7 +270,7 @@ void ShowAttitude(uint8 s) {
 	TxESCi16(s, A[Roll].Angle * 1000.0f);
 	TxESCi16(s, A[Pitch].Angle * 1000.0f);
 
-	TxESCi16(s, HeadingE * 1000.0f); // A[Yaw].Angle
+	TxESCi16(s, A[Yaw].AngleE * 1000.0f); // A[Yaw].Angle
 
 	TxESCi16(s, Acc[BF] * 1000.0f * GRAVITY_MPS_S_R);
 	TxESCi16(s, Acc[LR] * 1000.0f * GRAVITY_MPS_S_R);
@@ -339,7 +339,7 @@ void SendNavState(uint8 s) {
 
 	if (F.Bypass)
 		TxESCu8(s, BypassControl);
-	else if(F.UsingRateControl)
+	else if (F.UsingRateControl)
 		TxESCu8(s, RateControl);
 	else
 		TxESCu8(s, NavState);
@@ -409,7 +409,7 @@ void SendNavPacket(uint8 s) {
 	TxESCi16(s, A[Pitch].NavCorr * 1000.0f);
 	TxESCi16(s, A[Roll].NavCorr * 1000.0f);
 
-	TxESCi16(s, RadiansToDegrees(HeadingE));
+	TxESCi16(s, RadiansToDegrees(A[Yaw].AngleE));
 
 	SendPacketTrailer(s);
 
@@ -456,7 +456,9 @@ void SendFusionPacket(uint8 s) {
 	TxESCi16(s, FROC * 100.0f);
 	TxESCi16(s, NV.AccCal.DynamicAccBias[Z] * 1000.0f);
 
-	TxESCi16(s, Limit((100.0 * RateEnergySum) / (real32) RateEnergySamples, 0, 32000));
+	TxESCi16(
+			s,
+			Limit((100.0 * RateEnergySum) / (real32) RateEnergySamples, 0, 32000));
 	TxESCi16(s, RadiansToDegrees(FWGlideAngleOffsetRad) * 10.0f);
 	TxESCi16(s, NewParameterTuning);
 
@@ -467,66 +469,70 @@ void SendFusionPacket(uint8 s) {
 
 void SendCalibrationPacket(uint8 s) {
 	SendPacketHeader(s);
-	uint8 a;
+	idx a;
 
 	TxESCu8(s, UAVXCalibrationPacketTag);
-	TxESCu8(s, 2 + 36);
+	TxESCu8(s, 2 + 64);
 
 	TxESCi16(s, NV.GyroCal.TRef * 10.0f);
 
-	for (a = 0; a <= Z; a++) {
+	for (a = X; a <= Z; a++) {
 		TxESCi16(s, RadiansToDegrees(NV.GyroCal.M[a])
 				* GyroScale[CurrAttSensorType] * 1000.0f);
 		TxESCi16(s, RadiansToDegrees(NV.GyroCal.C[a])
 				* GyroScale[CurrAttSensorType] * 1000.0f);
 
-		TxESCi16(s, NV.AccCal.M[a] * 1000.0f * AccScale[a] * GRAVITY_MPS_S_R);
-		TxESCi16(s, NV.AccCal.C[a] * 1000.0f * AccScale[a] * GRAVITY_MPS_S_R);
+		TxESCi16(s, NV.AccCal.Scale[a] * MPU_1G * GRAVITY_MPS_S_R * 1000.0f);
+		TxESCi16(s, NV.AccCal.Bias[a] * NV.AccCal.Scale[a] * GRAVITY_MPS_S_R
+				* 1000.0f);
 
-		TxESCi16(s, NV.MagCal.Scale[a] * 1000.0f);
+		TxESCi16(s, MagScale[a] * 1000.0f);
 		TxESCi16(s, NV.MagCal.Bias[a] * 1000.0f);
+
 	}
+
+	TxESCi16(s, 1.0 / CurrPIDCycleS);
+	TxESCi16(s, AccLPFreqHz);
+	TxESCi16(s, GyroLPFreqHz);
+
+	for (a = 21; a < 32; a++)
+		TxESCi16(s, -1);
 
 	SendPacketTrailer(s);
 } // SendCalibrationPacket
 
 
 void SendParamsPacket(uint8 s, uint8 GUIPS) {
-	int32 p;
+	idx p;
 
 	if ((State == Preflight) || (State == Ready)) {
 
-		if (GUIPS == 255) {
-			UseDefaultParameters();
-			SendAckPacket(s, UAVXParamPacketTag, true);
-		} else {
-			if (GUIPS != 254) // not previous PS
-				NV.CurrPS = GUIPS;
+		if (GUIPS < 4)
+			UseDefaultParameters(GUIPS);
 
-			if ((NV.CurrPS >= 0) && (NV.CurrPS <= NO_OF_PARAM_SETS)) {
+		NV.CurrPS = 0;
 
-				SendPacketHeader(s);
+		SendPacketHeader(s);
 
-				uint8 len = strlen(Revision);
+		uint8 len = strlen(Revision);
 
-				TxESCu8(s, UAVXParamPacketTag);
-				TxESCu8(s, 1 + MAX_PARAMETERS + len + 1);
+		TxESCu8(s, UAVXParamPacketTag);
+		TxESCu8(s, 1 + MAX_PARAMETERS + len + 1);
 
-				TxESCu8(s, NV.CurrPS);
-				for (p = 0; p < MAX_PARAMETERS; p++)
-					TxESCi8(s, NV.P[NV.CurrPS][p]);
+		TxESCu8(s, NV.CurrPS);
+		for (p = 0; p < MAX_PARAMETERS; p++)
+			TxESCi8(s, NV.P[NV.CurrPS][p]);
 
-				TxESCu8(s, len);
+		TxESCu8(s, len);
 
-				for (p = 0; p < len;p++)
-					TxESCu8(s, Revision[p]);
+		for (p = 0; p < len; p++)
+			TxESCu8(s, Revision[p]);
 
-				SendPacketTrailer(s);
+		SendPacketTrailer(s);
 
-			} else
-				SendAckPacket(s, UAVXParamPacketTag, false);
-		}
-	}
+		SendAckPacket(s, UAVXParamPacketTag, true);
+	} else
+		SendAckPacket(s, UAVXParamPacketTag, false);
 
 } // SendParamsPacket
 
@@ -548,7 +554,7 @@ void SendRCChannelsPacket(uint8 s) {
 
 void SendStatsPacket(uint8 s) {
 #if defined(INC_STATS_TEL)
-	uint8 i;
+	idx i;
 
 	SendPacketHeader(s);
 
@@ -565,7 +571,7 @@ void SendStatsPacket(uint8 s) {
 } // SendStatsPacket
 
 void SendBBPacket(uint8 s, int32 seqNo, uint8 l, int8 * B) {
-	uint8 i;
+	idx i;
 
 	SendPacketHeader(s);
 
@@ -582,7 +588,7 @@ void SendBBPacket(uint8 s, int32 seqNo, uint8 l, int8 * B) {
 
 void SendDFTPacket(uint8 s) {
 #if defined(INC_DFT)
-	uint8 i;
+	idx i;
 
 	SendPacketHeader(s);
 
@@ -598,7 +604,7 @@ void SendDFTPacket(uint8 s) {
 } // SendDFTPacket
 
 void SendMinPacket(uint8 s) {
-	uint8 b;
+	idx b;
 
 	SendPacketHeader(s);
 
@@ -775,26 +781,24 @@ void SetTelemetryBaudRate(uint8 s, uint32 b) {
 
 
 void ProcessParamsPacket(uint8 s) {
-	uint8 p, NewCurrPS;
+	uint8 p;
 
 	if ((State == Preflight) || (State == Ready)) { // not inflight
 
-		NewCurrPS = UAVXPacket[2];
-		if ((NewCurrPS >= 0) && (NewCurrPS < NO_OF_PARAM_SETS)) {
+		NV.CurrPS = 0;
 
-			NV.CurrPS = NewCurrPS;
+		for (p = 0; p < MAX_PARAMETERS; p++)
+			SetP(p, UAVXPacketi8(p + 3));
 
-			for (p = 0; p < MAX_PARAMETERS; p++)
-				SetP(p, UAVXPacketi8(p + 3));
+		UpdateNV();
 
-			UpdateNV();
+		F.ParametersChanged = true;
+		UpdateParameters();
 
-			F.ParametersChanged = true;
-			UpdateParameters();
+		SendAckPacket(s, UAVXParamPacketTag, true);
 
-			SendAckPacket(s, UAVXParamPacketTag, true);
-		} else
-			SendAckPacket(s, UAVXParamPacketTag, false);
+		SendParamsPacket(s, 255);
+
 	} else
 		SendAckPacket(s, UAVXParamPacketTag, false);
 
@@ -1047,24 +1051,20 @@ void UAVXPollRx(uint8 s) {
 void UseUAVXTelemetry(uint8 s) {
 	static boolean SendFlight = true;
 
-	uint32 NowmS = mSClock();
-	if (NowmS >= mS[TelemetryUpdate]) {
-		mSTimer(NowmS, TelemetryUpdate, UAVX_TEL_INTERVAL_MS);
-		if (SendFlight) {
-			//if (!Armed())
-			SendFlightPacket(s); // 78
-			SendFusionPacket(s);
-			SendGuidancePacket(s); // 2+7
-			SendRCChannelsPacket(s); // 27 -> 105
-		} else {
-			SendNavPacket(s); // 2+54+4 = 60
-			SendDFTPacket(s); // 24
-			SendStatsPacket(s); // ~80 -> 104
-			if (State == Warmup)
-				SendCalibrationPacket(s);
-		}
-		SendFlight = !SendFlight;
+	if (SendFlight) {
+		//if (!Armed())
+		SendFlightPacket(s); // 78
+		SendFusionPacket(s);
+		SendGuidancePacket(s); // 2+7
+		SendRCChannelsPacket(s); // 27 -> 105
+	} else {
+		SendNavPacket(s); // 2+54+4 = 60
+		SendDFTPacket(s); // 24
+		SendStatsPacket(s); // ~80 -> 104
+		if ((State == Preflight) || (State == Ready)) //Warmup) || (State == Landed))
+			SendCalibrationPacket(s);
 	}
+	SendFlight = !SendFlight;
 } // UseUAVXTelemetry
 
 void CheckTelemetry(uint8 s) {
@@ -1076,17 +1076,24 @@ void CheckTelemetry(uint8 s) {
 	if (!(F.UsingMAVLink && (Armed() || (UAVXAirframe == Instrumentation))))
 		UAVXPollRx(s);
 
-	BlackBoxEnabled =  (Armed() || (UAVXAirframe == Instrumentation)) && (State == InFlight);
+	BlackBoxEnabled = (Armed() || (UAVXAirframe == Instrumentation)) && (State
+			== InFlight);
 
 	NowmS = mSClock();
 	if (!(Armed() || (UAVXAirframe == Instrumentation))) {
 		SetTelemetryBaudRate(s, 115200);
-		UseUAVXTelemetry(s);
+		if (NowmS >= mS[TelemetryUpdate]) {
+			mSTimer(NowmS, TelemetryUpdate, UAVX_TEL_INTERVAL_MS);
+			UseUAVXTelemetry(s);
+		}
 	} else
 		switch (CurrTelType) {
 		case UAVXTelemetry:
 			SetTelemetryBaudRate(s, 115200);
-			UseUAVXTelemetry(s);
+			if (NowmS >= mS[TelemetryUpdate]) {
+				mSTimer(NowmS, TelemetryUpdate, UAVX_TEL_INTERVAL_MS);
+				UseUAVXTelemetry(s);
+			}
 			break;
 		case UAVXMinTelemetry:
 			SetTelemetryBaudRate(s, 115200);

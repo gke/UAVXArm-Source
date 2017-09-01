@@ -117,7 +117,7 @@ boolean sioWriteataddr(uint8 sioDev, uint8 d, uint8 a, uint8 v) {
 
 /* zzz
 boolean sioWriteBlock(uint8 sioDev, uint8 d, uint8 l, uint8 * data) {
-	uint8 i;
+	idx i;
 	boolean r = true;
 
 	for (i = 0; i < l; i++)
@@ -129,7 +129,7 @@ boolean sioWriteBlock(uint8 sioDev, uint8 d, uint8 l, uint8 * data) {
 
 
 boolean sioWriteBlockataddr(uint8 sioDev, uint8 d, uint8 a, uint8 l, uint8 *S) {
-	uint8 i;
+	idx i;
 	boolean r = true;
 
 	for (i = 0; i < l; i++)

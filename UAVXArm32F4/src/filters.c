@@ -118,12 +118,15 @@ real32 kth_smallest(real32 a[], uint16 n, uint16 k) {
 //#define median(a,n) kth_smallest(a,n,(((n)&1)?((n)/2):(((n)/2)-1)))
 
 
+// FIR filter
+
+
 void InitSmoothr32xn(HistStruct * F) {
 	F->Primed = false;
 } // InitSmooth32xn
 
 real32 Smoothr32xn(HistStruct * F, uint8 n, real32 v) {
-	uint8 i, p;
+	idx i, p;
 
 	if (!F->Primed) {
 		for (i = 0; i < n; i++)
@@ -149,7 +152,7 @@ real32 Smoothr32xn(HistStruct * F, uint8 n, real32 v) {
 } // Smoothr32xn
 
 uint32 Smoothuint32xn(uint32HistStruct * F, uint8 n, uint32 v) {
-	uint8 i, p;
+	idx i, p;
 
 	if (!F->Primed) {
 		for (i = 0; i < n; i++)
@@ -180,15 +183,10 @@ real32 LeadFilter(real32 Pos, real32 VelP, real32 Vel, real32 Lag) {
 	return (Pos + Vel * Lag + (Vel - VelP) * Sqr(Lag));
 } // LeadFilter
 
-void InitLPFilter(HistStruct * F) {
-
-	F->Primed = false;
-
-} // InitLPFilter
 
 real32 LPFilterBW(HistStruct * F, real32 v, real32 CutHz, real32 dT) {
 	real32 r;
-	uint8 i;
+	idx i;
 
 	// WARNING - the priming process uses the first dT only and so
 	// this is better instantiated using a constant for dT
@@ -227,7 +225,39 @@ real32 LPFilterBW(HistStruct * F, real32 v, real32 CutHz, real32 dT) {
 
 } // LPFilterBW
 
-real32 LPFilter(HistStruct * F, real32 v, real32 CutHz, real32 dT) {
+
+real32 PavelDifferentiator(HistStruct *F, real32 v) {
+	// Pavel Holoborodko, see http://www.holoborodko.com/pavel/numerical-methods/
+	// numerical-derivative/smooth-low-noise-differentiators/
+
+	idx i;
+	//const idx N = 5;
+	//static const real32 C[] = { 0.625f, 0.25f, -1.0f, -0.25f, 0.375f };
+
+	const idx N = 6;
+	// h[0] = 3/8, h[-1] = 1/2, h[-2] = -1/2, h[-3] = -3/4, h[-4] = 1/8, h[-5] = 1/4
+	const real32 C[] = { 0.375f, 0.5f, -0.5f, -0.75, 0.125f, 0.25f };
+
+	real32 r = 0.0f;
+
+	if (!F->Primed) {
+		for (i = 0; i < N; i++)
+			F->h[i] = v;
+		F->Primed = true;
+	} else {
+		for (i = N; i > 0; --i)
+			F->h[i] = F->h[i - 1];
+		F->h[0] = v;
+	}
+
+	for (i = 0; i < N; ++i)
+		r += C[i] * F->h[i];
+
+	return r;
+} // Pavel
+
+__attribute__((always_inline)) inline real32 LPFilter(HistStruct * F, const idx Order, real32 v, real32 CutHz, real32 dT) {
+idx n;
 
 	if (!F->Primed) {
 		F->h[0] = v;
@@ -235,6 +265,7 @@ real32 LPFilter(HistStruct * F, real32 v, real32 CutHz, real32 dT) {
 		F->Tau = 1.0f / (TWO_PI * CutHz);
 	}
 
+	for (n = 0; n< Order; n++)
 	F->h[0] = F->h[0] + (v - F->h[0]) * dT / (F->Tau + dT);
 
 	return (F->h[0]);
@@ -275,15 +306,16 @@ real32 SlewFilter(HistStruct * F, real32 v, real32 CutHz, real32 dT) {
 
 } // SlewFilter
 
-real32 SlewLimit(real32 Old, real32 New, real32 Slew, real32 dT) {
-	// best for capturing noise?
+real32 SlewLimit(real32 * Old, real32 New, real32 Slew, real32 dT) {
+	// DO NOT USE WHEN YOU HAVE 360DEG STEPS AS IT WILL NOT TRACK
 	real32 Low, High, SlewD;
 
 	SlewD = Slew * dT;
 
-	Low = Old - SlewD;
-	High = Old + SlewD;
-	return ((New < Low) ? Low : ((New > High) ? High : New));
+	Low = *Old - SlewD;
+	High = *Old + SlewD;
+	*Old = (New < Low) ? Low : ((New > High) ? High : New);
+	return (*Old);
 } // SlewLimit
 
 
@@ -308,30 +340,30 @@ real32 DeadZone(real32 v, real32 t) {
 	return (v);
 } // DeadZone
 
-real32 SlewLimitLPFilter(real32 Old, real32 New, real32 Slew, real32 F,
+real32 SlewLimitLPFilter(real32 * Old, real32 New, real32 Slew, real32 F,
 		real32 dT) {
 	// set slew to an "impossible" difference between samples
-	real32 r;
-	New = SlewLimit(Old, New, Slew, dT);
-	r = Old + (New - Old) * dT / ((1.0f / (TWO_PI * F)) + dT);
 
-	return (r);
+	New = SlewLimit(Old, New, Slew, dT);
+	*Old += (New - *Old) * dT / ((1.0f / (TWO_PI * F)) + dT);
+
+	return (*Old);
 } // SlewLimitLPFilter
 
 real32 Make2Pi(real32 A) {
 	while (A < 0)
-		A += TWO_PI;
-	while (A >= TWO_PI)
-		A -= TWO_PI;
+		A += DegreesToRadians(360.0f);
+	while (A >= DegreesToRadians(360.0f))
+		A -= DegreesToRadians(360.0f);
 
 	return (A);
 } // Make2Pi
 
 real32 MakePi(real32 A) {
-	while (A < -DegreesToRadians(180))
-		A += DegreesToRadians(360);
-	while (A >= DegreesToRadians(180))
-		A -= DegreesToRadians(360);
+	while (A < -DegreesToRadians(180.0f))
+		A += DegreesToRadians(360.0f);
+	while (A >= DegreesToRadians(180.0f))
+		A -= DegreesToRadians(360.0f);
 
 	return (A);
 } // MakePi
@@ -362,7 +394,7 @@ real32 invSqrt(real32 x) {
 // See: http://en.wikipedia.org/wiki/Fast_inverse_square_root
 
 real32 invSqrtXXX(real32 x) {
-	const uint8 ver = 1;
+	const ver = 1;
 
 	real32 y;
 
@@ -416,7 +448,7 @@ void Rotate(real32 * nx, real32 * ny, real32 x, real32 y, real32 A) { // A rotat
 
 
 real32 DecayX(real32 v, real32 rate, real32 dT) {
-	real32 d = rate*dT;
+	real32 d = rate * dT;
 
 	if (v < -d)
 		v += d;

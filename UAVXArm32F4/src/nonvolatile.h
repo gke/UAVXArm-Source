@@ -38,14 +38,20 @@
 
 typedef struct {
 	real32 TRef;
+	real32 DynamicAccBias[3], Scale[3], Bias[3];
+}__attribute__((packed)) AccCalStruct;
+
+typedef struct {
+	real32 TRef;
 	real32 DynamicAccBias[3], M[3], C[3];
-}__attribute__((packed)) InertialCalStruct;
+}__attribute__((packed)) GyroCalStruct;
 
 typedef struct {
 	int8 P[NO_OF_PARAM_SETS][MAX_PARAMETERS];
 	int16 Stats[MAX_STATS];
 	MagCalStruct MagCal;
-	InertialCalStruct AccCal, GyroCal;
+	AccCalStruct AccCal;
+	GyroCalStruct GyroCal;
 	uint16 CurrRevisionNo;
 	uint8 CurrPS;
 
@@ -62,6 +68,8 @@ extern NVStruct NV;
 #define MEM_SIZE 65536
 #define MEM_BUFFER_SIZE 64
 #endif
+
+extern boolean NVChanged;
 
 extern boolean UpdateNV(void);
 extern int8 ReadNV(uint32 a);

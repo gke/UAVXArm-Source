@@ -23,10 +23,10 @@
 #define _configdefines_h
 
 // Aircraft Specific
-#define THR_DEFAULT_CRUISE_FW FromPercent(30)
+
 #define BEST_ROC_MPS_FW 3.0
-#define AS_MIN_MPS 7.0f
-#define AS_MAX_MPS 12.0f
+#define AS_MIN_MPS 8.0f
+#define AS_MAX_MPS 14.0f
 #define POLAR_CD0 0.027f
 #define POLAR_B 0.031f
 #define POLAR_K 25.6f
@@ -41,15 +41,13 @@
 #define RC_MAXIMUM 1.0f
 #define RC_NEUTRAL 0.5f
 
-#define PID_CYCLE_US 2000
-#define PID_CYCLE_MS (PID_CYCLE_US/1000)
-#define PID_CYCLE_S ((real32)PID_CYCLE_US*1.0E-6)
-#define PID_SYNCPWM_CYCLE_US (1000000L/450) //2500 // for synchronised standard PWM
+#define PID_CYCLE_2000US 2000
+#define PID_SYNCPWM_CYCLE_2222US (1000000L/450) //2500 // for synchronised standard PWM
 
 #define ARMED_TIMEOUT_MS 120000L // mS. automatic disarming if armed for this long and landed
 #define NAV_LAND_TIMEOUT_MS 3000
 #define NAV_ACTIVE_DELAY_MS 10000 // mS. after throttle exceeds idle that Nav becomes active
-#define CRASHED_TIMEOUT_MS 1000 // aircraft is not falling and the attitude is greater than max bank
+#define CRASHED_TIMEOUT_MS 2000 // aircraft is not falling and the attitude is greater than max bank
 
 #define WARMUP_TIMEOUT_MS 2000 // 5000 // mS. time for Madgwick code to settle - empirical!
 
@@ -58,7 +56,7 @@
 #define MAG_MAX_SLEW_RAD_S  (DegreesToRadians(720.0f))
 #define COMPASS_TIME_MS		50			// 20Hz
 
-#define MAG_MAX_SAMPLES (8*50) // must be divisible by 8
+#define MAG_CAL_SAMPLES (8*50) // must be divisible by 8
 
 #define ALT_UPDATE_HZ 20
 #define ALT_UPDATE_MS (1000/ALT_UPDATE_HZ)
@@ -67,6 +65,7 @@
 #define ALT_SANITY_SLEW_M		(ALT_MAX_SLEW_M * 2.0f ) // 0.75f)
 #define ALT_ROC_LPF_HZ 			(0.2f)
 #define ALT_ROC_THRESHOLD_MPS 	(0.03f)
+#define ALT_HOLD_BAND_M			(10.0f)
 
 #define ALT_MIN_DESCENT_DMPS 	(4)
 #define ALT_MAX_DESCENT_DMPS	(20)
@@ -88,9 +87,11 @@
 
 #define THR_START_PW FromPercent(5)
 
-#define THR_MAX_CRUISE	FromPercent(80)
-#define THR_MIN_CRUISE	FromPercent(20)
-#define THR_DEFAULT_CRUISE FromPercent(50)
+#define THR_MIN_ALT_HOLD_STICK FromPercent(20) // min throttle stick for altitude lock
+#define THR_MAX_ALT_HOLD_STICK FromPercent(80)
+
+#define THR_DEFAULT_CRUISE_STICK FromPercent(50)
+#define THR_DEFAULT_CRUISE_FW_STICK FromPercent(30)
 #define BATTERY_SAG_VPS 0.01f
 
 #define THRESHOLD_STICK FromPercent(1) // minimum for roll/pitch
@@ -102,15 +103,15 @@
 
 #define ALT_MAX_ROC_MPS 3.0f
 
-#define STICK_SCALE 2.0f // sticks are +/- 0.5 as are servos
-#define STICK_SCALE_R (1.0f/STICK_SCALE)
+#define STICK_BYPASS_SCALE  (1.0f/3.0f)
 
 #define DEFAULT_ROLLPITCH_RATE_RADPS DegreesToRadians(720)
 #define DEFAULT_YAW_RATE_RADPS DegreesToRadians(90)
 #define DEFAULT_TURNOUT_RAD DegreesToRadians(60)
 
 #define NAV_CEILING_M 120.0f // 400 feet
-#define NAV_DEFAULT_FENCE_M 200.0f
+#define NAV_DEFAULT_RTH_M 15.0f
+#define NAV_DEFAULT_FENCE_M 400.0f
 #define NAV_MIN_VEL_MPS 0.1f
 #define NAV_MAX_ANGLE_RAD DegreesToRadians(35)
 
@@ -144,9 +145,8 @@
 #define THR_UPDATE_MS 3000 // mS. constant throttle time for altitude hold
 
 #define RC_MOVEMENT_STICK FromPercent(1) // minimum to be recognised as a stick input change without triggering failsafe
-#define THR_MIDDLE_STICK FromPercent(5) // throttle stick dead zone for baro
+#define THR_MIDDLE_WINDOW_STICK FromPercent(5) // throttle stick dead zone for baro
 
-#define THR_MIN_ALT_HOLD_STICK FromPercent(35) // min throttle stick for altitude lock
 #define NAV_SENS_ALT_THRESHOLD_STICK FromPercent(10)// Altitude hold disabled if Ch7 is less than this
 #define ATTITUDE_HOLD_LIMIT_STICK FromPercent(20) // dead zone for roll/pitch stick for position hold
 #define ATTITUDE_THRESHOLD_STICK FromPercent(2) // make sure neutral is 1500uS with no trims

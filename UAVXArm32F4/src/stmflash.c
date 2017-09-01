@@ -26,6 +26,7 @@ __attribute__((__section__(".scratchflash")))  const int8 FlashNV[NV_FLASH_SIZE]
 #define FLASH_SCRATCH_SECTOR	FLASH_Sector_1 // 11
 
 
+boolean NVChanged = false;
 
 void ReadBlockNV(uint32 a, uint16 l, int8 * v) {
 	uint16 i;
@@ -42,9 +43,9 @@ boolean UpdateNV(void) {
 
 	//for (i = 0; i < l; i++) // TODO: optimise to word compares
 		//	r &= v[i] == FlashNV[a + i]; //*(int8 *) (FLASH_SCRATCH_ADDR + a + i);
-		r = false;
 
-		if (!r) {
+
+		if (NVChanged) {
 			FLASH_Unlock();
 #if defined(STM32F1)
 			FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
@@ -66,6 +67,8 @@ boolean UpdateNV(void) {
 			}
 			FLASH_Lock();
 		}
+
+		NVChanged = false;
 
 	return (r);
 } // UpdateNV

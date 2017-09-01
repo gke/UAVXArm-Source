@@ -22,11 +22,11 @@
 #ifndef _params_h
 #define _params_h
 
-extern const real32 OKp, OKi, OIL, IKp, IKi, IKd;
+extern const real32 OKp, OIL, IKp, IKd;
 
 void RegeneratePIDCoeffs(void);
 void UpdateParameters(void);
-void UseDefaultParameters(void);
+void UseDefaultParameters(uint8 DefaultPS);
 void DoStickProgramming(void);
 void CheckParametersInitialised(void);
 void InitParameters(void);
@@ -91,16 +91,7 @@ enum ComboPort2Types {
 	I2C_RF_BatV_V3, I2C_RF_V4, GPS_RF_V4, Unused_RF_V4, ComboPort2Unused
 };
 
-enum ESCTypes {
-	ESCPWM,
-	ESCSyncPWM,
-	ESCSyncPWMDiv8,
-	ESCI2C,
-	DCMotors,
-	DCMotorsWithIdle,
-	PWMDAC,
-	ESCUnknown
-};
+
 
 enum AFs {
 	TriAF, TriCoaxAF, // aka Y6
@@ -147,7 +138,7 @@ enum Params { // MAX 64
 	Config1Bits, // 16
 	RxThrottleCh, // 17
 	LowVoltThres, // 18
-	CamRollKp, // 19
+	RollCamKp, // 19
 	EstCruiseThr, // 20
 
 	StickHysteresis, // 21
@@ -155,8 +146,8 @@ enum Params { // MAX 64
 	PercentIdleThr, // 23
 	RollAngleKi, //  24
 	PitchAngleKi, //  25
-	CamPitchKp, // 26
-	YawAngleKp, // 27
+	PitchCamKp, // 26
+	UnusedYawAngleKp, // 27
 	PitchRateKd, // 28
 	NavVelKp, // 29
 	AltVelKp, // 30
@@ -170,7 +161,7 @@ enum Params { // MAX 64
 	RCChannels, // 37
 	RxRollCh, // 38
 	MadgwickKpAcc, // 39
-	CamRollTrim, // 40
+	RollCamTrim, // 40
 
 	NavPosIntLimit, // 41
 	RxPitchCh, // 42
@@ -179,14 +170,14 @@ enum Params { // MAX 64
 	TelemetryType, // 45
 	MaxDescentRateDmpS, // 46
 	DescentDelayS, // 47
-	GyroLPF, // 48
+	GyroLPFSel, // 48
 	NavCrossTrackKp, // 49
 	RxGearCh, // 50
 
 	RxAux1Ch, // 51
 	ServoSense, // 52
 	AccConfSD, // 53
-	BatteryCapacity, // 54
+	BatteryCapacity, // 0.1 AH 54
 	RxAux2Ch, // 55
 	RxAux3Ch, // 56
 	NavPosKp, // 57
@@ -197,37 +188,37 @@ enum Params { // MAX 64
 	NavPosKi, // 61
 	GPSProtocol, // 62
 	TiltThrottleFF, // 63
-	StickScaleYaw, // 64
+	MaxYawRate, // 64
 
 	FWRollPitchFF, // 65
 	FWPitchThrottleFF, // 66
 	MaxAltHoldComp, // 67
 	FWMaxClimbAngle, // 68
 	NavMaxAngle, // 69
-	FWFlapDecayTime, // 70
+	FWSpoilerDecayTime, // 70
 	FWAileronDifferential, // 71
 	ASSensorType, // 72,
 	BestROC, // 73,
 	Config2Bits, // 74
-	StickScaleRollPitch, // 75
+	MaxPitchAngle, // 75
 	ComboPort2Config, // 76
-	MaxAttitudeAngle, // 77
+	MaxRollAngle, // 77
 	TuneParamSel, // 78
 	NavHeadingTurnout, // 79
 	WS2812Leds, // 80
 	MinhAcc, // 81
 	FWBoardPitchAngle, // 82,
-	P83,
-	P84,
-	P85,
-	P86,
-	P87,
-	P88,
-	P89,
-	P90,
-	P91,
-	P92,
-	P93,
+	MaxRollRate, // 83
+	MaxPitchRate, // 84
+	CurrentScale, // 0.01 85
+	VoltScale, // 0.01 86
+	FWAileronRudderMix, // 87
+	FWAltSpoilerFF, // 88
+	MaxCompassYawRate, // 89
+	AccLPFSel, //P90,
+	YawRateKd, // 91,
+	PIDTimeSel, // 92
+	ThrottleGainRate, // 93
 	RxAux5Ch,
 	RxAux6Ch,
 	RxAux7Ch
@@ -248,7 +239,7 @@ typedef struct {
 #define	UseRapidDescentMask		(1<<6)
 
 // Config2
-#define UnusedMask_2_1 			0x01
+#define UseSWFiltersMask			 0x01
 #define	UseFastStartMask		(1<<1)
 #define UseBLHeliMask 			(1<<2)
 #define UseGliderStrategyMask	(1<<3)

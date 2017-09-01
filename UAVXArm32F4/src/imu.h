@@ -19,54 +19,55 @@
 //    If not, see http://www.gnu.org/licenses/
 
 
-#ifndef _magnetometer_h
-#define _magnetometer_h
+#ifndef _gyrosandaccelerometers_h
+#define _gyrosandaccelerometers_h
 
-typedef struct {
-	real32 Magnitude;
-	real32 Scale[3];
-	real32 Bias[3];
+enum GyroTypes {
+	MLX90609Gyro,
+	ADXRS150Gyro,
+	LY530Gyro,
+	ADXRS300Gyro,
+	UAVXArm32IMU,
+	FreeIMU,
+	InfraRedAngle,
+	GyroUnknown
+};
 
-	//real32 Max[3], Min[3], Bias2[3], Scale2[3];
+#define DEF_ACC_SCALE (GRAVITY_MPS_S / MPU_1G)
 
-	uint16 Population[2][3];
-	uint16 UnusedMagStats[128];
-} MagCalStruct;
+void InertialTest(uint8 s);
 
-extern int16 RawMag[];
+void GetGyros(void);
+void CalculateGyroRates(void);
+void InitRatesAndAngles(void);
+void ErectGyros(int32 d);
 
-// HMC5XXX Honeywell Magnetometer
+#define ACC_TRIM_STEP 20
 
-#define HMC5XXX_ID 	(0x1e*2)
+void ShowAccType(uint8 s);
+void ShowGyroType(uint8 s, uint8 g);
+void CaptureAccTrimOffsets(void);
+void GetAccelerations(void);
+void CalibrateAccsAndGyros(uint8 s);
+void CalculateAccelerations(void);
+void InitIMU(void);
 
-boolean ReadMagnetometer(void);
-void GetMagnetometer(void);
-void CalculateMagneticHeading(void);
+extern HistStruct AccF[3];
+extern HistStruct GyroF[3];
 
-void CalibrateHMC5XXX(uint8 s);
-void CalibrateMagnetometer(uint8 s);
-void CheckMagnetometerIsCalibrated(void);
+extern const uint8 MPUMap[];
+extern const real32 MPUSign[];
 
-void InitMagnetometer(void);
-void InitMagnetometerBias(void);
-
-void TrackMaxMin(void);
-
-void MagnetometerTest(uint8 s);
-boolean MagnetometerIsActive(void);
-
-void WriteMagCalNV(void);
-void UpdateMagHist(void);
-
-extern real32 MagVariation, MagVariationWMM2010;
-extern real32 MagLockE, MagHeading, DesiredHeading, Heading,
-		HeadingE, CompassOffset;
-extern uint8 CompassType;
-
-extern real32 Mag[];
-extern volatile uint16 MagSample;
-extern real32 MagTemperature;
-extern real32 MagdT;
+extern real32 GyroLPFreqHz, AccLPFreqHz;
+extern real32 GyroBias[];
+extern const real32 GyroScale[];
+extern uint8 CurrAttSensorType;
+extern boolean UsingInvertedBoard;
+extern boolean UsingSWFilters;
+extern real32 Acc[], Rate[];
+extern real32 RateEnergySum;
+extern uint32 RateEnergySamples;
+extern idx RollPitchLPFOrder;
 
 #endif
 
