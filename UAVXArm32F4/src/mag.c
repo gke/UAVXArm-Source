@@ -33,8 +33,7 @@
 real32 MagTemperature = 0.0f;
 real32 MagVariation = 0.0f;
 real32 MagVariationWMM2010 = 0.0f;
-real32 MagLockE, MagHeading, Heading, DesiredHeading, CompassOffset;
-//DesiredHeading,
+real32 MagLockE, MagHeading, Heading, CompassOffset;
 uint8 MagnetometerType;
 real32 MagdT;
 
@@ -95,7 +94,7 @@ void GetMagnetometer(void) {
 
 		if (ReadMagnetometer()) {
 
-			if (F.InvertMagnetometer || UsingInvertedBoard) {
+			if (F.InvertMagnetometer) {
 				Mag[BF] = (real32) RawMag[MX] * MagScale[MX]; // -
 				Mag[LR] = -(real32) RawMag[MY] * MagScale[MY];
 				Mag[UD] = (real32) RawMag[MZ] * MagScale[MZ];
@@ -250,7 +249,7 @@ void InitMagnetometerBias(void) {
 
 void GetMagSample(int16 i) {
 
-	if (F.InvertMagnetometer || UsingInvertedBoard) {
+	if (F.InvertMagnetometer) {
 		d[i][BF] = (real32) RawMag[MX] * MagScale[MX]; // -
 		d[i][LR] = -(real32) RawMag[MY] * MagScale[MY];
 		d[i][UD] = (real32) RawMag[MZ] * MagScale[MZ];

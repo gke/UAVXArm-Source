@@ -62,7 +62,6 @@ extern real32 GyroLPFreqHz, AccLPFreqHz;
 extern real32 GyroBias[];
 extern const real32 GyroScale[];
 extern uint8 CurrAttSensorType;
-extern boolean UsingInvertedBoard;
 extern boolean UsingSWFilters;
 extern real32 Acc[], Rate[];
 extern real32 RateEnergySum;

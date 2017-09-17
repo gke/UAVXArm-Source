@@ -31,9 +31,6 @@ const ParamStruct_t
 						{ PIDTimeSel, { 0, 0, 0, 0} }, // P92
 #endif
 
-						{ TuneParamSel, { NoTuning, NoTuning, NoTuning,
-								NoTuning } }, // 78
-
 						// Attitude
 
 						{ ThrottleGainRate, { 0, 0, 0, 0} }, // 93 PID overall gain above throttle cruise
@@ -179,10 +176,10 @@ const ParamStruct_t
 								ElevonAF } }, // ,44c
 #if defined(V4_BOARD)
 						{	TelemetryType, {UAVXTelemetry, UAVXTelemetry,
-								FrSkyTelemetry, MAVLinkTelemetry}}, //  45c
+								FrSkyV1Telemetry, MAVLinkTelemetry}}, //  45c
 #else
 						{ TelemetryType, { UAVXTelemetry, UAVXTelemetry,
-								FrSkyTelemetry, MAVLinkTelemetry } }, //  45c
+								FrSkyV1Telemetry, MAVLinkTelemetry } }, //  45c
 #endif
 						{ ESCType, { ESCUnknown, ESCUnknown, ESCUnknown,
 								ESCUnknown } }, //  36c
@@ -196,7 +193,9 @@ const ParamStruct_t
 
 						// Unused
 
-						{ UnusedYawAngleKp, { 0, } } // (Compass) 27
+						{ Unused78, { NoTuning, NoTuning, NoTuning,
+								NoTuning } }, // 78
+						{ Unused27, { 0, } } // 27
 
 				};
 

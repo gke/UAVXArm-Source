@@ -494,7 +494,7 @@ void UpdateRCMap(void) {
 	Map[CamPitchRC] = P(RxAux4Ch);
 	Map[TuneRC] = P(RxAux5Ch);
 	Map[TransitionRC] = P(RxAux6Ch);
-	Map[Aux7RC] = P(RxAux7Ch);
+	Map[ArmRC] = P(RxAux7Ch);
 
 	for (c = ThrottleRC; c < NullRC; c++)
 		Map[c] -= 1;
@@ -868,6 +868,8 @@ void UpdateControls(void) {
 		TuningScale
 				= (ActiveCh(TuneRC) && Tuning) ? Limit(RC[TuneRC] + 0.5f, 0.5f, 1.5f)
 						: 1.0f;
+
+		TxSwitchArmed = Triggered(ArmRC);
 
 		UsingVTOLMode = Triggered(TransitionRC) && (UAVXAirframe == VTOLAF);
 

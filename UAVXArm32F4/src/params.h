@@ -45,7 +45,7 @@ enum RCControls {
 	CamPitchRC,
 	TuneRC,
 	TransitionRC,
-	Aux7RC,
+	ArmRC,
 	NullRC
 };
 
@@ -73,7 +73,7 @@ enum TuneParams {
 };
 
 enum ArmingModes {
-	YawStickArming, SwitchArming, RollStickArming
+	YawStickArming, SwitchArming, RollStickArming, TxSwitchArming
 };
 
 enum ComboPort1Types {
@@ -147,7 +147,7 @@ enum Params { // MAX 64
 	RollAngleKi, //  24
 	PitchAngleKi, //  25
 	PitchCamKp, // 26
-	UnusedYawAngleKp, // 27
+	Unused27, // 27
 	PitchRateKd, // 28
 	NavVelKp, // 29
 	AltVelKp, // 30
@@ -203,7 +203,7 @@ enum Params { // MAX 64
 	MaxPitchAngle, // 75
 	ComboPort2Config, // 76
 	MaxRollAngle, // 77
-	TuneParamSel, // 78
+	Unused78, // 78
 	NavHeadingTurnout, // 79
 	WS2812Leds, // 80
 	MinhAcc, // 81
@@ -244,7 +244,7 @@ typedef struct {
 #define UseBLHeliMask 			(1<<2)
 #define UseGliderStrategyMask	(1<<3)
 #define UseConfigRebootMask		(1<<4)
-#define	UseInvertedBoardMask	(1<<5)
+#define	UseTurnToWPMask			(1<<5)
 #define	UseSpecialMask			(1<<6)
 
 // bit 7 unusable in UAVPSet
@@ -252,7 +252,7 @@ typedef struct {
 // In Servo Sense Byte
 #define	UseConvPropSenseMask			(1<<6)
 
-extern volatile boolean StickArmed;
+extern volatile boolean StickArmed, TxSwitchArmed;
 extern const ParamStruct_t DefaultParams[];
 extern const uint8 NoDefaultEntries;
 extern const uint16 ESCLimits[];

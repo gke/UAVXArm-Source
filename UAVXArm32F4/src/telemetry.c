@@ -367,6 +367,101 @@ void SendControlPacket(uint8 s) {
 
 } // SendControlPacket
 
+
+void SendAnglePIDPacket(uint8 s) {
+	idx a;
+
+	SendPacketHeader(s);
+
+	TxESCu8(s, UAVXAnglePIDPacketTag);
+	TxESCu8(s, 1 + 5 * 2 + 3); // 14
+
+	TxESCu8(s, 5 * 2 + 3);
+
+	for (a = Pitch; a <= Roll; a++) {
+
+		TxESCi8(s, Limit(A[a].AngleDesired / A[a].AngleMax * 128, -128 , 127));
+
+		TxESCi8(s, Limit(A[a].Angle / A[a].AngleMax * 128, -128 , 127));
+		//TxESCi8(s, Limit(A[a].AngleE / A[a].AngleMax * 128, -128 , 127));
+
+		TxESCi8(s, Limit(A[a].AnglePTerm / A[a].RateMax * 128, -128 , 127));
+		TxESCi8(s, Limit(A[a].AngleITerm / A[a].RateMax * 128, -128 , 127));
+
+		TxESCi8(s, Limit(A[a].RateDesired / A[a].RateMax * 128, -128 , 127));
+
+	}
+
+	for (a = BF; a <= UD; a++)
+		TxESCi8(s, Limit(RawAcc[a] * 128, -128 , 127));
+
+	SendPacketTrailer(s);
+
+} // SendAnglePIDPacket
+
+void SendRatePIDPacket(uint8 s) {
+	idx a;
+
+	SendPacketHeader(s);
+
+	TxESCu8(s, UAVXRatePIDPacketTag);
+	TxESCu8(s, 1 + 5 * 3); // 19
+
+	TxESCu8(s, 5 * 3);
+	for (a = Pitch; a <= Yaw; a++) {
+
+		TxESCi8(
+				s,
+				Limit((A[a].RateDesired / A[a].RateMax) * 128.0f, -128 , 127));
+		TxESCi8(s, Limit((Rate[a] / A[a].RateMax) * 128.0f, -128 , 127));
+		//TxESCi8(s, Limit((A[a].RateE / A[a].RateMax) * 128.0f, -128 , 127));
+
+		TxESCi8(s, Limit(A[a].RatePTerm * 128.0f, -128 , 127));
+		TxESCi8(s, Limit(A[a].RateDTerm * 128.0f, -128 , 127));
+
+		TxESCi8(s, Limit(A[a].Out * 128.0f, -128 , 127));
+	}
+
+	SendPacketTrailer(s);
+
+} // SendRatePIDPacket
+
+
+void SendAltPIDPacket(uint8 s) {
+
+	if (F.HoldingAlt) {
+		SendPacketHeader(s);
+
+		TxESCu8(s, UAVXAltPIDPacketTag);
+		TxESCu8(s, 4 + 1 + 10); // 15
+
+		TxESCi16(s, Limit(Altitude * 100.0f, -32768, 32767));
+		TxESCi16(s, Limit(DesiredAltitude * 100.0f, -32768, 32767));
+
+		TxESCu8(s, 10);
+
+		TxESCi8(s, Limit((Alt.PosE / ALT_HOLD_BAND_M) * 128.0f, -128 , 127));
+
+		TxESCi8(s, Limit((Alt.PosPTerm / ALT_MAX_ROC_MPS) * 128.0f, -128 , 127));
+		TxESCi8(s, Limit((Alt.PosITerm / ALT_MAX_ROC_MPS) * 128.0f, -128 , 127));
+
+		TxESCi8(s, Limit((DesiredROC / ALT_MAX_ROC_MPS) * 128.0f, -128, 127));
+		TxESCi8(s, Limit((ROC / ALT_MAX_ROC_MPS) * 128.0f, -128, 127));
+
+		TxESCi8(s, Limit(Alt.VelPTerm * 128.0f, -128 , 127));
+		TxESCi8(s, Limit(Alt.VelDTerm * 128.0f, -128 , 127));
+
+		TxESCi8(s, Limit(AltComp * 128.0f, -128 , 127));
+
+		TxESCi8(s, Limit(DesiredThrottle * 128.0f, -128 , 127));
+		TxESCi8(s, Limit(CruiseThrottle * 128.0f, -128 , 127));
+
+		SendPacketTrailer(s);
+	}
+
+} // SendAltPIDPacket
+
+
 void SendNavPacket(uint8 s) {
 
 	SendPacketHeader(s);
@@ -460,7 +555,7 @@ void SendFusionPacket(uint8 s) {
 			s,
 			Limit((100.0 * RateEnergySum) / (real32) RateEnergySamples, 0, 32000));
 	TxESCi16(s, RadiansToDegrees(FWGlideAngleOffsetRad) * 10.0f);
-	TxESCi16(s, NewParameterTuning);
+	TxESCi16(s, 0); // was tuned parameter
 
 	SendPacketTrailer(s);
 
@@ -1104,6 +1199,26 @@ void CheckTelemetry(uint8 s) {
 					SendCalibrationPacket(s);
 			}
 			break;
+		case UAVXAnglePIDTelemetry:
+		case UAVXRatePIDTelemetry:
+		case UAVXAltPIDTelemetry:
+			SetTelemetryBaudRate(s, 115200);
+			if (NowmS >= mS[TelemetryUpdate]) {
+				mSTimer(NowmS, TelemetryUpdate, UAVX_PID_TEL_INTERVAL_MS);
+				if ((State == InFlight) && !F.Bypass)
+					switch (CurrTelType) {
+					case UAVXAnglePIDTelemetry:
+						SendAnglePIDPacket(s);
+						break;
+					case UAVXRatePIDTelemetry:
+						SendRatePIDPacket(s);
+						break;
+					case UAVXAltPIDTelemetry:
+						SendAltPIDPacket(s);
+						break;
+					} // switch
+			}
+			break;
 		case UAVXMinimOSDTelemetry:
 			SetTelemetryBaudRate(s, 115200); //57600);
 			if (NowmS >= mS[TelemetryUpdate]) {
@@ -1121,7 +1236,8 @@ void CheckTelemetry(uint8 s) {
 			SetTelemetryBaudRate(s, 115200);
 			mavlinkUpdate(s);
 			break;
-		case FrSkyTelemetry:
+		case FrSkyV1Telemetry:
+		case FrSkyV2SPortTelemetry:
 			SetTelemetryBaudRate(s, 9600);
 			if (NowmS >= mS[TelemetryUpdate]) {
 				mSTimer(NowmS, TelemetryUpdate, FRSKY_TEL_INTERVAL_MS);

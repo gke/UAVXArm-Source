@@ -56,8 +56,7 @@ void WriteMagCalNV(void);
 void UpdateMagHist(void);
 
 extern real32 MagVariation, MagVariationWMM2010;
-extern real32 MagLockE, MagHeading, DesiredHeading, Heading,
-		CompassOffset;
+extern real32 MagLockE, MagHeading, Heading, CompassOffset;
 extern uint8 CompassType;
 
 extern real32 Mag[];

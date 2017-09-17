@@ -160,7 +160,7 @@ int main() {
 		NowuS = uSClock();
 		if (NowuS >= uS[NextCycleUpdate]) {
 
-			//	Probe(1);
+			Probe(1);
 
 			//---------------
 			CalculatedT(NowuS);
@@ -262,14 +262,12 @@ int main() {
 
 				if (Armed() || (UAVXAirframe == Instrumentation)) {
 					F.DrivesArmed = CurrESCType == DCMotorsWithIdle;
-					DesiredThrottle
-							= CurrESCType == F.DrivesArmed ? IdleThrottle
-									: 0.0f;
+					DesiredThrottle = F.DrivesArmed ? IdleThrottle : 0.0f;
 
 					ZeroPIDIntegrals();
 
-					DesiredHeading = Nav.TakeoffBearing = Nav.DesiredHeading
-							= Heading;
+					SavedHeading = DesiredHeading = Nav.TakeoffBearing
+							= Nav.DesiredHeading = Heading;
 
 					DoStickProgramming();
 					F.HoldingAlt = false;
@@ -306,6 +304,10 @@ int main() {
 
 								F.DrivesArmed = true;
 								State = InFlight;
+							} else {
+
+								// continue in state "landed"
+
 							}
 						}
 					}
@@ -327,17 +329,20 @@ int main() {
 					else {
 						F.DrivesArmed = CurrESCType == DCMotorsWithIdle;
 						DesiredThrottle = F.DrivesArmed ? IdleThrottle : 0.0f;
+						ZeroThrottleCompensation(); // to catch cycles between Rx updates
 
 						ZeroNavCorrections();
 						if (NavState != Perching)
 							F.OriginValid = false;
-						ZeroThrottleCompensation(); // to catch cycles between Rx updates
 
-						if (Tuning)
-							SetP(TuningParamIndex, OldUntunedParam);
+						if (Tuning) {
+							// TODO: save tuning?
+						}
 						UpdateNV(); // also captures stick programming
 
 						ResetMainTimeouts();
+						mSTimer(mSClock(), ThrottleIdleTimeout,
+								THR_LOW_DELAY_MS);
 						LEDOn(LEDGreenSel);
 						State = Landed;
 					}
@@ -346,7 +351,7 @@ int main() {
 			case Shutdown:
 				if ((StickThrottle < IdleThrottle) && !(F.ReturnHome
 						|| F.Navigate)) {
-					StickArmed = false;
+					TxSwitchArmed = StickArmed = false;
 					FirstPass = true; // should force fail preprocess with arming switch
 					State = Preflight;
 				} else
@@ -367,7 +372,9 @@ int main() {
 					// no exit for fixed wing when using roll/yaw stick arming
 
 					if ((StickThrottle < IdleThrottle) && (IsMulticopter
-							|| ((ArmingMethod == SwitchArming) && !Armed()))) {
+							|| (((ArmingMethod == SwitchArming)
+									|| (ArmingMethod == TxSwitchArming))
+									&& !Armed()))) {
 						ZeroThrottleCompensation();
 						mSTimer(mSClock(), ThrottleIdleTimeout,
 								THR_LOW_DELAY_MS);
@@ -396,7 +403,7 @@ int main() {
 			setStat(UtilisationS, State == InFlight ? ((uSClock() - NowuS)
 					* 100.0f) / CurrPIDCycleuS : 0);
 
-			// Probe(0);
+			Probe(0);
 		} // if next cycle
 
 		CheckBatteries();

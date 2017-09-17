@@ -42,7 +42,7 @@
 #define RC_NEUTRAL 0.5f
 
 #define PID_CYCLE_2000US 2000
-#define PID_SYNCPWM_CYCLE_2222US (1000000L/450) //2500 // for synchronised standard PWM
+#define PID_SYNCPWM_CYCLE_2050US 2050 //2500 // for synchronised standard PWM
 
 #define ARMED_TIMEOUT_MS 120000L // mS. automatic disarming if armed for this long and landed
 #define NAV_LAND_TIMEOUT_MS 3000
@@ -154,6 +154,7 @@
 
 #define UAVX_TEL_INTERVAL_MS 500 // 200 // mS. emit an interleaved telemetry packet
 #define UAVX_MIN_TEL_INTERVAL_MS 500 // mS. emit minimum data packet for example to FrSky
+#define UAVX_PID_TEL_INTERVAL_MS 20 // mS. high rate tuning telemetry
 #define ARDU_TEL_INTERVAL_MS 200 // mS. alternating 1:5
 #define FRSKY_TEL_INTERVAL_MS 200 // mS.
 #define UAVX_MINIMOSD_TEL_INTERVAL_MS 200 // modified minimOSD for FPV

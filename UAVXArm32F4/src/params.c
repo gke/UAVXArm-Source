@@ -31,11 +31,16 @@ const real32 OIL = 0.015f;
 
 const real32 IKp = 0.005f;
 // integral not used
+#if defined(USE_PAVEL)
 const real32 IKd = 0.000025f;
+#else
+const real32 IKd = 0.0001f;
+#endif
 //const real32 IIL = 0.01f;
 
 
 volatile boolean StickArmed = false;
+volatile boolean TxSwitchArmed = false;
 
 uint8 UAVXAirframe = AFUnknown;
 boolean IsMulticopter, IsFixedWing;
@@ -97,7 +102,7 @@ void DoConfigBits(void) {
 	UsingBLHeliPrograming = (P(Config2Bits) & UseBLHeliMask) != 0;
 	UsingGliderStrategy = ((P(Config2Bits) & UseGliderStrategyMask) != 0)
 			&& IsFixedWing;
-	UsingInvertedBoard = (P(Config2Bits) & UseInvertedBoardMask) != 0;
+	F.UsingTurnToWP = (P(Config2Bits) & UseTurnToWPMask) != 0;
 	UsingSpecial = (P(Config2Bits) & UseSpecialMask) != 0;
 
 	//... currentl unused
@@ -207,15 +212,22 @@ void RegeneratePIDCoeffs(void) {
 
 void SetPIDPeriod(void) {
 
+	if (CurrESCType == ESCSyncPWM) {
+		if (P(PIDTimeSel) > 0)
+			SetP(PIDTimeSel, 0);
+		CurrPIDTimeSel = P(PIDTimeSel);
+		CurrPIDCycleuS = PID_SYNCPWM_CYCLE_2050US;
+	} else {
 #if defined(V4_BOARD)
-	CurrPIDTimeSel = Limit(P(PIDTimeSel), 0, 1);
-	SetP(PIDTimeSel, CurrPIDTimeSel);
+		if (P(PIDTimeSel) > 1)
+		SetP(PIDTimeSel, 1);
 #else
-	CurrPIDTimeSel = Limit(P(PIDTimeSel), 0, 0);
-	SetP(PIDTimeSel, CurrPIDTimeSel);
+		if (P(PIDTimeSel) > 1)
+			SetP(PIDTimeSel, 1);
 #endif
-	CurrPIDCycleuS = (CurrESCType == ESCPWM) ? PID_SYNCPWM_CYCLE_2222US
-			: PID_CYCLE_2000US >> CurrPIDTimeSel;
+		CurrPIDTimeSel = P(PIDTimeSel);
+		CurrPIDCycleuS = PID_CYCLE_2000US >> CurrPIDTimeSel;
+	}
 
 	CurrPIDCycleS = CurrPIDCycleuS * 1.0e-6;
 
@@ -246,7 +258,6 @@ void UpdateParameters(void) {
 					|| (CurrConfig2 != P(Config2Bits)) //
 					|| (CurrESCType != P(ESCType)) //
 					|| (UAVXAirframe != P(AFType)) //
-					|| (CurrTuningSel != P(TuneParamSel)) //
 					|| (CurrRFSensorType != P(RFSensorType)) //
 					|| (CurrASSensorType != P(ASSensorType)) //
 					|| (CurrGyroLPFSel != P(GyroLPFSel)) //
@@ -597,6 +608,11 @@ void InitParameters(void) {
 
 	// must have these
 	CurrStateEst = P(StateEst);
+	if ((CurrStateEst == MadgwickMARG) && IsFixedWing) {
+		SetP(StateEst, MadgwickIMU);
+		CurrStateEst = MadgwickIMU;
+	}
+
 	ArmingMethod = P(ArmingMode);
 	CurrAttSensorType = P(SensorHint);
 	CurrComboPort1Config = P(ComboPort1Config);
@@ -608,7 +624,6 @@ void InitParameters(void) {
 	CurrGPSType = P(GPSProtocol);
 	CurrRFSensorType = P(RFSensorType);
 	CurrASSensorType = P(ASSensorType);
-	CurrTuningSel = P(TuneParamSel);
 
 	SetPIDPeriod();
 

@@ -30,9 +30,6 @@
 real32 TuningScale;
 uint8 CurrTuningSel;
 boolean Tuning;
-uint8 OldUntunedParam;
-uint8 NewParameterTuning;
-uint8 TuningParamIndex;
 
 void Tune(void);
 void InitTune(void);

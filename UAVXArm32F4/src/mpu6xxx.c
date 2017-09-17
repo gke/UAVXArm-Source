@@ -75,18 +75,12 @@ void ReadAccAndGyro(boolean UseSelectedAttSensors) { // Roll Right +, Pitch Up +
 		// z axis computed from x,y?
 
 	} else {
-		if (UsingInvertedBoard) {
-			RawAcc[0] = -(real32) B[0];
-			RawAcc[1] = (real32) B[1];
-			RawAcc[2] = -(real32) B[2];
-		} else {
-			RawAcc[0] = (real32) B[0];
-			RawAcc[1] = (real32) B[1];
-			RawAcc[2] = (real32) B[2];
-		}
+		RawAcc[0] = (real32) B[0];
+		RawAcc[1] = (real32) B[1];
+		RawAcc[2] = (real32) B[2];
 	}
 
-	NewAccUpdate = true;  //TODO: need to restrict this to 1KHz
+	NewAccUpdate = true; //TODO: need to restrict this to 1KHz
 
 	ComputeMPU6XXXTemperature(B[3]);
 
@@ -95,15 +89,9 @@ void ReadAccAndGyro(boolean UseSelectedAttSensors) { // Roll Right +, Pitch Up +
 		case InfraRedAngle:
 		case UAVXArm32IMU:
 		case FreeIMU:
-			if (UsingInvertedBoard) {
-				RawGyro[X] = (real32) B[4];
-				RawGyro[Y] = -(real32) B[5];
-				RawGyro[Z] = -(real32) B[6];
-			} else {
-				RawGyro[X] = (real32) B[4];
-				RawGyro[Y] = (real32) B[5];
-				RawGyro[Z] = (real32) B[6];
-			}
+			RawGyro[X] = (real32) B[4];
+			RawGyro[Y] = (real32) B[5];
+			RawGyro[Z] = (real32) B[6];
 			break;
 		default: // MLX90609Gyro, ADXRS150Gyro, LY530Gyro, ADXRS300Gyro,
 			RawGyro[Pitch] = analogRead(PitchAnalogSel);
@@ -111,15 +99,9 @@ void ReadAccAndGyro(boolean UseSelectedAttSensors) { // Roll Right +, Pitch Up +
 			RawGyro[Yaw] = analogRead(YawAnalogSel);
 		}
 	else { // MPU6xxx
-		if (UsingInvertedBoard) {
-			RawGyro[X] = (real32) B[4];
-			RawGyro[Y] = -(real32) B[5];
-			RawGyro[Z] = -(real32) B[6];
-		} else {
-			RawGyro[X] = (real32) B[4];
-			RawGyro[Y] = (real32) B[5];
-			RawGyro[Z] = (real32) B[6];
-		}
+		RawGyro[X] = (real32) B[4];
+		RawGyro[Y] = (real32) B[5];
+		RawGyro[Z] = (real32) B[6];
 	}
 
 	//	CurrAttSensorType == InfraRed
@@ -221,7 +203,6 @@ void UpdateGyroTempComp(void) {
 
 void InitMPU6XXX(void) {
 
-
 	// VERY IMPORTANT: ACCELEROMETER MAX SAMPLING RATE IS 1KHZ. IF READ FASTER THEN VALUES REPEAT.
 	// GYROS ARE SAMPLED AT 1KHZ UNLESS DISABLED WHEN THE SAMPLING RATE IS 8KHZ
 	// THE UPDATING OF REGISTERS IS ASYNCHRONOUS
@@ -270,7 +251,6 @@ void InitMPU6XXX(void) {
 			| MPU_RA_DHPF_1P25);
 
 #if defined(V4_BOARD) // MPU6500
-
 	sioWriteataddr(SIOIMU, MPU_ID, MPU_RA_ACC_CONFIG2, (DisableAccDLPF << 3) & MPUDLPFMask[CurrAccLPFSel]);
 
 #else

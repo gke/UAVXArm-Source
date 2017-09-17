@@ -22,6 +22,8 @@
 #ifndef _uavx_h
 #define _uavx_h
 
+//#define USE_PAVEL
+
 //#define BLACKBOX
 #define STATIC_UNIT_TESTED
 #define timeUs_t int

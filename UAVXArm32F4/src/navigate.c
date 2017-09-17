@@ -232,7 +232,17 @@ void NavYaw(WPStruct * W) {
 			Nav.DesiredHeading = (POIDistance > (NV.Mission.ProximityRadius
 					* 2.0f)) ? atan2f(POIEastDiff, POINorthDiff) : Heading;
 		} else {
-			// manual or perhaps turn to heading?
+
+			if (F.UsingTurnToWP) {
+				if (F.WayPointCentred) {
+					if (F.WayPointAchieved && (CurrWPNo == 0))
+						Nav.DesiredHeading = Nav.TakeoffBearing;
+					else {
+						// just leave the heading as is to avoid spinning top
+					}
+				} else
+					Nav.DesiredHeading = Nav.WPBearing;
+			}
 		}
 	}
 
@@ -310,14 +320,14 @@ void Navigate(WPStruct * W) {
 
 	} else {
 
-		NavYaw(W);
-
 		VelScale[NorthC] = Abs(cosf(Nav.WPBearing));
 		VelScale[EastC] = Abs(sinf(Nav.WPBearing));
 
 		CheckProximity(Min(GPS.vAcc * 1.5f, NV.Mission.ProximityAltitude),
 				WP.Action == navOrbit ? WP.OrbitRadius : Min(GPS.hAcc * 1.5f,
 						NV.Mission.ProximityRadius));
+
+		NavYaw(W);
 
 		NavPI_P();
 
@@ -366,6 +376,7 @@ void InitNavigation(void) {
 	RefreshNavWayPoint();
 	DesiredAltitude = 0.0f;
 
-} // InitNavigation
+}
+// InitNavigation
 
 

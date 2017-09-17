@@ -163,7 +163,7 @@ void GetNavWayPoint(void) {
 		WP.Pos[DownC] = HP.Pos[DownC] = P(NavRTHAlt);
 		WP.Velocity = HP.Velocity = Nav.MaxVelocity;
 		WP.Loiter = (int16) P(DescentDelayS); // mS
-		WP.Action = navUnknown;
+		WP.Action = navLand;
 
 		WP.OrbitRadius = HP.OrbitRadius = DESCENT_RADIUS_M;
 		WP.OrbitAltitude = P(NavRTHAlt);

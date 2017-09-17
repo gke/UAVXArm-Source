@@ -150,7 +150,6 @@ void DoEmulation(void) {
 			for (a = Pitch; a <= Roll; a++)
 				Rate[a] -= (A[a].Out * DegreesToRadians(30)) * dT; // was 60
 
-
 			if (Airspeed > 0.0f)
 				Rate[Yaw] = A[Yaw].Out * A[Yaw].RateMax
 				//+ A[Roll].Angle / (2.0f
@@ -215,12 +214,14 @@ void GPSEmulation(void) {
 		mSTimer(NowmS, FakeGPSUpdate, FAKE_GPS_DT_MS);
 
 		GPS.heading = Heading;
+		GPS.cAcc = 0.5f; // degrees
 
 		GPSPacketTag = GPGGAPacketTag;
 		GPS.fix = 3;
 		GPS.noofsats = 10;
 		GPS.hDOP = 0.9f;
 		GPS.hAcc = GPS.hDOP * GPS_HDOP_TO_HACC;
+		GPS.vAcc = 1.5f;
 		GPS.sAcc = 1.0f;
 		F.GPSValid = F.GPSPacketReceived = F.NewGPSPosition = true;
 	}

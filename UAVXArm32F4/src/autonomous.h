@@ -43,7 +43,7 @@ typedef struct {
 	real32 Distance, Bearing, Elevation;
 	real32 Hint;
 
-	real32 DesiredVel, DesiredHeading;
+	real32 DesiredVel, DesiredHeading, SavedHeading;
 
 	real32 WPDistance, OriginalWPBearing, WPBearing;
 	real32 CrossTrackKp, CrossTrackE;
@@ -86,7 +86,7 @@ enum NavStates {
 };
 
 enum NavComs {
-	navVia, navOrbit, navPerch, navPOI, navGlide, navUnknown
+	navVia, navOrbit, navPerch, navPOI, navGlide, navLand, navUnknown
 };
 
 extern const char * NavComNames[];

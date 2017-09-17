@@ -42,7 +42,6 @@ const real32 GyroScale[] = { //
 //real32 AccScale[3] = { DEF_ACC_SCALE, DEF_ACC_SCALE, DEF_ACC_SCALE };
 
 uint8 CurrAttSensorType = UAVXArm32IMU;
-boolean UsingInvertedBoard = false;
 
 HistStruct AccF[3];
 HistStruct GyroF[3];
@@ -68,8 +67,8 @@ void GetIMU(void) {
 	if (UsingSWFilters)
 		for (a = X; a <= Z; a++) {
 			// TODO: perhaps add slewlimiter?
-			RawGyro[a] = LPFilter(&GyroF[a], RollPitchLPFOrder, RawGyro[a], GyroLPFreqHz,
-					CurrPIDCycleS);
+			RawGyro[a] = LPFilter(&GyroF[a], RollPitchLPFOrder, RawGyro[a],
+					GyroLPFreqHz, CurrPIDCycleS);
 		}
 
 	UpdateGyroTempComp();
@@ -81,12 +80,10 @@ void GetIMU(void) {
 	if (NewAccUpdate) {
 		NewAccUpdate = false;
 
-#if defined(V4_BOARD)
 		if (UsingSWFilters)
-#endif
-		for (a = X; a <= Z; a++)
-			RawAcc[a] = LPFilter(&AccF[a], RollPitchLPFOrder, RawAcc[a], AccLPFreqHz,
-					CurrPIDCycleS);
+			for (a = X; a <= Z; a++)
+				RawAcc[a] = LPFilter(&AccF[a], RollPitchLPFOrder, RawAcc[a],
+						AccLPFreqHz, CurrPIDCycleS);
 
 		if (CurrAttSensorType == InfraRedAngle) {
 

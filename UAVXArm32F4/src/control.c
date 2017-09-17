@@ -27,11 +27,10 @@ AxisStruct A[3];
 
 real32 CameraAngle[3];
 real32 OrbitCamAngle = 0.0f;
-real32 AngleE, RateE;
 real32 TiltThrFF;
 real32 CurrDerivativeLPFreqHz;
 idx DerivativeLPFOrder;
-
+real32 DesiredHeading, SavedHeading;
 real32 DesiredAltitude, Altitude;
 real32 AltComp, ROC, MinROCMPS, EffMinROCMPS;
 real32 AltCompDecayS;
@@ -121,29 +120,28 @@ void TrackCruiseThrottle(void) {
 
 
 void DoROCControl(real32 DesiredROC, real32 MinROCMPS, real32 MaxROCMPS) {
-	real32 Pr, Dr;
 
 	Alt.VelE = Limit(DesiredROC, MinROCMPS, MaxROCMPS) - ROC;
 
-	Pr = Alt.VelE * Alt.VelKp;
-	Dr = AltAccComp = Limit1(AccZ * Alt.VelKd, 0.2f);
+	Alt.VelPTerm = Alt.VelE * Alt.VelKp;
+	Alt.VelDTerm = AltAccComp = Limit1(AccZ * Alt.VelKd, 0.2f);
 
-	AltComp = Limit1(Pr + Dr, MaxAltHoldCompFrac);
+	AltComp = Limit1(Alt.VelPTerm + Alt.VelDTerm, MaxAltHoldCompFrac);
 
 } // DoROCControl
 
 
-void AltitudeHold(real32 MinROCMPS, real32 MaxROCMPS) {
-	real32 Pa, Ia, AltE, S, Windup, ROCLimit;
+void AltitudeHold(real32 AltE, real32 MinROCMPS, real32 MaxROCMPS) {
+	real32 S, Windup, ROCLimit;
 
-	AltE = Limit1(Alt.PosE, ALT_HOLD_BAND_M);
+	Alt.PosE = Limit1(AltE, ALT_HOLD_BAND_M);
 
-	Pa = Limit(AltE * Alt.PosKp, MinROCMPS, MaxROCMPS);
+	Alt.PosPTerm = Limit(Alt.PosE * Alt.PosKp, MinROCMPS, MaxROCMPS);
 
-	Alt.PosIntE += AltE * Alt.PosKi * AltdT;
-	Ia = Alt.PosIntE;
+	Alt.PosIntE += Alt.PosE * Alt.PosKi * AltdT;
+	Alt.PosITerm = Alt.PosIntE;
 
-	DesiredROC = Pa + Ia;
+	DesiredROC = Alt.PosPTerm + Alt.PosITerm;
 
 	ROCLimit = DesiredROC > 0.0f ? MaxROCMPS : -MinROCMPS;
 	Windup = Abs(DesiredROC) - ROCLimit;
@@ -170,14 +168,15 @@ void DeploySpoilers(real32 a) {
 } // DeploySpoilers
 
 void AcquireAltitudeFW(void) {
+	real32 AltE;
 
-	Alt.PosE = DesiredAltitude - Altitude; // negative then too high => descend
+	AltE = DesiredAltitude - Altitude;
 
 	CheckRapidDescentHazard();
 	if (F.RapidDescentHazard)
-		DeploySpoilers(-Alt.PosE - ALT_HOLD_BAND_M);
+		DeploySpoilers(-AltE - ALT_HOLD_BAND_M);
 	else {
-		AltitudeHold(-BestROCMPS, BestROCMPS);
+		AltitudeHold(AltE, -BestROCMPS, BestROCMPS);
 		Sl = DecayX(Sl, FWSpoilerDecayS, AltdT);
 	}
 
@@ -230,12 +229,11 @@ void AcquireAltitude(void) {
 	// Synchronised to baro intervals independent of active altitude source
 	real32 EffMinROCMPS;
 
-	Alt.PosE = DesiredAltitude - Altitude;
 
 	EffMinROCMPS = (F.RapidDescentHazard || (NavState == ReturningHome)
 			|| (NavState == Transiting)) ? DESCENT_MIN_ROC_MPS : MinROCMPS;
 
-	AltitudeHold(EffMinROCMPS, ALT_MAX_ROC_MPS);
+	AltitudeHold(DesiredAltitude - Altitude, EffMinROCMPS, ALT_MAX_ROC_MPS);
 
 } // AcquireAltitude
 
@@ -290,9 +288,21 @@ void DoAltitudeControl(void) {
 
 real32 ComputeRateDerivative(AxisStruct *C) {
 
+#if defined(USE_PAVEL)
+
 	C->RateD = PavelDifferentiator(&C->RateDF, C->RateE) * dTR;
 	C->RateD = LPFilter(&C->RateF, DerivativeLPFOrder, C->RateD,
 			DerivativeLPFreqHz, dT);
+
+#else
+	real32 r;
+
+	r = LPFilter(&C->RateF, 1, C->RateE, PROP_LP_FREQ_HZ, dT);
+	C->RateD = (r - C->Ratep) * dTR;
+	C->Ratep = r;
+	C->RateD = Smoothr32xn(&C->RateDF, 4, C->RateD);
+
+#endif
 
 	return (C->RateD);
 
@@ -314,7 +324,6 @@ void DoRateControl(idx a) {
 	C = &A[a];
 
 	real32 AngleRateMix;
-	real32 Pa, Pr, Dr;
 
 	C->Control = Threshold(C->Stick, StickDeadZone);
 
@@ -327,14 +336,14 @@ void DoRateControl(idx a) {
 		C->AngleDesired = Limit1(C->AngleDesired, C->AngleMax);
 
 		C->AngleE = C->AngleDesired - C->Angle;
-		Pa = C->AngleE * C->AngleKp;
+		C->AnglePTerm = C->AngleE * C->AngleKp;
 
 		C->AngleIntE = 0.0f; // for flip back to angle mode
 
 		AngleRateMix
 				= Limit(1.0f - (CurrMaxRollPitchStick / HorizonTransPoint), 0.0f, 1.0f);
 
-		C->RateDesired = Pa * AngleRateMix + C->Control * C->RateMax * (1.0f
+		C->RateDesired = C->AnglePTerm * AngleRateMix + C->Control * C->RateMax * (1.0f
 				- AngleRateMix);
 
 	} else
@@ -343,16 +352,16 @@ void DoRateControl(idx a) {
 
 	C->RateE = Rate[a] - C->RateDesired;
 
-	Pr = C->RateE * C->RateKp;
-	Dr = ComputeRateDerivative(C) * C->RateKd;
+	C->RatePTerm = C->RateE * C->RateKp;
+	C->RateDTerm = ComputeRateDerivative(C) * C->RateKd;
 
-	C->Out = conditionOut(Pr + Dr);
+	C->Out = conditionOut(C->RatePTerm + C->RateDTerm);
 
 } // DoRateControl
 
 
 void DoAngleControl(idx a) { // with Ming Liu
-	real32 Pa, Ia, Pr, Dr, S, Windup;
+	real32 S, Windup;
 	AxisStruct *C;
 
 	C = &A[a];
@@ -365,15 +374,17 @@ void DoAngleControl(idx a) { // with Ming Liu
 	if (IsFixedWing && (a == Pitch))
 		C->AngleDesired += FWBoardPitchAngleRad;
 
+	C->RateDesired = 0.0f;
+
 	C->AngleDesired = Limit1(C->AngleDesired, C->AngleMax);
 
 	C->AngleE = C->AngleDesired - C->Angle;
-	Pa = C->AngleE * C->AngleKp;
+	C->AnglePTerm = C->AngleE * C->AngleKp;
 
 	C->AngleIntE += C->AngleE * C->AngleKi * dT;
 
-	Ia = C->AngleIntE;
-	C->RateDesired = Pa + Ia;
+	C->AngleITerm = C->AngleIntE;
+	C->RateDesired = C->AnglePTerm + C->AngleITerm;
 
 	Windup = Abs(C->RateDesired) - C->RateMax;
 	if (Windup > 0.0f) {
@@ -384,10 +395,10 @@ void DoAngleControl(idx a) { // with Ming Liu
 
 	C->RateE = Rate[a] - C->RateDesired;
 
-	Pr = C->RateE * C->RateKp;
-	Dr = ComputeRateDerivative(C) * C->RateKd;
+	C->RatePTerm = C->RateE * C->RateKp;
+	C->RateDTerm = ComputeRateDerivative(C) * C->RateKd;
 
-	C->Out = conditionOut(Pr + Dr);
+	C->Out = conditionOut(C->RatePTerm + C->RateDTerm);
 
 } // DoAngleControl
 
@@ -398,7 +409,7 @@ real32 DesiredYawRate(void) {
 			> StickDeadZone))) || (Abs(A[Yaw].Stick) > StickDeadZone));
 
 	if (F.YawActive) {
-		DesiredHeading = Heading;
+		DesiredHeading = SavedHeading = Heading;
 		A[Yaw].AngleE = 0.0f;// for log
 		A[Yaw].Control = Threshold(A[Yaw].Stick, StickDeadZone)
 				* A[Yaw].RateMax;
@@ -415,15 +426,14 @@ real32 DesiredYawRate(void) {
 
 
 static void DoTurnControl(void) {
-	real32 Pr, Dr;
 
 	A[Yaw].RateDesired = DesiredYawRate();
 
 	A[Yaw].RateE = A[Yaw].RateDesired - Rate[Yaw];
-	Pr = A[Yaw].RateE * A[Yaw].RateKp;
-	Dr = ComputeRateDerivative(&A[Yaw]) * A[Yaw].RateKd;
+	A[Yaw].RatePTerm = A[Yaw].RateE * A[Yaw].RateKp;
+	A[Yaw].RateDTerm = ComputeRateDerivative(&A[Yaw]) * A[Yaw].RateKd;
 
-	A[Yaw].Out = Pr + Dr;
+	A[Yaw].Out = A[Yaw].RatePTerm + A[Yaw].RateDTerm;
 
 	if (IsFixedWing) {
 		A[Yaw].Out *= FWAileronRudderFFFrac;

@@ -229,14 +229,12 @@ void UpdateHeading(void) {
 				CalculateMagneticHeading();
 				Heading = Make2Pi(MagHeading + MagVariation);
 			}
-		} else
+		} else // AHRS & MARG
 			Heading = Make2Pi(A[Yaw].Angle + MagVariation);
 
-		// override
-		if (F.GPSValid && (IsFixedWing || (UAVXAirframe == Instrumentation))
-				&& (GPS.gspeed > 1.0f)) { // no wind adjustment for now
+		// override for all aircraft
+		if (F.GPSValid && (GPS.gspeed > 1.0f)) // no wind adjustment for now
 			Heading = GPS.heading;
-		}
 	}
 
 	MagLockE = MakePi(MagHeading - A[Yaw].Angle);
@@ -552,7 +550,8 @@ void UpdateInertial(void) {
 	if (CurrStateEst == MadgwickMARG)
 		MadgwickMARGUpdate(Rate[Roll], Rate[Pitch], Rate[Yaw], Acc[BF],
 				Acc[LR], Acc[UD], Mag[X], Mag[Y], Mag[Z]);
-	else // IMU = 41uS
+	else
+		// IMU = 41uS
 		MadgwickUpdate(CurrStateEst == MadgwickAHRS, Rate[Roll], Rate[Pitch],
 				Rate[Yaw], Acc[BF], Acc[LR], Acc[UD], Mag[X], Mag[Y], Mag[Z]);
 

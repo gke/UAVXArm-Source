@@ -61,12 +61,16 @@ enum PacketTags {
 	UAVXBBPacketTag = 54,
 	unusedUAVXInertialPacketTag = 55,
 	UAVXMinimOSDPacketTag = 56,
-	Unused57PacketTag = 57,
+	UAVXTuningPacketTag = 57,
 	UAVXUKFPacketTag = 58,
 	UAVXGuidancePacketTag = 59,
 	UAVXFusionPacketTag = 60,
 	UAVXSoaringPacketTag = 61,
 	UAVXCalibrationPacketTag = 62,
+	UAVXAnglePIDPacketTag = 63,
+	UAVXRatePIDPacketTag = 64,
+	UAVXAltPIDPacketTag = 65,
+	UAVXGPSPIDPacketTag = 66,
 
 	FrSkyPacketTag = 99
 };
@@ -75,10 +79,14 @@ enum TelemetryTypes {
 	NoTelemetry,
 	UAVXTelemetry,
 	UAVXMinTelemetry,
-	FrSkyTelemetry,
+	FrSkyV1Telemetry,
+	FrSkyV2SPortTelemetry,
 	MAVLinkTelemetry,
 	MAVLinkMinTelemetry,
-	UAVXMinimOSDTelemetry
+	UAVXMinimOSDTelemetry,
+	UAVXAnglePIDTelemetry,
+	UAVXRatePIDTelemetry,
+	UAVXAltPIDTelemetry
 };
 
 void TxString(uint8 s, const char *);

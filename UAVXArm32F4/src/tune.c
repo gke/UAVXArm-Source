@@ -28,16 +28,11 @@ const uint8 TuneMap[] = { NoTuning, RollAngleKp, RollAngleKi, RollRateKp,
 uint8 CurrTuningSel = NoTuning; // index into map to actual parameter
 real32 TuningScale = 1.0f;
 boolean Tuning = false;
-uint8 TuningParamIndex; // target parameter
-uint8 OldUntunedParam;
-uint8 NewParameterTuning;
 
 void Tune(void) {
 
 	if (Tuning && (State == InFlight)) {
-		NewParameterTuning = (uint8) (TuningScale * (real32) OldUntunedParam);
-		SetP(TuningParamIndex, NewParameterTuning);
-		RegeneratePIDCoeffs(); // Hellish expensive 4uS :)
+
 	}
 
 } // Tune
@@ -47,8 +42,7 @@ void InitTune(void) {
 	Tuning = CurrTuningSel != NoTuning;
 
 	if (Tuning) {
-		TuningParamIndex = TuneMap[CurrTuningSel];
-		NewParameterTuning = OldUntunedParam = P(TuningParamIndex);
+
 	}
 
 } // InitTune

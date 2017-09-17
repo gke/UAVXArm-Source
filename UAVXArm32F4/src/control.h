@@ -51,6 +51,7 @@ typedef struct {
 	real32 Stick, StickP, StickD;
 	real32 AngleDesired, AngleE, AngleKp, AngleKi, AngleIntE, AngleIL, AngleMax,
 			RateDesired, RateE, RateKp, RateKd, RateMax, CompassRateMax;
+	real32 AnglePTerm, AngleITerm, RatePTerm, RateDTerm;
 	// controls
 	// body frame sensors
 	real32 Ratep, DriftCorr, Angle;
@@ -62,7 +63,8 @@ typedef struct {
 } AxisStruct;
 
 typedef struct {
-	real32 PosKp, PosKi, PosE, PosIntE, PosIL, VelKp, VelKd, VelE; // does not include altitude and ROC
+	real32 PosKp, PosKi, PosE, PosIntE, PosIL, PosPTerm, PosITerm;
+	real32 VelKp, VelKd, VelE, VelPTerm, VelDTerm; // does not include altitude and ROC
 } AltStruct;
 
 AltStruct Alt;
@@ -82,7 +84,7 @@ real32 DerivativeLPFreqHz;
 idx DerivativeLPFOrder;
 
 real32 CameraAngle[3], OrbitCamAngle;
-
+real32 DesiredHeading, SavedHeading;
 real32 CurrMaxTiltAngle;
 real32 DesiredAltitude, Altitude, DesiredROC;
 real32 AltComp, AltCompDecayS, ROC, MinROCMPS;

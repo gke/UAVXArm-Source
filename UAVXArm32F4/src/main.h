@@ -177,7 +177,7 @@ typedef union {
 				NewNavUpdate :1,
 				HaveExtMem :1,
 				UsingRapidDescent :1, // was MPU6050
-				Unused_7_6 :1,
+				UsingTurnToWP:1,
 				Glide:1,
 
 				// 8
@@ -187,7 +187,7 @@ typedef union {
 				NavigationEnabled :1,
 
 				// 9
-				UnusedUsingWPNavigation :1, UnusedGPSPosUpdated :1,
+				UnusedValidHeading :1, UnusedGPSPosUpdated :1,
 				EnforceDriveSymmetry :1, RCFrameOK :1, spiFatal :1,
 				Unused_9_5 :1, UsingMAVLink :1, UsingConvPropSense :1; // MAXED OUT
 	};

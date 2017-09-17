@@ -26,4 +26,6 @@ void InitEmulation(void);
 void DoEmulation(void);
 void GPSEmulation(void);
 
+real32 FakeAltitude;
+
 #endif

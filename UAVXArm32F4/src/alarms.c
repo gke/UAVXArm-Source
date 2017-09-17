@@ -42,8 +42,12 @@ boolean Armed(void) {
 		SwitchP = ArmingSwitch;
 	}
 
-	IsArmed = (ArmingMethod != SwitchArming) ? ArmingSwitch && StickArmed
-			: ArmingSwitch;
+	if (ArmingMethod == SwitchArming)
+		IsArmed = ArmingSwitch;
+	else if (ArmingMethod == TxSwitchArming)
+		IsArmed = ArmingSwitch && TxSwitchArmed;
+	else
+		IsArmed = ArmingSwitch && StickArmed;
 
 	NewUplinkState = !((GPSRxSerial == TelemetrySerial) && IsArmed);
 	if (F.UsingUplink != NewUplinkState) {
@@ -70,8 +74,7 @@ boolean FailPreflight(void) {
 			|| !F.IMUActive //
 			|| !F.BaroActive //
 			|| !F.MagnetometerActive //
-			|| !F.IMUCalibrated //
-			|| !F.MagnetometerCalibrated //
+			|| !(F.IMUCalibrated && F.MagnetometerCalibrated)//
 			|| (RC[RTHRC] > FromPercent(20)) //
 			|| F.LowBatt //
 			|| F.spiFatal //
@@ -88,7 +91,7 @@ boolean FailPreflight(void) {
 void DoCalibrationAlarm(void) {
 	static uint32 TimeoutmS = 0;
 
-	if (!(F.IMUCalibrated || F.MagnetometerCalibrated)) {
+	if (!(F.IMUCalibrated && F.MagnetometerCalibrated)) {
 		if (mSClock() > TimeoutmS) {
 			TimeoutmS = mSClock() + 500;
 			LEDToggle(LEDYellowSel);
@@ -105,17 +108,17 @@ void DoBeep(uint8 t, uint8 d) {
 
 	BeeperOn();
 	for (i = 0; i < (t * 100); i++) {
-		Probe(1);
+#if defined(V4_BOARD)
 		Delay1mS(1);
+#endif
 		GetBaro(); // hammer it to warm it up!
-		Probe(0);
 	}
 	BeeperOff();
 	for (i = 0; i < (d * 100); i++) {
-		Probe(1);
+#if defined(V4_BOARD)
 		Delay1mS(1);
+#endif
 		GetBaro();
-		Probe(0);
 	}
 } // DoBeep
 
