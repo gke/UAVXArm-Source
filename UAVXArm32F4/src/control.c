@@ -28,7 +28,13 @@ AxisStruct A[3];
 real32 CameraAngle[3];
 real32 OrbitCamAngle = 0.0f;
 real32 TiltThrFF;
-real32 CurrDerivativeLPFreqHz;
+
+real32 CurrAccLPFHz = 20;
+real32 CurrGyroLPFHz = 100;
+real32 CurrDerivativeLPFHz = 75;
+boolean UsingPavelFilter;
+
+idx AttitudeMode = AngleMode;
 idx DerivativeLPFOrder;
 real32 DesiredHeading, SavedHeading;
 real32 DesiredAltitude, Altitude;
@@ -79,7 +85,7 @@ void CalcTiltThrFFComp(void) {
 	const real32 TiltFFLimit = 1.0f / cosf(NAV_MAX_ANGLE_RAD);
 	real32 Temp;
 
-	if (IsMulticopter && (State == InFlight) && !F.UsingRateControl) { // forget near level check
+	if (IsMulticopter && (State == InFlight) && F.UsingAngleControl) { // forget near level check
 		Temp = (1.0f / AttitudeCosine() - 1.0) * TiltThrFFFrac + 1.0f;
 		Temp = Limit(Temp, 1.0f, TiltFFLimit);
 		TiltThrFFComp = SlewLimit(&TiltThrFFComp, Temp, TiltFFLimit, dT);
@@ -92,7 +98,7 @@ void CalcTiltThrFFComp(void) {
 void CalcBattThrComp(void) {
 
 	BattThrFFComp
-			= IsMulticopter && (State == InFlight) && !F.UsingRateControl ? BatterySagR
+			= IsMulticopter && (State == InFlight) && F.UsingAngleControl ? BatterySagR
 					: 1.0f;
 
 } // CalcBattThrComp
@@ -103,10 +109,10 @@ void CalcBattThrComp(void) {
 void TrackCruiseThrottle(void) {
 
 	if (F.Emulation)
-		CruiseThrottle = IsFixedWing ? THR_DEFAULT_CRUISE_FW_STICK
+		CruiseThrottle = F.IsFixedWing ? THR_DEFAULT_CRUISE_FW_STICK
 				: THR_DEFAULT_CRUISE_STICK;
 	else {
-		if ((Abs(ROC) < ALT_HOLD_MAX_ROC_MPS) && (DesiredThrottle
+		if ((Abs(ROCF) < ALT_HOLD_MAX_ROC_MPS) && (DesiredThrottle
 				> THR_MIN_ALT_HOLD_STICK)) {
 			CruiseThrottle
 					+= (((DesiredThrottle + AltComp) > CruiseThrottle) ? 0.002f
@@ -229,7 +235,6 @@ void AcquireAltitude(void) {
 	// Synchronised to baro intervals independent of active altitude source
 	real32 EffMinROCMPS;
 
-
 	EffMinROCMPS = (F.RapidDescentHazard || (NavState == ReturningHome)
 			|| (NavState == Transiting)) ? DESCENT_MIN_ROC_MPS : MinROCMPS;
 
@@ -264,11 +269,11 @@ void DoAltitudeControl(void) {
 	if (F.NewAltitudeValue) { // every AltdT
 		F.NewAltitudeValue = false;
 
-		if (IsFixedWing)
+		if (F.IsFixedWing)
 			UpdateVario();
 
 		if (F.AltControlEnabled) {
-			if (IsFixedWing)
+			if (F.IsFixedWing)
 				AltitudeControlFW();
 			else
 				AltitudeControl();
@@ -286,23 +291,19 @@ void DoAltitudeControl(void) {
 } // DoAltitudeControl
 
 
-real32 ComputeRateDerivative(AxisStruct *C) {
-
-#if defined(USE_PAVEL)
-
-	C->RateD = PavelDifferentiator(&C->RateDF, C->RateE) * dTR;
-	C->RateD = LPFilter(&C->RateF, DerivativeLPFOrder, C->RateD,
-			DerivativeLPFreqHz, dT);
-
-#else
+real32 ComputeAttitudeRateDerivative(AxisStruct *C) {
+	// Using "rate on measurement" to avoid "derivative kick"
 	real32 r;
 
-	r = LPFilter(&C->RateF, 1, C->RateE, PROP_LP_FREQ_HZ, dT);
-	C->RateD = (r - C->Ratep) * dTR;
-	C->Ratep = r;
-	C->RateD = Smoothr32xn(&C->RateDF, 4, C->RateD);
-
-#endif
+	if (UsingPavelFilter) {
+		C->RateD = PavelDifferentiator(&C->RateDF, C->RateE) * dTR;
+		C->RateD = LPFilter(&C->RateF, 1, C->RateD, CurrDerivativeLPFHz, dT);
+	} else {
+		r = LPFilter(&C->RateF, 1, C->RateE, CurrDerivativeLPFHz, dT);
+		C->RateD = (r - C->Ratep) * dTR;
+		C->Ratep = r;
+		C->RateD = Smoothr32xn(&C->RateDF, 4, C->RateD);
+	}
 
 	return (C->RateD);
 
@@ -318,42 +319,15 @@ void ZeroPIDIntegrals(void) {
 } // ZeroPIDIntegrals
 
 
-void DoRateControl(idx a) {
+void DoRateControl(idx a) { // yes folks it is this simple
 	AxisStruct *C;
 
 	C = &A[a];
 
-	real32 AngleRateMix;
-
-	C->Control = Threshold(C->Stick, StickDeadZone);
-
-	if (P(Horizon) > 0) { // hybrid that panics back to angle when sticks centred
-
-		C->AngleDesired = C->Control * C->AngleMax;
-		if (IsFixedWing && (a == Pitch))
-			C->AngleDesired += FWBoardPitchAngleRad;
-
-		C->AngleDesired = Limit1(C->AngleDesired, C->AngleMax);
-
-		C->AngleE = C->AngleDesired - C->Angle;
-		C->AnglePTerm = C->AngleE * C->AngleKp;
-
-		C->AngleIntE = 0.0f; // for flip back to angle mode
-
-		AngleRateMix
-				= Limit(1.0f - (CurrMaxRollPitchStick / HorizonTransPoint), 0.0f, 1.0f);
-
-		C->RateDesired = C->AnglePTerm * AngleRateMix + C->Control * C->RateMax * (1.0f
-				- AngleRateMix);
-
-	} else
-		// pure rate control
-		C->RateDesired = C->Control * C->RateMax;
-
 	C->RateE = Rate[a] - C->RateDesired;
 
 	C->RatePTerm = C->RateE * C->RateKp;
-	C->RateDTerm = ComputeRateDerivative(C) * C->RateKd;
+	C->RateDTerm = ComputeAttitudeRateDerivative(C) * C->RateKd;
 
 	C->Out = conditionOut(C->RatePTerm + C->RateDTerm);
 
@@ -371,10 +345,8 @@ void DoAngleControl(idx a) { // with Ming Liu
 
 	C->AngleDesired += C->NavCorr;
 
-	if (IsFixedWing && (a == Pitch))
+	if (F.IsFixedWing && (a == Pitch))
 		C->AngleDesired += FWBoardPitchAngleRad;
-
-	C->RateDesired = 0.0f;
 
 	C->AngleDesired = Limit1(C->AngleDesired, C->AngleMax);
 
@@ -396,16 +368,74 @@ void DoAngleControl(idx a) { // with Ming Liu
 	C->RateE = Rate[a] - C->RateDesired;
 
 	C->RatePTerm = C->RateE * C->RateKp;
-	C->RateDTerm = ComputeRateDerivative(C) * C->RateKd;
+	C->RateDTerm = ComputeAttitudeRateDerivative(C) * C->RateKd;
 
 	C->Out = conditionOut(C->RatePTerm + C->RateDTerm);
 
 } // DoAngleControl
 
 
+void DoAngleControl2(idx a) {
+	AxisStruct *C;
+
+	C = &A[a];
+
+	C->AngleDesired = C->Control = Threshold(C->Stick, StickDeadZone)
+			* C->AngleMax;
+
+	C->AngleDesired += C->NavCorr;
+
+	if (F.IsFixedWing && (a == Pitch))
+		C->AngleDesired += FWBoardPitchAngleRad;
+
+	C->AngleDesired = Limit1(C->AngleDesired, C->AngleMax);
+	C->AngleE = C->AngleDesired - C->Angle;
+
+	C->AngleIntE += C->AngleE * C->AngleKi * dT;
+
+	C->AnglePTerm = C->AngleE * C->AngleKd;
+
+	C->AngleITerm = C->AngleIntE;
+	C->AngleDTerm = Rate[a] * C->AngleKd;
+
+	C->Out = conditionOut(C->AnglePTerm + C->AngleITerm - C->AngleDTerm);
+
+} // DoAngleControl2
+
+void DoHorizonControl(idx a) {
+	AxisStruct *C;
+
+	C = &A[a];
+
+	real32 AngleRateMix;
+
+	C->Control = Threshold(C->Stick, StickDeadZone);
+
+	C->AngleDesired = C->Control * C->AngleMax;
+	if (F.IsFixedWing && (a == Pitch))
+		C->AngleDesired += FWBoardPitchAngleRad;
+
+	C->AngleDesired = Limit1(C->AngleDesired, C->AngleMax);
+
+	C->AngleE = C->AngleDesired - C->Angle;
+	C->AnglePTerm = C->AngleE * C->AngleKp;
+
+	C->AngleIntE = 0.0f; // for flip back to angle mode
+
+	AngleRateMix
+			= Limit(1.0f - (CurrMaxRollPitchStick / HorizonTransPoint), 0.0f, 1.0f);
+
+	C->RateDesired = C->AnglePTerm * AngleRateMix + C->Control * C->RateMax
+			* (1.0f - AngleRateMix);
+
+	DoRateControl(a);
+
+} // DoHorizonControl
+
+
 real32 DesiredYawRate(void) {
 
-	F.YawActive = ((IsFixedWing && ((NavState == PIC) || (Abs(A[Roll].Stick)
+	F.YawActive = ((F.IsFixedWing && ((NavState == PIC) || (Abs(A[Roll].Stick)
 			> StickDeadZone))) || (Abs(A[Yaw].Stick) > StickDeadZone));
 
 	if (F.YawActive) {
@@ -415,7 +445,7 @@ real32 DesiredYawRate(void) {
 				* A[Yaw].RateMax;
 		return (A[Yaw].Control);
 	} else {
-		if ((F.Navigate || F.ReturnHome) && !IsFixedWing)
+		if ((F.Navigate || F.ReturnHome) && !F.IsFixedWing)
 			DesiredHeading = Nav.DesiredHeading;
 
 		A[Yaw].AngleE
@@ -431,11 +461,11 @@ static void DoTurnControl(void) {
 
 	A[Yaw].RateE = A[Yaw].RateDesired - Rate[Yaw];
 	A[Yaw].RatePTerm = A[Yaw].RateE * A[Yaw].RateKp;
-	A[Yaw].RateDTerm = ComputeRateDerivative(&A[Yaw]) * A[Yaw].RateKd;
+	A[Yaw].RateDTerm = ComputeAttitudeRateDerivative(&A[Yaw]) * A[Yaw].RateKd;
 
 	A[Yaw].Out = A[Yaw].RatePTerm + A[Yaw].RateDTerm;
 
-	if (IsFixedWing) {
+	if (F.IsFixedWing) {
 		A[Yaw].Out *= FWAileronRudderFFFrac;
 		A[Roll].NavCorr
 				= Limit1(A[Yaw].RateE * Airspeed * GRAVITY_MPS_S_R, Nav.MaxAngle)
@@ -453,24 +483,22 @@ void DoControl(void) {
 	//CalcTiltThrFFComp();
 	//CalcBattThrComp();
 
-#if defined(BARE_METAL)
-	for (a = Pitch; a <= Yaw; a++) {
-		A[a].RateDesired = A[a].StickD * A[a].RateMax * 200.0f;
-		A[a].Out = conditionOut(A[a].RateDesired * A[a].RateKp);
-	}
-#else
-
 	determineGainScale(); // primitive gain scheduling
 
 	DoTurnControl(); // MUST BE BEFORE ROLL CONTROL
 
 	for (a = Pitch; a <= Roll; a++)
-		if (F.UsingRateControl)
-			DoRateControl(a);
-		else
+		switch (AttitudeMode) {
+		case AngleMode:
 			DoAngleControl(a);
-
-#endif
+			break;
+		case HorizonMode:
+			DoHorizonControl(a);
+			break;
+		case RateMode:
+			DoRateControl(a);
+			break;
+		} // switch
 
 	// move to start of cycle to reduce jitter UpdateDrives();
 

@@ -41,9 +41,9 @@ real32 CalculateAccConfidence(real32 AccMag) {
 		confp = 1.0f;
 	else {
 		accNorm = AccMag * GRAVITY_MPS_S_R;
-		conf = expf(-0.5f * Sqr(Abs(accNorm - 1.0f) * AccConfidenceSDevR));
+		conf = expf(-0.5f * Sqr((1.0f - accNorm) * AccConfidenceSDevR));
 
-		//TODO: if (IsFixedWing && (Acc[BF] * GRAVITY_MPS_S_R > 0.5f) && (accNorm > Sqr(1.2f)))
+		//TODO: if (F.IsFixedWing && (Acc[BF] * GRAVITY_MPS_S_R > 0.5f) && (accNorm > Sqr(1.2f)))
 		//	conf = 0.0f;
 
 		confp = HardFilter(confp, conf);
@@ -224,21 +224,17 @@ void UpdateHeading(void) {
 		MagHeading = EstMagHeading;
 		Heading = Make2Pi(MagHeading + MagVariation);
 	} else {
-		if (CurrStateEst == MadgwickIMU) {
-			if (F.NewMagValues) {
-				CalculateMagneticHeading();
-				Heading = Make2Pi(MagHeading + MagVariation);
-			}
-		} else // AHRS & MARG
-			Heading = Make2Pi(A[Yaw].Angle + MagVariation);
-
+		if (F.NewMagValues)
+			CalculateMagneticHeading();
+		Heading = CurrStateEst == MadgwickIMU ? MagHeading : A[Yaw].Angle;
+		Heading = Make2Pi(Heading + MagVariation);
 		// override for all aircraft
 		if (F.GPSValid && (GPS.gspeed > 1.0f)) // no wind adjustment for now
 			Heading = GPS.heading;
 	}
 
 	MagLockE = MakePi(MagHeading - A[Yaw].Angle);
-	F.MagnetometerLocked = Abs(RadiansToDegrees(MagLockE) < 5.0f);
+	F.MagnetometerLocked = Abs(RadiansToDegrees(MagLockE)) < 5.0f;
 
 } // UpdateHeading
 
@@ -530,7 +526,8 @@ void MadgwickUpdate(boolean AHRS, real32 gx, real32 gy, real32 gz, real32 ax,
 void TrackPitchAttitude(void) {
 	static uint32 GlidingTimemS = 0;
 
-	if (IsFixedWing && (DesiredThrottle < IdleThrottle) && (State == InFlight)) {
+	if (F.IsFixedWing && (DesiredThrottle < IdleThrottle)
+			&& (State == InFlight)) {
 		if (mSClock() > GlidingTimemS)
 			FWGlideAngleOffsetRad
 					= HardFilter(FWGlideAngleOffsetRad, A[Pitch].Angle);

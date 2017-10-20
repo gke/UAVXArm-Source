@@ -43,34 +43,12 @@ enum RCControls {
 	NavGainRC,
 	BypassRC,
 	CamPitchRC,
-	TuneRC,
+	WPNavRC,
 	TransitionRC,
 	ArmRC,
 	NullRC
 };
 
-enum TuneParams {
-	NoTuning,
-	RollAngleP,
-	RollAngleI,
-	RollRateP,
-	RollRateD,
-	PitchAngleP,
-	PitchAngleI,
-	PitchRateP,
-	PitchlRateD,
-	YawAngleP,
-	YawRateP,
-	AltitudeErrorP,
-	AltitudeErrorI,
-	AltitudeROCP,
-	AltitudeROCD,
-	// TODO: should add all Nav PID params?
-	NavPositionP,
-	NavPositionI,
-	NavVelP,
-	NavCrossTrack
-};
 
 enum ArmingModes {
 	YawStickArming, SwitchArming, RollStickArming, TxSwitchArming
@@ -170,7 +148,7 @@ enum Params { // MAX 64
 	TelemetryType, // 45
 	MaxDescentRateDmpS, // 46
 	DescentDelayS, // 47
-	GyroLPFSel, // 48
+	GyroLPFHz, // 48
 	NavCrossTrackKp, // 49
 	RxGearCh, // 50
 
@@ -203,7 +181,7 @@ enum Params { // MAX 64
 	MaxPitchAngle, // 75
 	ComboPort2Config, // 76
 	MaxRollAngle, // 77
-	Unused78, // 78
+	DerivativeLPFHz, // 78
 	NavHeadingTurnout, // 79
 	WS2812Leds, // 80
 	MinhAcc, // 81
@@ -215,9 +193,9 @@ enum Params { // MAX 64
 	FWAileronRudderMix, // 87
 	FWAltSpoilerFF, // 88
 	MaxCompassYawRate, // 89
-	AccLPFSel, //P90,
+	AccLPFHz, //P90,
 	YawRateKd, // 91,
-	PIDTimeSel, // 92
+	GyroSlewRate, // 92
 	ThrottleGainRate, // 93
 	RxAux5Ch,
 	RxAux6Ch,
@@ -239,7 +217,7 @@ typedef struct {
 #define	UseRapidDescentMask		(1<<6)
 
 // Config2
-#define UseSWFiltersMask			 0x01
+#define UsePavelFilterMask			 0x01
 #define	UseFastStartMask		(1<<1)
 #define UseBLHeliMask 			(1<<2)
 #define UseGliderStrategyMask	(1<<3)
@@ -260,7 +238,7 @@ extern int8 CP[];
 
 extern const real32 AFOrientation[];
 extern uint8 UAVXAirframe;
-extern boolean IsMulticopter, IsFixedWing, UsingFastStart,
+extern boolean IsMulticopter, UsingFastStart,
 		UsingBLHeliPrograming, UsingGliderStrategy, UsingSpecial;
 
 extern real32 AltCompDecayS;

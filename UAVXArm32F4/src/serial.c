@@ -213,6 +213,7 @@ void serialISR(uint8 s) {
 } // serialISR
 
 void SoftTxChar(uint8 ch) {
+	// MUST NOT BE USED IN FLIGHT
 	uint8 b;
 	uint16 d;
 

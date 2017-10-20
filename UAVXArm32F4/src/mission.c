@@ -29,17 +29,45 @@ const char * NavComNames[] = { "Via", "Orbit", "Perch", "POI" };
 
 //  North, East, Altitude, Velocity, Loiter, OrbitRadius OrbitAltitude OrbitVelocity Action
 
-//#define NAV_LEG_LENGTH 75
-#define NAV_LEG_LENGTH 150
+WPStruct HomeWP = { { 0, 0, 15 }, 3, 30, 0, 0, 0, 0 };
 
-//#define DEFAULT_HOME_LAT  (-352902889L)
-//#define DEFAULT_HOME_LON  (1491109972L)
+MissionStruct NewNavMission;
+boolean NavMissionUpdated = true;
 
-const uint8 NoOfTestWayPoints = 4; // start at 1
-const WPStruct TestWP[] = { { { 0, 0, 15 }, 3, 30, 0, 0, 0, 0 }, {
-		{ 0, 0, 15 }, 3, 30, 0, 0, 0, navPOI }, { { 0, 50, 15 }, 3, 10, 0, 0,
-		0, navPerch }, { { NAV_LEG_LENGTH, NAV_LEG_LENGTH, 100 }, 4, 1, 0, 0,
-		0, navVia }, { { NAV_LEG_LENGTH, 0, 15 }, 3, 60, 8, 0, 2, navOrbit } };
+void ClearNavMission(void) {
+
+	if (F.IsFixedWing) {
+		NV.Mission.ProximityAltitude = WING_PROXIMITY_ALTITUDE_M;
+		NV.Mission.ProximityRadius = WING_PROXIMITY_RADIUS_M;
+	} else {
+		NV.Mission.ProximityAltitude = NAV_PROXIMITY_ALTITUDE_M;
+		NV.Mission.ProximityRadius = NAV_PROXIMITY_RADIUS_M;
+	}
+
+	NV.Mission.NoOfWayPoints = 0;
+	NV.Mission.RTHAltHold = NAV_DEFAULT_RTH_M;
+	NV.Mission.FenceRadius = NAV_DEFAULT_FENCE_M;
+
+} // ClearMission
+
+void GenerateHomeWP(void) {
+
+	HomeWP.Pos[NorthC] = 0.0f;
+	HomeWP.Pos[EastC] = 0.0f;
+	HomeWP.Pos[DownC] = P(NavRTHAlt);
+	HomeWP.Velocity = Nav.MaxVelocity;
+	HomeWP.Loiter = (int16) P(DescentDelayS); // mS
+	HomeWP.Action = navLand;
+
+	HomeWP.OrbitAltitude = P(NavRTHAlt); // TODO: for camera height above ground
+	HomeWP.OrbitRadius = 0.0f;
+	HomeWP.OrbitVelocity = 0.0f;
+
+	memcpy(&HP, &HomeWP, sizeof(WPStruct));
+	HP.Action = navUnknown;
+
+} // GenerateHomeWP
+
 
 void CaptureHomePosition(void) {
 	idx a;
@@ -50,8 +78,8 @@ void CaptureHomePosition(void) {
 
 		GPS.startTime = GPS.missionTime;
 
-		NV.Mission.OriginLatitude = GPS.C[NorthC].OriginRaw = GPS.C[NorthC].Raw;
-		NV.Mission.OriginLongitude = GPS.C[EastC].OriginRaw = GPS.C[EastC].Raw;
+		GPS.C[NorthC].OriginRaw = GPS.C[NorthC].Raw;
+		GPS.C[EastC].OriginRaw = GPS.C[EastC].Raw;
 
 		// do it once - operations area small
 		GPS.longitudeCorrection
@@ -59,12 +87,8 @@ void CaptureHomePosition(void) {
 		for (a = NorthC; a <= EastC; a++)
 			GPS.C[a].Pos = GPS.C[a].Vel = GPS.C[a].PosP = 0.0f;
 
-		GPS.originAltitude = GPS.altitude;
+		GPS.originAltitude = GPS.altitude - Altitude; // TODO: assumes altitude here is from Baro
 		F.HoldingAlt = false;
-
-		NV.Mission.OriginAltitude = GPS.altitude;
-		NV.Mission.OriginLatitude = GPS.C[NorthC].OriginRaw;
-		NV.Mission.OriginLongitude = GPS.C[EastC].OriginRaw;
 
 		setStat(OriginValidS, true);
 
@@ -83,53 +107,18 @@ void CaptureHomePosition(void) {
 	}
 } // CaptureHomePosition
 
-void GenerateNavTestMission(void) {
-	MissionStruct * M;
-	real32 Scale;
-	uint8 wp;
-
-	Scale = IsMulticopter ? 1.0f : 4.0f;
-	M = &NV.Mission;
-
-	M->NoOfWayPoints = Limit(NoOfTestWayPoints, 0, NAV_MAX_WAYPOINTS);
-	M->ProximityAltitude = NAV_PROXIMITY_ALTITUDE_M;
-	M->ProximityRadius = IsMulticopter ? NAV_PROXIMITY_RADIUS_M
-			: WING_PROXIMITY_RADIUS_M;
-	M->OriginAltitude = OriginAltitude;
-	M->OriginLatitude = GPS.C[NorthC].OriginRaw;
-	M->OriginLongitude = GPS.C[EastC].OriginRaw;
-	M->RTHAltHold = (int16) (P(NavRTHAlt)); // ??? not used
-
-	for (wp = 1; wp <= M->NoOfWayPoints; wp++) {
-		M->WP[wp].LatitudeRaw = MToGPS(TestWP[wp].Pos[NorthC]) * Scale
-				+ M->OriginLatitude;
-		M->WP[wp].LongitudeRaw = MToGPS(TestWP[wp].Pos[EastC]) * Scale
-				/ GPS.longitudeCorrection + M->OriginLongitude;
-		M->WP[wp].Altitude = TestWP[wp].Pos[DownC];
-		M->WP[wp].VelocitydMpS = TestWP[wp].Velocity * 10;
-		M->WP[wp].Loiter = TestWP[wp].Loiter;
-		M->WP[wp].OrbitRadius = (TestWP[wp].OrbitRadius) * Scale;
-		M->WP[wp].OrbitAltitude = TestWP[wp].OrbitAltitude;
-		M->WP[wp].OrbitVelocitydMpS = TestWP[wp].OrbitVelocity * 10;
-		M->WP[wp].Action = TestWP[wp].Action;
-	}
-
-	UpdateNV();
-
-} // GenerateNavTestMission
-
 
 boolean NavMissionSanityCheck(MissionStruct * M) {
 
 	// rely on UAVXNav for now
 	//CHECK FOR ANY ZERO LAT/LON VALUES ZZZ
 
+
 	return (true);
 } // NavMissionSanityCheck
 
 uint8 NextWPState(void) {
 
-//zzz
 	CurrWPNo++;
 	RefreshNavWayPoint();
 
@@ -153,59 +142,66 @@ void RefreshNavWayPoint(void) {
 
 void GetNavWayPoint(void) {
 	WPStructNV * W;
+	static uint8 LastWPUpdated = 255;
 
-	if (CurrWPNo > NV.Mission.NoOfWayPoints)
-		CurrWPNo = 0;
+	if (NavMissionUpdated || (CurrWPNo != LastWPUpdated)) {
+		NavMissionUpdated = false;
+		LastWPUpdated = CurrWPNo;
 
-	if (CurrWPNo == 0) { // override mission wp 0 and force to Origin
-		WP.Pos[NorthC] = HP.Pos[NorthC] = 0.0f;
-		WP.Pos[EastC] = HP.Pos[EastC] = 0.0f;
-		WP.Pos[DownC] = HP.Pos[DownC] = P(NavRTHAlt);
-		WP.Velocity = HP.Velocity = Nav.MaxVelocity;
-		WP.Loiter = (int16) P(DescentDelayS); // mS
-		WP.Action = navLand;
+		if (CurrWPNo > NV.Mission.NoOfWayPoints)
+			CurrWPNo = 0;
 
-		WP.OrbitRadius = HP.OrbitRadius = DESCENT_RADIUS_M;
-		WP.OrbitAltitude = P(NavRTHAlt);
-		WP.OrbitVelocity = HP.OrbitVelocity = DESCENT_VELOCITY_MPS;
+		if (CurrWPNo == 0) { // override mission wp 0 and force to Origin
 
-		HP.Loiter = 0;
-		HP.Action = navUnknown;
+			memcpy(&WP, &HomeWP, sizeof(WPStruct));
+			HP.Pos[NorthC] = HP.Pos[EastC] = 0.0f;
 
-		F.UsingPOI = false;
-	} else {
-		W = &NV.Mission.WP[CurrWPNo];
-		WP.Pos[NorthC] = GPSToM(W->LatitudeRaw - GPS.C[NorthC].OriginRaw);
-		WP.Pos[EastC] = GPSToM(W->LongitudeRaw - GPS.C[EastC].OriginRaw)
-				* GPS.longitudeCorrection;
-		WP.Pos[DownC] = (real32) W->Altitude;
-		WP.Velocity = (real32) W->VelocitydMpS * 0.1f;
-		WP.Loiter = (int16) W->Loiter; // S
-		WP.Action = W->Action;
-		if (WP.Action == navPOI)
-			F.UsingPOI = true;
+			F.UsingPOI = false;
 
-		WP.OrbitRadius = (real32) W->OrbitRadius; // M
-		WP.OrbitAltitude = (real32) W->OrbitAltitude;
-		WP.OrbitVelocity = (real32) W->OrbitVelocitydMpS * 0.1f; // dM/S
-	}
+		} else { // TODO: run time expansion - a little expensive!
+
+			W = &NV.Mission.WP[CurrWPNo];
+			WP.Pos[NorthC] = GPSToM(W->LatitudeRaw - GPS.C[NorthC].OriginRaw);
+			WP.Pos[EastC] = GPSToM(W->LongitudeRaw - GPS.C[EastC].OriginRaw)
+					* GPS.longitudeCorrection;
+			WP.Pos[DownC] = (real32) W->Altitude;
+			WP.Velocity = (real32) W->VelocitydMpS * 0.1f;
+			WP.Loiter = (int16) W->Loiter; // S
+			WP.Action = W->Action;
+			if (WP.Action == navPOI)
+				F.UsingPOI = true;
+
+			WP.OrbitRadius = (real32) W->OrbitRadius; // M
+			WP.OrbitAltitude = (real32) W->OrbitAltitude;
+			WP.OrbitVelocity = (real32) W->OrbitVelocitydMpS * 0.1f; // dM/S
+		}
 
 #ifdef NAV_ENFORCE_ALTITUDE_CEILING
-	WP.Pos[DownC] = Limit(WP.Pos[DownC], 0, NAV_CEILING_M);
-	WP.OrbitAltitude = Limit(WP.OrbitAltitude, 0, NAV_CEILING_M);
+		WP.Pos[DownC] = Limit(WP.Pos[DownC], 0, NAV_CEILING_M);
+		WP.OrbitAltitude = Limit(WP.OrbitAltitude, 0, NAV_CEILING_M);
 #endif // NAV_ENFORCE_ALTITUDE_CEILING
+	}
+
 } // GetNavWaypoint
 
-void DoMissionUpdate(void) {
+void UpdateNavMission(void) {
 
-	if (NavMissionSanityCheck(&NV.NewMission))
-		memcpy(&NV.Mission, &NV.NewMission, sizeof(MissionStruct));
+	if (NavMissionSanityCheck(&NewNavMission)) {
+		if (NewNavMission.NoOfWayPoints > 0)
+			memcpy(&NV.Mission, &NewNavMission, sizeof(MissionStruct));
+		else
+			ClearNavMission();
 
-	memset(&NV.NewMission, 0, sizeof(MissionStruct));
+		memset(&NewNavMission, 0, sizeof(MissionStruct));
 
-	if (State != InFlight)
-		UpdateNV();
+		if (State != InFlight) {
+			NVChanged = true;
+			UpdateNV();
+		}
 
-} // DoMissionUpdate
+		NavMissionUpdated = true;
+	}
+
+} // DoNavMissionUpdate
 
 

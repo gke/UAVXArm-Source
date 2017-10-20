@@ -26,6 +26,7 @@ void Probe(uint8);
 void Marker(void);
 
 boolean Armed();
+void CheckLandingSwitch(void);
 boolean FailPreflight(void);
 void DoBeep(uint8, uint8);
 void DoBeeps(uint8);

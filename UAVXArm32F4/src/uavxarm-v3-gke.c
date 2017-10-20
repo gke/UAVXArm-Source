@@ -22,7 +22,6 @@
 
 Flags F;
 uint8 State;
-uint8 CurrPIDTimeSel;
 uint32 CurrPIDCycleuS = PID_CYCLE_2000US;
 real32 CurrPIDCycleS;
 volatile uint32 uS[uSLastArrayEntry];
@@ -162,11 +161,10 @@ int main() {
 
 			Probe(1);
 
+			UpdateDrives(); // from previous cycle - one cycle lag minimise jitter
+
 			//---------------
 			CalculatedT(NowuS);
-
-			UpdateDrives(); // from previous cycle - one cycle lag
-
 			UpdateInertial();
 			//---------------
 
@@ -376,8 +374,7 @@ int main() {
 									|| (ArmingMethod == TxSwitchArming))
 									&& !Armed()))) {
 						ZeroThrottleCompensation();
-						mSTimer(mSClock(), ThrottleIdleTimeout,
-								THR_LOW_DELAY_MS);
+						mSTimer(mSClock(), ThrottleIdleTimeout, THR_LOW_DELAY_MS);
 						State = Landing;
 					} else {
 						if (UpsideDownMulticopter())
@@ -391,7 +388,6 @@ int main() {
 						}
 					}
 				}
-
 				break;
 
 			case IREmulate:

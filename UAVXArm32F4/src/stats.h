@@ -32,8 +32,8 @@ void ZeroStats(void);
 void ReadStatsNV(void);
 void WriteStatsNV(void);
 void ShowStats(uint8 s);
-void StatsMinMax(int16 v, uint8 l, uint8 u);
-void StatsMax(int16 v, uint8 u);
+void StatsMinMax(uint8 l, uint8 u, int16 v);
+void StatsMax(uint8 u, int16 v);
 
 enum Statistics {
 	GPSAltitudeS,

@@ -24,12 +24,15 @@
 
 #define MPU_0x68_ID (0x68*2)
 #define MPU_0x69_ID (0x69*2)
-
 extern uint8 MPU6XXXId;
 extern uint8 MPU6XXXRev;
-extern const uint16 MPULPFHz[];
+
+extern const uint16 MPUGyroLPFHz[];
+extern const uint8 CurrGyroLPFSel;
 extern const uint16 MPUAccLPFHz[];
+extern const uint8 CurrAccLPFSel;
 extern const uint8 MPUDLPFMask[];
+
 extern const char * DHPFName[];
 
 extern uint8 MPU6XXXDLPF;
@@ -47,7 +50,12 @@ extern uint8 MPU_ID;
 extern uint32 mpu6xxxLastUpdateuS;
 extern real32 RawAcc[], RawGyro[];
 extern boolean NewAccUpdate;
-extern uint8 CurrGyroLPFSel, CurrAccLPFSel;
+extern uint32 gyroGlitches;
+extern uint32 mpuReads;
+
+extern uint32 Noise[];
+extern uint16 SlewLimitGyroClicks;
+extern uint16 SlewHistScale;
 
 #endif
 

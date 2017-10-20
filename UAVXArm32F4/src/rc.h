@@ -46,6 +46,10 @@
 
 #define RXBUF_SIZE	64
 
+enum SwStates {
+	SwLow, SwMiddle, SwHigh, SwUnknown
+};
+
 typedef struct {
     unsigned int c1  : 11;
     unsigned int c2  : 11;

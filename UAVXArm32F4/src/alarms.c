@@ -33,6 +33,27 @@ void Marker(void) {
 	Probe(0);
 } // Marker
 
+void CheckLandingSwitch(void) {
+	static uint8 Count = 5;
+	static boolean SwitchP = false;
+	boolean Switch;
+
+	Switch = !digitalRead(&GPIOPins[LandingSel]); // active to ground
+
+	if (Switch != SwitchP)
+		if (Count == 0) {
+			SwitchP = Switch;
+			Count = 5;
+		} else
+			Count--;
+	else
+		Count = 5;
+
+	F.LandingSwitch = SwitchP;
+
+} // CheckLandingSwitch
+
+
 boolean Armed(void) {
 	static boolean SwitchP = false;
 	boolean NewUplinkState, IsArmed;
@@ -81,7 +102,7 @@ boolean FailPreflight(void) {
 			|| F.i2cFatal //
 			|| (F.ReturnHome || F.Navigate);
 
-	PreflightFail = F.ThrottleOpen || F.ReturnHome || F.Navigate || !F.Signal;
+	PreflightFail = F.ReturnHome || F.Navigate || !F.Signal;
 
 	return (r);
 
@@ -102,23 +123,22 @@ void DoCalibrationAlarm(void) {
 
 void DoBeep(uint8 t, uint8 d) {
 	int32 i;
-
-	if (UsingFastStart)
-		d /= 2;
+	uint32 Timeout;
 
 	BeeperOn();
 	for (i = 0; i < (t * 100); i++) {
-#if defined(V4_BOARD)
-		Delay1mS(1);
-#endif
-		GetBaro(); // hammer it to warm it up!
+		Timeout = uSClock() + 500;
+		do {
+			GetBaro(); // hammer it to warm it up!
+		} while (uSClock() < Timeout);
 	}
 	BeeperOff();
+
 	for (i = 0; i < (d * 100); i++) {
-#if defined(V4_BOARD)
-		Delay1mS(1);
-#endif
-		GetBaro();
+		Timeout = uSClock() + 500;
+		do {
+			GetBaro();
+		} while (uSClock() < Timeout);
 	}
 } // DoBeep
 
@@ -126,10 +146,7 @@ void DoBeeps(uint8 b) {
 	idx i;
 
 	for (i = 0; i < b; i++)
-		if (UsingFastStart)
-			DoBeep(2, 4);
-		else
-			DoBeep(2, 8);
+		DoBeep(2, 8);
 
 } // DoStartingBeeps
 
@@ -138,8 +155,10 @@ int16 BeeperOnTime = 100;
 
 void CheckAlarms(void) {
 
-	F.BeeperInUse = PreflightFail || F.LowBatt || F.LostModel || (State
-			== Shutdown) || (NavState == Descending);
+	F.BeeperInUse = PreflightFail || F.LowBatt || (State == Shutdown)
+			|| (NavState == Descending);
+
+	//F.BeeperInUse = false;
 
 	if (F.BeeperInUse) {
 		if (F.LowBatt) {
@@ -195,7 +214,7 @@ boolean UpsideDownMulticopter(void) {
 			mSTimer(mSClock(), CrashedTimeout, CRASHED_TIMEOUT_MS);
 		else {
 			if ((mSClock() > mS[CrashedTimeout]) && (DesiredThrottle
-					> IdleThrottle) && !F.UsingRateControl)
+					> IdleThrottle) && F.UsingAngleControl)
 				UpsideDown = true;
 		}
 	}

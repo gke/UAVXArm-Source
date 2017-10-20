@@ -23,9 +23,11 @@
 
 // 0.97, 2.9, 3.9, 5.9, 9.9, 17.85, 33.48ms
 const uint16 MPUGyroLPFHz[] = { 250, 184, 98, 41, 20, 10, 5, 3600 };
+const uint8 CurrGyroLPFSel = 0; // 0 => 250Hz forces 8Khz sampling before DLPF
 
 // 1.94, 5.8, 7.8, 11.8, 19.8, 35.7, 66.96, 1.94ms
 const uint16 MPUAccLPFHz[] = { 480, 184, 92, 41, 20, 10, 5, 460 };
+const uint8 CurrAccLPFSel = 4; // V4 Board acc is always 1Khz sampling
 
 const uint8 MPUDLPFMask[] = { MPU_RA_DLPF_BW_256, MPU_RA_DLPF_BW_188,
 		MPU_RA_DLPF_BW_98, MPU_RA_DLPF_BW_42, MPU_RA_DLPF_BW_20,
@@ -46,10 +48,13 @@ uint32 mpu6xxxLastUpdateuS = 0;
 
 boolean NewAccUpdate;
 real32 RawAcc[3], RawGyro[3];
-uint8 DisableAccDLPF = 0;
-uint8 DisableGyroDLPF = 0;
 
-uint8 CurrAccLPFSel, CurrGyroLPFSel;
+uint32 Noise[8];
+uint32 gyroGlitches;
+uint32 mpuReads;
+
+uint16 SlewLimitGyroClicks = 64;
+uint16 SlewHistScale = 8;
 
 void ComputeMPU6XXXTemperature(int16 T) {
 
@@ -63,10 +68,13 @@ void ComputeMPU6XXXTemperature(int16 T) {
 
 void ReadAccAndGyro(boolean UseSelectedAttSensors) { // Roll Right +, Pitch Up +, Yaw ACW +
 	int16 B[7];
+	idx a;
+	static int16 BP[7] = { 0, 0, 0, 0, 0, 0, 0 };
 
 	sioReadBlocki16vataddr(SIOIMU, MPU_ID, MPU_RA_ACC_XOUT_H, 7, B, true);
 
 	mpu6xxxLastUpdateuS = uSClock();
+	mpuReads++;
 
 	if ((CurrAttSensorType == InfraRedAngle) && !IsMulticopter) {
 
@@ -80,9 +88,16 @@ void ReadAccAndGyro(boolean UseSelectedAttSensors) { // Roll Right +, Pitch Up +
 		RawAcc[2] = (real32) B[2];
 	}
 
-	NewAccUpdate = true; //TODO: need to restrict this to 1KHz
+	//NewAccUpdate = true; //TODO: need to restrict this to 1KHz
 
 	ComputeMPU6XXXTemperature(B[3]);
+
+	for (a = 4; a <= 6; a++) {
+#if !defined(INC_DFT)
+		Noise[Limit(Abs(B[a] - BP[a]) / SlewHistScale, 0, 7)]++;
+#endif
+		SensorSlewLimit(GyroFailS, &BP[a], B[a], SlewLimitGyroClicks);
+	}
 
 	if (UseSelectedAttSensors)
 		switch (CurrAttSensorType) {
@@ -208,22 +223,12 @@ void InitMPU6XXX(void) {
 	// THE UPDATING OF REGISTERS IS ASYNCHRONOUS
 	// THE MPU6050 HAS COMMON DLPF CONFIG, THE MPU6500 HAS A SEPARATE DLPF CONFIG FOR ACC
 
-
-#if !defined(V4_BOARD)
-	uint8 v;
+#if defined(USE_MPU_DLPF)
+	const uint8 DisableGyroDLPF = 0;
+#else
+	const uint8 DisableGyroDLPF = 1; // Gyro 1 -> 8800Hz 2 -> 3600Hz
 #endif
 
-	if (UsingSWFilters) {
-		DisableAccDLPF = DisableGyroDLPF = 1; // Gyro 1 -> 8800Hz 2 -> 3600Hz, Acc 1KHz
-		RollPitchLPFOrder = 2;
-	} else {
-		DisableAccDLPF = DisableGyroDLPF = 0; // 1KHz for Acc and Gyro
-		RollPitchLPFOrder = 1;
-	}
-
-	GyroLPFreqHz = MPUGyroLPFHz[CurrGyroLPFSel];
-	AccLPFreqHz = MPUGyroLPFHz[CurrAccLPFSel];
-	DerivativeLPFreqHz = GyroLPFreqHz;
 
 	CheckMPU6XXXActive();
 	Delay1mS(100); // was 5
@@ -251,12 +256,17 @@ void InitMPU6XXX(void) {
 			| MPU_RA_DHPF_1P25);
 
 #if defined(V4_BOARD) // MPU6500
-	sioWriteataddr(SIOIMU, MPU_ID, MPU_RA_ACC_CONFIG2, (DisableAccDLPF << 3) & MPUDLPFMask[CurrAccLPFSel]);
 
+#if defined(USE_MPU_DLPF)
+	const uint8 DisableAccDLPF = 0;  // Acc 1KHz
+#else
+	const uint8 DisableAccDLPF = 1;  // Acc 1KHz
+#endif
+	sioWriteataddr(SIOIMU, MPU_ID, MPU_RA_ACC_CONFIG2, (DisableAccDLPF << 3) & MPUDLPFMask[CurrAccLPFSel]);
 #else
 
 	// Enable I2C master mode
-	v = sioReadataddr(SIOIMU, MPU_ID, MPU_RA_USER_CTRL);
+	uint8 v = sioReadataddr(SIOIMU, MPU_ID, MPU_RA_USER_CTRL);
 	bitClear(v, MPU_RA_USERCTRL_I2C_MST_EN_BIT);
 	sioWrite(SIOIMU, MPU_ID, MPU_RA_USER_CTRL, v);
 
@@ -279,6 +289,7 @@ void InitMPU6XXX(void) {
 #if defined(V4_BOARD)
 	MPU6000DLPF = sioReadataddr(SIOIMU, MPU_ID, MPU_RA_ACC_CONFIG2) & 0x07;
 #endif
+
 
 } // InitMPU6XXX
 

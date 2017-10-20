@@ -57,7 +57,7 @@ enum PacketTags {
 	UAVXRequestPacketTag = 50,
 	UAVXAckPacketTag = 51,
 	UAVXMiscPacketTag = 52,
-	UAVXDFTPacketTag = 53,
+	UAVXNoisePacketTag = 53,
 	UAVXBBPacketTag = 54,
 	unusedUAVXInertialPacketTag = 55,
 	UAVXMinimOSDPacketTag = 56,

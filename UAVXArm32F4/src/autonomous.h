@@ -82,6 +82,7 @@ enum NavStates {
 	JustGliding,
 	RateControl, // not actually a nav state
 	BypassControl, // not actually a nav state
+	HorizonControl,
 	NavStateUndefined
 };
 
@@ -107,10 +108,6 @@ enum AlarmStates {
 
 enum LandingStates {
 	InitDescent, CommenceDescent, Descent, DescentStopped
-};
-
-enum NavSwStates {
-	NavSwLow, NavSwMiddle, NavSwHigh, NavSwUnknown
 };
 
 extern void DoNavigation(void);

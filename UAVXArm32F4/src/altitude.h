@@ -83,7 +83,7 @@ extern uint16 ms56xx_c[];
 void UpdateAltitudeAndROC(void);
 void BaroTest(uint8 s);
 
-extern real32 BaroPressure, BaroTemperature, UncompensatedBaroPressure, UncompensatedBaroAltitude;
+extern real32 BaroPressure, BaroTemperature, CompensatedBaroPressure;
 extern boolean AcquiringPressure;
 extern real32 OriginAltitude, BaroAltitude;
 extern real32 ROC, ROCF;
@@ -92,7 +92,7 @@ extern uint8 BaroType;
 extern real32 AltdT;
 extern real32 AltLPFHz;
 extern uint16 ms56xx_ManufacturersData;
-extern real32 FAltitude, FROC; // fusion filter output
+extern real32 BaroRawAltitude, BaroRawAltitudeP; // fusion filter output
 
 #endif
 

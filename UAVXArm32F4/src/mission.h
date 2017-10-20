@@ -44,26 +44,29 @@ typedef struct {
 	int8 NoOfWayPoints;
 	int8 ProximityAltitude;
 	int8 ProximityRadius;
+	int16 FenceRadius;
 	int16 OriginAltitude;
 	int32 OriginLatitude;
-	int32 OriginLongitude;
+    int32 OriginLongitude;
 	int16 RTHAltHold; // ??? not used
 	WPStructNV WP[NAV_MAX_WAYPOINTS];
 }__attribute__((packed)) MissionStruct;
 
-extern void CaptureHomePosition(void);
-extern void GenerateNavTestMission(void);
-extern void DisplayNavMissions(uint8 s);
-extern boolean NavMissionSanityCheck(MissionStruct * M);
-extern uint8 NextWPState(void);
-extern void RefreshNavWayPoint(void);
-extern void GetNavWayPoint(void);
-extern void DisplayNavMission(uint8 s, MissionStruct * M);
-extern void DoMissionUpdate(void);
-extern void ClearNavMissions(uint8 s);
+extern MissionStruct NewNavMission;
+void ClearNavMission(void);
+void CaptureHomePosition(void);
+void DisplayNavMissions(uint8 s);
+boolean NavMissionSanityCheck(MissionStruct * M);
+uint8 NextWPState(void);
+void RefreshNavWayPoint(void);
+void GetNavWayPoint(void);
+void DisplayNavMission(uint8 s, MissionStruct * M);
+void UpdateNavMission(void);
+void GenerateHomeWP(void);
 
 extern WPStruct WP, HP, POI;
 extern uint8 CurrWPNo, PrevWPNo;
+extern boolean NavMissionUpdated;
 
 #endif
 

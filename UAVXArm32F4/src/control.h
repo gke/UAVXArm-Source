@@ -42,16 +42,17 @@ enum Directions {
 };
 // Roll, Pitch & Yaw
 
-enum ControlModes {
-	AngleMode, RateMode, RelayAngleMode, RelayRateMode
+enum AttitudeModes {
+	AngleMode, HorizonMode, RateMode, UnknownMode
 };
 
+enum DerivativeFilterTypes {maDFilt, pavelDFilt, mlDFilt, unknownDFilt};
 
 typedef struct {
 	real32 Stick, StickP, StickD;
-	real32 AngleDesired, AngleE, AngleKp, AngleKi, AngleIntE, AngleIL, AngleMax,
+	real32 AngleDesired, AngleE, AngleKp, AngleKi, AngleKd, AngleIntE, AngleIL, AngleMax,
 			RateDesired, RateE, RateKp, RateKd, RateMax, CompassRateMax;
-	real32 AnglePTerm, AngleITerm, RatePTerm, RateDTerm;
+	real32 AnglePTerm, AngleITerm, AngleDTerm, RateFFTerm, RatePTerm, RateDTerm;
 	// controls
 	// body frame sensors
 	real32 Ratep, DriftCorr, Angle;
@@ -79,9 +80,11 @@ void InitControl(void);
 
 AxisStruct A[3];
 
+idx AttitudeMode;
 real32 TiltThrFFFrac;
-real32 DerivativeLPFreqHz;
+real32 CurrAccLPFHz, CurrGyroLPFHz, CurrDerivativeLPFHz;
 idx DerivativeLPFOrder;
+boolean UsingPavelFilter;
 
 real32 CameraAngle[3], OrbitCamAngle;
 real32 DesiredHeading, SavedHeading;

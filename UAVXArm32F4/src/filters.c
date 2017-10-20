@@ -42,7 +42,7 @@ void DFT8(real32 v, real32 *DFT) { // 137uS
 		Primed = true;
 	} else {
 		for (i = 7; i > 0; i--)
-			inp[i] = inp[i - 1];
+		inp[i] = inp[i - 1];
 		inp[0] = v;
 	}
 
@@ -55,7 +55,7 @@ void DFT8(real32 v, real32 *DFT) { // 137uS
 	}
 
 	for (i = 0; i < 8; i++)
-		DFT[i] = sqrtf(Sqr(x[i]) + Sqr(y[i])) * mR;
+	DFT[i] = sqrtf(Sqr(x[i]) + Sqr(y[i])) * mR;
 
 #endif
 } // DFT8
@@ -184,7 +184,7 @@ real32 LeadFilter(real32 Pos, real32 VelP, real32 Vel, real32 Lag) {
 } // LeadFilter
 
 
-real32 LPFilterBW(HistStruct * F, real32 v, real32 CutHz, real32 dT) {
+real32 LPFilterBW(HistStruct * F, real32 v, const real32 CutHz, real32 dT) {
 	real32 r;
 	idx i;
 
@@ -256,57 +256,48 @@ real32 PavelDifferentiator(HistStruct *F, real32 v) {
 	return r;
 } // Pavel
 
-__attribute__((always_inline)) inline real32 LPFilter(HistStruct * F, const idx Order, real32 v, real32 CutHz, real32 dT) {
-idx n;
+__attribute__((always_inline))  inline real32 LPFilter(HistStruct * F, const idx Order, real32 v,
+		const real32 CutHz, real32 dT) {
+	idx n;
 
 	if (!F->Primed) {
-		F->h[0] = v;
+		for (n = 1; n <= Order; n++)
+			F->h[n] = v;
 		F->Primed = true;
-		F->Tau = 1.0f / (TWO_PI * CutHz);
 	}
+		F->Tau = 1.0f / (TWO_PI * CutHz);
+	//}
+	F->S = dT / (F->Tau + dT);
+	//}
 
-	for (n = 0; n< Order; n++)
-	F->h[0] = F->h[0] + (v - F->h[0]) * dT / (F->Tau + dT);
+	F->h[0] = v;
 
-	return (F->h[0]);
+	for (n = 1; n <= Order; n++)
+		F->h[n] += (F->h[n - 1] - F->h[n]) * F->S;
+
+	return (F->h[Order]);
 
 } // LPFilter
 
-void InitSlewFilter(HistStruct * F) {
 
-	F->Primed = false;
+int16 SensorSlewLimit(uint8 sensor, int16 * Old, int16 New, int16 Slew) {
+	int16 Low, High;
 
-} // InitSlewFilter
+	Low = *Old - Slew;
+	High = *Old + Slew;
+	if (New < Low) {
+		incStat(sensor);
+		*Old = Low;
+	} else if (New > High) {
+		incStat(sensor);
+		*Old = High;
+	} else
+		*Old = New;
+	return (*Old);
+} // SensorSlewLimit
 
 
-real32 SlewFilter(HistStruct * F, real32 v, real32 CutHz, real32 dT) {
-	// Series of single pole LP Filters - this provides a smooth transition
-	// between set-points. The cutoff frequency is nominal and is reduced
-	// by the cascaded stages.
-	real32 c;
-
-	if (!F->Primed) {
-		F->h[0] = F->h[1] = F->h[2] = v;
-		F->Primed = true;
-	}
-
-	c = dT / (1.0f / (TWO_PI * CutHz) + dT);
-	F->h[0] += (v - F->h[0]) * c;
-
-#if defined(SLEW_3_STAGE)
-	F->h[1] += (F->h[0] - F->h[1]) * c;
-	F->h[2] += (F->h[1] - F->h[2]) * c;
-
-	return (F->h[2]);
-#else
-
-	return (F->h[0]);
-
-#endif
-
-} // SlewFilter
-
-real32 SlewLimit(real32 * Old, real32 New, real32 Slew, real32 dT) {
+real32 SlewLimit(real32 * Old, real32 New, const real32 Slew, real32 dT) {
 	// DO NOT USE WHEN YOU HAVE 360DEG STEPS AS IT WILL NOT TRACK
 	real32 Low, High, SlewD;
 
@@ -340,15 +331,6 @@ real32 DeadZone(real32 v, real32 t) {
 	return (v);
 } // DeadZone
 
-real32 SlewLimitLPFilter(real32 * Old, real32 New, real32 Slew, real32 F,
-		real32 dT) {
-	// set slew to an "impossible" difference between samples
-
-	New = SlewLimit(Old, New, Slew, dT);
-	*Old += (New - *Old) * dT / ((1.0f / (TWO_PI * F)) + dT);
-
-	return (*Old);
-} // SlewLimitLPFilter
 
 real32 Make2Pi(real32 A) {
 	while (A < 0)

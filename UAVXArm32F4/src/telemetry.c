@@ -269,8 +269,7 @@ void ShowAttitude(uint8 s) {
 
 	TxESCi16(s, A[Roll].Angle * 1000.0f);
 	TxESCi16(s, A[Pitch].Angle * 1000.0f);
-
-	TxESCi16(s, A[Yaw].AngleE * 1000.0f); // A[Yaw].Angle
+	TxESCi16(s, A[Yaw].Angle * 1000.0f);
 
 	TxESCi16(s, Acc[BF] * 1000.0f * GRAVITY_MPS_S_R);
 	TxESCi16(s, Acc[LR] * 1000.0f * GRAVITY_MPS_S_R);
@@ -317,13 +316,13 @@ void SendFlightPacket(uint8 s) {
 	TxESCi16(s, BattThrFFComp * 1000.0f);
 	TxESCi16(s, AltComp * 1000.0f);
 
-	TxESCi8(s, AccConfidence * 100.0f);
+	TxESCi8(s, Limit(AccConfidence * 100.0f, 0, 100));
 	TxESCi16(s, BaroTemperature * 100.0f);
 	TxESCi24(s, BaroPressure * 10.0f);
 
 	TxESCi24(s, BaroAltitude * 100.0f);
 
-	TxESCi8(s, AccZ * 100.0f);
+	TxESCi8(s, Limit1(AccZ * 100.0f, 127));
 
 	TxESCi16(s, Make2Pi(MagHeading) * 1000.0f);
 
@@ -339,7 +338,9 @@ void SendNavState(uint8 s) {
 
 	if (F.Bypass)
 		TxESCu8(s, BypassControl);
-	else if (F.UsingRateControl)
+	else if (AttitudeMode == HorizonMode)
+		TxESCu8(s, HorizonControl);
+	else if (AttitudeMode == RateMode)
 		TxESCu8(s, RateControl);
 	else
 		TxESCu8(s, NavState);
@@ -547,8 +548,8 @@ void SendFusionPacket(uint8 s) {
 
 	TxESCi16(s, AccZ * 1000.0f);
 
-	TxESCi24(s, FAltitude * 100.0f);
-	TxESCi16(s, FROC * 100.0f);
+	TxESCi24(s, BaroRawAltitude * 100.0f);
+	TxESCi16(s, 0); // * 100
 	TxESCi16(s, NV.AccCal.DynamicAccBias[Z] * 1000.0f);
 
 	TxESCi16(
@@ -587,10 +588,12 @@ void SendCalibrationPacket(uint8 s) {
 	}
 
 	TxESCi16(s, 1.0 / CurrPIDCycleS);
-	TxESCi16(s, AccLPFreqHz);
-	TxESCi16(s, GyroLPFreqHz);
+	TxESCi16(s, CurrAccLPFHz);
+	TxESCi16(s, CurrGyroLPFHz);
+	TxESCi16(s, CurrDerivativeLPFHz);
+	TxESCi16(s, gyroGlitches);
 
-	for (a = 21; a < 32; a++)
+	for (a = 23; a < 32; a++)
 		TxESCi16(s, -1);
 
 	SendPacketTrailer(s);
@@ -681,22 +684,32 @@ void SendBBPacket(uint8 s, int32 seqNo, uint8 l, int8 * B) {
 
 } // SendBBPacket
 
-void SendDFTPacket(uint8 s) {
-#if defined(INC_DFT)
+void SendNoisePacket(uint8 s) {
+	int32 m;
 	idx i;
 
 	SendPacketHeader(s);
 
-	TxESCu8(s, UAVXDFTPacketTag);
-	TxESCu8(s, 2 + 8 * 2);
-
+	TxESCu8(s, UAVXNoisePacketTag);
+	TxESCu8(s, 3 + 8 * 2);
+#if defined(INC_DFT)
+	TxESCu8(s, 0);
 	TxESCi16(s, 1000000 / CurrPIDCycleuS);
 	for (i = 0; i < 8; i++)
-		TxESCi16(s, DFT[i] * 1000.0 / MPU_1G);
+	TxESCi16(s, DFT[i] * 5000.0 / MPU_1G);
+#else
+	m = 0;
+	for (i = 0; i < 8; i++)
+		m = Max(m, Noise[i]);
+	TxESCu8(s, 1);
+	TxESCi16(s, (gyroGlitches * 10000.0f) / (mpuReads * 3.0f));
+	for (i = 0; i < 8; i++)
+		TxESCi16(s, (real32) Noise[i] * 100.0f / (real32) m);
+#endif
 
 	SendPacketTrailer(s);
-#endif
-} // SendDFTPacket
+
+} // SendNoisePacket
 
 void SendMinPacket(uint8 s) {
 	idx b;
@@ -788,17 +801,24 @@ void SendOriginPacket(uint8 s) {
 	SendPacketHeader(s);
 
 	TxESCu8(s, UAVXOriginPacketTag);
-	TxESCu8(s, 15);
+	TxESCu8(s, 17);
 
 	TxESCu8(s, M->NoOfWayPoints); // 0
 	TxESCu8(s, M->ProximityAltitude); // 1
 	TxESCu8(s, M->ProximityRadius); // 2
-	TxESCi16(s, M->OriginAltitude); // 3
+	TxESCi16(s, M->FenceRadius); // 3
 
-	TxESCi32(s, M->OriginLatitude); // 5
-	TxESCi32(s, M->OriginLongitude); // 9
+	if (F.OriginValid) {
+		TxESCi16(s, GPS.originAltitude); // 5
+		TxESCi32(s, GPS.C[NorthC].OriginRaw); // 7
+		TxESCi32(s, GPS.C[EastC].OriginRaw); // 11
+	} else {
+		TxESCi16(s, 0); // 5
+		TxESCi32(s, 0); // 7
+		TxESCi32(s, 0); // 11
+	}
 
-	TxESCi16(s, M->RTHAltHold); // 13 + 1
+	TxESCi16(s, M->RTHAltHold); // 15
 
 	SendPacketTrailer(s);
 } // SendOriginPacket
@@ -904,7 +924,7 @@ void ProcessWPPacket(uint8 s) {
 	WPStructNV * W;
 
 	wp = UAVXPacket[2];
-	W = &NV.NewMission.WP[wp];
+	W = &NewNavMission.WP[wp];
 
 	W->LatitudeRaw = UAVXPacketi32(3);
 	W->LongitudeRaw = UAVXPacketi32(7);
@@ -920,24 +940,22 @@ void ProcessWPPacket(uint8 s) {
 } // ReceiveWPPacket
 
 void ProcessOriginPacket(uint8 s) {
-	MissionStruct * M;
 
-	M = &NV.NewMission;
+	NewNavMission.NoOfWayPoints = UAVXPacket[2];
 
-	M->NoOfWayPoints = UAVXPacket[2];
-
-	M->ProximityAltitude = UAVXPacketi16(3);
-	M->ProximityRadius = UAVXPacketi16(4);
+	NewNavMission.ProximityAltitude = UAVXPacketi16(3);
+	NewNavMission.ProximityRadius = UAVXPacketi16(4);
+	NewNavMission.FenceRadius = UAVXPacketi16(5);
 
 	/* NOT updated by UAVXNav set ONLY by GPS at launch
-	 M->OriginAltitude = UAVXPacketi16(5);
-	 M->OriginLatitude = UAVXPacketi32(7);
-	 M->OriginLongitude = UAVXPacketi32(11);
+	 NewNavMission.OriginAltitude = UAVXPacketi16(7);
+	 NewNavMission.OriginLatitude = UAVXPacketi32(9);
+	 NewNavMission.OriginLongitude = UAVXPacketi32(13);
 	 */
 
-	M->RTHAltHold = UAVXPacketi16(15);
+	NewNavMission.RTHAltHold = UAVXPacketi16(17);
 
-	DoMissionUpdate();
+	UpdateNavMission();
 
 } // ProcessOriginPacket
 
@@ -1147,14 +1165,13 @@ void UseUAVXTelemetry(uint8 s) {
 	static boolean SendFlight = true;
 
 	if (SendFlight) {
-		//if (!Armed())
 		SendFlightPacket(s); // 78
 		SendFusionPacket(s);
 		SendGuidancePacket(s); // 2+7
 		SendRCChannelsPacket(s); // 27 -> 105
 	} else {
 		SendNavPacket(s); // 2+54+4 = 60
-		SendDFTPacket(s); // 24
+		SendNoisePacket(s); // 24
 		SendStatsPacket(s); // ~80 -> 104
 		if ((State == Preflight) || (State == Ready)) //Warmup) || (State == Landed))
 			SendCalibrationPacket(s);

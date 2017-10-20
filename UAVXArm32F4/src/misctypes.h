@@ -134,7 +134,7 @@ typedef struct {
 
 // Macros
 
-#define Abs(v)		(((v)<0) ? -(v) : (v))
+#define Abs(v)		(( ((v)<0) ? (-v) : (v)))
 
 #define Sign(i)		(((i)<0) ? -1 : 1)
 #define Sqr(r)		( (r) * (r) )

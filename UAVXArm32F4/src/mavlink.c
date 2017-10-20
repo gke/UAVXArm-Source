@@ -174,8 +174,9 @@ void mavlinkSendGPSRaw(uint8 s) {
 
 	mavlink_msg_gps_raw_int_pack(mavlink_system.sysid, mavlink_system.compid,
 			&msg, uSClock(), GPS.fix, GPS.C[NorthC].Raw, GPS.C[EastC].Raw,
-			GPS.altitude * 1000.0f, Limit(GPS.hAcc * 100.0f, 0, 255), GPS.vAcc * 100.0f,
-			GPS.gspeed * 100.0f, RadiansToDegrees(GPS.heading), // cog scaling reduce from 100
+			GPS.altitude * 1000.0f, Limit(GPS.hAcc * 100.0f, 0, 255), GPS.vAcc
+					* 100.0f, GPS.gspeed * 100.0f,
+			RadiansToDegrees(GPS.heading), // cog scaling reduce from 100
 			GPS.noofsats);
 
 	mavlinkTx(s, buffer, mavlink_msg_to_send_buffer(buffer, &msg));
@@ -207,7 +208,9 @@ void mavlinkSendHeartbeat(uint8 s) {
 
 	if (F.Bypass)
 		Mode = BypassControl;
-	else if (F.UsingRateControl)
+	else if (AttitudeMode == HorizonMode)
+		Mode = HorizonControl;
+	else if (AttitudeMode == RateMode)
 		Mode = RateControl;
 	else
 		Mode = NavState;

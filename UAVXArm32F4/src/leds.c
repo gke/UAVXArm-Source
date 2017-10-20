@@ -190,7 +190,6 @@ uint8 wsGroupSize;
 uint16 wsBufferSize;
 boolean incomplete = false;
 
-
 static void wsInitBuffers(void) {
 	int16 i;
 
@@ -293,16 +292,22 @@ void wsInit(void) { // hard coded to PORTC Pin 6 Aux1
 
 } // wsInit
 
+
+// Recommendation post 2013 from WorldSemi are now: 0 = 400ns high/850ns low, and 1 = 850ns high, 400ns low"
+// Currently the timings are 0 = 350ns high/800ns and 1 = 700ns high/650ns low.
+// Betaflight timings are 0 = 350ns high/800ns and 1 = 700ns high/650ns low.
+
 #define ss 33 // 168.0f
 static void wsGenPWM(uint16 ** const dest, const uint8 color) {
 	// generates the PWM patterns for each colour byte
 
 #if defined(USE_WS2812)
-	const uint16 H = (uint16) (0.7f * ss);
-	const uint16 L = (uint16) (0.35f * ss);
+	const uint16 L = (uint16) (0.35f * ss); // 11.55 473
+	const uint16 H = (uint16) (0.7f * ss); // 23.1 947
+
 #else // USE_WS2812B
-	const uint16 H = (uint16)(0.8f*ss);
-	const uint16 L = (uint16)(0.4f*ss);
+	const uint16 L = (uint16)(0.4f*ss); // 13.2 541.2
+	const uint16 H = (uint16)(0.8f*ss); // 26.4 1082.4
 #endif
 	uint8 mask = 0x80;
 
@@ -611,5 +616,6 @@ void InitLEDs(void) {
 	BeeperOff();
 
 } // InitLEDs
+
 
 

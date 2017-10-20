@@ -28,12 +28,12 @@ uint8 NavState, AlarmState;
 
 uint8 LandingState = InitDescent;
 
-uint8 NavSwState = NavSwLow;
-uint8 NavSwStateP = NavSwUnknown;
+uint8 NavSwState = SwLow;
+uint8 NavSwStateP = SwUnknown;
 
 boolean NotDescending(void) {
 
-	return (Abs(ROC) < ALT_MIN_DESCENT_MPS);
+	return (Abs(ROCF) < ALT_MIN_DESCENT_MPS);
 
 } // NotDescending
 
@@ -41,6 +41,7 @@ void InitiateDescent(void) {
 
 	LandingState = InitDescent;
 	NavState = Descending;
+	F.AccZBump = false;
 
 } // InitiateDescent
 
@@ -53,7 +54,9 @@ boolean DoLanding(void) {
 
 	HasLanded = false;
 
-	DesiredThrottle = IsFixedWing ? 0 : CruiseThrottle;
+	CheckLandingSwitch();
+
+	DesiredThrottle = F.IsFixedWing ? 0 : CruiseThrottle;
 	DesiredAltitude = -100.0f; // all the way
 
 	switch (LandingState) {
@@ -73,7 +76,7 @@ boolean DoLanding(void) {
 		break;
 	case Descent:
 		dTmS = dTUpdate(uSClock(), &LastLandUpdateuS) * 1000;
-		if (NotDescending()) {
+		if (NotDescending() && (F.AccZBump || F.LandingSwitch)) {
 			bucketmS = Max(0, bucketmS - dTmS);
 			if (bucketmS <= 0.0f)
 				LandingState = DescentStopped;
@@ -82,9 +85,14 @@ boolean DoLanding(void) {
 		mSTimer(mSClock(), NavStateTimeout, bucketmS);
 		break;
 	case DescentStopped:
-		HasLanded = true;
+		if (UsingSpecial)
+			HasLanded = true;
+		else
+			HasLanded = false;
 		break;
 	} // switch
+
+	F.AccZBump = false;
 
 	return (HasLanded);
 } // DoLanding
@@ -194,8 +202,8 @@ void UpdateRTHSwState(void) { // called in rc.c on every rx packet
 
 	if (F.Bypass || (State != InFlight)) {
 
-		NavSwState = NavSwLow;
-		NavSwStateP = NavSwUnknown;
+		NavSwState = SwLow;
+		NavSwStateP = SwUnknown;
 
 		F.AltControlEnabled = F.HoldingAlt = false;
 		DesiredAltitude = Altitude;
@@ -212,17 +220,17 @@ void UpdateRTHSwState(void) { // called in rc.c on every rx packet
 		if (NavSwState != NavSwStateP) {
 			F.Glide = F.Navigate = F.ReturnHome = false;
 			switch (NavSwState) {
-			case NavSwLow:
+			case SwLow:
 				ZeroNavCorrections();
 				CapturePosition();
 				NavState = PIC;
 				break;
-			case NavSwMiddle:
+			case SwMiddle:
 				CaptureHomePosition();
 				if (F.OriginValid)
 					InitiatePH();
 				break;
-			case NavSwHigh:
+			case SwHigh:
 				CaptureHomePosition();
 				if (F.OriginValid)
 					InitiateRTH();
@@ -233,8 +241,8 @@ void UpdateRTHSwState(void) { // called in rc.c on every rx packet
 		}
 
 		F.AltControlEnabled = !(F.UseManualAltHold || (Nav.Sensitivity
-				< NAV_ALT_THRESHOLD_STICK)
-				|| (IsFixedWing && (NavState == PIC)));
+				< NAV_ALT_THRESHOLD_STICK) || (F.IsFixedWing && (NavState
+				== PIC)));
 
 		if ((!F.HoldingAlt) && !(F.Navigate || F.ReturnHome))
 			DesiredAltitude = Altitude;
@@ -253,7 +261,7 @@ void DoNavigation(void) {
 
 	if ((NavState != PIC) && F.NavigationEnabled
 			&& (F.Navigate || F.ReturnHome)
-			&& !(F.UsingRateControl || F.Bypass)) {
+			&& !((!F.UsingAngleControl) || F.Bypass)) {
 
 		if (F.NewNavUpdate) {
 			F.NewNavUpdate = false;
@@ -319,7 +327,7 @@ void DoNavigation(void) {
 				if ((F.AltControlEnabled && F.UsingRTHAutoDescend)
 						&& (mSClock() > mS[NavStateTimeout])) {
 					F.RapidDescentHazard = false;
-					if (IsFixedWing) {
+					if (F.IsFixedWing) {
 					} else
 						InitiateDescent();
 				}
@@ -383,16 +391,14 @@ void DoNavigation(void) {
 
 				break;
 			case HoldingStation:
-				if (IsFixedWing && F.Glide)
+				if (F.IsFixedWing && F.Glide)
 					NavState = JustGliding;
 				else {
 					if (F.AttitudeHold) {
-						if (NV.Mission.NoOfWayPoints == 0)
-							Navigate(&HP); // maintain hold point
-						else {
-							//zzz	check that wp nav actually starts? CurrWPNo = 0;
+						if (F.UsingWPNavigation)
 							NavState = NextWPState(); // start navigating
-						}
+						else
+							Navigate(&HP); // maintain hold point
 					} else { // allow override
 						DecayNavCorrections();
 						CapturePosition();

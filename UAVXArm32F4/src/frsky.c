@@ -779,9 +779,9 @@ void SendFrSkyTelemetry(uint8 s) {
 					tmpi += 2;
 					if (Armed())
 					tmpi += 4;
-					if (!F.UsingRateControl)
+					if (F.UsingAngleControl)
 					tmpi += 10;
-					if (F.UsingRateControl)
+					if (!F.UsingAngleControl)
 					tmpi += 20;
 					if (F.Bypass)
 					tmpi += 40;

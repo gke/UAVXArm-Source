@@ -57,8 +57,8 @@ void InitEmulation(void) {
 			GPS.C[a].Pos = GPS.C[a].Vel = Aircraft[a].Pos = Aircraft[a].Vel
 					= Aircraft[a].Acc = 0.0f;
 
-		GPS.C[NorthC].OriginRaw = GPS.C[NorthC].Raw = DEFAULT_HOME_LAT;
-		GPS.C[EastC].OriginRaw = GPS.C[EastC].Raw = DEFAULT_HOME_LON;
+		GPS.C[NorthC].OriginRaw = DEFAULT_HOME_LAT;
+		GPS.C[EastC].OriginRaw = DEFAULT_HOME_LON;
 		GPS.longitudeCorrection = DEFAULT_LON_CORR;
 
 		DesiredAltitude = Altitude = RangefinderAltitude = FakeAltitude = ROC
@@ -107,7 +107,7 @@ void DoEmulation(void) {
 	int32 a;
 	real32 EffSink;
 
-	if (IsFixedWing) {
+	if (F.IsFixedWing) {
 
 		real32
 				dThrottle =
@@ -146,7 +146,7 @@ void DoEmulation(void) {
 					= A[a].Angle = A[a].Out = 0.0f;
 	} else {
 
-		if (IsFixedWing) { // no inertial effects for fixed wing
+		if (F.IsFixedWing) { // no inertial effects for fixed wing
 			for (a = Pitch; a <= Roll; a++)
 				Rate[a] -= (A[a].Out * DegreesToRadians(30)) * dT; // was 60
 
@@ -192,9 +192,9 @@ void DoEmulation(void) {
 
 	Acc[UD] = -GRAVITY_MPS_S;
 
-	GPS.C[EastC].Raw = GPS.C[EastC].OriginRaw + MToGPS(GPS.C[EastC].Pos)
+	GPS.C[EastC].Raw = DEFAULT_HOME_LON + MToGPS(GPS.C[EastC].Pos)
 			/ GPS.longitudeCorrection;
-	GPS.C[NorthC].Raw = GPS.C[NorthC].OriginRaw + MToGPS(GPS.C[NorthC].Pos);
+	GPS.C[NorthC].Raw = DEFAULT_HOME_LAT + MToGPS(GPS.C[NorthC].Pos);
 
 	GPS.gspeed = sqrtf(Sqr(GPS.C[EastC].Vel) + Sqr(GPS.C[NorthC].Vel));
 	GPS.velD = -ROC;

@@ -70,7 +70,7 @@ real32 Aerosonde(void) {
 	DesYawRate = (0.2f * PosXTrack * VelYTrack - PosYTrack * VelXTrack)
 			* 0.0025;
 
-	return (Limit1(DesYawRate, NAV_YAW_MAX_SLEW_RAD_S));
+	return (Limit1(DesYawRate, DegreesToRadians(60)));
 
 } // Aerosonde
 
@@ -193,7 +193,7 @@ real32 MinimumTurn(real32 Desired) {
 
 	HE = MakePi(Desired - Heading);
 
-	if (IsFixedWing) {
+	if (F.IsFixedWing) {
 		if (NavState == UsingThermal) {
 			TurnCommit = true;
 			TurnSign = 1.0f;
@@ -219,8 +219,8 @@ real32 MinimumTurn(real32 Desired) {
 void NavYaw(WPStruct * W) {
 	real32 POIEastDiff, POINorthDiff, POIDistance;
 
-	if (F.RapidDescentHazard)
-		DoOrbit(DESCENT_RADIUS_M, DESCENT_VELOCITY_MPS);
+	if (F.RapidDescentHazard && !F.IsFixedWing)
+		DoOrbit(DESCENT_RADIUS_M, DESCENT_VELOCITY_MPS); // only non FW
 	else if (F.OrbitingWP)
 		DoOrbit(W->OrbitRadius, W->OrbitVelocity);
 	else {
@@ -310,7 +310,7 @@ void Navigate(WPStruct * W) {
 
 	CompensateCrossTrackError1D();
 
-	if (IsFixedWing) {
+	if (F.IsFixedWing) {
 
 		CheckProximity(NV.Mission.ProximityAltitude, NV.Mission.ProximityRadius);
 
@@ -352,29 +352,23 @@ void InitNavigation(void) {
 	Nav.Elevation = Nav.Bearing = Nav.Distance = Nav.TakeoffBearing
 			= Nav.WPDistance = Nav.WPBearing = Nav.CrossTrackE = 0.0f;
 
-	if (!F.OriginValid) {
-		GPS.C[NorthC].OriginRaw = GPS.C[NorthC].Raw = DEFAULT_HOME_LAT;
-		GPS.C[EastC].OriginRaw = GPS.C[EastC].Raw = DEFAULT_HOME_LON;
-		GPS.longitudeCorrection = DEFAULT_LON_CORR;
-	} else {
-		NV.Mission.NoOfWayPoints = 0;
-		NV.Mission.OriginAltitude = OriginAltitude;
-		NV.Mission.RTHAltHold = (int16) (P(NavRTHAlt)); // ??? not used
-	}
-
-	NavState = PIC;
-
 	POI.Pos[EastC] = POI.Pos[NorthC] = 0.0f;
 
 	F.OriginValid = F.NavigationEnabled = F.CrossTrackActive
 			= F.WayPointAchieved = F.WayPointCentred = F.OrbitingWP
 					= F.RapidDescentHazard = F.UsingPOI = false;
 
+	GPS.C[NorthC].OriginRaw = GPS.C[NorthC].Raw = 0;
+	GPS.C[EastC].OriginRaw = GPS.C[EastC].Raw = 0;
+	GPS.longitudeCorrection = 1.0f;
+
 	CurrWPNo = 0;
 	PrevWPNo = 255;
 	NorthP = EastP = 0.0f; // origin
 	RefreshNavWayPoint();
 	DesiredAltitude = 0.0f;
+
+	NavState = PIC;
 
 }
 // InitNavigation

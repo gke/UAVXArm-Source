@@ -73,17 +73,15 @@
 #define ALT_MIN_DESCENT_MPS 	(ALT_MIN_DESCENT_DMPS * 0.1f)
 #define ALT_MAX_DESCENT_MPS		(ALT_MAX_DESCENT_DMPS * 0.1f)
 
-#define DESCENT_RADIUS_M  			20.0f // was 10
+#define DESCENT_RADIUS_M  			10.0f
 #define DESCENT_VELOCITY_MPS		1.5f
 #define DESCENT_MIN_ROC_MPS			(-3.0f)
 #define DESCENT_ALT_DIFF_M			10.0f
 #define DESCENT_SAFETY_ALT_M		(15.0f)
 
-#define GYRO_MAX_RATE (DegreesToRadians(300.0f))
-#define GYRO_MAX_SHAKE_RAW (DegreesToRadians(1.0)/GyroScale[CurrAttSensorType])
+#define ACCZ_LANDING_MPS_S			(0.5f * GRAVITY_MPS_S)
 
-#define YAW_LPF_HZ	(20.0f)
-#define YAW_MAX_SLEW_RAD_S (TWO_PI*YAW_LPF_HZ * GYRO_MAX_RATE)
+#define GYRO_MAX_SHAKE_RAW (DegreesToRadians(1.0)/GyroScale[CurrAttSensorType])
 
 #define THR_START_PW FromPercent(5)
 
@@ -105,24 +103,16 @@
 
 #define STICK_BYPASS_SCALE  (1.0f/3.0f)
 
-#define DEFAULT_ROLLPITCH_RATE_RADPS DegreesToRadians(720)
-#define DEFAULT_YAW_RATE_RADPS DegreesToRadians(90)
-#define DEFAULT_TURNOUT_RAD DegreesToRadians(60)
-
 #define NAV_CEILING_M 120.0f // 400 feet
 #define NAV_DEFAULT_RTH_M 15.0f
 #define NAV_DEFAULT_FENCE_M 400.0f
-#define NAV_MIN_VEL_MPS 0.1f
+
 #define NAV_MAX_ANGLE_RAD DegreesToRadians(35)
 
 #define NAV_CORR_DECAY 2.0f	// decay to zero /S of nav corrections
 
 #define NAV_SENS_THRESHOLD_STICK FromPercent(20)// No GPS Nav if Ch7 is less than this
 #define NAV_ALT_THRESHOLD_STICK FromPercent(10)// No Alt Hold if Ch7 is less than this
-
-#define NAV_ATTITUDE_SLEW_RAD_S DegreesToRadians(20)
-#define NAV_FW_ATTITUDE_SLEW_RAD_S DegreesToRadians(20)
-#define NAV_YAW_MAX_SLEW_RAD_S DegreesToRadians(60)
 
 #define NAV_LAND_M 5.0f // altitude below which motor shutoff armed for autoland
 #define NAV_MIN_ALT_M 5.0f // minimum altitude after takeoff before going to next WP
@@ -133,14 +123,11 @@
 
 #define GPS_TIMEOUT_MS 2000 // mS.
 #define GPS_MIN_SATELLITES 6 // preferably > 5 for 3D fix
-#define GPS_MIN_FIX 6 // must be 3D
 #define GPS_MIN_HACC 5.0f
 #define GPS_MIN_SACC 1.0f
 #define GPS_HDOP_TO_HACC 4.0f // crude approximation for NMEA GPS units
 #define GPS_UPDATE_MS 200
 #define GPS_UPDATE_HZ (1000/GPS_UPDATE_MS)
-
-#define PROP_LP_FREQ_HZ	20.0f // to reduce prop arm crossing inputs into rate loop D term
 
 #define THR_UPDATE_MS 3000 // mS. constant throttle time for altitude hold
 

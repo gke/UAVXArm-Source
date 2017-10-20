@@ -492,7 +492,7 @@ void UpdateRCMap(void) {
 	Map[NavGainRC] = P(RxAux2Ch);
 	Map[BypassRC] = P(RxAux3Ch);
 	Map[CamPitchRC] = P(RxAux4Ch);
-	Map[TuneRC] = P(RxAux5Ch);
+	Map[WPNavRC] = P(RxAux5Ch);
 	Map[TransitionRC] = P(RxAux6Ch);
 	Map[ArmRC] = P(RxAux7Ch);
 
@@ -594,11 +594,7 @@ void MapRC(void) { // re-maps captured PPM to Rx channel sequence
 		cc = RMap[c];
 		RCp[cc] = RC[cc];
 		Temp = (RCInp[c].Raw - 1000) * 0.001;
-#if defined(BARE_METAL)
-		RC[cc] = Temp;
-#else
 		RC[cc] = RCFilter(RCp[cc], Temp);
-#endif
 	}
 } // MapRC
 
@@ -822,19 +818,11 @@ void UpdateControls(void) {
 
 		// Attitude
 
-#if defined(BARE_METAL)
-		for (idx a = Pitch; a <= Yaw; a++)
-			A[a].StickP = A[a].Stick;
-#endif
 		// normalise from 0-1.0 -> -1.0-1.0
 		A[Roll].Stick = (RC[RollRC] - RC_NEUTRAL) * 2.0f;
 		A[Pitch].Stick = (RC[PitchRC] - RC_NEUTRAL) * 2.0f;
 		A[Yaw].Stick = (RC[YawRC] - RC_NEUTRAL) * 2.0f;
 
-#if defined(BARE_METAL)
-		for (idx a = Pitch; a <= Yaw; a++)
-			A[a].StickD = (A[a].StickP - A[a].Stick) / (RCLastFrameuS * 1.0E-6);
-#endif
 		CurrMaxRollPitchStick = Max(Abs(A[Roll].Stick), Abs(A[Pitch].Stick));
 
 		F.AttitudeHold = CurrMaxRollPitchStick < ATTITUDE_HOLD_LIMIT_STICK;
@@ -849,25 +837,30 @@ void UpdateControls(void) {
 		F.Bypass = Triggered(BypassRC);
 
 		if (ActiveCh(RTHRC))
-			NavSwState = Limit((uint8)(RC[RTHRC] * 3.0f), NavSwLow, NavSwHigh);
+			NavSwState = Limit((uint8)(RC[RTHRC] * 3.0f), SwLow, SwHigh);
 		else {
-			NavSwState = NavSwLow;
+			NavSwState = SwLow;
 			F.ReturnHome = F.Navigate = F.NavigationEnabled = false;
 		}
 
 		UpdateRTHSwState();
 
-		F.UsingRateControl = Triggered(RateControlRC) && (NavSwState
-				== NavSwLow);
+		if (ActiveCh(RateControlRC) && (NavSwState == SwLow))
+			AttitudeMode
+					= Limit((uint8)(RC[RateControlRC] * 3.0f), AngleMode, RateMode);
+		else
+			AttitudeMode = AngleMode;
+
+		F.UsingAngleControl = AttitudeMode == AngleMode;
 
 		Nav.Sensitivity = ActiveCh(NavGainRC) ? RC[NavGainRC] : 1.0f;
 
 		DesiredCamPitchTrim = ActiveCh(CamPitchRC) ? RC[CamPitchRC]
 				- RC_NEUTRAL : 0;
 
-		TuningScale
-				= (ActiveCh(TuneRC) && Tuning) ? Limit(RC[TuneRC] + 0.5f, 0.5f, 1.5f)
-						: 1.0f;
+		F.UsingWPNavigation = (NV.Mission.NoOfWayPoints > 0)
+				&& (DiscoveredRCChannels > Map[WPNavRC]) && (RC[WPNavRC]
+				> FromPercent(70));
 
 		TxSwitchArmed = Triggered(ArmRC);
 

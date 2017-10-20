@@ -25,12 +25,6 @@
 const ParamStruct_t
 		DefaultParams[] = { //
 
-#if defined(V4_BOARD)
-						{ PIDTimeSel, { 1, 1, 1, 1} }, // P92
-#else
-						{ PIDTimeSel, { 0, 0, 0, 0} }, // P92
-#endif
-
 						// Attitude
 
 						{ ThrottleGainRate, { 0, 0, 0, 0} }, // 93 PID overall gain above throttle cruise
@@ -39,30 +33,30 @@ const ParamStruct_t
 						{ RollAngleKp, { 25, 25, 20, 25 } }, //  03
 						{ RollAngleKi, { 3, 3, 1, 1 } }, //  24
 						{ RollIntLimit, { 10, 10, 10, 10 } }, //  05
-						{ RollRateKp, { 20, 40, 6, 6 } }, //  01
-						{ RollRateKd, { 45, 75, 0, 0 } }, //  12
+						{ RollRateKp, { 20, 35, 6, 6 } }, //  01
+						{ RollRateKd, { 45, 45, 0, 0 } }, //  12
 						{ MaxRollRate, { 60, 60, 60, 60 } }, // x10 deg/S 83
 
 						{ MaxPitchAngle, { 60, 60, 45, 60 } }, // deg  75
 						{ PitchAngleKp, { 25, 25, 20, 25 } }, //  08
 						{ PitchAngleKi, { 3, 3, 1, 1 } }, //  25
 						{ PitchIntLimit, { 10, 10, 10, 10 } }, //  10
-						{ PitchRateKp, { 20, 40, 6, 6 } }, //  06
-						{ PitchRateKd, { 45, 75, 0, 0 } }, //  28
+						{ PitchRateKp, { 20, 25, 6, 6 } }, //  06
+						{ PitchRateKd, { 45, 45, 0, 0 } }, //  28
 						{ MaxPitchRate, { 60, 60, 30, 30 } }, // x10 deg/S 84
 
 						{ YawRateKp, { 20, 20, 10, 10 } }, //  11
 						{ YawRateKd, { 45, 45, 0, 0 } }, // // 91
-						{ MaxCompassYawRate, { 9, 9, 24, 24 } }, // 10 deg/S 89,
+						{ MaxCompassYawRate, { 9, 9, 9, 9 } }, // 10 deg/S 89,
 						{ MaxYawRate, { 36, 36, 9, 9 } }, //  *10 deg/S 64
 
 						// Altitude Hold
-						{ AltPosKp, { 16, 16, 16, 16 } }, //  07
-						{ AltPosKi, { 12, 12, 12, 12 } }, //  02
-						{ AltVelKp, { 9, 9, 9, 9, } }, //  30
+						{ AltPosKp, { 10, 10, 16, 16 } }, //  07
+						{ AltPosKi, { 8, 8, 12, 12 } }, //  02
+						{ AltVelKp, { 12, 12, 10, 10, } }, //  30
 						{ AltVelKd, { 0, 0, 0, 0 } }, //  14
 						{ AltLPF, { 10, 10, 10, 10 } }, //  *10 58
-						{ MaxAltHoldComp, { 40, 40, 15, 15 } }, //  % 67
+						{ MaxAltHoldComp, { 10, 10, 15, 15 } }, //  % 67
 						{ AltCompDecayTime, { 15, 15, 15, 15 } }, //  *0.1S 22
 
 						{ RFSensorType, { UnknownRF, UnknownRF, UnknownRF,
@@ -82,10 +76,10 @@ const ParamStruct_t
 						{ SensorHint, { UAVXArm32IMU, UAVXArm32IMU,
 								UAVXArm32IMU, UAVXArm32IMU } }, // ,35c
 
-						{ GyroLPFSel, { MPU_RA_DLPF_BW_98, MPU_RA_DLPF_BW_98,
-								MPU_RA_DLPF_BW_98, MPU_RA_DLPF_BW_98 } }, // 48
-
-						{ AccLPFSel, { 4, 4, 4, 4} }, // P90,
+						// Filters
+						{ DerivativeLPFHz, {75, 75, 75, 75 } }, // 78
+						{ GyroLPFHz, { 100, 100, 100, 100 } }, // 48
+						{ AccLPFHz, { 20, 20, 20, 20} }, // P90,
 
 						// Rx
 						{ RCChannels, { 7, 7, 7, 7 } }, //  37c
@@ -116,7 +110,7 @@ const ParamStruct_t
 						{ NavHeadingTurnout, { 60, 60, 60, 60, } }, // 79,
 						{ NavCrossTrackKp, { 4, 4, 4, 4 } }, //  49
 
-						{ NavRTHAlt, { 15, 10, 30, 30 } }, //  33
+						{ NavRTHAlt, { 10, 10, 30, 30 } }, //  33
 						{ BestROC, { 2, 2, 3, 3 } }, // 73
 						{ MaxDescentRateDmpS, { 10, 10, 25, 25 } }, //  46
 						{ DescentDelayS, { 15, 15, 15, 15 } }, //  47
@@ -139,6 +133,8 @@ const ParamStruct_t
 						{ EstCruiseThr, { 50, 50, 20, 20, } }, //  20c
 						{ PercentIdleThr, { 10, 7, 0, 0 } }, //  23c
 
+						{ GyroSlewRate, { 20, 20, 20, 20} }, // *100 Deg/S/S P92
+
 						// Fixed Wing
 						{ FWMaxClimbAngle, { 60, 60, 15, 15 } }, // deg. 68
 						{ FWRollPitchFF, { 0, 0, 25, 25 } }, //  % 65
@@ -153,16 +149,16 @@ const ParamStruct_t
 						// Configuration
 						{ ArmingMode, { RollStickArming, RollStickArming,
 								RollStickArming, RollStickArming } }, //  04
-						{ Config1Bits, { UseRapidDescentMask
-								| UseRTHDescendMask | GPSToLaunchRequiredMask,
-								UseRapidDescentMask | UseRTHDescendMask
-										| GPSToLaunchRequiredMask,
+						{ Config1Bits, {
+								UseRapidDescentMask | UseRTHDescendMask | GPSToLaunchRequiredMask,
+								UseRapidDescentMask | UseRTHDescendMask | GPSToLaunchRequiredMask,
 								UseRapidDescentMask |  UseManualAltHoldMask,
 								UseRapidDescentMask |  UseManualAltHoldMask } }, //  16c
-						{ Config2Bits, { UseConfigRebootMask,
-								UseConfigRebootMask, UseFastStartMask
-										| UseConfigRebootMask, UseFastStartMask
-										| UseConfigRebootMask } }, //  74
+						{ Config2Bits, {
+								UseConfigRebootMask,
+								UseConfigRebootMask | UseFastStartMask,
+								UseConfigRebootMask | UseFastStartMask,
+								UseConfigRebootMask | UseFastStartMask} }, //  74
 						{ ComboPort1Config, { CPPM_GPS_M7to10, CPPM_GPS_M7to10,
 								CPPM_GPS_M7to10, CPPM_GPS_M7to10 } }, //  15
 #if defined(V4_BOARD)
@@ -193,8 +189,6 @@ const ParamStruct_t
 
 						// Unused
 
-						{ Unused78, { NoTuning, NoTuning, NoTuning,
-								NoTuning } }, // 78
 						{ Unused27, { 0, } } // 27
 
 				};

@@ -20,12 +20,6 @@
 
 #include "UAVX.h"
 
-const uint8 TuneMap[] = { NoTuning, RollAngleKp, RollAngleKi, RollRateKp,
-		RollRateKd, PitchAngleKp, PitchAngleKi, PitchRateKp, PitchRateKd,
-		YawRateKp, YawRateKd, AltPosKp, AltPosKi, AltVelKp, AltVelKd,
-		NavPosKp, NavPosKi, NavVelKp, NavCrossTrackKp };
-
-uint8 CurrTuningSel = NoTuning; // index into map to actual parameter
 real32 TuningScale = 1.0f;
 boolean Tuning = false;
 
@@ -39,7 +33,7 @@ void Tune(void) {
 
 void InitTune(void) {
 
-	Tuning = CurrTuningSel != NoTuning;
+	Tuning = false;
 
 	if (Tuning) {
 

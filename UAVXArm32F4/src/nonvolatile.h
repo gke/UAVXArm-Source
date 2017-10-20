@@ -55,7 +55,7 @@ typedef struct {
 	uint16 CurrRevisionNo;
 	uint8 CurrPS;
 
-	MissionStruct Mission, NewMission;
+	MissionStruct Mission;
 }__attribute__((packed)) NVStruct;
 
 extern NVStruct NV;

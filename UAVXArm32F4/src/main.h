@@ -33,7 +33,6 @@
 extern volatile uint32 mS[];
 extern volatile uint32 uS[];
 extern real32 dT, dTR, dTOn2, dTROn2;
-extern uint8 CurrPIDTimeSel;
 extern uint32 CurrPIDCycleuS;
 extern real32 CurrPIDCycleS;
 extern uint32 StartCycleuS;
@@ -104,7 +103,7 @@ typedef union {
 				AltControlEnabled :1,
 				UsingGPSAltitude :1,
 				RapidDescentHazard :1,
-				LostModel :1,
+				LandingSwitch :1,
 				NearLevel :1,
 				LowBatt :1,
 				GPSValid :1,
@@ -133,11 +132,11 @@ typedef union {
 				// 3
 				UsingPOI :1,
 				Bypass :1,
-				UsingRateControl :1,
+				UsingAngleControl :1,
 				Emulation :1,
 				MagnetometerLocked :1,
 				DrivesArmed :1,
-				UnusedNavigationActive :1,
+				AccZBump :1,
 				UseManualAltHold :1,
 
 				// 4
@@ -145,13 +144,13 @@ typedef union {
 				DumpingBlackBox :1,
 				ParametersValid :1,
 				RCNewValues :1,
-				NewCommands :1,
+				UsingWPNavigation :1,
 				IMUActive :1,
 				MagnetometerActive :1,
 				IsArmed :1,
 
 				// 5
-				NewGPSPosition :1,
+				IsFixedWing :1,
 				InvertMagnetometer :1,
 				MagnetometerCalibrated :1,
 				UsingUplink :1,
@@ -187,9 +186,9 @@ typedef union {
 				NavigationEnabled :1,
 
 				// 9
-				UnusedValidHeading :1, UnusedGPSPosUpdated :1,
+				UnusedValidHeading :1, NewGPSPosition :1,
 				EnforceDriveSymmetry :1, RCFrameOK :1, spiFatal :1,
-				Unused_9_5 :1, UsingMAVLink :1, UsingConvPropSense :1; // MAXED OUT
+				NewCommands :1, UsingMAVLink :1, UsingConvPropSense :1; // MAXED OUT
 	};
 } Flags;
 

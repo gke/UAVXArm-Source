@@ -539,7 +539,7 @@ void UbxSetMode(uint8 s) {
 	TxUbxu16(s, 36);
 	TxUbxu8(s, fixMode | dyn); // mask LSB (fixMode, dyn)
 	TxUbxu8(s, 0); // mask MSB (reserved)
-	if (IsFixedWing)
+	if (F.IsFixedWing)
 		TxUbxu8(s, Airborne1G);
 	else
 		TxUbxu8(s, Pedestrian);
@@ -1341,11 +1341,11 @@ void ProcessGPSSentence(void) {
 				}
 			}
 
-			StatsMax(GPS.altitude, GPSAltitudeS);
-			StatsMax(GPS.gspeed * 10.0f, GPSVelS);
-			StatsMinMax(GPS.hAcc * 100.0f, MinhAccS, MaxhAccS);
-			StatsMinMax(GPS.sAcc * 100.0f, MinsAccS, MaxsAccS);
-			StatsMinMax(GPS.noofsats, GPSMinSatsS, GPSMaxSatsS);
+			StatsMax(GPSAltitudeS, GPS.altitude);
+			StatsMax(GPSVelS, GPS.gspeed * 10.0f);
+			StatsMinMax(MinhAccS, MaxhAccS, GPS.hAcc * 100.0f);
+			StatsMinMax(MinsAccS, MaxsAccS, GPS.sAcc * 100.0f);
+			StatsMinMax(GPSMinSatsS, GPSMaxSatsS, GPS.noofsats);
 
 		}
 	} else {
@@ -1498,9 +1498,9 @@ void InitGPS(void) {
 			= false;
 
 	if (F.Emulation) {
-		GPS.C[NorthC].OriginRaw = GPS.C[NorthC].Raw = DEFAULT_HOME_LAT;
-		GPS.C[EastC].OriginRaw = GPS.C[EastC].Raw = DEFAULT_HOME_LON;
-		GPS.longitudeCorrection = DEFAULT_LON_CORR;
+		GPS.C[NorthC].OriginRaw = DEFAULT_HOME_LAT;
+		GPS.C[EastC].OriginRaw = DEFAULT_HOME_LON;
+		GPS.longitudeCorrection = DEFAULT_LON_CORR; //DEFAULT_LON_CORR;
 	}
 
 	GPS.year = 0; // no auto variation with MTK

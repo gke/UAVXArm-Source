@@ -22,8 +22,9 @@
 #ifndef _uavx_h
 #define _uavx_h
 
-//#define USE_PAVEL
+#define USE_MPU_DLPF // definitely use for now with 250Hz DLPF => 8KHz gyro sampling
 
+// Black Box stuff
 //#define BLACKBOX
 #define STATIC_UNIT_TESTED
 #define timeUs_t int
@@ -47,7 +48,7 @@
 #define USE_WS2812
 //#define USE_WS2812B
 
-#define INC_DFT
+//#define INC_DFT
 #define INC_STATS_TEL
 #define INC_RC_TEL
 
@@ -56,8 +57,6 @@
 #endif
 
 #define VOLT_MEASUREMENT_ONBOARD
-
-#define AILERON_DIFF 0 // 100 is NO down deflection
 
 #define HAVE_CURRENT_SENSOR
 

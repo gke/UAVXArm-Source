@@ -22,8 +22,6 @@
 
 #include "UAVX.h"
 
-//#define ALTFILTER LPFilter
-#define ALTFILTER LPFilterBW // hit it hard!!
 #define MS56XX_PROM 		0xA0
 #define MS56XX_PRESS 		0x40
 #define MS56XX_TEMP 		0x50
@@ -51,11 +49,10 @@ int64 M[7];
 uint16 ms56xx_ManufacturersData;
 boolean AcquiringPressure;
 uint16 BaroWarmupCycles = 1000;
-real32 BaroTemperature, BaroPressure, UncompensatedBaroPressure,
-		CompensatedBaroPressure;
-real32 OriginAltitude, BaroAltitude, UncompensatedBaroAltitude, AltitudeP, AccZ;
+real32 BaroTemperature, BaroPressure, CompensatedBaroPressure;
+real32 OriginAltitude, BaroAltitude, AltitudeP, AccZ;
 real32 ROC, ROCF;
-real32 FAltitude, FROC; // fusion filter output
+real32 BaroRawAltitude, BaroRawAltitudeP;
 uint32 NextBaroUpdateuS;
 real32 Airspeed;
 uint8 CurrRFSensorType;
@@ -69,7 +66,7 @@ HistStruct ROCLPF, BaroLPF, IRMAF, BaroMAF;
 real32 FakeBaroAltitude;
 real32 AltdT, AltdTR;
 
-const boolean UsingBeall = true;
+const boolean UsingBeall = false; // AccZ gets bizarre so don't bother
 
 real32 CalculateDensityAltitude(boolean FullMath, real32 P) {
 
@@ -82,8 +79,8 @@ real32 CalculateDensityAltitude(boolean FullMath, real32 P) {
 
 void ZeroAltitude(void) {
 
-	FAltitude = OriginAltitude = BaroAltitude;
-	FROC = ROC = ROCF = Altitude = AltitudeP = AccZ = 0.0f;
+	OriginAltitude = BaroAltitude;
+	ROC = ROCF = Altitude = AltitudeP = AccZ = 0.0f;
 	ROCLPF.Primed = BaroLPF.Primed = IRMAF.Primed = BaroMAF.Primed
 			= AccZMAF.Primed = AccZLPF.Primed = false;
 } // ZeroAltitude
@@ -238,9 +235,11 @@ void UpdateAccZ(real32 AccZdT) {
 
 	AccZ = Smoothr32xn(&AccZMAF, MA_FILTER_LEN,
 			Limit1(GravityCompensatedAccZ(), GRAVITY_MPS_S * 2.0f));
-	AccZ = ALTFILTER(&AccZLPF, AccZ, AltLPFHz, AccZdT);
+	AccZ = LPFilter(&AccZLPF, 3, AccZ, AltLPFHz, AccZdT);
 
 	AccZ -= NV.AccCal.DynamicAccBias[Z];
+
+	F.AccZBump = AccZ > ACCZ_LANDING_MPS_S;
 
 } // UpdateAccZ(void) {
 
@@ -254,6 +253,8 @@ void GetBaro(void) {
 	uint32 BaroVal;
 	uint8 B[3];
 
+	static boolean Primed = false;
+
 	if (uSClock() > NextBaroUpdateuS) {
 
 		sioReadBlock(SIOBaro, MS56XX_ID, 0, 3, B);
@@ -262,33 +263,26 @@ void GetBaro(void) {
 		if (AcquiringPressure) {
 
 			BaroPressure = CompensateBaro(BaroTempVal, BaroVal);
-			BaroAltitude = CalculateDensityAltitude(false, BaroPressure);
-
-			BaroAltitude = Limit(BaroAltitude, -100.0, 2000.0f);
 
 			NowuS = uSClock(); // should be no jitter in sioReadBlock?
 			BarodT = (NowuS - LastBaroUpdateuS) * 0.000001f;
 			LastBaroUpdateuS = NowuS;
 
+			BaroRawAltitude = CalculateDensityAltitude(false, BaroPressure);
+
+			if (!Primed)
+				BaroRawAltitudeP = BaroRawAltitude;
+
+			BaroAltitude = SlewLimit(&BaroRawAltitudeP, BaroRawAltitude,
+					ALT_MAX_SLEW_M, BarodT);
+
 			BaroAltitude = Smoothr32xn(&BaroMAF, MA_FILTER_LEN, BaroAltitude);
-			BaroAltitude = ALTFILTER(&BaroLPF, BaroAltitude, AltLPFHz, BarodT);
+			BaroAltitude
+					= LPFilter(&BaroLPF, 3, BaroAltitude, AltLPFHz, BarodT);
 
 			UpdateAccZ(BarodT); // stale ~180uS
 
-			if (BaroWarmupCycles <= 0) {
-
-				// Ryan Beall CF
-				const real32 K_ROC = 0.0001f;
-				const real32 K_ALT = 0.008f;
-
-				FROC += (-AccZ) * BarodT;
-				FAltitude += FROC * BarodT;
-
-				real32 dAlt = BaroAltitude - FAltitude;
-				FROC += K_ROC * dAlt;
-				FAltitude += K_ALT * dAlt;
-
-			} else
+			if (BaroWarmupCycles > 0)
 				BaroWarmupCycles--;
 
 			if (++BaroPressCycles > 20) {
@@ -356,11 +350,11 @@ void InitBarometer(void) {
 	NextBaroUpdateuS = uSClock() + ms56xxSampleIntervaluS[MS56XX_OSR >> 1];
 
 	BaroWarmupCycles = 50 * MA_FILTER_LEN;
-	while (BaroWarmupCycles > 0) // just warming up the ms56xx!
+	while (BaroWarmupCycles > 0)// just warming up the ms56xx!
 		GetBaro();
 
 	DesiredAltitude = 0;
-	FAltitude = OriginAltitude = BaroAltitude;
+	OriginAltitude = BaroAltitude;
 
 } // InitBarometer
 
@@ -549,6 +543,101 @@ void InitRangefinder(void) {
 
 // altitude
 
+real32 ConditionBaroAltitude(real32 BaroAltitude, real32 FAltitude) {
+
+	return UsingBeall ? FAltitude - OriginAltitude : BaroAltitude
+			- OriginAltitude;
+
+} // ConditionBaroAltitude
+
+#define RETIRED_ALT_HOLD
+#if defined(RETIRED_ALT_HOLD)
+
+void SelectAltitudeSensor(void) {
+	const real32 RFlb = RF[CurrRFSensorType].maxAlt * 0.4f;
+	const real32 RFub = RF[CurrRFSensorType].maxAlt * 0.6f;
+
+	enum Strategies {
+		Recapture, TrackOrigin, DropHold
+	} Strategy;
+
+	static boolean WasUsingRF = false;
+
+	const real32 RF_CF = 0.85f;
+	real32 AltOffset;
+
+	Strategy = Recapture;
+
+	switch (Strategy) {
+	case DropHold: // solves cliff problem
+		if ((State != InFlight) && (StickThrottle < IdleThrottle)) {
+			WasUsingRF = false;
+			ZeroAltitude();
+		} else {
+			AltitudeP = Altitude;
+			if (F.UsingRangefinderAlt) {
+				Altitude = RangefinderAltitude;
+				if (F.HoldingAlt && !WasUsingRF)
+					F.HoldingAlt = false;
+				WasUsingRF = true;
+			} else {
+				Altitude = F.UsingGPSAltitude && F.OriginValid ? GPS.altitude
+						- GPS.originAltitude : BaroAltitude - OriginAltitude;
+				if (F.HoldingAlt && WasUsingRF)
+					F.HoldingAlt = false;
+				WasUsingRF = false;
+			}
+		}
+
+		break;
+	case TrackOrigin:
+		// does not solve cliff problem and can give runaway altitude
+		// DO NOT TAKE OFF AT A CLIFF EDGE
+		if ((State != InFlight) && (StickThrottle < IdleThrottle))
+			ZeroAltitude();
+		else {
+			AltitudeP = Altitude;
+			if (F.UsingRangefinderAlt) {
+				Altitude = RangefinderAltitude;
+				if ((RangefinderAltitude > RFlb)
+						&& (RangefinderAltitude < RFub)) {
+					AltOffset = (BaroAltitude - OriginAltitude)
+							- RangefinderAltitude;
+					OriginAltitude = OriginAltitude * RF_CF + ((OriginAltitude
+							+ AltOffset) * (1.0f - RF_CF));
+				}
+			} else
+				Altitude = F.UsingGPSAltitude && F.OriginValid ? GPS.altitude
+						- GPS.originAltitude : BaroAltitude - OriginAltitude;
+		}
+		break;
+	case Recapture: // solves cliff problem
+		if ((State != InFlight) && (StickThrottle < IdleThrottle)) {
+			WasUsingRF = false;
+			ZeroAltitude();
+		} else {
+			AltitudeP = Altitude;
+			if (F.UsingRangefinderAlt) {
+				Altitude = RangefinderAltitude;
+				if (F.HoldingAlt && !WasUsingRF)
+					DesiredAltitude = Altitude;
+				WasUsingRF = true;
+			} else {
+				Altitude = F.UsingGPSAltitude && F.OriginValid ? GPS.altitude
+						- GPS.originAltitude : BaroAltitude - OriginAltitude;
+				if (F.HoldingAlt && WasUsingRF)
+					DesiredAltitude = Altitude;
+				WasUsingRF = false;
+			}
+		}
+		break;
+	default:
+		break;
+	} // switch
+
+} // SelectAltitudeSensor
+
+#else
 
 void SelectAltitudeSensor(void) {
 	static boolean WasUsingRF = false;
@@ -565,11 +654,8 @@ void SelectAltitudeSensor(void) {
 			}
 			WasUsingRF = true;
 		} else {
-			if (F.UsingGPSAltitude && F.OriginValid)
-				Altitude = GPS.altitude - GPS.originAltitude;
-			else
-				Altitude = UsingBeall ? FAltitude - OriginAltitude
-						: BaroAltitude - OriginAltitude;
+			Altitude = F.UsingGPSAltitude && F.OriginValid ?
+			GPS.altitude - GPS.originAltitude : BaroAltitude - OriginAltitude;
 			if (F.HoldingAlt && WasUsingRF) {
 				AltitudeP = Altitude;
 				F.HoldingAlt = false;
@@ -579,6 +665,8 @@ void SelectAltitudeSensor(void) {
 	}
 
 } // SelectAltitudeSensor
+
+#endif
 
 void UpdateAltitudeEstimates(void) {
 	static uint32 LastAltUpdatemS = 0;
@@ -610,18 +698,17 @@ void UpdateAltitudeEstimates(void) {
 
 		if (UAVXAirframe == Instrumentation)
 			ROC = Limit1(ROC, 20.0f);
-		else if (!IsFixedWing)
+		else if (!F.IsFixedWing)
 			ROC = Limit1(ROC, ALT_MAX_ROC_MPS);
 
-		ROCF = HardFilter(ROCF, ROC);
+		ROCF = HardFilter(ROCF, ROC); // used for landing and cruise throttle tracking
 
-		StatsMax(Altitude, AltitudeS);
-		StatsMinMax(ROC * 100.0f, MinROCS, MaxROCS);
+		StatsMax(AltitudeS, Altitude);
+		StatsMinMax(MinROCS, MaxROCS, ROC * 100.0f);
 
 		F.NewAltitudeValue = true;
 	}
 
 } // UpdateAltitudeEstimates
-
 
 

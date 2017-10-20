@@ -51,6 +51,7 @@ void GetAccelerations(void);
 void CalibrateAccsAndGyros(uint8 s);
 void CalculateAccelerations(void);
 void InitIMU(void);
+void InitSWFilters(void);
 
 extern HistStruct AccF[3];
 extern HistStruct GyroF[3];
@@ -62,11 +63,10 @@ extern real32 GyroLPFreqHz, AccLPFreqHz;
 extern real32 GyroBias[];
 extern const real32 GyroScale[];
 extern uint8 CurrAttSensorType;
-extern boolean UsingSWFilters;
 extern real32 Acc[], Rate[];
 extern real32 RateEnergySum;
 extern uint32 RateEnergySamples;
-extern idx RollPitchLPFOrder;
+extern const idx RollPitchLPFOrder;
 
 #endif
 
