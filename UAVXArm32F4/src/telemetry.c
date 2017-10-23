@@ -801,24 +801,24 @@ void SendOriginPacket(uint8 s) {
 	SendPacketHeader(s);
 
 	TxESCu8(s, UAVXOriginPacketTag);
-	TxESCu8(s, 17);
+	TxESCu8(s, 16);
 
 	TxESCu8(s, M->NoOfWayPoints); // 0
-	TxESCu8(s, M->ProximityAltitude); // 1
-	TxESCu8(s, M->ProximityRadius); // 2
-	TxESCi16(s, M->FenceRadius); // 3
+
+	TxESCu8(s, Limit(Nav.MaxVelocity, 1.0f, 25.0f) * 10); // 1
+	TxESCu8(s, M->ProximityAltitude); // 2
+	TxESCu8(s, M->ProximityRadius); // 3
+	TxESCi16(s, M->FenceRadius); // 4
 
 	if (F.OriginValid) {
-		TxESCi16(s, GPS.originAltitude); // 5
-		TxESCi32(s, GPS.C[NorthC].OriginRaw); // 7
-		TxESCi32(s, GPS.C[EastC].OriginRaw); // 11
+		TxESCi16(s, GPS.originAltitude); // 6
+		TxESCi32(s, GPS.C[NorthC].OriginRaw); // 8
+		TxESCi32(s, GPS.C[EastC].OriginRaw); // 12
 	} else {
-		TxESCi16(s, 0); // 5
-		TxESCi32(s, 0); // 7
-		TxESCi32(s, 0); // 11
+		TxESCi16(s, 0); // 6
+		TxESCi32(s, 0); // 8
+		TxESCi32(s, 0); // 12
 	}
-
-	TxESCi16(s, M->RTHAltHold); // 15
 
 	SendPacketTrailer(s);
 } // SendOriginPacket
@@ -946,14 +946,6 @@ void ProcessOriginPacket(uint8 s) {
 	NewNavMission.ProximityAltitude = UAVXPacketi16(3);
 	NewNavMission.ProximityRadius = UAVXPacketi16(4);
 	NewNavMission.FenceRadius = UAVXPacketi16(5);
-
-	/* NOT updated by UAVXNav set ONLY by GPS at launch
-	 NewNavMission.OriginAltitude = UAVXPacketi16(7);
-	 NewNavMission.OriginLatitude = UAVXPacketi32(9);
-	 NewNavMission.OriginLongitude = UAVXPacketi32(13);
-	 */
-
-	NewNavMission.RTHAltHold = UAVXPacketi16(17);
 
 	UpdateNavMission();
 

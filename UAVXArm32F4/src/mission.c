@@ -36,6 +36,8 @@ boolean NavMissionUpdated = true;
 
 void ClearNavMission(void) {
 
+	NV.Mission.NoOfWayPoints = 0;
+
 	if (F.IsFixedWing) {
 		NV.Mission.ProximityAltitude = WING_PROXIMITY_ALTITUDE_M;
 		NV.Mission.ProximityRadius = WING_PROXIMITY_RADIUS_M;
@@ -44,8 +46,6 @@ void ClearNavMission(void) {
 		NV.Mission.ProximityRadius = NAV_PROXIMITY_RADIUS_M;
 	}
 
-	NV.Mission.NoOfWayPoints = 0;
-	NV.Mission.RTHAltHold = NAV_DEFAULT_RTH_M;
 	NV.Mission.FenceRadius = NAV_DEFAULT_FENCE_M;
 
 } // ClearMission
@@ -72,7 +72,7 @@ void GenerateHomeWP(void) {
 void CaptureHomePosition(void) {
 	idx a;
 
-	if (F.GPSValid && (GPS.hAcc <= GPSMinhAcc) && !F.OriginValid) {
+	if (F.GPSValid && (GPS.hAcc <= GPSMinhAcc)) {
 
 		mS[LastGPS] = mSClock();
 

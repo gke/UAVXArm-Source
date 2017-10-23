@@ -656,8 +656,9 @@ void ParseUbxPacket(void) {
 			// = ubx.payload.pvt.tAcc;
 			// = ubx.payload.pvt.nano;
 			GPS.fix = ubx.payload.pvt.fixtype;
-			F.GPSValid = (ubx.payload.pvt.fixtype
-					== Fix3D) || (ubx.payload.pvt.fixtype == Fix2D) || (ubx.payload.pvt.fixtype == FixGPSDeadReckoning);
+			F.GPSValid = (ubx.payload.pvt.fixtype == Fix3D)
+					|| (ubx.payload.pvt.fixtype == Fix2D)
+					|| (ubx.payload.pvt.fixtype == FixGPSDeadReckoning);
 			// = ubx.payload.pvt.flags1;
 			// = ubx.payload.pvt.flags2;
 			GPS.noofsats = ubx.payload.pvt.numSV;
@@ -1303,8 +1304,8 @@ boolean GPSSanityCheck(void) {
 	boolean r;
 
 	r = F.Emulation ? true : (Abs(GPS.C[NorthC].Raw) <= 900000000L)
-			&& (Abs(GPS.C[EastC].Raw) <= 1800000000L) && (GPS.C[NorthC].Raw != 0)
-			&& (GPS.C[EastC].Raw != 0);
+			&& (Abs(GPS.C[EastC].Raw) <= 1800000000L) && (GPS.C[NorthC].Raw
+			!= 0) && (GPS.C[EastC].Raw != 0);
 
 	if (!r)
 		incStat(GPSInvalidS);
@@ -1327,8 +1328,8 @@ void ProcessGPSSentence(void) {
 			if (!F.Emulation) {
 				GPS.C[NorthC].Pos = GPSToM(GPS.C[NorthC].Raw
 						- GPS.C[NorthC].OriginRaw);
-				GPS.C[EastC].Pos = GPSToM(GPS.C[EastC].Raw - GPS.C[EastC].OriginRaw)
-						* GPS.longitudeCorrection;
+				GPS.C[EastC].Pos = GPSToM(GPS.C[EastC].Raw
+						- GPS.C[EastC].OriginRaw) * GPS.longitudeCorrection;
 
 				if ((CurrGPSType != UBXBinGPS)
 						&& (CurrGPSType != UBXBinGPSInit)) {
@@ -1435,24 +1436,28 @@ void UpdateGPS(void) {
 	uint32 NowmS;
 
 	if (F.Emulation)
+
 		GPSEmulation(); // real GPS preferably unplugged
-	else if ((GPSRxSerial != TelemetrySerial) || Armed()) {
-		switch (CurrGPSType) {
-		case UBXBinGPS:
-		case UBXBinGPSInit:
-			RxUbxPacket();
-			break;
-		case MTKBinGPS:
-			RxMTKPacket();
-			break;
-		case MTKNMEAGPS:
-		case NMEAGPS:
-			RxNMEAPacket();
-			break;
-		default:
-			// Rx disabled elsewhere
-			break;
-		} // switch
+
+	else {
+		if ((GPSRxSerial != TelemetrySerial) || Armed()) {
+			switch (CurrGPSType) {
+			case UBXBinGPS:
+			case UBXBinGPSInit:
+				RxUbxPacket();
+				break;
+			case MTKBinGPS:
+				RxMTKPacket();
+				break;
+			case MTKNMEAGPS:
+			case NMEAGPS:
+				RxNMEAPacket();
+				break;
+			default:
+				// Rx disabled elsewhere
+				break;
+			} // switch
+		}
 	}
 
 	NowmS = mSClock();
@@ -1493,17 +1498,16 @@ void InitGPS(void) {
 	cc = 0;
 	memset(&GPS, 0, sizeof(GPS));
 
-	mS[FakeGPSUpdate] = 0;
-	F.OriginValid = F.GPSValid = F.HaveGPS = F.GPSPacketReceived
-			= false;
+	F.OriginValid = F.GPSValid = F.HaveGPS = F.GPSPacketReceived = false;
 
 	if (F.Emulation) {
+
 		GPS.C[NorthC].OriginRaw = DEFAULT_HOME_LAT;
 		GPS.C[EastC].OriginRaw = DEFAULT_HOME_LON;
-		GPS.longitudeCorrection = DEFAULT_LON_CORR; //DEFAULT_LON_CORR;
-	}
+		GPS.longitudeCorrection = DEFAULT_LON_CORR;
 
-	GPS.year = 0; // no auto variation with MTK
+		mS[FakeGPSUpdate] = 0;
+	}
 
 	LEDOn(LEDBlueSel);
 

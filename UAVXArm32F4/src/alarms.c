@@ -38,18 +38,22 @@ void CheckLandingSwitch(void) {
 	static boolean SwitchP = false;
 	boolean Switch;
 
-	Switch = !digitalRead(&GPIOPins[LandingSel]); // active to ground
+	if (F.Emulation)
+		F.LandingSwitch = Altitude < 0.1f;
+	else {
+		Switch = !digitalRead(&GPIOPins[LandingSel]); // active to ground
 
-	if (Switch != SwitchP)
-		if (Count == 0) {
-			SwitchP = Switch;
+		if (Switch != SwitchP)
+			if (Count == 0) {
+				SwitchP = Switch;
+				Count = 5;
+			} else
+				Count--;
+		else
 			Count = 5;
-		} else
-			Count--;
-	else
-		Count = 5;
 
-	F.LandingSwitch = SwitchP;
+		F.LandingSwitch = SwitchP;
+	}
 
 } // CheckLandingSwitch
 
@@ -96,7 +100,7 @@ boolean FailPreflight(void) {
 			|| !F.BaroActive //
 			|| !F.MagnetometerActive //
 			|| !(F.IMUCalibrated && F.MagnetometerCalibrated)//
-			|| (RC[RTHRC] > FromPercent(20)) //
+			|| (RC[NavModeRC] > FromPercent(20)) //
 			|| F.LowBatt //
 			|| F.spiFatal //
 			|| F.i2cFatal //

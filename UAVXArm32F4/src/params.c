@@ -647,9 +647,6 @@ void InitParameters(void) {
 	CurrwsNoOfLeds = Limit(P(WS2812Leds), 0, MAX_WS2812_LEDS);
 	wsInit();
 
-	if (GPSRxSerial != TelemetrySerial)
-		InitGPS();
-
 	InitMAVLink();
 
 	F.ParametersChanged = true;

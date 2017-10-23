@@ -186,7 +186,7 @@ typedef union {
 				NavigationEnabled :1,
 
 				// 9
-				UnusedValidHeading :1, NewGPSPosition :1,
+				ForcedLanding :1, NewGPSPosition :1,
 				EnforceDriveSymmetry :1, RCFrameOK :1, spiFatal :1,
 				NewCommands :1, UsingMAVLink :1, UsingConvPropSense :1; // MAXED OUT
 	};

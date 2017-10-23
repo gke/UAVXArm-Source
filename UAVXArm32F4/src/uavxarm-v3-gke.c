@@ -119,8 +119,12 @@ int main() {
 
 	InitControl();
 
-	InitEmulation();
 	InitNavigation();
+
+	if (GPSRxSerial != TelemetrySerial)
+		InitGPS();
+	InitEmulation();
+
 	InitTemperature();
 
 	InitPollRxPacket();
@@ -284,7 +288,7 @@ int main() {
 						if (mSClock() > mS[ArmedTimeout])
 							InitiateShutdown(PIC);
 						else {
-							if (F.GPSToLaunchRequired)
+							if (F.GPSToLaunchRequired && !F.OriginValid)
 								CaptureHomePosition();
 
 							if ((StickThrottle >= IdleThrottle)
@@ -374,7 +378,8 @@ int main() {
 									|| (ArmingMethod == TxSwitchArming))
 									&& !Armed()))) {
 						ZeroThrottleCompensation();
-						mSTimer(mSClock(), ThrottleIdleTimeout, THR_LOW_DELAY_MS);
+						mSTimer(mSClock(), ThrottleIdleTimeout,
+								THR_LOW_DELAY_MS);
 						State = Landing;
 					} else {
 						if (UpsideDownMulticopter())

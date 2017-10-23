@@ -24,6 +24,9 @@
 
 #define USE_MPU_DLPF // definitely use for now with 250Hz DLPF => 8KHz gyro sampling
 
+//#define USE_ORIGIN_INFLIGHT
+#define USE_FAILSAFE_LANDING
+
 // Black Box stuff
 //#define BLACKBOX
 #define STATIC_UNIT_TESTED

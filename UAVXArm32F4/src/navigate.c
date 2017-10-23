@@ -358,9 +358,9 @@ void InitNavigation(void) {
 			= F.WayPointAchieved = F.WayPointCentred = F.OrbitingWP
 					= F.RapidDescentHazard = F.UsingPOI = false;
 
-	GPS.C[NorthC].OriginRaw = GPS.C[NorthC].Raw = 0;
-	GPS.C[EastC].OriginRaw = GPS.C[EastC].Raw = 0;
-	GPS.longitudeCorrection = 1.0f;
+	//GPS.C[NorthC].OriginRaw = GPS.C[NorthC].Raw = 0;
+	//GPS.C[EastC].OriginRaw = GPS.C[EastC].Raw = 0;
+	//zzzGPS.longitudeCorrection = 1.0f;
 
 	CurrWPNo = 0;
 	PrevWPNo = 255;

@@ -43,7 +43,7 @@ enum Directions {
 // Roll, Pitch & Yaw
 
 enum AttitudeModes {
-	AngleMode, HorizonMode, RateMode, UnknownMode
+	AngleMode, HorizonMode, RateMode, UnknownAttitudeMode
 };
 
 enum DerivativeFilterTypes {maDFilt, pavelDFilt, mlDFilt, unknownDFilt};

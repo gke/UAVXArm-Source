@@ -48,7 +48,6 @@ typedef struct {
 	int16 OriginAltitude;
 	int32 OriginLatitude;
     int32 OriginLongitude;
-	int16 RTHAltHold; // ??? not used
 	WPStructNV WP[NAV_MAX_WAYPOINTS];
 }__attribute__((packed)) MissionStruct;
 

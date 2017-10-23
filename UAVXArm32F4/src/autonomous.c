@@ -205,7 +205,7 @@ void UpdateRTHSwState(void) { // called in rc.c on every rx packet
 		NavSwState = SwLow;
 		NavSwStateP = SwUnknown;
 
-		F.AltControlEnabled = F.HoldingAlt = false;
+		F.ForcedLanding = F.AltControlEnabled = F.HoldingAlt = false;
 		DesiredAltitude = Altitude;
 		ZeroThrottleCompensation();
 		ZeroNavCorrections();
@@ -218,7 +218,7 @@ void UpdateRTHSwState(void) { // called in rc.c on every rx packet
 	} else {
 
 		if (NavSwState != NavSwStateP) {
-			F.Glide = F.Navigate = F.ReturnHome = false;
+			F.ForcedLanding = F.Glide = F.Navigate = F.ReturnHome = false;
 			switch (NavSwState) {
 			case SwLow:
 				ZeroNavCorrections();
@@ -226,15 +226,25 @@ void UpdateRTHSwState(void) { // called in rc.c on every rx packet
 				NavState = PIC;
 				break;
 			case SwMiddle:
-				CaptureHomePosition();
+#if defined(USE_ORIGIN_INFLIGHT)
+				if (!F.OriginValid)
+					CaptureHomePosition();
+#endif
 				if (F.OriginValid)
 					InitiatePH();
 				break;
 			case SwHigh:
-				CaptureHomePosition();
+#if defined(USE_ORIGIN_INFLIGHT)
+				if (!F.OriginValid)
+					CaptureHomePosition();
+#endif
 				if (F.OriginValid)
 					InitiateRTH();
-
+#if defined(USE_FAILSAFE_LANDING)
+				else
+					F.ForcedLanding = true;
+#endif
+				break;
 			} // switch
 
 			NavSwStateP = NavSwState;
@@ -260,8 +270,8 @@ void UpdateRTHSwState(void) { // called in rc.c on every rx packet
 void DoNavigation(void) {
 
 	if ((NavState != PIC) && F.NavigationEnabled
-			&& (F.Navigate || F.ReturnHome)
-			&& !((!F.UsingAngleControl) || F.Bypass)) {
+			&& (F.Navigate || F.ReturnHome) && !((!F.UsingAngleControl)
+			|| F.Bypass)) {
 
 		if (F.NewNavUpdate) {
 			F.NewNavUpdate = false;
@@ -413,6 +423,9 @@ void DoNavigation(void) {
 			F.OrbitingWP = (NavState == OrbitingPOI) && (WP.Action == navOrbit);
 		}
 	} else { // PIC
+
+		if (F.ForcedLanding)
+			DoAutoLanding();
 
 		NavState = PIC;
 		if (F.NewNavUpdate)

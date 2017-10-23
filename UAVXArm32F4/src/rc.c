@@ -487,8 +487,8 @@ void UpdateRCMap(void) {
 	Map[PitchRC] = P(RxPitchCh);
 	Map[YawRC] = P(RxYawCh);
 
-	Map[RTHRC] = P(RxGearCh);
-	Map[RateControlRC] = P(RxAux1Ch);
+	Map[NavModeRC] = P(RxGearCh);
+	Map[AttitudeModeRC] = P(RxAux1Ch);
 	Map[NavGainRC] = P(RxAux2Ch);
 	Map[BypassRC] = P(RxAux3Ch);
 	Map[CamPitchRC] = P(RxAux4Ch);
@@ -612,7 +612,7 @@ void CheckSticksHaveChanged(void) {
 			mS[StickChangeUpdate] = NowmS + 500;
 
 			Change = false;
-			for (c = ThrottleC; c <= RTHRC; c++) {
+			for (c = ThrottleC; c <= NavModeRC; c++) {
 				Change |= Abs( RC[c] - RCp[c]) > RC_MOVEMENT_STICK;
 				RCp[c] = RC[c];
 			}
@@ -836,8 +836,8 @@ void UpdateControls(void) {
 
 		F.Bypass = Triggered(BypassRC);
 
-		if (ActiveCh(RTHRC))
-			NavSwState = Limit((uint8)(RC[RTHRC] * 3.0f), SwLow, SwHigh);
+		if (ActiveCh(NavModeRC))
+			NavSwState = Limit((uint8)(RC[NavModeRC] * 3.0f), SwLow, SwHigh);
 		else {
 			NavSwState = SwLow;
 			F.ReturnHome = F.Navigate = F.NavigationEnabled = false;
@@ -845,12 +845,13 @@ void UpdateControls(void) {
 
 		UpdateRTHSwState();
 
-		if (ActiveCh(RateControlRC) && (NavSwState == SwLow))
+		if ((NavSwState == SwMiddle) || (NavSwState == SwHigh))
+			AttitudeMode = AngleMode;
+		else if (ActiveCh(AttitudeModeRC))
 			AttitudeMode
-					= Limit((uint8)(RC[RateControlRC] * 3.0f), AngleMode, RateMode);
+					= Limit((uint8)(RC[AttitudeModeRC] * 3.0f), AngleMode, RateMode);
 		else
 			AttitudeMode = AngleMode;
-
 		F.UsingAngleControl = AttitudeMode == AngleMode;
 
 		Nav.Sensitivity = ActiveCh(NavGainRC) ? RC[NavGainRC] : 1.0f;
@@ -858,9 +859,7 @@ void UpdateControls(void) {
 		DesiredCamPitchTrim = ActiveCh(CamPitchRC) ? RC[CamPitchRC]
 				- RC_NEUTRAL : 0;
 
-		F.UsingWPNavigation = (NV.Mission.NoOfWayPoints > 0)
-				&& (DiscoveredRCChannels > Map[WPNavRC]) && (RC[WPNavRC]
-				> FromPercent(70));
+		F.UsingWPNavigation = Triggered(WPNavRC) &&  F.OriginValid && (NV.Mission.NoOfWayPoints > 0);
 
 		TxSwitchArmed = Triggered(ArmRC);
 
