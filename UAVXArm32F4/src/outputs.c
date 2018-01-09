@@ -30,7 +30,7 @@
 
 const uint8 DrivesUsed[AFUnknown + 1] = { 3, 6, 4, 4, 4, 8, 8, 6, 6, 8, 8, // TriAF, TriCoaxAF, VTailAF, QuadAF, QuadXAF, QuadCoaxAF, QuadCoaxXAF, HexAF, HexXAF, OctAF, OctXAF
 		1, 1, // Heli90AF, Heli120AF,
-		1, 1, 1, 1, 1, // ElevonAF, DeltaAF, AileronAF, AileronSpoilerFlapsAF, RudderElevatorAF,
+		1, 1, 1, 1, 1, 1, // ElevonAF, DeltaAF, AileronAF, AileronSpoilerFlapsAF, AileronVTailAF, RudderElevatorAF,
 		1, 0, // VTOLAF, GimbalAF,
 		0, 4, // Instrumentation, IREmulation,
 		0 }; // AFUnknown,
@@ -38,7 +38,7 @@ const uint8 DrivesUsed[AFUnknown + 1] = { 3, 6, 4, 4, 4, 8, 8, 6, 6, 8, 8, // Tr
 const uint8 PWMOutputsUsed[AFUnknown + 1] = { 5, 8, 6, 6, 6, 10, 10, 8, 8, 10,
 		10, //
 		6, 6, //
-		3, 6, 7, 5, 3, //
+		3, 6, 7, 5, 6, 3, //
 		4, 2, 0, 0, 4 };
 
 const uint8 DM[10] = { 0, 1, 2, 3, // TIM4
@@ -46,15 +46,16 @@ const uint8 DM[10] = { 0, 1, 2, 3, // TIM4
 		4, 5 }; // TIM1 V4 TIM8  camera servo channels always last
 
 typedef struct {
-	unsigned int cmd:1;
-	unsigned int c  : 3;
-	unsigned int v  : 12;
-    }  __attribute__((packed)) SPIESCChannelStruct_t;
+	unsigned int cmd :1;
+	unsigned int c :3;
+	unsigned int v :12;
+}__attribute__((packed)) SPIESCChannelStruct_t;
 
 boolean UsingPWMSync = false;
 boolean UsingDCMotors = false;
 boolean DrivesInitialised = false;
 
+real32 DriveLPFTau, ServoLPFTau;
 uint8 CurrESCType = ESCUnknown;
 real32 PWSum[MAX_PWM_OUTPUTS];
 int8 PWDiagnostic[MAX_PWM_OUTPUTS];
@@ -154,7 +155,7 @@ void driveSPIWrite(idx channel, real32 v) {
 
 } // driveSPIWrite
 
-void driveSPISyncStart(uint8 drives ) {
+void driveSPISyncStart(uint8 drives) {
 
 	//sioWrite(SIOESC, 0x52 + channel * 2, 0, Limit(
 	//		(uint16)(v * 225.0f),0, 225));
@@ -194,6 +195,7 @@ const struct {
 		};
 
 void UpdateDrives(void) {
+
 	static uint8 m;
 
 	if (DrivesInitialised) {
@@ -223,13 +225,11 @@ void UpdateDrives(void) {
 			} else {
 
 				for (m = 0; m < NoOfDrives; m++) {
-					if (Armed())
-						PWp[m] = (PWp[m] + PW[m]) * 0.5f;
-					else
-						PW[m] = PWp[m] = 0.0f;
-					driveWritePtr(m, PWp[m]);
+					if (!Armed())
+						PW[m] = 0.0f;
+					driveWritePtr(m, PW[m]);
 
-					PWSum[m] += PWp[m];
+					PWSum[m] += PW[m];
 				}
 
 				PWSamples++;
@@ -241,9 +241,9 @@ void UpdateDrives(void) {
 				driveSPISyncStart(NoOfDrives);
 
 			// servos
-			if (!UsingDCMotors) // redundant
+			if (!UsingDCMotors)
 				for (m = NoOfDrives; m < MAX_PWM_OUTPUTS; m++) {
-					PWp[m] = PWServoFilter(PWp[m], PW[m]);
+					PWp[m] = SimpleFilter(PWp[m], PW[m], ServoLPFTau); // 0.25
 					servoWrite(m, PWp[m]);
 				}
 		} else {
@@ -261,11 +261,19 @@ void UpdateDrives(void) {
 
 			DoMix();
 
-			if (F.Emulation || !Armed())
-				PWp[0] = PW[0] = 0.0f;
+			for (m = 0; m < NoOfDrives; m++) { // drives
+				if (Armed() && !F.Emulation)
+					PWp[m] = (F.Bypass || (P(GyroLPFHz) == 0)) ? PW[m]
+							: SimpleFilter(PWp[m], PW[m], DriveLPFTau);
+				else
+					PWp[m] = PW[m] = 0.0f;
 
-			for (m = 0; m < MAX_PWM_OUTPUTS; m++) { // servos
-				PWp[m] = PWServoFilter(PWp[m], PW[m]);
+				servoWrite(m, PWp[m]);
+			}
+
+			for (m = NoOfDrives; m < MAX_PWM_OUTPUTS; m++) { // servos
+				PWp[m] = (F.Bypass || (P(GyroLPFHz) == 0)) ? PW[m]
+						: SimpleFilter(PWp[m], PW[m], ServoLPFTau);
 				servoWrite(m, PWp[m]);
 			}
 		}
@@ -289,9 +297,10 @@ void InitDrives(void) {
 	UsingPWMSync = (CurrESCType == ESCSyncPWM) || (CurrESCType
 			== ESCSyncPWMDiv8);
 
+	NoOfDrives = Limit(DrivesUsed[UAVXAirframe], 0, CurrMaxPWMOutputs);
+
 	if (IsMulticopter || (UAVXAirframe == IREmulation)) {
 
-		NoOfDrives = Limit(DrivesUsed[UAVXAirframe], 0, CurrMaxPWMOutputs);
 		NoOfDrivesR = 1.0f / NoOfDrives;
 		nd = ((NoOfDrives + 3) / 4) * 4; // Timers share period 4 + 4 + 2
 
@@ -319,20 +328,23 @@ void InitDrives(void) {
 
 		driveWritePtr = servoWrite;
 
-		for (m = 0; m < MAX_PWM_OUTPUTS; m++)
+		for (m = 0; m < NoOfDrives; m++)
+			PW[m] = PWp[m] = 0.0f;
+
+		for (m = NoOfDrives; m < MAX_PWM_OUTPUTS; m++)
 			PW[m] = PWp[m] = OUT_NEUTRAL;
 
 		for (m = 0; m < MAX_PWM_OUTPUTS; m++)
 			if (DM[m] < CurrMaxPWMOutputs)
 				InitPWMPin(&PWMPins[DM[m]], PWM_PS, PWM_PERIOD_SERVO,
-						PWM_NEUTRAL, false);
+						PWM_WIDTH_SERVO, false);
 
-		PW[0] = PWp[0] = 0.0f;
-		servoWrite(0, PWp[0]);
+		for (m = 0; m < MAX_PWM_OUTPUTS; m++)
+			servoWrite(m, PWp[m]);
 
 	}
 
-	for (m = 0; m < CurrMaxPWMOutputs; m++) {
+	for (m = 0; m < MAX_PWM_OUTPUTS; m++) {
 		PWDiagnostic[m] = 0;
 		PWSum[m] = 0.0f;
 	}

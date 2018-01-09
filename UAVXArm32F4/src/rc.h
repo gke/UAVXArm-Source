@@ -24,10 +24,6 @@
 
 #define RC_MAX_CHANNELS 20
 
-//#define RCFilter		MediumFilter
-#define RCFilter		SoftFilter
-//#define RCFilter		NoFilter
-
 #define RC_NO_CHANGE_TIMEOUT_MS 20000 // mS.
 #define RC_INIT_FRAMES 60 // number of initial RC frames to allow filters to settle
 #define RC_MARGIN_US	100 // could set zero or less for FrSky CPPM

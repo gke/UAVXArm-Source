@@ -1,0 +1,141 @@
+// ===============================================================================================
+// =                                UAVX Quadrocopter Controller                                 =
+// =                           Copyright (c) 2008 by Prof. Greg Egan                             =
+// =                 Original V3.15 Copyright (c) 2007 Ing. Wolfgang Mahringer                   =
+// =                     http://code.google.com/p/uavp-mods/ http://uavp.ch                      =
+// ===============================================================================================
+
+//    This is part of UAVX.
+//    Auto Launch concept rewritten from iNav
+
+//    UAVX is free software: you can redistribute it and/or modify it under the terms of the GNU 
+//    General Public License as published by the Free Software Foundation, either version 3 of the 
+//    License, or (at your option) any later version.
+
+//    UAVX is distributed in the hope that it will be useful,but WITHOUT ANY WARRANTY; without
+//    even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+//    See the GNU General Public License for more details.
+
+//    You should have received a copy of the GNU General Public License along with this program.  
+//    If not, see http://www.gnu.org/licenses/
+
+
+#include "UAVX.h"
+
+const struct {
+	uint32 waittimeoutmS;
+	uint32 timethreshmS;
+	real32 velthresh;
+	real32 accthresh;
+	real32 idlethrottle;
+	uint32 glidemS;
+	uint32 spinupmS;
+	uint32 timemS;
+	real32 angle;
+	real32 swingrate;
+} Launch = { 3000, 40, 3.0f, GRAVITY_MPS_S * 1.5f, FromPercent(0), 500, 300,
+		5000L, DegreesToRadians(45), DegreesToRadians(100) };
+
+uint8 LaunchState = initLaunch;
+uint32 LaunchTimermS;
+
+boolean LaunchDetected(uint32 NowmS) { // main contribution from iNav
+	real32 swingVel;
+	boolean isHandLaunched, isSwingLaunched, AngleOK, Launched;
+
+	AngleOK = Max(Abs(A[Roll].Angle), Abs(A[Pitch].Angle)) < Launch.angle;
+
+	swingVel = (Abs(Rate[Yaw]) > Launch.swingrate) ? Abs(Acc[LR] / Rate[Yaw])
+			: 0.0f;
+
+	isHandLaunched = AngleOK && (Acc[BF] > Launch.accthresh);
+	isSwingLaunched = (swingVel > Launch.velthresh) && (Acc[BF] > 0.0f);
+
+	Launched = false;
+	if (isHandLaunched || isSwingLaunched) { // debounce
+		if ((NowmS - LaunchTimermS) > Launch.timethreshmS) {
+			Launched = true;
+			LaunchTimermS = NowmS;
+		}
+	} else
+		LaunchTimermS = NowmS;
+
+	return (Launched);
+} // updateFWLaunchDetector
+
+
+void OverrideSticks(void) {
+
+	AttitudeMode = AngleMode;
+	F.UsingAngleControl = true;
+	A[Pitch].Stick = FWMaxClimbAngleRad / A[Pitch].P.Max;
+
+} // OverrideSticks
+
+
+real32 ThrottleUp(uint32 TimemS) {
+	real32 Thr;
+
+	if (Launch.spinupmS > 0) { // ramp up motor(s)
+		TimemS = Limit(TimemS, 0, Launch.spinupmS);
+		IdleThrottle = Max(IdleThrottle, Launch.idlethrottle);
+		Thr = scaleRangef(TimemS, 0, Launch.spinupmS, IdleThrottle,
+				FWClimbThrottleFrac);
+	} else
+		Thr = FWClimbThrottleFrac;
+
+	return (Thr);
+} // ThrottleUp
+
+void LaunchFW(void) {
+	static uint32 MotorStartTimemS;
+	uint32 NowmS;
+
+	NowmS = mSClock();
+
+	if (F.Bypass) {
+		F.DrivesArmed = true;
+		DesiredThrottle = StickThrottle;
+		LaunchState = finishedLaunch;
+	}
+
+	switch (LaunchState) {
+	case initLaunch:
+		mSTimer(mSClock(), NavStateTimeout, Launch.waittimeoutmS);
+		DesiredThrottle = Max(IdleThrottle, Launch.idlethrottle);
+		LaunchTimermS = NowmS;
+		LaunchState = waitLaunch;
+		break;
+	case waitLaunch:
+		ZeroIntegrators();
+		ZeroThrottleCompensation();
+		DesiredThrottle = Max(IdleThrottle, Launch.idlethrottle);
+
+		if (NowmS > mS[NavStateTimeout]) { // 3Sec
+			StopDrives();
+			LaunchState = finishedLaunch;
+		} else {
+			if (LaunchDetected(NowmS)) { // 40mS
+				MotorStartTimemS = NowmS + Launch.glidemS;
+				mSTimer(mSClock(), NavStateTimeout, Launch.timemS);
+				LaunchState = doingLaunch;
+			}
+		}
+		break;
+	case doingLaunch:
+		if (NowmS > mS[NavStateTimeout]) // 5Sec
+			LaunchState = finishedLaunch;
+		else {
+			DesiredThrottle = (NowmS > MotorStartTimemS) ?
+			ThrottleUp(NowmS - MotorStartTimemS)
+					: Max(IdleThrottle, Launch.idlethrottle);
+		}
+		break;
+	case finishedLaunch:
+	default:
+		break;
+	} // switch
+
+} // LaunchFW
+
+

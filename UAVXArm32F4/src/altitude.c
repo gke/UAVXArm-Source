@@ -353,7 +353,7 @@ void InitBarometer(void) {
 	while (BaroWarmupCycles > 0)// just warming up the ms56xx!
 		GetBaro();
 
-	DesiredAltitude = 0;
+	SetDesiredAltitude(0.0f);
 	OriginAltitude = BaroAltitude;
 
 } // InitBarometer
@@ -543,6 +543,11 @@ void InitRangefinder(void) {
 
 // altitude
 
+void SetDesiredAltitude(real32 Desired) {
+	Alt.P.Desired = Desired;
+	Alt.P.IntE = Alt.R.IntE = 0.0f; // ???
+} //SetDesiredAltitude
+
 real32 ConditionBaroAltitude(real32 BaroAltitude, real32 FAltitude) {
 
 	return UsingBeall ? FAltitude - OriginAltitude : BaroAltitude
@@ -620,13 +625,13 @@ void SelectAltitudeSensor(void) {
 			if (F.UsingRangefinderAlt) {
 				Altitude = RangefinderAltitude;
 				if (F.HoldingAlt && !WasUsingRF)
-					DesiredAltitude = Altitude;
+					SetDesiredAltitude(Altitude);
 				WasUsingRF = true;
 			} else {
 				Altitude = F.UsingGPSAltitude && F.OriginValid ? GPS.altitude
 						- GPS.originAltitude : BaroAltitude - OriginAltitude;
 				if (F.HoldingAlt && WasUsingRF)
-					DesiredAltitude = Altitude;
+					SetDesiredAltitude(Altitude);
 				WasUsingRF = false;
 			}
 		}
@@ -701,7 +706,7 @@ void UpdateAltitudeEstimates(void) {
 		else if (!F.IsFixedWing)
 			ROC = Limit1(ROC, ALT_MAX_ROC_MPS);
 
-		ROCF = HardFilter(ROCF, ROC); // used for landing and cruise throttle tracking
+		ROCF = SimpleFilter(ROCF, ROC, 0.1f); // used for landing and cruise throttle tracking
 
 		StatsMax(AltitudeS, Altitude);
 		StatsMinMax(MinROCS, MaxROCS, ROC * 100.0f);

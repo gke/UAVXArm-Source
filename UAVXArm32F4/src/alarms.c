@@ -98,8 +98,8 @@ boolean FailPreflight(void) {
 			|| F.ThrottleOpen //
 			|| !F.IMUActive //
 			|| !F.BaroActive //
-			|| !F.MagnetometerActive //
-			|| !(F.IMUCalibrated && F.MagnetometerCalibrated)//
+			|| !F.IMUCalibrated
+			|| !((F.MagnetometerActive && F.MagnetometerCalibrated) || F.IsFixedWing)//
 			|| (RC[NavModeRC] > FromPercent(20)) //
 			|| F.LowBatt //
 			|| F.spiFatal //
@@ -116,7 +116,7 @@ boolean FailPreflight(void) {
 void DoCalibrationAlarm(void) {
 	static uint32 TimeoutmS = 0;
 
-	if (!(F.IMUCalibrated && F.MagnetometerCalibrated)) {
+	if (!F.IMUCalibrated || !((F.MagnetometerActive && F.MagnetometerCalibrated) || F.IsFixedWing)) {
 		if (mSClock() > TimeoutmS) {
 			TimeoutmS = mSClock() + 500;
 			LEDToggle(LEDYellowSel);
@@ -160,7 +160,7 @@ int16 BeeperOnTime = 100;
 void CheckAlarms(void) {
 
 	F.BeeperInUse = PreflightFail || F.LowBatt || (State == Shutdown)
-			|| (NavState == Descending);
+			|| (NavState == Descending) || (State == Launching);
 
 	//F.BeeperInUse = false;
 
@@ -171,7 +171,10 @@ void CheckAlarms(void) {
 		} else if (State == Shutdown) {
 			BeeperOffTime = 4750;
 			BeeperOnTime = 250;
-		} else { // default
+		} else if (State == Launching) {
+			BeeperOffTime = 875;
+			BeeperOnTime = 125;
+		} else { //default
 			BeeperOffTime = 125;
 			BeeperOnTime = 125;
 		}

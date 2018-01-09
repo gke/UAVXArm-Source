@@ -29,10 +29,9 @@
 #endif
 
 #define PARAMS_ADDR_NV		0		// code assumes zero!
-#define MAX_PARAMETERS		96		// parameters in EEPROM start at zero
+#define MAX_PARAMETERS		128		// parameters in EEPROM start at zero
 #define NO_OF_PARAM_SETS	4
 #define MAX_STATS			32 // x 16bit
-#define MAX_SETTINGS		64
 
 #define EEPROM_ID 0xa0
 

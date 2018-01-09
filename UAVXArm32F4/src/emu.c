@@ -112,7 +112,7 @@ void DoEmulation(void) {
 		ROC += Accel * dT;
 	}
 
-	if ((State != InFlight) || ((Altitude <= 0.05f) && (ROC <= 0.0f)))
+	if (((State != InFlight) && (State != Launching)) ||((Altitude <= 0.05f) && (ROC <= 0.0f)))
 		FakeAltitude = ROC = 0.0f;
 	else
 		FakeAltitude += ROC * dT;
@@ -132,10 +132,10 @@ void DoEmulation(void) {
 				Rate[a] -= (A[a].Out * DegreesToRadians(30)) * dT; // was 60
 
 			if (Airspeed > 0.0f)
-				Rate[Yaw] = A[Yaw].Out * A[Yaw].RateMax
+				Rate[Yaw] = A[Yaw].Out * A[Yaw].R.Max
 				//+ A[Roll].Angle / (2.0f
 						//		* A[Roll].AngleMax);
-						+ Limit1(A[Roll].Angle, A[Roll].AngleMax) / (Airspeed
+						+ Limit1(A[Roll].Angle, A[Roll].P.Max) / (Airspeed
 								* GRAVITY_MPS_S_R);
 			else
 				Rate[Yaw] = 0.0f;
@@ -226,8 +226,9 @@ void InitEmulation(void) {
 
 		mS[FakeGPSUpdate] = 0;
 
-		DesiredAltitude = Altitude = RangefinderAltitude = FakeAltitude = ROC
+		Altitude = RangefinderAltitude = FakeAltitude = ROC
 				= 0.0f;
 		BaroAltitude = OriginAltitude;
+		SetDesiredAltitude(0.0f);
 	}
 } // InitEmulation

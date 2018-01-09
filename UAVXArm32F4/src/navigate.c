@@ -58,22 +58,6 @@ void RotateWPPath(real32 * nx, real32 * ny, real32 x, real32 y) {
 
 } // RotateWPPath
 
-real32 Aerosonde(void) {
-	// "Lateral Track Control Law for Aerosonde UAV", M. Niculescu,
-	// Paper 16, AIAA, 8-11 January 2001, Reno, NV
-	real32 PosXTrack, VelXTrack, PosYTrack, VelYTrack;
-	real32 DesYawRate;
-
-	RotateWPPath(&PosXTrack, &PosYTrack, Nav.C[NorthC].PosE, Nav.C[EastC].PosE);
-	RotateWPPath(&VelXTrack, &VelYTrack, Nav.C[NorthC].Vel, Nav.C[EastC].VelE);
-
-	DesYawRate = (0.2f * PosXTrack * VelYTrack - PosYTrack * VelXTrack)
-			* 0.0025;
-
-	return (Limit1(DesYawRate, DegreesToRadians(60)));
-
-} // Aerosonde
-
 
 //_______________________________________________________________________________
 
@@ -121,7 +105,7 @@ void CompensateCrossTrackError1D(void) {
 void CheckProximity(real32 V, real32 H) {
 
 	F.WayPointCentred = Nav.WPDistance < H;
-	F.WayPointAchieved = F.WayPointCentred && (Abs(DesiredAltitude - Altitude)
+	F.WayPointAchieved = F.WayPointCentred && (Abs(Alt.P.Desired - Altitude)
 			< V);
 } // CheckProximity
 
@@ -176,7 +160,7 @@ real32 WPDistance(WPStruct * W) {
 void DoOrbit(real32 Radius, real32 OrbitVelocity) {
 	real32 TangentialVelocity;
 
-	TangentialVelocity = (Nav.WPDistance - Radius) * Nav.PosKp;
+	TangentialVelocity = (Nav.WPDistance - Radius) * Nav.VelKp;
 
 	Rotate(&Nav.C[NorthC].DesVel, &Nav.C[EastC].DesVel, TangentialVelocity,
 			OrbitVelocity, -Heading);
@@ -335,7 +319,7 @@ void Navigate(WPStruct * W) {
 				Nav.C[EastC].Corr, -Heading);
 
 		for (a = Pitch; a <= Roll; a++)
-			A[a].NavCorr = Limit1(A[a].NavCorr, Nav.MaxAngle);
+			A[a].NavCorr = Limit1(A[a].NavCorr, Nav.MaxBankAngle);
 
 	}
 
@@ -366,7 +350,7 @@ void InitNavigation(void) {
 	PrevWPNo = 255;
 	NorthP = EastP = 0.0f; // origin
 	RefreshNavWayPoint();
-	DesiredAltitude = 0.0f;
+	SetDesiredAltitude(0.0f);
 
 	NavState = PIC;
 

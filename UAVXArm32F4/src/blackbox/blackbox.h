@@ -41,7 +41,7 @@ typedef struct blackboxConfig_s {
     uint8_t record_acc;
 } blackboxConfig_t;
 
-PG_DECLARE(blackboxConfig_t, blackboxConfig);
+blackboxConfig_t blackboxConfig;
 
 void blackboxLogEvent(FlightLogEvent event, flightLogEventData_t *data);
 
@@ -54,7 +54,7 @@ uint8_t blackboxGetRateNum(void);
 uint8_t blackboxGetRateDenom(void);
 void blackboxValidateConfig(void);
 void blackboxFinish(void);
-bool blackboxMayEditConfig(void);
+boolean blackboxMayEditConfig(void);
 #ifdef UNIT_TEST
 STATIC_UNIT_TESTED void blackboxLogIteration(timeUs_t currentTimeUs);
 STATIC_UNIT_TESTED bool blackboxShouldLogPFrame(void);

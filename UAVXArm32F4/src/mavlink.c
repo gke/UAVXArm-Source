@@ -94,7 +94,7 @@ void InitMAVLink(void) {
 	// OctAF, OctXAF,
 	// Heli90AF, Heli120AF,
 	// ElevonAF, DeltaAF,
-	// AileronAF, AileronSpoilerFlapsAF, RudderElevatorAF,
+	// AileronAF, AileronSpoilerFlapsAF, AileronVTailAF, RudderElevatorAF,
 	// VTOLAF, GimbalAF,
 	// 	Instrumentation, IREmulation,
 	// AFUnknown,
@@ -107,7 +107,7 @@ void InitMAVLink(void) {
 			MAV_TYPE_HEXAROTOR, MAV_TYPE_HEXAROTOR, //
 			MAV_TYPE_OCTOROTOR, MAV_TYPE_OCTOROTOR, //
 			MAV_TYPE_HELICOPTER, MAV_TYPE_HELICOPTER, //
-			MAV_TYPE_FIXED_WING, MAV_TYPE_FIXED_WING, MAV_TYPE_FIXED_WING, //
+			MAV_TYPE_FIXED_WING, MAV_TYPE_FIXED_WING, MAV_TYPE_FIXED_WING, MAV_TYPE_FIXED_WING, //
 			MAV_TYPE_COAXIAL, MAV_TYPE_GENERIC, //
 			MAV_TYPE_COAXIAL, MAV_TYPE_GENERIC, //
 			MAV_TYPE_GENERIC };
@@ -162,7 +162,7 @@ void mavlinkSendNavController(uint8 s) {
 	mavlink_msg_nav_controller_output_pack(mavlink_system.sysid,
 			mavlink_system.compid, &msg, RadiansToDegrees(A[Roll].NavCorr),
 			RadiansToDegrees(A[Pitch].NavCorr), RadiansToDegrees(Heading),
-			RadiansToDegrees(Nav.WPBearing), Nav.WPDistance, DesiredAltitude
+			RadiansToDegrees(Nav.WPBearing), Nav.WPDistance, Alt.P.Desired
 					- Altitude, 0, //VelocityE,
 			Nav.CrossTrackE);
 

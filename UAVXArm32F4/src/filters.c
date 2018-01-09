@@ -22,7 +22,7 @@
 
 void DFT8(real32 v, real32 *DFT) { // 137uS
 #if defined(INC_DFT)
-	const real32 mR = 1.0 / 8.0;
+	const real32 mR = 0.125f;
 	static boolean Primed = false;
 	static real32 cosarg[8][8], sinarg[8][8];
 	static real32 inp[8];
@@ -60,10 +60,9 @@ void DFT8(real32 v, real32 *DFT) { // 137uS
 #endif
 } // DFT8
 
-/*
- * Algorithm from N. Wirth's book, implementation by N. Devillard.
- * This code in public domain.
- */
+
+// Algorithm from N. Wirth's book, implementation by N. Devillard.
+// This code in public domain.
 
 typedef float elem_type;
 
@@ -151,31 +150,15 @@ real32 Smoothr32xn(HistStruct * F, uint8 n, real32 v) {
 	return (F->S / (real32) n);
 } // Smoothr32xn
 
-uint32 Smoothuint32xn(uint32HistStruct * F, uint8 n, uint32 v) {
-	idx i, p;
+__attribute__((always_inline))     inline real32 SimpleFilterCoefficient(real32 CutHz, real32 dT) {
 
-	if (!F->Primed) {
-		for (i = 0; i < n; i++)
-			F->h[i] = v;
+	return (dT / ((1.0f / (TWO_PI * CutHz)) + dT));
+} // SimpleFilterCoefficient
 
-		F->Head = 0;
-		F->Tail = (n - 1);
+__attribute__((always_inline))     inline real32 SimpleFilter(real32 O, real32 N, const real32 K) {
 
-		F->S = v * n;
-		F->Primed = true;
-	} else {
-		p = F->Head;
-		F->S -= F->h[p];
-		F->Head = (p + 1) & (n - 1);
-		p = F->Tail;
-		p = (p + 1) & (n - 1);
-		F->h[p] = v;
-		F->Tail = p;
-		F->S += v;
-	}
-
-	return (F->S / n);
-} // Smoothuint32xn
+	return (O + (N - O) * K);
+} // SimpleFilter
 
 
 real32 LeadFilter(real32 Pos, real32 VelP, real32 Vel, real32 Lag) {
@@ -222,7 +205,6 @@ real32 LPFilterBW(HistStruct * F, real32 v, const real32 CutHz, real32 dT) {
 		r += F->h[i] * F->c[i];
 
 	return (r);
-
 } // LPFilterBW
 
 
@@ -253,10 +235,10 @@ real32 PavelDifferentiator(HistStruct *F, real32 v) {
 	for (i = 0; i < N; ++i)
 		r += C[i] * F->h[i];
 
-	return r;
+	return (r);
 } // Pavel
 
-__attribute__((always_inline))  inline real32 LPFilter(HistStruct * F, const idx Order, real32 v,
+__attribute__((always_inline))     inline real32 LPFilter(HistStruct * F, const idx Order, real32 v,
 		const real32 CutHz, real32 dT) {
 	idx n;
 
@@ -264,11 +246,10 @@ __attribute__((always_inline))  inline real32 LPFilter(HistStruct * F, const idx
 		for (n = 1; n <= Order; n++)
 			F->h[n] = v;
 		F->Primed = true;
-	}
 		F->Tau = 1.0f / (TWO_PI * CutHz);
-	//}
+	}
+
 	F->S = dT / (F->Tau + dT);
-	//}
 
 	F->h[0] = v;
 
@@ -280,33 +261,33 @@ __attribute__((always_inline))  inline real32 LPFilter(HistStruct * F, const idx
 } // LPFilter
 
 
-int16 SensorSlewLimit(uint8 sensor, int16 * Old, int16 New, int16 Slew) {
-	int16 Low, High;
+int16 SensorSlewLimit(uint8 sensor, int16 * O, int16 N, int16 Slew) {
+	int16 L, H;
 
-	Low = *Old - Slew;
-	High = *Old + Slew;
-	if (New < Low) {
+	L = *O - Slew;
+	H = *O + Slew;
+	if (N < L) {
 		incStat(sensor);
-		*Old = Low;
-	} else if (New > High) {
+		*O = L;
+	} else if (N > H) {
 		incStat(sensor);
-		*Old = High;
+		*O = H;
 	} else
-		*Old = New;
-	return (*Old);
+		*O = N;
+	return (*O);
 } // SensorSlewLimit
 
 
-real32 SlewLimit(real32 * Old, real32 New, const real32 Slew, real32 dT) {
+real32 SlewLimit(real32 * O, real32 N, const real32 Slew, real32 dT) {
 	// DO NOT USE WHEN YOU HAVE 360DEG STEPS AS IT WILL NOT TRACK
-	real32 Low, High, SlewD;
+	real32 L, H, SlewD;
 
 	SlewD = Slew * dT;
 
-	Low = *Old - SlewD;
-	High = *Old + SlewD;
-	*Old = (New < Low) ? Low : ((New > High) ? High : New);
-	return (*Old);
+	L = *O - SlewD;
+	H = *O + SlewD;
+	*O = (N < L) ? L : ((N > H) ? H : N);
+	return (*O);
 } // SlewLimit
 
 
@@ -370,46 +351,6 @@ real32 invSqrt(real32 x) {
 } // invSqrt
 
 
-#if defined(OTHER_INSQRT)
-//---------------------------------------------------------------------------------------------------
-// Fast inverse square-root
-// See: http://en.wikipedia.org/wiki/Fast_inverse_square_root
-
-real32 invSqrtXXX(real32 x) {
-	const ver = 1;
-
-	real32 y;
-
-	if (ver == 0) {
-		// original from Quake?
-		real32 halfx = 0.5f * x;
-		real32 y = x;
-		uint32 i = *(uint32*) &y;
-		i = 0x5f3759df - (i >> 1);
-		y = *(real32*) &i;
-		y = y * (1.5f - (halfx * y * y));
-	} else if (ver == 1) {
-		// http://pizer.wordpress.com/2008/10/12/fast-inverse-square-root
-		uint32 i = 0x5F1F1412 - (*(uint32*) &x >> 1);
-		real32 tmp = *(real32*) &i;
-		y = tmp * (1.69000231f - 0.714158168f * x * tmp * tmp);
-	} else if (ver == 2) {
-		// http://rrrola.wz.cz/inv_sqrt.html
-		union {
-			real32 f;
-			uint32 u;
-		}yu = {x};
-		yu.f = x;
-		yu.u = 0x5F1FFF77 - (yu.u >> 1);
-		y = 0.703974056f * yu.f * (2.38919526f - (x * yu.f * yu.f));
-	} else
-	y = 1.0f / sqrtf(x);
-
-	return y;
-} // invSqrt
-
-#endif
-
 void Rotate(real32 * nx, real32 * ny, real32 x, real32 y, real32 A) { // A rotation CW
 	static real32 cA = 1.0f;
 	static real32 sA = 0.0f;
@@ -442,3 +383,11 @@ real32 DecayX(real32 v, real32 rate, real32 dT) {
 	return (v);
 }
 // DecayX
+
+
+real32 scaleRangef(real32 v, real32 srcMin, real32 srcMax, real32 destMin,
+		real32 destMax) {
+	real32 a = (destMax - destMin) * (v - srcMin);
+	real32 b = srcMax - srcMin;
+	return ((a / b) + destMin);
+} // scaleRangef

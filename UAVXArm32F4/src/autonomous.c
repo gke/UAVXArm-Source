@@ -57,7 +57,7 @@ boolean DoLanding(void) {
 	CheckLandingSwitch();
 
 	DesiredThrottle = F.IsFixedWing ? 0 : CruiseThrottle;
-	DesiredAltitude = -100.0f; // all the way
+	SetDesiredAltitude(-100.0f); // all the way
 
 	switch (LandingState) {
 	case InitDescent:
@@ -127,7 +127,7 @@ void CheckFence(void) {
 
 void CheckRapidDescentHazard(void) {
 
-	F.RapidDescentHazard = F.UsingRapidDescent && ((Altitude - DesiredAltitude)
+	F.RapidDescentHazard = F.UsingRapidDescent && ((Altitude - Alt.P.Desired)
 			> DESCENT_ALT_DIFF_M) && (Altitude > DESCENT_SAFETY_ALT_M);
 
 } // CheckRapidDescentHazard
@@ -156,7 +156,7 @@ void InitiateRTH(void) {
 void InitiatePH(void) {
 
 	CurrWPNo = 0;
-	DesiredAltitude = Altitude;
+	SetDesiredAltitude(Altitude);
 	CapturePosition();
 	DesiredHeading = Heading;
 	NavState = HoldingStation;
@@ -200,69 +200,72 @@ void DoGliderStuff(void) {
 
 void UpdateRTHSwState(void) { // called in rc.c on every rx packet
 
-	if (F.Bypass || (State != InFlight)) {
+	if (State != Launching) {
 
-		NavSwState = SwLow;
-		NavSwStateP = SwUnknown;
+		if (F.Bypass || (State != InFlight)) {
 
-		F.ForcedLanding = F.AltControlEnabled = F.HoldingAlt = false;
-		DesiredAltitude = Altitude;
-		ZeroThrottleCompensation();
-		ZeroNavCorrections();
+			NavSwState = SwLow;
+			NavSwStateP = SwUnknown;
 
-		if (F.OriginValid)
-			CapturePosition();
+			F.ForcedLanding = F.AltControlEnabled = F.HoldingAlt = false;
+			SetDesiredAltitude(Altitude);
+			ZeroThrottleCompensation();
+			ZeroNavCorrections();
 
-		NavState = PIC;
-
-	} else {
-
-		if (NavSwState != NavSwStateP) {
-			F.ForcedLanding = F.Glide = F.Navigate = F.ReturnHome = false;
-			switch (NavSwState) {
-			case SwLow:
-				ZeroNavCorrections();
+			if (F.OriginValid)
 				CapturePosition();
-				NavState = PIC;
-				break;
-			case SwMiddle:
-#if defined(USE_ORIGIN_INFLIGHT)
-				if (!F.OriginValid)
-					CaptureHomePosition();
-#endif
-				if (F.OriginValid)
-					InitiatePH();
-				break;
-			case SwHigh:
-#if defined(USE_ORIGIN_INFLIGHT)
-				if (!F.OriginValid)
-					CaptureHomePosition();
-#endif
-				if (F.OriginValid)
-					InitiateRTH();
-#if defined(USE_FAILSAFE_LANDING)
-				else
-					F.ForcedLanding = true;
-#endif
-				break;
-			} // switch
 
-			NavSwStateP = NavSwState;
+			NavState = PIC;
+
+		} else {
+
+			if (NavSwState != NavSwStateP) {
+				F.ForcedLanding = F.Glide = F.Navigate = F.ReturnHome = false;
+				switch (NavSwState) {
+				case SwLow:
+					ZeroNavCorrections();
+					CapturePosition();
+					NavState = PIC;
+					break;
+				case SwMiddle:
+#if defined(USE_ORIGIN_INFLIGHT)
+					if (!F.OriginValid)
+					CaptureHomePosition();
+#endif
+					if (F.OriginValid)
+						InitiatePH();
+					break;
+				case SwHigh:
+#if defined(USE_ORIGIN_INFLIGHT)
+					if (!F.OriginValid)
+					CaptureHomePosition();
+#endif
+					if (F.OriginValid)
+						InitiateRTH();
+#if defined(USE_FAILSAFE_LANDING)
+					else
+						F.ForcedLanding = true;
+#endif
+					break;
+				} // switch
+
+				NavSwStateP = NavSwState;
+			}
+
+			F.AltControlEnabled = !(F.UseManualAltHold || (Nav.Sensitivity
+					< NAV_ALT_THRESHOLD_STICK) || (F.IsFixedWing && (NavState
+					== PIC)));
+
+			if ((!F.HoldingAlt) && !(F.Navigate || F.ReturnHome))
+				SetDesiredAltitude(Altitude);
+
+			if (F.AltControlEnabled && !((NavState == HoldingStation)
+					|| (NavState == PIC) || (NavState == Touchdown)))
+				StickThrottle = CruiseThrottle;
 		}
 
-		F.AltControlEnabled = !(F.UseManualAltHold || (Nav.Sensitivity
-				< NAV_ALT_THRESHOLD_STICK) || (F.IsFixedWing && (NavState
-				== PIC)));
-
-		if ((!F.HoldingAlt) && !(F.Navigate || F.ReturnHome))
-			DesiredAltitude = Altitude;
-
-		if (F.AltControlEnabled && !((NavState == HoldingStation) || (NavState
-				== PIC) || (NavState == Touchdown)))
-			StickThrottle = CruiseThrottle;
+		DesiredThrottle = StickThrottle;
 	}
-
-	DesiredThrottle = StickThrottle;
 
 } // UpdateRTHSwState
 
@@ -308,11 +311,11 @@ void DoNavigation(void) {
 				break;
 			case Perching:
 				if (mSClock() > mS[NavStateTimeout]) {
-					DesiredAltitude = WP.Pos[DownC];
+					SetDesiredAltitude(WP.Pos[DownC]);
 					NavState = Takeoff;
 				} else {
 					A[Pitch].NavCorr = A[Roll].NavCorr = 0.0f;
-					DesiredAltitude = -100.0f; // override WP
+					SetDesiredAltitude(-100.0f); // override WP
 				}
 				break;
 			case Touchdown:

@@ -588,38 +588,17 @@ void InitRC(void) {
 
 void MapRC(void) { // re-maps captured PPM to Rx channel sequence
 	uint8 c, cc;
-	real32 Temp;
 
 	for (c = 0; c < RC_MAX_CHANNELS; c++) {
 		cc = RMap[c];
-		RCp[cc] = RC[cc];
-		Temp = (RCInp[c].Raw - 1000) * 0.001;
-		RC[cc] = RCFilter(RCp[cc], Temp);
+		RC[cc] = (RCInp[cc].Raw - 1000) * 0.001;
 	}
+
+	// 22.5mS standard, 18mS FrSky and 9mS SBus
+	for (c = ThrottleRC; c <= YawRC; c++)
+		RCp[c] = RC[c] = SimpleFilter(RCp[c], RC[c], 0.75f);
+
 } // MapRC
-
-void CheckSticksHaveChanged(void) {
-	static boolean Change = false;
-	uint32 NowmS;
-	uint8 c;
-
-	NowmS = mSClock();
-	if (F.ReturnHome || F.Navigate) {
-		Change = true;
-		mS[RxFailsafeTimeout] = NowmS + RC_NO_CHANGE_TIMEOUT_MS;
-	} else {
-		if (NowmS > mS[StickChangeUpdate]) {
-			mS[StickChangeUpdate] = NowmS + 500;
-
-			Change = false;
-			for (c = ThrottleC; c <= NavModeRC; c++) {
-				Change |= Abs( RC[c] - RCp[c]) > RC_MOVEMENT_STICK;
-				RCp[c] = RC[c];
-			}
-		}
-	}
-
-} // CheckSticksHaveChanged
 
 void CheckRC(void) {
 
@@ -859,17 +838,16 @@ void UpdateControls(void) {
 		DesiredCamPitchTrim = ActiveCh(CamPitchRC) ? RC[CamPitchRC]
 				- RC_NEUTRAL : 0;
 
-		F.UsingWPNavigation = Triggered(WPNavRC) &&  F.OriginValid && (NV.Mission.NoOfWayPoints > 0);
+		F.UsingWPNavigation = Triggered(WPNavRC) && F.OriginValid
+				&& (NV.Mission.NoOfWayPoints > 0);
 
 		TxSwitchArmed = Triggered(ArmRC);
 
-		UsingVTOLMode = Triggered(TransitionRC) && (UAVXAirframe == VTOLAF);
+		LaunchOrTransitionMode = Triggered(TransitionRC); // && (UAVXAirframe == VTOLAF);
 
 		//_________________________________________________________________________________________
 
 		// Rx has gone to failsafe
-
-		CheckSticksHaveChanged();
 
 		if (RCStart == 0)
 			F.NewCommands = true;

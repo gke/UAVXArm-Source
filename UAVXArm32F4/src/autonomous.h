@@ -27,6 +27,7 @@ enum Coords {
 };
 
 typedef struct {
+	PIDStruct P, R;
 	real32 Acc;
 	real32 DesPos, Pos, PosE, PosIntE;
 	real32 DesVel, Vel, VelE;
@@ -35,9 +36,9 @@ typedef struct {
 
 typedef struct {
 
-	real32 PosKp, PosKi, VelKp, VelKi, VelIL;
 	NavCoordStruct C[3];
 
+	real32 PosKp, PosKi, VelKp;
 	real32 Sensitivity;
 	real32 TakeoffBearing;
 	real32 Distance, Bearing, Elevation;
@@ -50,13 +51,11 @@ typedef struct {
 
 	real32 FenceRadius;
 
-	real32 LPFCutOffHz;
-
 	real32 MaxVelocity;
-	real32 MaxAngle;
-	real32 HeadingTurnoutRad;
+	real32 MaxBankAngle;
 
-	real32 YawKp;
+	real32 HeadingTurnout;
+	real32 MaxCompassRate;
 } NavStruct;
 
 extern NavStruct Nav;
@@ -115,6 +114,7 @@ extern void InitNavigation(void);
 
 extern void UpdateRTHSwState(void);
 extern void CheckProximity(real32 V, real32 H);
+extern void InitiateRTH(void);
 extern void InitiatePH(void);
 extern void CapturePosition(void);
 extern void CheckRapidDescentHazard(void);

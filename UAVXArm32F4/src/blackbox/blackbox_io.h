@@ -42,17 +42,17 @@ void blackboxWrite(uint8_t value);
 int blackboxWriteString(const char *s);
 
 void blackboxDeviceFlush(void);
-bool blackboxDeviceFlushForce(void);
-bool blackboxDeviceOpen(void);
+boolean blackboxDeviceFlushForce(void);
+boolean blackboxDeviceOpen(void);
 void blackboxDeviceClose(void);
 
 void blackboxEraseAll(void);
-bool isBlackboxErased(void);
+boolean isBlackboxErased(void);
 
-bool blackboxDeviceBeginLog(void);
-bool blackboxDeviceEndLog(bool retainLog);
+boolean blackboxDeviceBeginLog(void);
+boolean blackboxDeviceEndLog(boolean retainLog);
 
-bool isBlackboxDeviceFull(void);
+boolean isBlackboxDeviceFull(void);
 unsigned int blackboxGetLogNumber();
 
 void blackboxReplenishHeaderBudget();

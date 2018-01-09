@@ -22,12 +22,13 @@
 
 real32 TuningScale = 1.0f;
 boolean Tuning = false;
+boolean TuningEnabled = false;
 
 void Tune(void) {
 
-	if (Tuning && (State == InFlight)) {
+	//if (Tuning && (State == InFlight)) {
 
-	}
+	//}
 
 } // Tune
 
@@ -48,9 +49,6 @@ void InitTune(void) {
 
 #define AUTOTUNE_FIXED_WING
 
-#define XYZ_AXIS_COUNT 3
-#define timeMs_t uint32
-
 #define AUTOTUNE_FIXED_WING_OVERSHOOT_TIME      100
 #define AUTOTUNE_FIXED_WING_UNDERSHOOT_TIME     200
 #define AUTOTUNE_FIXED_WING_INTEGRATOR_TC       600
@@ -58,6 +56,8 @@ void InitTune(void) {
 #define AUTOTUNE_FIXED_WING_INCREASE_STEP       5           // 5%
 #define AUTOTUNE_FIXED_WING_MIN_FF              10
 #define AUTOTUNE_FIXED_WING_MAX_FF              200
+
+#define FW_UNDERSHOOT_MS	AUTOTUNE_FIXED_WING_OVERSHOOT_TIME
 
 //PG_REGISTER_WITH_RESET_TEMPLATE(pidAutotuneConfig_t, pidAutotuneConfig, PG_PID_AUTOTUNE_CONFIG, 0);
 
@@ -75,126 +75,115 @@ typedef enum {
 
 typedef struct {
 	pidAutotuneState_e state;
-	timeMs_t stateEnterTime;
-
+	uint32 stateEnterTime;
 	boolean pidSaturated;
-	real32 gainP;
-	real32 gainI;
-	real32 gainD;
+	PIDStruct R;
 } pidAutotuneData_t;
 
 #define AUTOTUNE_SAVE_PERIOD        5000        // Save interval is 5 seconds - when we turn off autotune we'll restore values from previous update at most 5 sec ago
-
-
-static pidAutotuneData_t tuneCurrent[XYZ_AXIS_COUNT];
-static pidAutotuneData_t tuneSaved[XYZ_AXIS_COUNT];
-static timeMs_t lastGainsUpdateTime;
+static pidAutotuneData_t tuneCurrent[3];
+static pidAutotuneData_t tuneSaved[3];
+static uint32 lastGainsUpdateTime;
 
 void autotuneUpdateGains(pidAutotuneData_t * data) {
-	for (int axis = 0; axis < XYZ_AXIS_COUNT; axis++) {
-		pidBankMutable()->pid[axis].P = lrintf(data[axis].gainP);
-		pidBankMutable()->pid[axis].I = lrintf(data[axis].gainI);
-		pidBankMutable()->pid[axis].D = lrintf(data[axis].gainD);
+	for (int a = Pitch; a <= Yaw; a++) {
+		A[a].R.Kp = lrintf(data[a].R.Kp);
+		A[a].R.Ki = lrintf(data[a].R.Ki);
+		A[a].R.Kd = lrintf(data[a].R.Kd);
 	}
-	schedulePidGainsUpdate();
+	//schedulePidGainsUpdate();
 }
 
 void autotuneCheckUpdateGains(void) {
-	const timeMs_t currentTimeMs = mSClock();
+	const uint32 NowmS = mSClock();
 
-	if ((currentTimeMs - lastGainsUpdateTime) >= AUTOTUNE_SAVE_PERIOD) {
+	if ((NowmS - lastGainsUpdateTime) >= AUTOTUNE_SAVE_PERIOD) {
 		// If pilot will exit autotune we'll restore values we are flying now
-		memcpy(tuneSaved, tuneCurrent, sizeof(pidAutotuneData_t)
-				* XYZ_AXIS_COUNT);
+		memcpy(tuneSaved, tuneCurrent, sizeof(pidAutotuneData_t) * 3);
 		autotuneUpdateGains(tuneSaved);
-		lastGainsUpdateTime = currentTimeMs;
+		lastGainsUpdateTime = NowmS;
 	}
 }
 
 void autotuneStart(void) {
-	for (int axis = 0; axis < XYZ_AXIS_COUNT; axis++) {
-		tuneCurrent[axis].gainP = pidBank()->pid[axis].P;
-		tuneCurrent[axis].gainI = pidBank()->pid[axis].I;
-		tuneCurrent[axis].gainD = pidBank()->pid[axis].D;
-		tuneCurrent[axis].pidSaturated = false;
-		tuneCurrent[axis].stateEnterTime = mSClock();
-		tuneCurrent[axis].state = DEMAND_TOO_LOW;
+	for (int a = Pitch; a <= Yaw; a++) {
+		tuneCurrent[a].R.Kp = A[a].R.Kp;
+		tuneCurrent[a].R.Ki = A[a].R.Ki;
+		tuneCurrent[a].R.Kd = A[a].R.Kd;
+		tuneCurrent[a].pidSaturated = false;
+		tuneCurrent[a].stateEnterTime = mSClock();
+		tuneCurrent[a].state = DEMAND_TOO_LOW;
 	}
 
-	memcpy(tuneSaved, tuneCurrent, sizeof(pidAutotuneData_t) * XYZ_AXIS_COUNT);
+	memcpy(tuneSaved, tuneCurrent, sizeof(pidAutotuneData_t) * 3);
 	lastGainsUpdateTime = mSClock();
 }
 
 void autotuneUpdateState(void) {
-	if (IS_RC_MODE_ACTIVE(BOXAUTOTUNE) && ARMING_FLAG(ARMED)) {
-		if (!FLIGHT_MODE(AUTO_TUNE)) {
+	if (TuningEnabled && Armed()) {
+		if (!Tuning) {
 			autotuneStart();
-			ENABLE_FLIGHT_MODE(AUTO_TUNE);
+			Tuning = true;
+			//ENABLE_FLIGHT_MODE(AUTO_TUNE);
 		} else
 			autotuneCheckUpdateGains();
 	} else {
-		if (FLIGHT_MODE(AUTO_TUNE))
+		if (TuningEnabled)
 			autotuneUpdateGains(tuneSaved);
 
-		DISABLE_FLIGHT_MODE(AUTO_TUNE);
+		Tuning = false;
+		//DISABLE_FLIGHT_MODE(AUTO_TUNE);
 	}
 }
 
-void autotuneFixedWingUpdate(const flight_dynamics_index_t axis,
-		real32 desiredRateDps, real32 reachedRateDps, real32 pidOutput) {
-	const timeMs_t currentTimeMs = mSClock();
-	const real32 absDesiredRateDps = fabsf(desiredRateDps);
-	real32 maxDesiredRate = currentControlRateProfile->rates[axis] * 10.0f;
+void autotuneUpdate(const idx a, real32 desiredRateDps, real32 reachedRateDps,
+		real32 pidOutput) {
+	const uint32 NowmS = mSClock();
+	const real32 absDesiredRateDps = Abs(desiredRateDps);
+	real32 maxDesiredRate = 123; //zzz A[]] * 10.0f;
 	pidAutotuneState_e newState;
 
 	// Use different max desired rate in ANGLE for pitch and roll
 	// Maximum reasonable error in ANGLE mode is 200% of angle inclination (control dublet), but we are conservative and tune for control singlet.
-	if (FLIGHT_MODE(ANGLE_MODE) && (axis == FD_PITCH || axis == FD_ROLL)) {
-		real32 maxDesiredRateInAngleMode = DECIDEGREES_TO_DEGREES(
-				pidProfile()->max_angle_inclination[axis] * 1.0f)
-				* pidBank()->pid[PID_LEVEL].P / FP_PID_LEVEL_P_MULTIPLIER;
-		maxDesiredRate = MIN(maxDesiredRate, maxDesiredRateInAngleMode);
+	if ((AttitudeMode == AngleMode) && (a == Pitch || a == Roll)) {
+		real32 maxDesiredRateInAngleMode = A[a].P.Max * A[a].P.Kp;
+		maxDesiredRate = Min(maxDesiredRate, maxDesiredRateInAngleMode);
 	}
 
-	if (fabsf(pidOutput) >= pidProfile()->pidSumLimit) {
+	if (Abs(pidOutput) >= 1.0f)
 		// If we have saturated the pid output by P+FF don't increase the gain
-		tuneCurrent[axis].pidSaturated = true;
-	}
+		tuneCurrent[a].pidSaturated = true;
 
-	if (absDesiredRateDps < (pidAutotuneConfig()->fw_max_rate_threshold
-			/ 100.0f) * maxDesiredRate)
+	if (absDesiredRateDps <  maxDesiredRate)
 		// We can make decisions only when we are demanding at least 50% of max configured rate
 		newState = DEMAND_TOO_LOW;
 
-	else if (fabsf(reachedRateDps) > absDesiredRateDps)
-		newState = DEMAND_OVERSHOOT;
 	else
-		newState = DEMAND_UNDERSHOOT;
+		newState = (Abs(reachedRateDps) > absDesiredRateDps) ? DEMAND_OVERSHOOT
+				: DEMAND_UNDERSHOOT;
 
-	if (newState != tuneCurrent[axis].state) {
-		const timeDelta_t stateTimeMs = currentTimeMs
-				- tuneCurrent[axis].stateEnterTime;
+	if (newState != tuneCurrent[a].state) {
+		const uint32 stateTimeMs = NowmS - tuneCurrent[a].stateEnterTime;
 		boolean gainsUpdated = false;
 
-		switch (tuneCurrent[axis].state) {
+		switch (tuneCurrent[a].state) {
 		case DEMAND_TOO_LOW:
 			break;
 		case DEMAND_OVERSHOOT:
-			if (stateTimeMs >= pidAutotuneConfig()->fw_overshoot_time) {
-				tuneCurrent[axis].gainD = tuneCurrent[axis].gainD * (100
-						- AUTOTUNE_FIXED_WING_DECREASE_STEP) / 100.0f;
-				if (tuneCurrent[axis].gainD < AUTOTUNE_FIXED_WING_MIN_FF)
-					tuneCurrent[axis].gainD = AUTOTUNE_FIXED_WING_MIN_FF;
+			if (stateTimeMs >= 123) { //pidAutotuneConfig()->fw_overshoot_time) {
+				tuneCurrent[a].R.Kd = tuneCurrent[a].R.Kd * (100
+						- AUTOTUNE_FIXED_WING_DECREASE_STEP) * 0.01f;
+				if (tuneCurrent[a].R.Kd < AUTOTUNE_FIXED_WING_MIN_FF)
+					tuneCurrent[a].R.Kd = AUTOTUNE_FIXED_WING_MIN_FF;
 				gainsUpdated = true;
 			}
 			break;
 		case DEMAND_UNDERSHOOT:
-			if (stateTimeMs >= pidAutotuneConfig()->fw_undershoot_time
-					&& !tuneCurrent[axis].pidSaturated) {
-				tuneCurrent[axis].gainD = tuneCurrent[axis].gainD * (100
-						+ AUTOTUNE_FIXED_WING_INCREASE_STEP) / 100.0f;
-				if (tuneCurrent[axis].gainD > AUTOTUNE_FIXED_WING_MAX_FF)
-					tuneCurrent[axis].gainD = AUTOTUNE_FIXED_WING_MAX_FF;
+			if (stateTimeMs >= FW_UNDERSHOOT_MS && !tuneCurrent[a].pidSaturated) {
+				tuneCurrent[a].R.Kd = tuneCurrent[a].R.Kd * (100
+						+ AUTOTUNE_FIXED_WING_INCREASE_STEP) * 0.01f;
+				if (tuneCurrent[a].R.Kd > AUTOTUNE_FIXED_WING_MAX_FF)
+					tuneCurrent[a].R.Kd = AUTOTUNE_FIXED_WING_MAX_FF;
 				gainsUpdated = true;
 			}
 			break;
@@ -202,44 +191,35 @@ void autotuneFixedWingUpdate(const flight_dynamics_index_t axis,
 
 		if (gainsUpdated) {
 			// Set P-gain to 10% of FF gain (quite agressive - FIXME)
-			tuneCurrent[axis].gainP = tuneCurrent[axis].gainD
-					* (pidAutotuneConfig()->fw_ff_to_p_gain / 100.0f);
+			tuneCurrent[a].R.Kp = tuneCurrent[a].R.Kd * 0.1f;
 
 			// Set integrator gain to reach the same response as FF gain in 0.667 second
-			tuneCurrent[axis].gainI = (tuneCurrent[axis].gainD
-					/ FP_PID_RATE_FF_MULTIPLIER) * (1000.0f
-					/ pidAutotuneConfig()->fw_ff_to_i_time_constant)
-					* FP_PID_RATE_I_MULTIPLIER;
-			tuneCurrent[axis].gainI = constrainf(tuneCurrent[axis].gainI, 2.0f,
-					50.0f);
+			tuneCurrent[a].R.Ki = tuneCurrent[a].R.Kd * (1000.0f
+					/ 123); //pidAutotuneConfig()->fw_ff_to_i_time_constant);
+			tuneCurrent[a].R.Ki = Limit(tuneCurrent[a].R.Ki, 2.0f, 50.0f);
 			autotuneUpdateGains(tuneCurrent);
 
-			switch (axis) {
-			case FD_ROLL:
-				blackboxLogAutotuneEvent(ADJUSTMENT_ROLL_D,
-						tuneCurrent[axis].gainD);
+			switch (a) {
+			case Roll:
+				//blackboxLogAutotuneEvent(ADJUSTMENT_ROLL_D, tuneCurrent[a].R.Kd);
 				break;
 
-			case FD_PITCH:
-				blackboxLogAutotuneEvent(ADJUSTMENT_PITCH_D,
-						tuneCurrent[axis].gainD);
+			case Pitch:
+				//blackboxLogAutotuneEvent(ADJUSTMENT_PITCH_D, tuneCurrent[a].R.Kd);
 				break;
 
-			case FD_YAW:
-				blackboxLogAutotuneEvent(ADJUSTMENT_YAW_D,
-						tuneCurrent[axis].gainD);
+			case Yaw:
+				//blackboxLogAutotuneEvent(ADJUSTMENT_YAW_D, tuneCurrent[a].Kd);
 				break;
 			}
 		}
 
 		// Change state and reset saturation flag
-		tuneCurrent[axis].state = newState;
-		tuneCurrent[axis].stateEnterTime = currentTimeMs;
-		tuneCurrent[axis].pidSaturated = false;
+		tuneCurrent[a].state = newState;
+		tuneCurrent[a].stateEnterTime = NowmS;
+		tuneCurrent[a].pidSaturated = false;
 	}
 }
 
 #endif
-
-
 

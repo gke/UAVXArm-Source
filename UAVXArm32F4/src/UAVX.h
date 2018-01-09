@@ -22,7 +22,7 @@
 #ifndef _uavx_h
 #define _uavx_h
 
-#define USE_MPU_DLPF // definitely use for now with 250Hz DLPF => 8KHz gyro sampling
+//#define DONT_USE_USE_MPU_DLPF // definitely use for now with 250Hz DLPF => 8KHz gyro sampling
 
 //#define USE_ORIGIN_INFLIGHT
 #define USE_FAILSAFE_LANDING
@@ -123,6 +123,7 @@
 #include "analog.h"
 #include "airspeed.h"
 #include "altitude.h"
+#include "autolaunch.h"
 #include "battery.h"
 #include "blackbox.h"
 #include "calibration.h"

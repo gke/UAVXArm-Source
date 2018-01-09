@@ -26,7 +26,7 @@ const real32 AFOrientation[AFUnknown + 1] = { // K1 arm relative to board North
 				0, -30, // HexAF, HexXAF
 				0, -22.5, // OctAF, OctXAF
 				0, 0, // Heli90AF, Heli120AF
-				0, 0, 0, 0, 0, // ElevonAF, DeltaAF, AileronAF, AileronSpoilerFlapsAF, RudderElevatorAF,
+				0, 0, 0, 0, 0, 0, // ElevonAF, DeltaAF, AileronAF, AileronSpoilerFlapsAF, AileronVTailAF, RudderElevatorAF,
 				0, 0, // // VTOLAF, GimbalAF,
 				0, 0, // Instrumentation, IREmulation
 				0 }; // AFUnknown
@@ -43,7 +43,7 @@ real32 OrientC = 1.0f;
 real32 IdleThrottlePW;
 real32 NetThrottle;
 real32 CGOffset;
-boolean UsingVTOLMode = false;
+boolean LaunchOrTransitionMode = false;
 
 void RotateOrientation(real32 * nx, real32 * ny, real32 x, real32 y) {
 	real32 Temp;
@@ -74,7 +74,8 @@ void DoMix(void) {
 	else
 		PW[ThrottleC] = ThrottleSuppressed ? 0.0f : DesiredThrottle + AltComp;
 
-	NetThrottle = PW[ThrottleC] = Limit(PW[ThrottleC] * OUT_MAXIMUM, 0.0f, 1.0f);
+	NetThrottle = PW[ThrottleC]
+			= Limit(PW[ThrottleC] * OUT_MAXIMUM, 0.0f, 1.0f);
 
 	switch (UAVXAirframe) {
 	case Heli120AF:
@@ -135,6 +136,28 @@ void DoMix(void) {
 		PW[ElevatorC] = PWSense[ElevatorC] * (F.Bypass ? Pl : (Pl
 				+ FWRollPitchFFFrac * Abs(Rl))) + OUT_NEUTRAL;
 		break;
+	case AileronVTailAF:
+
+		PW[RightAileronC] = Rl;
+		PW[LeftAileronC] = -Rl;
+		DoDifferential(RightAileronC, LeftAileronC);
+		PW[RightAileronC] *= PWSense[RightAileronC];
+		PW[LeftAileronC] *= -PWSense[LeftAileronC];
+		PW[RightAileronC] += OUT_NEUTRAL;
+		PW[LeftAileronC] += OUT_NEUTRAL;
+
+		TempElevator = (F.Bypass ? Pl : (Pl + FWRollPitchFFFrac * Abs(Rl)));
+		PW[RightElevatorC] = PWSense[RightElevatorC] * TempElevator
+				+ OUT_NEUTRAL;
+		PW[LeftElevatorC] = -PWSense[LeftElevatorC] * TempElevator
+				+ OUT_NEUTRAL;
+
+		PW[RightElevatorC] -= Yl;
+		PW[LeftElevatorC] -= Yl;
+
+		PW[RightSpoilerC] = PWSense[RightSpoilerC] * Sl + OUT_NEUTRAL;
+		PW[LeftSpoilerC] = -PWSense[RightSpoilerC] * Sl + OUT_NEUTRAL;
+		break;
 	case RudderElevatorAF:
 		TempAileron = PWSense[RightAileronC] * Rl;
 
@@ -188,7 +211,6 @@ void UpdateMulticopterMix(real32 CurrThrottlePW) {
 			PW[RightC] += R + P;
 
 			PW[FrontC] -= Pl * (1.0f - CGOffset);
-			;
 
 			PW[YawC] = PWSense[YawC] * Yl + OUT_NEUTRAL; // * 1.3333 yaw servo
 			break;

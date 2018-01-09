@@ -46,7 +46,7 @@ real32 CalculateAccConfidence(real32 AccMag) {
 		//TODO: if (F.IsFixedWing && (Acc[BF] * GRAVITY_MPS_S_R > 0.5f) && (accNorm > Sqr(1.2f)))
 		//	conf = 0.0f;
 
-		confp = HardFilter(confp, conf);
+		confp = SimpleFilter(confp, conf, 0.1f);
 	}
 
 	return (confp);
@@ -201,12 +201,6 @@ void InitMadgwick(void) {
 
 	A[Pitch].Angle = asinf(-Acc[BF] * normR);
 	A[Roll].Angle = asinf(Acc[LR] * normR);
-
-	do {
-		GetMagnetometer();
-	} while (!F.NewMagValues);
-	CalculateMagneticHeading(); // for Madgwick quaternion init
-
 	A[Yaw].Angle = MagHeading;
 
 	ConvertEulerToQuaternion(A[Pitch].Angle, A[Roll].Angle, A[Yaw].Angle);
@@ -218,23 +212,39 @@ void UpdateHeading(void) {
 	EstMagHeading += Rate[Yaw] * dT;
 	EstMagHeading = Make2Pi(EstMagHeading);
 
-	GetMagnetometer(); // do it anyway
-
 	if (F.Emulation) {
 		MagHeading = EstMagHeading;
 		Heading = Make2Pi(MagHeading + MagVariation);
-	} else {
-		if (F.NewMagValues)
-			CalculateMagneticHeading();
-		Heading = CurrStateEst == MadgwickIMU ? MagHeading : A[Yaw].Angle;
-		Heading = Make2Pi(Heading + MagVariation);
-		// override for all aircraft
-		if (F.GPSValid && (GPS.gspeed > 1.0f)) // no wind adjustment for now
+	} else if (F.IsFixedWing) {
+		if (F.GPSValid && (GPS.gspeed > 1.0f)) {// no wind adjustment for now
 			Heading = GPS.heading;
-	}
+			MagHeading = Make2Pi(Heading - MagVariation); // fake for compass reading
+			F.ValidHeading = true;
+		}
+	} else {
 
-	MagLockE = MakePi(MagHeading - A[Yaw].Angle);
-	F.MagnetometerLocked = Abs(RadiansToDegrees(MagLockE)) < 5.0f;
+		if (CurrStateEst == MadgwickIMU) {
+			GetMagnetometer();
+			if (F.NewMagValues) {
+				CalculateMagneticHeading();
+				F.ValidHeading = true;
+			}
+		} else
+			MagHeading = A[Yaw].Angle;
+
+		MagLockE = MakePi(MagHeading - A[Yaw].Angle);
+		F.MagnetometerLocked = Abs(RadiansToDegrees(MagLockE)) < 5.0f;
+
+		Heading = Make2Pi(MagHeading + MagVariation);
+
+
+		// override for all aircraft
+		if (F.GPSValid && (GPS.gspeed > 1.0f)) {// no wind adjustment for now
+			Heading = GPS.heading;
+			F.ValidHeading = true;
+			MagHeading = Make2Pi(Heading - MagVariation); // fake for compass reading
+		}
+	}
 
 } // UpdateHeading
 
@@ -305,8 +315,7 @@ void MadgwickMARGUpdate(real32 gx, real32 gy, real32 gz, real32 ax, real32 ay,
 
 	if (F.NewMagValues) {
 		F.NewMagValues = false;
-
-		CalculateMagneticHeading(); // for lock reference
+		F.ValidHeading = true;
 
 		// Normalise magnetometer measurement
 		normR = invSqrt(Sqr(mx) + Sqr(my) + Sqr(mz));
@@ -468,8 +477,7 @@ void MadgwickUpdate(boolean AHRS, real32 gx, real32 gy, real32 gz, real32 ax,
 
 		if (F.NewMagValues) { // no compensation for latency
 			F.NewMagValues = false;
-
-			CalculateMagneticHeading(); // for lock reference
+			F.ValidHeading = true;
 
 			KpMag = CalculateMagConfidence();
 
@@ -529,8 +537,8 @@ void TrackPitchAttitude(void) {
 	if (F.IsFixedWing && (DesiredThrottle < IdleThrottle)
 			&& (State == InFlight)) {
 		if (mSClock() > GlidingTimemS)
-			FWGlideAngleOffsetRad
-					= HardFilter(FWGlideAngleOffsetRad, A[Pitch].Angle);
+			FWGlideAngleOffsetRad = SimpleFilter(FWGlideAngleOffsetRad,
+					A[Pitch].Angle, 0.1f);
 	} else
 		GlidingTimemS = mSClock() + 5000;
 } // TrackPitchAttitude
@@ -539,7 +547,7 @@ void TrackPitchAttitude(void) {
 void UpdateInertial(void) {
 	int32 a;
 
-	if (F.Emulation && (State == InFlight))
+	if (F.Emulation && ((State == InFlight)|| (State == Launching)))
 		DoEmulation(); // produces ROC, Altitude etc.
 	else
 		GetIMU(); // 397uS !!!!!!!!!!!!!!!!!!

@@ -102,6 +102,7 @@ int main() {
 #if defined(V4_BOARD)
 	for (i = 0; i < 4; i++)
 	spiSelect(i, false); // TODO do it again but why is this being changed?
+	Delay1mS(100);
 #endif
 
 	InitParameters();
@@ -111,15 +112,21 @@ int main() {
 	else
 		Delay1mS(1000); // let things settle!
 
+	LEDOn(LEDGreenSel);
 	InitIMU(); // connects pass through for mag
+
+	LEDOn(LEDBlueSel);
 	InitMagnetometer();
+
 	InitMadgwick();
 
+	LEDOn(LEDYellowSel);
 	InitBarometer();
 
 	InitControl();
-
 	InitNavigation();
+
+	LEDsOff();
 
 	if (GPSRxSerial != TelemetrySerial)
 		InitGPS();
@@ -138,16 +145,6 @@ int main() {
 
 	State = Preflight;
 
-	//#define TEST_MAVLINK
-#if defined(TEST_MAVLINK)
-	//zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
-	SetTelemetryBaudRate(0, 57600);
-	while (true) {
-		mavlinkUpdate(0);
-		UpdateControls(); // avoid loop sync delay
-	}
-#endif
-
 	while (true) {
 
 		if ((UAVXAirframe == Instrumentation) || (UAVXAirframe == IREmulation)) {
@@ -158,6 +155,10 @@ int main() {
 		} else {
 			CheckRxLoopback();
 			UpdateControls(); // avoid loop sync delay
+
+			if (State == Launching) // Placed here to defeat RC controls KLUDGE!
+				OverrideSticks();
+
 		}
 
 		NowuS = uSClock();
@@ -242,8 +243,8 @@ int main() {
 				break;
 			case Warmup:
 
-				BatteryCurrentADCZero
-						= SoftFilter(BatteryCurrentADCZero, analogRead(BattCurrentAnalogSel));
+				BatteryCurrentADCZero = SimpleFilter(BatteryCurrentADCZero,
+						analogRead(BattCurrentAnalogSel), 0.5f);
 
 				if (mSClock() > mS[WarmupTimeout]) {
 					UbxSaveConfig(GPSTxSerial); //does this save ephemeris stuff?
@@ -266,7 +267,7 @@ int main() {
 					F.DrivesArmed = CurrESCType == DCMotorsWithIdle;
 					DesiredThrottle = F.DrivesArmed ? IdleThrottle : 0.0f;
 
-					ZeroPIDIntegrals();
+					ZeroIntegrators();
 
 					SavedHeading = DesiredHeading = Nav.TakeoffBearing
 							= Nav.DesiredHeading = Heading;
@@ -305,7 +306,12 @@ int main() {
 								LEDsOff();
 
 								F.DrivesArmed = true;
-								State = InFlight;
+								if (F.IsFixedWing && !F.Bypass) {
+									LaunchState = initLaunch;
+									State = Launching;
+								} else
+									State = InFlight;
+
 							} else {
 
 								// continue in state "landed"
@@ -358,6 +364,14 @@ int main() {
 					State = Preflight;
 				} else
 					LEDsOff();
+
+				break;
+			case Launching:
+
+				LaunchFW();
+
+				if (LaunchState == finishedLaunch)
+					State = InFlight;
 
 				break;
 			case InFlight:

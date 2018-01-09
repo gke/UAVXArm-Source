@@ -23,7 +23,7 @@
 
 // 0.97, 2.9, 3.9, 5.9, 9.9, 17.85, 33.48ms
 const uint16 MPUGyroLPFHz[] = { 250, 184, 98, 41, 20, 10, 5, 3600 };
-const uint8 CurrGyroLPFSel = 0; // 0 => 250Hz forces 8Khz sampling before DLPF
+const uint8 CurrGyroLPFSel = 2; // 0 => 250Hz forces 8Khz sampling before DLPF
 
 // 1.94, 5.8, 7.8, 11.8, 19.8, 35.7, 66.96, 1.94ms
 const uint16 MPUAccLPFHz[] = { 480, 184, 92, 41, 20, 10, 5, 460 };
@@ -46,7 +46,6 @@ real32 MPU6XXXTemperature = 25.0f;
 uint8 MPU_ID = MPU_0x68_ID;
 uint32 mpu6xxxLastUpdateuS = 0;
 
-boolean NewAccUpdate;
 real32 RawAcc[3], RawGyro[3];
 
 uint32 Noise[8];
@@ -88,15 +87,14 @@ void ReadAccAndGyro(boolean UseSelectedAttSensors) { // Roll Right +, Pitch Up +
 		RawAcc[2] = (real32) B[2];
 	}
 
-	//NewAccUpdate = true; //TODO: need to restrict this to 1KHz
-
 	ComputeMPU6XXXTemperature(B[3]);
 
 	for (a = 4; a <= 6; a++) {
 #if !defined(INC_DFT)
 		Noise[Limit(Abs(B[a] - BP[a]) / SlewHistScale, 0, 7)]++;
 #endif
-		SensorSlewLimit(GyroFailS, &BP[a], B[a], SlewLimitGyroClicks);
+		if (P(GyroSlewRate) > 0)
+			B[a] = SensorSlewLimit(GyroFailS, &BP[a], B[a], SlewLimitGyroClicks);
 	}
 
 	if (UseSelectedAttSensors)
@@ -221,7 +219,7 @@ void InitMPU6XXX(void) {
 	// VERY IMPORTANT: ACCELEROMETER MAX SAMPLING RATE IS 1KHZ. IF READ FASTER THEN VALUES REPEAT.
 	// GYROS ARE SAMPLED AT 1KHZ UNLESS DISABLED WHEN THE SAMPLING RATE IS 8KHZ
 	// THE UPDATING OF REGISTERS IS ASYNCHRONOUS
-	// THE MPU6050 HAS COMMON DLPF CONFIG, THE MPU6500 HAS A SEPARATE DLPF CONFIG FOR ACC
+	// THE MPU6050 HAS COMMON DLPF CONFIG FOR ACC/GYRO, THE MPU6500 HAS A SEPARATE DLPF CONFIG FOR ACC
 
 #if defined(USE_MPU_DLPF)
 	const uint8 DisableGyroDLPF = 0;
@@ -290,6 +288,7 @@ void InitMPU6XXX(void) {
 	MPU6000DLPF = sioReadataddr(SIOIMU, MPU_ID, MPU_RA_ACC_CONFIG2) & 0x07;
 #endif
 
+	Delay1mS(100); // added to prevent apparent SPI hang
 
 } // InitMPU6XXX
 

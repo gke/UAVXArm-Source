@@ -27,25 +27,31 @@ const ParamStruct_t
 
 						// Attitude
 
-						{ ThrottleGainRate, { 0, 0, 0, 0} }, // 93 PID overall gain above throttle cruise
+						{ ThrottleGainRate, { 0, 0, 40, 50} }, // 93 PID overall gain reduction above cruise
 
-						{ MaxRollAngle, { 60, 60, 45, 60 } }, // deg 77
-						{ RollAngleKp, { 25, 25, 20, 25 } }, //  03
-						{ RollAngleKi, { 3, 3, 1, 1 } }, //  24
-						{ RollIntLimit, { 10, 10, 10, 10 } }, //  05
-						{ RollRateKp, { 20, 35, 6, 6 } }, //  01
-						{ RollRateKd, { 45, 45, 0, 0 } }, //  12
+						{ MaxRollAngle, { 60, 60, 45, 45 } }, // deg 77
+						{ RollAngleKp, { 25, 25, 3, 3 } }, //  03
+						{ RollAngleKi, { 3, 3, 2, 2 } }, //  24
+						{ RollAngleIntLimit, { 10, 10, 10, 10 } }, //  05
+						{ RollRateKp, { 20, 35, 40, 40 } }, //  01
+						{ RollRateKi, { 0, 0, 6, 6 } }, // 97
+						{ RollRateIntLimit, { 1, 1, 5, 5 } },// 98
+						{ RollRateKd, { 45, 45, 40, 40 } }, //  12
 						{ MaxRollRate, { 60, 60, 60, 60 } }, // x10 deg/S 83
 
-						{ MaxPitchAngle, { 60, 60, 45, 60 } }, // deg  75
-						{ PitchAngleKp, { 25, 25, 20, 25 } }, //  08
-						{ PitchAngleKi, { 3, 3, 1, 1 } }, //  25
-						{ PitchIntLimit, { 10, 10, 10, 10 } }, //  10
-						{ PitchRateKp, { 20, 25, 6, 6 } }, //  06
-						{ PitchRateKd, { 45, 45, 0, 0 } }, //  28
+						{ MaxPitchAngle, { 60, 60, 45, 45 } }, // deg  75
+						{ PitchAngleKp, { 25, 25, 3, 3 } }, //  08
+						{ PitchAngleKi, { 3, 3, 2, 2 } }, //  25
+						{ PitchAngleIntLimit, { 10, 10, 10, 10 } }, //  10
+						{ PitchRateKp, { 20, 35, 40, 40 } }, //  06
+						{ PitchRateKi, { 0, 0, 6, 6 } },// 99
+						{ PitchRateIntLimit, { 1, 1, 5, 5 } }, // 100
+						{ PitchRateKd, { 45, 45, 40, 40 } }, //  28
 						{ MaxPitchRate, { 60, 60, 30, 30 } }, // x10 deg/S 84
 
 						{ YawRateKp, { 20, 20, 10, 10 } }, //  11
+						{ YawRateKi, { 0, 0, 0, 0 } },// 101
+						{ YawRateIntLimit, { 1, 1, 1, 1 } }, // 102
 						{ YawRateKd, { 45, 45, 0, 0 } }, // // 91
 						{ MaxCompassYawRate, { 9, 9, 9, 9 } }, // 10 deg/S 89,
 						{ MaxYawRate, { 36, 36, 9, 9 } }, //  *10 deg/S 64
@@ -57,7 +63,7 @@ const ParamStruct_t
 						{ AltVelKd, { 0, 0, 0, 0 } }, //  14
 						{ AltLPF, { 10, 10, 10, 10 } }, //  *10 58
 						{ MaxAltHoldComp, { 10, 10, 15, 15 } }, //  % 67
-						{ AltCompDecayTime, { 15, 15, 15, 15 } }, //  *0.1S 22
+
 
 						{ RFSensorType, { UnknownRF, UnknownRF, UnknownRF,
 								UnknownRF } }, // 09
@@ -136,6 +142,7 @@ const ParamStruct_t
 						{ GyroSlewRate, { 20, 20, 20, 20} }, // *100 Deg/S/S P92
 
 						// Fixed Wing
+						{ FWClimbThrottle, { 0, 0, 70, 70} }, // % 22
 						{ FWMaxClimbAngle, { 60, 60, 15, 15 } }, // deg. 68
 						{ FWRollPitchFF, { 0, 0, 25, 25 } }, //  % 65
 						{ FWPitchThrottleFF, { 0, 0, 10, 10 } }, //  % 66
@@ -189,7 +196,36 @@ const ParamStruct_t
 
 						// Unused
 
-						{ Unused27, { 0, } } // 27
+
+						{ Unused27, { 0, } }, // 27
+
+						{ Unused103, { 0, } }, // 103
+						{ Unused104, { 0, } }, // 104
+						{ Unused105, { 0, } }, // 105
+						{ Unused106, { 0, } }, // 106
+						{ Unused107, { 0, } }, // 107
+						{ Unused108, { 0, } }, // 108
+						{ Unused109, { 0, } }, // 109
+						{ Unused110, { 0, } }, // 110
+
+						{ Unused111, { 0, } }, // 111
+						{ Unused112, { 0, } }, // 112
+						{ Unused113, { 0, } }, // 113
+						{ Unused114, { 0, } }, // 114
+						{ Unused115, { 0, } }, // 115
+						{ Unused116, { 0, } }, // 116
+						{ Unused117, { 0, } }, // 117
+						{ Unused118, { 0, } }, // 118
+						{ Unused119, { 0, } }, // 119
+						{ Unused120, { 0, } }, // 120
+						{ Unused121, { 0, } }, // 121
+						{ Unused122, { 0, } }, // 122
+						{ Unused123, { 0, } }, // 123
+						{ Unused124, { 0, } }, // 124
+						{ Unused125, { 0, } }, // 125
+						{ Unused126, { 0, } }, // 126
+						{ Unused127, { 0, } }, // 127
+						{ Unused128, { 0, } } // 128
 
 				};
 

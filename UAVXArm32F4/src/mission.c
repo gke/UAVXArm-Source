@@ -135,7 +135,7 @@ void RefreshNavWayPoint(void) {
 		GetNavWayPoint();
 	}
 
-	DesiredAltitude = WP.Pos[DownC];
+	SetDesiredAltitude(WP.Pos[DownC]);
 
 } // RefreshNavWayPoint
 

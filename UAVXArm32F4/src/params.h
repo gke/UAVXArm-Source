@@ -88,6 +88,7 @@ enum AFs {
 	DeltaAF,
 	AileronAF,
 	AileronSpoilerFlapsAF,
+	AileronVTailAF,
 	RudderElevatorAF,
 	VTOLAF,
 	GimbalAF,
@@ -96,17 +97,17 @@ enum AFs {
 	AFUnknown,
 };
 
-enum Params { // MAX 64
+enum Params { // MAX 128
 	RollRateKp, // 01
 	AltPosKi, // 02
 	RollAngleKp, // 03
 	ArmingMode, // 04
-	RollIntLimit, // 05
+	RollAngleIntLimit, // 05
 	PitchRateKp, // 06
 	AltPosKp, // 07
 	PitchAngleKp, // 08
 	RFSensorType, // 09
-	PitchIntLimit, // 10
+	PitchAngleIntLimit, // 10
 
 	YawRateKp, // 11
 	RollRateKd, // 12
@@ -120,7 +121,7 @@ enum Params { // MAX 64
 	EstCruiseThr, // 20
 
 	StickHysteresis, // 21
-	AltCompDecayTime, //  22
+	FWClimbThrottle, //  22
 	PercentIdleThr, // 23
 	RollAngleKi, //  24
 	PitchAngleKi, //  25
@@ -197,9 +198,42 @@ enum Params { // MAX 64
 	YawRateKd, // 91,
 	GyroSlewRate, // 92
 	ThrottleGainRate, // 93
-	RxAux5Ch,
-	RxAux6Ch,
-	RxAux7Ch
+	RxAux5Ch, // 94
+	RxAux6Ch, // 95
+	RxAux7Ch, // 96
+	RollRateKi, // 97
+	RollRateIntLimit, // 98
+	PitchRateKi, // 99
+	PitchRateIntLimit, // 100
+	YawRateKi, // 101
+	YawRateIntLimit, // 102
+	Unused103, // 103
+	Unused104, // 104
+	Unused105, // 105
+	Unused106, // 106
+	Unused107, // 107
+	Unused108, // 108
+	Unused109, // 109
+	Unused110, // 110
+
+	Unused111, // 111
+	Unused112, // 112
+	Unused113, // 113
+	Unused114, // 114
+	Unused115, // 115
+	Unused116, // 116
+	Unused117, // 117
+	Unused118, // 118
+	Unused119, // 119
+	Unused120, // 120
+	Unused121, // 121
+	Unused122, // 122
+	Unused123, // 123
+	Unused124, // 124
+	Unused125, // 125
+	Unused126, // 126
+	Unused127, // 127
+	Unused128 // 128
 };
 
 typedef struct {

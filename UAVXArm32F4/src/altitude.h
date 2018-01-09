@@ -80,6 +80,7 @@ void UpdateAltitudeEstimates(void);
 
 extern uint16 ms56xx_c[];
 
+void SetDesiredAltitude(real32 Desired);
 void UpdateAltitudeAndROC(void);
 void BaroTest(uint8 s);
 

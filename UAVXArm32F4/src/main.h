@@ -167,7 +167,7 @@ typedef union {
 				ValidGPSVel :1,
 				RCFrameReceived :1, // zzz
 				ValidGPSPos :1,
-				NewMagnetometerValue :1,
+				ValidHeading :1,
 
 				// 7
 				YawActive :1,
@@ -202,6 +202,7 @@ enum FlightStates {
 	IREmulate,
 	Preflight,
 	Ready,
+	Launching,
 	UnknownFlightState
 };
 

@@ -29,8 +29,9 @@ real32 kth_smallest(real32 a[], uint16 n, uint16 k);
 
 void InitSmoothr32xn(HistStruct * F);
 real32 Smoothr32xn(HistStruct * F, uint8 n, real32 v);
-uint32 Smoothuint32xn(uint32HistStruct * F, uint8 n, uint32 v);
 
+real32 SimpleFilter(real32 O, real32 N, const real32 K);
+real32 SimpleFilterCoefficient(real32 CutHz, real32 dT);
 real32 LPFilter(HistStruct * F, const idx Order, real32 v, const real32 CutHz, real32 dT);
 real32 LPFilterBW(HistStruct * F, real32 v, const real32 CutHz, real32 dT);
 real32 PavelDifferentiator(HistStruct *F, real32 v);
@@ -45,6 +46,8 @@ real32 MakePi(real32);
 real32 invSqrt(real32 x);
 void Rotate(real32 * nx, real32 * ny, real32 x, real32 y, real32 A);
 real32 DecayX(real32 v, real32 d, real32 dT);
+real32 scaleRangef(real32 v, real32 srcMin, real32 srcMax, real32 destMin,
+		real32 destMax);
 
 #endif
 

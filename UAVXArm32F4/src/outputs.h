@@ -107,12 +107,17 @@ enum PWMTagsAileron {
 enum PWMTagsElevon {
 	RightElevonC = 1, LeftElevonC = 2
 };
+
 enum PWMTagsVTOL {
 	RightPitchYawC = 1, LeftPitchYawC = 2, RollC = 3
+};
+enum PWMTagsVTail {
+	RightElevatorC = ElevatorC, LeftElevatorC = RudderC
 };
 enum PWMTags {
 	K1 = 0, K2, K3, K4, K5, K6, K7, K8, K9, K10
 };
+
 
 extern uint8 CurrESCType;
 
@@ -124,6 +129,7 @@ typedef struct {
 
 CamStruct Cam;
 
+extern real32 DriveLPFTau, ServoLPFTau;
 extern uint8 const DrivesUsed[];
 extern uint8 NoOfDrives;
 extern const uint8 DM[];
@@ -144,7 +150,6 @@ extern boolean UsingPWMSync;
 extern boolean UsingDCMotors;
 extern boolean DrivesInitialised;
 extern real32 NoOfDrivesR;
-
 
 #endif
 

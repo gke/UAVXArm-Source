@@ -154,14 +154,6 @@ typedef struct {
 #define ToPercent(n, m) ((100.0f*(real32)n)/m)
 #define FromPercent(n) ((real32)n*0.01f) // always to 1.0f
 
-// Simple filters using weighted averaging
-#define VerySoftFilter(O,N) (O*0.25+N*0.75f)
-#define SoftFilter(O,N) 	(O*0.5+N*0.5)
-#define MediumFilter(O,N) 	(O*0.75f+N*0.25)
-#define HardFilter(O,N) 	(O*0.9f+N*0.1f)
-
-#define NoFilter(O,N)		(N)
-
 // Useful Constants
 
 #define ASCII_NUL 0

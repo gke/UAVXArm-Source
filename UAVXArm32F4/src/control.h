@@ -49,30 +49,30 @@ enum AttitudeModes {
 enum DerivativeFilterTypes {maDFilt, pavelDFilt, mlDFilt, unknownDFilt};
 
 typedef struct {
-	real32 Stick, StickP, StickD;
-	real32 AngleDesired, AngleE, AngleKp, AngleKi, AngleKd, AngleIntE, AngleIL, AngleMax,
-			RateDesired, RateE, RateKp, RateKd, RateMax, CompassRateMax;
-	real32 AnglePTerm, AngleITerm, AngleDTerm, RateFFTerm, RatePTerm, RateDTerm;
-	// controls
-	// body frame sensors
-	real32 Ratep, DriftCorr, Angle;
-	// stats
-	real32 RateD, RateDp;
+	real32 Desired, Error, Kp, Ki, Kd, IntE, IntLim, Max;
+	real32 PTerm, ITerm, DTerm, FFTerm;
+
+	real32 RateP, RateD, RateDp;
 	HistStruct RateF, RateDF;
-	real32 Control, NavCorr, NavCorrP;
+} PIDStruct;
+
+typedef struct {
+	real32 Stick;
+	PIDStruct P, R;
+	real32 Angle;
+	real32 NavCorr, NavCorrP;
 	real32 Out;
 } AxisStruct;
 
 typedef struct {
-	real32 PosKp, PosKi, PosE, PosIntE, PosIL, PosPTerm, PosITerm;
-	real32 VelKp, VelKd, VelE, VelPTerm, VelDTerm; // does not include altitude and ROC
+	PIDStruct P, R;
 } AltStruct;
 
 AltStruct Alt;
 
 void ZeroThrottleCompensation(void);
 void DoAltitudeControl(void);
-void ZeroPIDIntegrals(void);
+void ZeroIntegrators(void);
 real32 ComputeRateDerivative(AxisStruct *C);
 
 void DoControl(void);
@@ -82,24 +82,24 @@ AxisStruct A[3];
 
 idx AttitudeMode;
 real32 TiltThrFFFrac;
-real32 CurrAccLPFHz, CurrGyroLPFHz, CurrDerivativeLPFHz;
+real32 CurrAccLPFHz, CurrGyroLPFHz, CurrDerivativeLPFHz, CurrYawLPFHz;
 idx DerivativeLPFOrder;
 boolean UsingPavelFilter;
 
 real32 CameraAngle[3], OrbitCamAngle;
 real32 DesiredHeading, SavedHeading;
 real32 CurrMaxTiltAngle;
-real32 DesiredAltitude, Altitude, DesiredROC;
+real32 Altitude;
 real32 AltComp, AltCompDecayS, ROC, MinROCMPS;
 real32 CruiseThrottle;
 real32 BattThrFFComp, TiltThrFFComp;
 real32 AltAccComp;
-real32 HorizonTransPoint;
+real32 HorizonTransScale;
 real32 StickDeadZone;
 real32 OrientationRad, OrientS, OrientC;
 
 real32 FWRollPitchFFFrac, FWAileronDifferentialFrac,
-		FWPitchThrottleFFFrac, MaxAltHoldCompFrac, FWMaxClimbAngleRad,
+		FWPitchThrottleFFFrac, MaxAltHoldCompFrac, FWMaxClimbAngleRad, FWClimbThrottleFrac,
 		MaxRollAngleRad, FWGlideAngleOffsetRad, FWBoardPitchAngleRad,
 		FWSpoilerDecayS, FWAileronRudderFFFrac,
 		FWAltSpoilerFFFrac, BestROCMPS;

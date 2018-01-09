@@ -51,22 +51,8 @@ uint32 RateEnergySamples;
 
 real32 GyroLPFreqHz, AccLPFreqHz;
 
-#if defined(V4_BOARD)
-#if defined(USE_MPU_DLPF)
-const idx RollPitchGyroLPFOrder = 1;
-#else
 const idx RollPitchGyroLPFOrder = 2;
-#endif
-const idx RollPitchAccLPFOrder = 3;
-#else
-#if defined(USE_MPU_DLPF)
-const idx RollPitchGyroLPFOrder = 1;
-#else
-const idx RollPitchGyroLPFOrder = 2;
-#endif
-const idx RollPitchAccLPFOrder = 3;
-#endif
-
+const idx RollPitchAccLPFOrder = 2;
 
 // NED
 // P,R,Y
@@ -77,9 +63,10 @@ void GetIMU(void) {
 
 	ReadAccAndGyro(true);
 
-	for (a = X; a <= Z; a++) // TODO: perhaps add slewlimiter?
-		RawGyro[a] = LPFilter(&GyroF[a], RollPitchGyroLPFOrder, RawGyro[a],
-				GyroLPFHz, CurrPIDCycleS);
+	if (P(GyroLPFHz) > 0)
+		for (a = X; a <= Z; a++) // TODO: perhaps add slewlimiter?
+			RawGyro[a] = LPFilter(&GyroF[a], RollPitchGyroLPFOrder, RawGyro[a],
+					CurrGyroLPFHz, CurrPIDCycleS);
 
 	UpdateGyroTempComp();
 
@@ -87,23 +74,20 @@ void GetIMU(void) {
 	Rate[Roll] = (RawGyro[Y] - GyroBias[Y]) * GyroScale[CurrAttSensorType];
 	Rate[Yaw] = -(RawGyro[Z] - GyroBias[Z]) * GyroScale[CurrAttSensorType];
 
-	//if (NewAccUpdate) {
-	//	NewAccUpdate = false;
-
+	if (P(AccLPFHz) > 0)
 		for (a = X; a <= Z; a++)
 			RawAcc[a] = LPFilter(&AccF[a], RollPitchAccLPFOrder, RawAcc[a],
 					CurrAccLPFHz, CurrPIDCycleS);
 
-		if (CurrAttSensorType == InfraRedAngle) {
+	if (CurrAttSensorType == InfraRedAngle) {
 
-			// TODO: bias and scale from where? track max min with decay???
+		// TODO: bias and scale from where? track max min with decay???
 
-		} else {
-			Acc[BF] = (RawAcc[Y] - NV.AccCal.Bias[Y]) * NV.AccCal.Scale[Y];
-			Acc[LR] = (RawAcc[X] - NV.AccCal.Bias[X]) * NV.AccCal.Scale[X];
-			Acc[UD] = -(RawAcc[Z] - NV.AccCal.Bias[Z]) * NV.AccCal.Scale[Z];
-		}
-	//}
+	} else {
+		Acc[BF] = (RawAcc[Y] - NV.AccCal.Bias[Y]) * NV.AccCal.Scale[Y];
+		Acc[LR] = (RawAcc[X] - NV.AccCal.Bias[X]) * NV.AccCal.Scale[X];
+		Acc[UD] = -(RawAcc[Z] - NV.AccCal.Bias[Z]) * NV.AccCal.Scale[Z];
+	}
 
 	F.IMUFailure = !F.IMUCalibrated;
 
@@ -175,8 +159,8 @@ void InitSWFilters(void) {
 	idx a;
 
 	for (a = X; a <= Z; a++)
-		AccF[a].Primed = GyroF[a].Primed = A[a].RateF.Primed
-				= A[a].RateDF.Primed = false;
+		AccF[a].Primed = GyroF[a].Primed = A[a].P.RateF.Primed = A[a].R.RateF.Primed
+				= A[a].P.RateDF.Primed = A[a].R.RateDF.Primed = false;
 } // InitSWFilters
 
 

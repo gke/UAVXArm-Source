@@ -5,8 +5,8 @@
 #include "blackbox_encoding.h"
 #include "blackbox_io.h"
 
-#include "common/encoding.h"
-#include "common/printf.h"
+//zzz#include "common/encoding.h"
+//zzz #include "common/printf.h"
 
 
 static void _putc(void *p, char c)

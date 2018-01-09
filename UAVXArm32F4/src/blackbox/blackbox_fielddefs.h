@@ -127,7 +127,7 @@ typedef struct flightLogEvent_inflightAdjustment_s {
     int32_t newValue;
     float newFloatValue;
     uint8_t adjustmentFunction;
-    bool floatFlag;
+    boolean floatFlag;
 } flightLogEvent_inflightAdjustment_t;
 
 typedef struct flightLogEvent_loggingResume_s {

@@ -39,7 +39,7 @@ real32 MagdT;
 
 real32 Mag[3];
 int16 RawMag[3];
-real32 MagScale[3] = {1.0,};
+real32 MagScale[3] = { 1.0, };
 real32 d[MAG_CAL_SAMPLES][3];
 uint16 SphereIterations;
 
@@ -60,16 +60,16 @@ void WriteVerifyMag(uint8 a, uint8 v) {
 } // WriteVerifyMag
 
 boolean ReadMagnetometer(void) {
-	int16 RawTemp = 0;
+	//int16 RawTemp = 0;
 	boolean r;
 
 	sioReadBlocki16vataddr(SIOMag, HMC5XXX_ID, HMC5XXX_DATA, 3, RawMag, true);
 
-	if (spiDevUsed[SIOMag])
-		sioReadBlocki16vataddr(SIOMag, HMC5XXX_ID, HMC5XXX_TEMP, 1, &RawTemp,
-				true);
+	//if (spiDevUsed[SIOMag])
+	//	sioReadBlocki16vataddr(SIOMag, HMC5XXX_ID, HMC5XXX_TEMP, 1, &RawTemp,
+	//true);
 
-	MagTemperature = (real32) RawTemp * 0.0078125 + 25.0f;
+	//MagTemperature = (real32) RawTemp * 0.0078125 + 25.0f;
 
 	r = (RawMag[0] != -4096) && (RawMag[1] != -4096) && (RawMag[2] != -4096);
 	if (!r)
@@ -84,39 +84,40 @@ void GetMagnetometer(void) {
 	static uint32 LastMagUpdateuS = 0;
 	int32 a;
 
-	NowmS = mSClock();
-	if (NowmS >= mS[MagnetometerUpdate]) {
-		mSTimer(NowmS, MagnetometerUpdate, MAG_TIME_MS);
+	if (F.MagnetometerActive) {
+		NowmS = mSClock();
+		if (NowmS >= mS[MagnetometerUpdate]) {
+			mSTimer(NowmS, MagnetometerUpdate, MAG_TIME_MS);
 
-		RawMag[MX] = -4096;
+			RawMag[MX] = -4096;
 
-		MagdT = dTUpdate(uSClock(), &LastMagUpdateuS);
+			MagdT = dTUpdate(uSClock(), &LastMagUpdateuS);
 
-		if (ReadMagnetometer()) {
+			if (ReadMagnetometer()) {
 
-			if (F.InvertMagnetometer) {
-				Mag[BF] = (real32) RawMag[MX] * MagScale[MX]; // -
-				Mag[LR] = -(real32) RawMag[MY] * MagScale[MY];
-				Mag[UD] = (real32) RawMag[MZ] * MagScale[MZ];
-			} else {
-				Mag[BF] = (real32) RawMag[MY] * MagScale[MY];
-				Mag[LR] = (real32) RawMag[MX] * MagScale[MX];
-				Mag[UD] = -(real32) RawMag[MZ] * MagScale[MZ];
-			}
+				if (F.InvertMagnetometer) {
+					Mag[BF] = (real32) RawMag[MX] * MagScale[MX]; // -
+					Mag[LR] = -(real32) RawMag[MY] * MagScale[MY];
+					Mag[UD] = (real32) RawMag[MZ] * MagScale[MZ];
+				} else {
+					Mag[BF] = (real32) RawMag[MY] * MagScale[MY];
+					Mag[LR] = (real32) RawMag[MX] * MagScale[MX];
+					Mag[UD] = -(real32) RawMag[MZ] * MagScale[MZ];
+				}
 
-			for (a = X; a <= Z; a++)
-				Mag[a] -= NV.MagCal.Bias[a];
+				for (a = X; a <= Z; a++)
+					Mag[a] -= NV.MagCal.Bias[a];
 
-			real32 NormR = invSqrt(Sqr(Mag[0]) + Sqr(Mag[1]) + Sqr(Mag[2]));
-			for (a = X; a <= Z; a++)
-				Mag[a] *= NormR;
+				real32 NormR = invSqrt(Sqr(Mag[0]) + Sqr(Mag[1]) + Sqr(Mag[2]));
+				for (a = X; a <= Z; a++)
+					Mag[a] *= NormR;
 
-			F.NewMagValues = true;
-		} else
-			F.NewMagValues = false;
-	}
-
-	F.MagnetometerFailure = !F.MagnetometerCalibrated;
+				F.NewMagValues = true;
+			} else
+				F.NewMagValues = false;
+		}
+	} else
+		F.NewMagValues = false;
 
 } // GetMagnetometer
 
@@ -137,7 +138,6 @@ void CalculateMagneticHeading(void) {
 		yh = Mag[LR] * cR + Mag[UD] * sR;
 
 		MagHeading = -atan2f(yh, xh); // filtering is difficult because of 360deg discontinuity
-
 	}
 
 } // CalculateMagneticHeading
@@ -154,81 +154,82 @@ void CalculateMagneticHeading(void) {
 #define HMC_POS_BIAS 1
 #define HMC_NEG_BIAS 2
 
+uint8 HMC5XXXSetReset[] = { 0x11, // Set positive bias
+		0xA0, // Gain
+		0x01 // Perform single conversion
+		};
+
+uint8 HMC5883LConfig[] = { 0x78, // Temp Comp, 75Hz normal mode 8 sample/measurement
+		0x78, // 75Hz normal mode 8 sample/measurement
+		0x00, // 0.88Ga increase gain with large dip angles
+		0x00 //  continuous};
+		};
+
+uint8 HMC5983Config[] = { 0xf8, // Temp Comp, 75Hz normal mode 8 sample/measurement
+		0x78, 0x00, 0x00 };
+
 void InitMagnetometer(void) {
-	uint32 FatalTimeoutmS;
-
 	const uint8 Samples = 20;
-	uint8 ActualSamples;
-	idx i, a;
-
-	FatalTimeoutmS = mSClock() + 10000;
-	do {
-		Delay1mS(10);
-		F.MagnetometerActive = MagnetometerIsActive();
-	} while (!(mSClock() > FatalTimeoutmS) && !F.MagnetometerActive);
+	idx a, s;
 
 	MagScale[BF] = MagScale[LR] = MagScale[UD] = 0.0f;
 
-	if (F.MagnetometerActive) {
+	if (MagnetometerIsActive() && !F.IsFixedWing) {
 
-		WriteVerifyMag(HMC5XXX_CONFIG_A, 0x11); // Set positive bias
-		Delay1mS(50);
-		WriteVerifyMag(HMC5XXX_CONFIG_B, 0xA0); // Gain
-		Delay1mS(100);
+		F.MagnetometerActive = true;
 
-		sioWrite(SIOMag, HMC5XXX_ID, HMC5XXX_MODE, 0x01); // Perform single conversion
+		sioWriteBlockataddr(SIOMag, HMC5XXX_ID, HMC5XXX_CONFIG_A, 3,
+				HMC5XXXSetReset);
+
 		Delay1mS(50);
 		ReadMagnetometer(); // discard initial values
 
-		ActualSamples = 0;
+		for (s = 0; s < Samples; s++) {
+			LEDToggle(LEDRedSel);
 
-		for (i = 0; i < Samples; i++) {
 			sioWrite(SIOMag, HMC5XXX_ID, HMC5XXX_MODE, 0x01); // Perform single conversion
 			Delay1mS(50);
 
-			if (ReadMagnetometer()) {
-				MagScale[MX] += Abs(1264.4f / RawMag[MX]);
-				MagScale[MY] += Abs(1264.4f / RawMag[MY]);
-				MagScale[MZ] += Abs(1177.2f / RawMag[MZ]);
-				ActualSamples++;
-			}
+			ReadMagnetometer();
+
+			MagScale[MX] += Abs(1264.4f / RawMag[MX]);
+			MagScale[MY] += Abs(1264.4f / RawMag[MY]);
+			MagScale[MZ] += Abs(1177.2f / RawMag[MZ]);
 
 			Delay1mS(20);
 		}
 
-		if (ActualSamples > 0) {
-			for (a = X; a <= Z; a++)
-				MagScale[a] /= (real32) (Samples * 2);
+		for (a = X; a <= Z; a++)
+			MagScale[a] /= (real32) (Samples * 2.0f);
 
-			Delay1mS(50);
+		Delay1mS(50);
 
-			if (spiDevUsed[SIOMag])
-				WriteVerifyMag(HMC5XXX_CONFIG_A, 0xf8); // Temp Comp, 75Hz normal mode 8 sample/measurement
-			else
-				WriteVerifyMag(HMC5XXX_CONFIG_A, 0x78); // 75Hz normal mode 8 sample/measurement
-			Delay1mS(50);
-			WriteVerifyMag(HMC5XXX_CONFIG_B, 0x00); // 0.88Ga increase gain with large dip angles
-			Delay1mS(50);
-			sioWrite(SIOMag, HMC5XXX_ID, HMC5XXX_MODE, 0x00); // Set continuous mode
-			Delay1mS(50);
+		if (spiDevUsed[SIOMag])
+			sioWriteBlockataddr(SIOMag, HMC5XXX_ID, HMC5XXX_CONFIG_A, 4,
+					HMC5983Config);
+		else
+			sioWriteBlockataddr(SIOMag, HMC5XXX_ID, HMC5XXX_CONFIG_A, 4,
+					HMC5883LConfig);
 
-			mSTimer(mSClock(), MagnetometerUpdate, MAG_TIME_MS);
+		mSTimer(mSClock(), MagnetometerUpdate, MAG_TIME_MS);
+		Delay1mS(MAG_TIME_MS * 2);
 
-			F.NewMagValues = false;
-
-			do {
-				GetMagnetometer();
-			} while (!F.NewMagValues);
-
-			CheckMagnetometerIsCalibrated();
-
-		} else
-			F.NewMagValues = F.MagnetometerActive = false;
-
-	} else
 		F.NewMagValues = false;
+		do {
+			GetMagnetometer();
+		} while (!F.NewMagValues);
+		CalculateMagneticHeading();
+
+		CheckMagnetometerIsCalibrated();
+
+		F.MagnetometerFailure = !F.MagnetometerCalibrated;
+	} else {
+		F.MagnetometerFailure = true;
+		F.NewMagValues = F.MagnetometerActive = false;
+	}
 
 } // InitMagnetometer
+
 
 void CheckMagnetometerIsCalibrated(void) {
 
@@ -269,7 +270,7 @@ void CalibrateHMC5XXX(uint8 s) {
 
 	LEDOn(LEDBlueSel);
 
-	if (F.MagnetometerActive) {
+	if (F.MagnetometerActive && !F.IsFixedWing) {
 
 		InitMagnetometerBias();
 
@@ -299,7 +300,6 @@ void CalibrateHMC5XXX(uint8 s) {
 				}
 			}
 		}
-
 
 		// Actually it will be an ellipsoid due to hard iron effects
 		SphereIterations = SphereFit(d, MAG_CAL_SAMPLES, 200, 0.01f, MagOrigin,
@@ -335,6 +335,7 @@ boolean MagnetometerIsActive(void) {
 	r = v == 'H';
 
 	return (r);
-} //  MagnetometerActive
+}
+//  MagnetometerActive
 
 
