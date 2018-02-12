@@ -150,15 +150,15 @@ real32 Smoothr32xn(HistStruct * F, uint8 n, real32 v) {
 	return (F->S / (real32) n);
 } // Smoothr32xn
 
-__attribute__((always_inline))     inline real32 SimpleFilterCoefficient(real32 CutHz, real32 dT) {
+inline real32 LPF1Coefficient(real32 CutHz, real32 dT) {
 
 	return (dT / ((1.0f / (TWO_PI * CutHz)) + dT));
-} // SimpleFilterCoefficient
+} // LPF1Coefficient
 
-__attribute__((always_inline))     inline real32 SimpleFilter(real32 O, real32 N, const real32 K) {
+__attribute__((always_inline))          inline real32 LPF1(real32 O, real32 N, const real32 K) {
 
 	return (O + (N - O) * K);
-} // SimpleFilter
+} // LPF1
 
 
 real32 LeadFilter(real32 Pos, real32 VelP, real32 Vel, real32 Lag) {
@@ -167,7 +167,7 @@ real32 LeadFilter(real32 Pos, real32 VelP, real32 Vel, real32 Lag) {
 } // LeadFilter
 
 
-real32 LPFilterBW(HistStruct * F, real32 v, const real32 CutHz, real32 dT) {
+real32 LPD5BW(HistStruct * F, real32 v, const real32 CutHz, real32 dT) {
 	real32 r;
 	idx i;
 
@@ -205,7 +205,7 @@ real32 LPFilterBW(HistStruct * F, real32 v, const real32 CutHz, real32 dT) {
 		r += F->h[i] * F->c[i];
 
 	return (r);
-} // LPFilterBW
+} // LPD5BW
 
 
 real32 PavelDifferentiator(HistStruct *F, real32 v) {
@@ -238,15 +238,24 @@ real32 PavelDifferentiator(HistStruct *F, real32 v) {
 	return (r);
 } // Pavel
 
-__attribute__((always_inline))     inline real32 LPFilter(HistStruct * F, const idx Order, real32 v,
+
+__attribute__((always_inline)) inline real32 LPFn(HistStruct * F, const idx Order, real32 v,
 		const real32 CutHz, real32 dT) {
 	idx n;
+	real32 AdjCutHz;
+	// AdjCutHz = CutHz /(sqrtf(powerf(2, 1/Order) -1))
+	const real32 ScaleF[] = { 1.0f, 1.553773974f, 1.961459177f, 2.298959223f };
 
 	if (!F->Primed) {
 		for (n = 1; n <= Order; n++)
 			F->h[n] = v;
 		F->Primed = true;
-		F->Tau = 1.0f / (TWO_PI * CutHz);
+
+		AdjCutHz = CutHz * ScaleF[Order];
+
+		F->Tau = 1.0f / (TWO_PI * AdjCutHz);
+
+		//F->S = dT / (F->Tau + dT);
 	}
 
 	F->S = dT / (F->Tau + dT);
@@ -258,7 +267,78 @@ __attribute__((always_inline))     inline real32 LPFilter(HistStruct * F, const 
 
 	return (F->h[Order]);
 
-} // LPFilter
+} // LPFn
+
+
+#define MAX_Q_SAMPLES 256
+static float d[MAX_Q_SAMPLES][3];
+
+real32 calculateMean(idx a) {
+	idx i;
+	real32 temp = 0.0;
+
+	for (i = 0; i < MAX_Q_SAMPLES; i++)
+		temp += d[i][a];
+
+	return(temp / MAX_Q_SAMPLES );
+} // calculateMean
+
+
+real32 calculateBiasCorrectedVariance(uint16 a, real32 *mean_val) {
+    idx i;
+    real64 mean = calculateMean(a);
+    real64 temp = 0.0;
+
+    *mean_val = (float) mean;
+    for (i = 0; i < MAX_Q_SAMPLES; i++)
+        temp += Sqr(d[i][a] - mean);
+
+    return (real32) temp / (MAX_Q_SAMPLES - 1); //?? -1
+} // calculateBiasCorrectedVariance
+
+//.gyro_kalman_enable = true,
+//.gyro_kalman_q = 0.000900,
+//.gyro_kalman_r = 0.08,
+//.gyro_kalman_p = 0
+
+//Fast two-state Kalman from Kalyn (RaceFlight/BetaFlight
+
+
+void InitAccGyroKF(KFStruct *F, real32 Q, real32 R) {
+
+	F->enable = true;
+	F->q = Q; // process noise covariance 0.05deg/s at 100Hz? 0.005 deg/sqrt(Hz)
+	F->r = R; // measurement noise covariance
+	F->p = 0.0f; // estimation error
+	F->est = F->estP = 0.0f; // state
+	F->k = 0.0f; //Kalman gain
+
+} // InitAccGyroKF
+
+
+real32 DoAccGyroKF(KFStruct *F, real32 v) { // ~0.42uS F4 @ 168MHz
+
+	if (F->enable) {
+
+		//project the state ahead using acceleration
+		F->est += (F->est - F->estP); // linear extrapolation -  dT and 1/dT cancel
+
+		//update last state
+		F->estP = F->est;
+
+		//prediction update
+		F->p = F->p + F->q;
+
+		//measurement update
+		F->k = F->p / (F->p + F->r);
+		F->est += F->k * (v - F->est);
+		F->p = (1.0f - F->k) * F->p;
+
+		return (F->est);
+	} else
+		return (v);
+
+} // DoAccGyroKF
 
 
 int16 SensorSlewLimit(uint8 sensor, int16 * O, int16 N, int16 Slew) {

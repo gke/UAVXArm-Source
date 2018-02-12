@@ -55,7 +55,7 @@ boolean UsingPWMSync = false;
 boolean UsingDCMotors = false;
 boolean DrivesInitialised = false;
 
-real32 DriveLPFTau, ServoLPFTau;
+real32 LPF1DriveK, LPF1ServoK;
 uint8 CurrESCType = ESCUnknown;
 real32 PWSum[MAX_PWM_OUTPUTS];
 int8 PWDiagnostic[MAX_PWM_OUTPUTS];
@@ -219,21 +219,16 @@ void UpdateDrives(void) {
 			DoMulticopterMix();
 			MixAndLimitCam();
 
-			if (F.Emulation) {
-				for (m = 0; m < NoOfDrives; m++)
-					driveWritePtr(m, 0.0f);
-			} else {
+			for (m = 0; m < NoOfDrives; m++) { // drives
+				PWp[m] = (Armed() && !F.Emulation) ? LPF1(PWp[m],
+						PW[m], LPF1DriveK) : 0.0f;
 
-				for (m = 0; m < NoOfDrives; m++) {
-					if (!Armed())
-						PW[m] = 0.0f;
-					driveWritePtr(m, PW[m]);
+				driveWritePtr(m, PWp[m]);
 
-					PWSum[m] += PW[m];
-				}
-
-				PWSamples++;
+				PWSum[m] += PWp[m];
 			}
+
+			PWSamples++;
 
 			if (UsingPWMSync)
 				driveSyncStart(NoOfDrives);
@@ -243,7 +238,7 @@ void UpdateDrives(void) {
 			// servos
 			if (!UsingDCMotors)
 				for (m = NoOfDrives; m < MAX_PWM_OUTPUTS; m++) {
-					PWp[m] = SimpleFilter(PWp[m], PW[m], ServoLPFTau); // 0.25
+					PWp[m] = LPF1(PWp[m], PW[m], LPF1ServoK); // 0.25
 					servoWrite(m, PWp[m]);
 				}
 		} else {
@@ -262,18 +257,14 @@ void UpdateDrives(void) {
 			DoMix();
 
 			for (m = 0; m < NoOfDrives; m++) { // drives
-				if (Armed() && !F.Emulation)
-					PWp[m] = (F.Bypass || (P(GyroLPFHz) == 0)) ? PW[m]
-							: SimpleFilter(PWp[m], PW[m], DriveLPFTau);
-				else
-					PWp[m] = PW[m] = 0.0f;
+				PWp[m] = (Armed() && !F.Emulation) ? LPF1(PWp[m],
+						PW[m], LPF1DriveK) : 0.0f;
 
 				servoWrite(m, PWp[m]);
 			}
 
 			for (m = NoOfDrives; m < MAX_PWM_OUTPUTS; m++) { // servos
-				PWp[m] = (F.Bypass || (P(GyroLPFHz) == 0)) ? PW[m]
-						: SimpleFilter(PWp[m], PW[m], ServoLPFTau);
+				PWp[m] = LPF1(PWp[m], PW[m], LPF1ServoK);
 				servoWrite(m, PWp[m]);
 			}
 		}

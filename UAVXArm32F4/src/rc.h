@@ -35,7 +35,8 @@
 #define RC_GOOD_RATIO 4
 
 //#define RC_THRES_STOP_STICK FromPercent(2)
-#define RC_THRES_START_STICK	FromPercent(1)
+#define RC_THRES_START	3
+#define RC_THRES_START_STICK FromPercent(RC_THRES_START)
 #define THR_MAXIMUM FromPercent(90)
 #define RC_FRAME_TIMEOUT_US 25000
 #define RC_SIGNAL_TIMEOUT_US  (RC_FRAME_TIMEOUT_US * 5)

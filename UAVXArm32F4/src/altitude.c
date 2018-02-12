@@ -235,13 +235,13 @@ void UpdateAccZ(real32 AccZdT) {
 
 	AccZ = Smoothr32xn(&AccZMAF, MA_FILTER_LEN,
 			Limit1(GravityCompensatedAccZ(), GRAVITY_MPS_S * 2.0f));
-	AccZ = LPFilter(&AccZLPF, 3, AccZ, AltLPFHz, AccZdT);
+	AccZ = LPFn(&AccZLPF, 3, AccZ, AltLPFHz, AccZdT);
 
 	AccZ -= NV.AccCal.DynamicAccBias[Z];
 
-	F.AccZBump = AccZ > ACCZ_LANDING_MPS_S;
+	F.AccZBump = F.AccZBump || (AccZ > ACCZ_LANDING_MPS_S);
 
-} // UpdateAccZ(void) {
+} // UpdateAccZ
 
 
 void GetBaro(void) {
@@ -278,7 +278,7 @@ void GetBaro(void) {
 
 			BaroAltitude = Smoothr32xn(&BaroMAF, MA_FILTER_LEN, BaroAltitude);
 			BaroAltitude
-					= LPFilter(&BaroLPF, 3, BaroAltitude, AltLPFHz, BarodT);
+					= LPFn(&BaroLPF, 3, BaroAltitude, AltLPFHz, BarodT);
 
 			UpdateAccZ(BarodT); // stale ~180uS
 
@@ -545,7 +545,7 @@ void InitRangefinder(void) {
 
 void SetDesiredAltitude(real32 Desired) {
 	Alt.P.Desired = Desired;
-	Alt.P.IntE = Alt.R.IntE = 0.0f; // ???
+	Alt.P.IntE = 0.0f;
 } //SetDesiredAltitude
 
 real32 ConditionBaroAltitude(real32 BaroAltitude, real32 FAltitude) {
@@ -693,11 +693,10 @@ void UpdateAltitudeEstimates(void) {
 		if (F.UsingGPSAltitude && F.OriginValid)
 			ROC = -GPS.velD;
 		else {
-
 			ROC = (Altitude - AltitudeP) * AltdTR;
 			AltitudeP = Altitude;
 
-			ROC = LPFilter(&ROCLPF, 1, ROC, AltLPFHz, AltdT);
+			ROC = LPFn(&ROCLPF, 1, ROC, AltLPFHz, AltdT);
 			ROC = DeadZone(ROC, ALT_ROC_THRESHOLD_MPS);
 		}
 
@@ -706,7 +705,7 @@ void UpdateAltitudeEstimates(void) {
 		else if (!F.IsFixedWing)
 			ROC = Limit1(ROC, ALT_MAX_ROC_MPS);
 
-		ROCF = SimpleFilter(ROCF, ROC, 0.1f); // used for landing and cruise throttle tracking
+		ROCF = LPF1(ROCF, ROC, 0.1f); // used for landing and cruise throttle tracking
 
 		StatsMax(AltitudeS, Altitude);
 		StatsMinMax(MinROCS, MaxROCS, ROC * 100.0f);

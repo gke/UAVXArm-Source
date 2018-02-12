@@ -519,7 +519,7 @@ void InitRC(void) {
 
 	switch (CurrComboPort1Config) {
 	case ParallelPPM:
-		DiscoveredRCChannels = P(RCChannels);
+		DiscoveredRCChannels = 7; //P(RCChannels);
 		RxEnabled[RCSerial] = false;
 		break;
 	case FutabaSBus_M7to10:
@@ -586,17 +586,28 @@ void InitRC(void) {
 
 } // InitRC
 
+
 void MapRC(void) { // re-maps captured PPM to Rx channel sequence
 	uint8 c, cc;
+	real32 Temp;
 
 	for (c = 0; c < RC_MAX_CHANNELS; c++) {
 		cc = RMap[c];
-		RC[cc] = (RCInp[cc].Raw - 1000) * 0.001;
+		RCp[cc] = RC[cc];
+		Temp = (RCInp[c].Raw - 1000) * 0.001f;
+		RC[cc] = LPF1(RCp[cc], Temp, 0.75f);
 	}
+} // MapRC
+
+void MapRCNewBROKEN(void) { // re-maps captured PPM to Rx channel sequence
+	uint8 c;
+
+	for (c = 0; c < RC_MAX_CHANNELS; c++)
+		RC[RMap[c]] = (RCInp[c].Raw - 1000) * 0.001;
 
 	// 22.5mS standard, 18mS FrSky and 9mS SBus
 	for (c = ThrottleRC; c <= YawRC; c++)
-		RCp[c] = RC[c] = SimpleFilter(RCp[c], RC[c], 0.75f);
+		RCp[c] = RC[c] = LPF1(RCp[c], RC[c], 0.75f);
 
 } // MapRC
 
@@ -838,8 +849,7 @@ void UpdateControls(void) {
 		DesiredCamPitchTrim = ActiveCh(CamPitchRC) ? RC[CamPitchRC]
 				- RC_NEUTRAL : 0;
 
-		F.UsingWPNavigation = Triggered(WPNavRC) && F.OriginValid
-				&& (NV.Mission.NoOfWayPoints > 0);
+		F.UsingWPNavigation = F.OriginValid && (NV.Mission.NoOfWayPoints > 0); // Triggered(WPNavRC) &&
 
 		TxSwitchArmed = Triggered(ArmRC);
 

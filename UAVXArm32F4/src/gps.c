@@ -708,7 +708,7 @@ void ParseUbxPacket(void) {
 			// ecef_x_velocity
 			// ecef_y_velocity
 			// ecef_z_velocity
-			// speed_accuracy
+			GPS.sAcc = ubx.payload.sol.speed_accuracy * 0.01f; // cm/S
 			// position_DOP
 			// res
 			GPS.noofsats = ubx.payload.sol.satellites;

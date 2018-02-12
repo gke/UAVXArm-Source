@@ -75,17 +75,17 @@ void CheckBatteries(void) {
 #if defined(HAVE_CURRENT_SENSOR)
 			real32 Temp = -((analogRead(BattCurrentAnalogSel) - BatteryCurrentADCZero )) * (3.3f/0.04f) *CurrentScaleTrim;
 					//* CURRENT_SENSOR_MAX;
-			BatteryCurrent = SimpleFilter(BatteryCurrent, Temp, 0.1f);
+			BatteryCurrent = LPF1(BatteryCurrent, Temp, 0.1f);
 #endif
 
 			BatteryVolts
-					= SimpleFilter(BatteryVolts, analogRead(BattVoltsAnalogSel) * VOLTS_SCALE * VoltScaleTrim, 0.25f);
+					= LPF1(BatteryVolts, analogRead(BattVoltsAnalogSel) * VOLTS_SCALE * VoltScaleTrim, 0.25f);
 		}
 
 		dTmS = NowmS - mS[LastBattery];
 		mS[LastBattery] = NowmS;
 
-		BatterySagR = SimpleFilter(BatterySagR, StartupVolts / BatteryVolts, 0.25f);
+		BatterySagR = LPF1(BatterySagR, StartupVolts / BatteryVolts, 0.25f);
 
 		BatteryChargeUsedmAH += BatteryCurrent * (real32) dTmS * (1.0f
 				/ 3600.0f);

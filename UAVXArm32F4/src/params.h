@@ -49,7 +49,6 @@ enum RCControls {
 	NullRC
 };
 
-
 enum ArmingModes {
 	YawStickArming, SwitchArming, RollStickArming, TxSwitchArming
 };
@@ -68,8 +67,6 @@ enum ComboPort1Types {
 enum ComboPort2Types {
 	I2C_RF_BatV_V3, I2C_RF_V4, GPS_RF_V4, Unused_RF_V4, ComboPort2Unused
 };
-
-
 
 enum AFs {
 	TriAF, TriCoaxAF, // aka Y6
@@ -96,6 +93,7 @@ enum AFs {
 	IREmulation,
 	AFUnknown,
 };
+
 
 enum Params { // MAX 128
 	RollRateKp, // 01
@@ -126,7 +124,7 @@ enum Params { // MAX 128
 	RollAngleKi, //  24
 	PitchAngleKi, //  25
 	PitchCamKp, // 26
-	Unused27, // 27
+	ServoLPFHz, // 27
 	PitchRateKd, // 28
 	NavVelKp, // 29
 	AltVelKp, // 30
@@ -149,7 +147,7 @@ enum Params { // MAX 128
 	TelemetryType, // 45
 	MaxDescentRateDmpS, // 46
 	DescentDelayS, // 47
-	GyroLPFHz, // 48
+	GyroLPFSel, // 48
 	NavCrossTrackKp, // 49
 	RxGearCh, // 50
 
@@ -182,7 +180,7 @@ enum Params { // MAX 128
 	MaxPitchAngle, // 75
 	ComboPort2Config, // 76
 	MaxRollAngle, // 77
-	DerivativeLPFHz, // 78
+	YawLPFHz, // 78
 	NavHeadingTurnout, // 79
 	WS2812Leds, // 80
 	MinhAcc, // 81
@@ -194,19 +192,21 @@ enum Params { // MAX 128
 	FWAileronRudderMix, // 87
 	FWAltSpoilerFF, // 88
 	MaxCompassYawRate, // 89
-	AccLPFHz, //P90,
+	AccLPFSel, //P90,
 	YawRateKd, // 91,
 	GyroSlewRate, // 92
 	ThrottleGainRate, // 93
 	RxAux5Ch, // 94
 	RxAux6Ch, // 95
 	RxAux7Ch, // 96
-	RollRateKi, // 97
-	RollRateIntLimit, // 98
-	PitchRateKi, // 99
-	PitchRateIntLimit, // 100
-	YawRateKi, // 101
-	YawRateIntLimit, // 102
+	YawAngleKp, // 97
+	YawAngleKi, // 98
+	YawAngleIntLimit, // 99
+
+	//
+	AltPosIntLimit, // 100
+	MotorStopSel, // 101
+	Unused102, // 102
 	Unused103, // 103
 	Unused104, // 104
 	Unused105, // 105
@@ -233,11 +233,14 @@ enum Params { // MAX 128
 	Unused125, // 125
 	Unused126, // 126
 	Unused127, // 127
-	Unused128 // 128
+	Unused128
+// 128
 };
 
 typedef struct {
 	uint8 tag;
+	uint8 min;
+	uint8 max;
 	uint8 p[NO_OF_PARAM_SETS];
 } ParamStruct_t;
 
@@ -257,7 +260,7 @@ typedef struct {
 #define UseGliderStrategyMask	(1<<3)
 #define UseConfigRebootMask		(1<<4)
 #define	UseTurnToWPMask			(1<<5)
-#define	UseSpecialMask			(1<<6)
+#define	UseHWLPFMask			(1<<6)
 
 // bit 7 unusable in UAVPSet
 
@@ -272,8 +275,9 @@ extern int8 CP[];
 
 extern const real32 AFOrientation[];
 extern uint8 UAVXAirframe;
-extern boolean IsMulticopter, UsingFastStart,
-		UsingBLHeliPrograming, UsingGliderStrategy, UsingSpecial;
+extern boolean IsMulticopter, UsingFastStart, UsingBLHeliPrograming,
+		UsingGliderStrategy, UsingHWLPF;
+extern uint8 CurrMotorStopSel;
 
 extern real32 AltCompDecayS;
 extern boolean UseFastStart;

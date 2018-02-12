@@ -28,9 +28,9 @@ extern uint8 MPU6XXXId;
 extern uint8 MPU6XXXRev;
 
 extern const uint16 MPUGyroLPFHz[];
-extern const uint8 CurrGyroLPFSel;
+extern uint8 CurrGyroLPFSel;
 extern const uint16 MPUAccLPFHz[];
-extern const uint8 CurrAccLPFSel;
+extern uint8 CurrAccLPFSel;
 extern const uint8 MPUDLPFMask[];
 
 extern const char * DHPFName[];
@@ -45,6 +45,8 @@ void InitMPU6XXX(void);
 void CheckMPU6XXXActive(void);
 void ReadAccAndGyro(boolean UseSelectedAttSensors);
 void UpdateGyroTempComp(void);
+
+void ComputeMPU6XXXTemperature(int16 T);
 
 extern uint8 MPU_ID;
 extern uint32 mpu6xxxLastUpdateuS;

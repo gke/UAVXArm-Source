@@ -71,6 +71,7 @@ enum PacketTags {
 	UAVXRatePIDPacketTag = 64,
 	UAVXAltPIDPacketTag = 65,
 	UAVXGPSPIDPacketTag = 66,
+	UAVXRawIMUPacketTag = 67,
 
 	FrSkyPacketTag = 99
 };
@@ -86,7 +87,8 @@ enum TelemetryTypes {
 	UAVXMinimOSDTelemetry,
 	UAVXAnglePIDTelemetry,
 	UAVXRatePIDTelemetry,
-	UAVXAltPIDTelemetry
+	UAVXAltPIDTelemetry,
+	UAVXRawIMUTelemetry
 };
 
 void TxString(uint8 s, const char *);
@@ -103,12 +105,15 @@ void SendBBPacket(uint8 s, int32 seqNo, uint8 l, int8 * b);
 
 void SendFlightPacket(uint8 s);
 void SendAckPacket(uint8 s, uint8 Tag, uint8 Reason);
+void SendRawIMU(uint8 s);
 
 void CheckTelemetry(uint8 s);
 
 void SetTelemetryBaudRate(uint8 s, uint32 b);
 
 extern uint8 CurrTelType;
+
+extern int16 ShadowRawIMU[7];
 
 #endif
 

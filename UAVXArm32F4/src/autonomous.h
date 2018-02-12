@@ -27,7 +27,8 @@ enum Coords {
 };
 
 typedef struct {
-	PIDStruct P, R;
+	PIStruct P;
+	PDStruct R;
 	real32 Acc;
 	real32 DesPos, Pos, PosE, PosIntE;
 	real32 DesVel, Vel, VelE;
@@ -108,6 +109,8 @@ enum AlarmStates {
 enum LandingStates {
 	InitDescent, CommenceDescent, Descent, DescentStopped
 };
+
+enum MotorStopActions {landNoStop, landContactSw, landDescentRate, landAccZBump, landDescentRateAndAccZ};
 
 extern void DoNavigation(void);
 extern void InitNavigation(void);

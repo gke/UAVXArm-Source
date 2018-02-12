@@ -145,6 +145,40 @@ int main() {
 
 	State = Preflight;
 
+	//#define KF_TESTING
+#if defined(KF_TESTING)
+
+	KFStruct K;
+
+	InitAccGyroKF(&K, 0.0009f, 0.08f);
+	GyroF[Roll].Primed = false;
+	NowuS = uSClock();
+	uint32 PrevuS = NowuS;
+	TxString(0, "Raw, KF, LPF, P, K");
+	TxNextLine(0);
+	while (true) {
+
+		Delay1mS(2);
+
+		PrevuS = NowuS;
+		NowuS = uSClock();
+
+		ReadAccAndGyro(true);
+
+		TxVal32(0, RawGyro[Roll], 0, ',');
+		TxVal32(0, DoAccGyroKF(&K, RawGyro[Roll]), 0, ',');
+		TxVal32(0, LPFn(&GyroF[Roll], 2, RawGyro[Roll], CurrGyroLPFHz,
+						(NowuS - PrevuS) * 0.000001f), 0, ','); //
+		//TxVal32(0, LPFn(&GyroF[Roll], 2, RawGyro[Roll], 200,
+		//		(NowuS - PrevuS) * 0.000001f), 0, ','); //
+		TxVal32(0, K.p * 100000, 5, ',');
+
+		TxVal32(0, K.k * 100000, 5, ',');
+
+		TxNextLine(0);
+	}
+#endif
+
 	while (true) {
 
 		if ((UAVXAirframe == Instrumentation) || (UAVXAirframe == IREmulation)) {
@@ -243,7 +277,7 @@ int main() {
 				break;
 			case Warmup:
 
-				BatteryCurrentADCZero = SimpleFilter(BatteryCurrentADCZero,
+				BatteryCurrentADCZero = LPF1(BatteryCurrentADCZero,
 						analogRead(BattCurrentAnalogSel), 0.5f);
 
 				if (mSClock() > mS[WarmupTimeout]) {
@@ -419,6 +453,13 @@ int main() {
 					* 100.0f) / CurrPIDCycleuS : 0);
 
 			Probe(0);
+#if defined(USE_MAX_RAW_IMU_TELEMETRY)
+			if ((CurrTelType == UAVXRawIMUTelemetry) && (State == InFlight)) {
+				BlackBoxEnabled = true;
+				SendRawIMU(TelemetrySerial);
+				BlackBoxEnabled = false;
+		}
+#endif
 		} // if next cycle
 
 		CheckBatteries();

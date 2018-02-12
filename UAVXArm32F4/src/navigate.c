@@ -105,7 +105,7 @@ void CompensateCrossTrackError1D(void) {
 void CheckProximity(real32 V, real32 H) {
 
 	F.WayPointCentred = Nav.WPDistance < H;
-	F.WayPointAchieved = F.WayPointCentred && (Abs(Alt.P.Desired - Altitude)
+	F.WayPointAchieved = F.WayPointCentred && (Abs(Alt.P.Error)
 			< V);
 } // CheckProximity
 
@@ -203,7 +203,7 @@ real32 MinimumTurn(real32 Desired) {
 void NavYaw(WPStruct * W) {
 	real32 POIEastDiff, POINorthDiff, POIDistance;
 
-	if (F.RapidDescentHazard && !F.IsFixedWing)
+	if (F.RapidDescentHazard)
 		DoOrbit(DESCENT_RADIUS_M, DESCENT_VELOCITY_MPS); // only non FW
 	else if (F.OrbitingWP)
 		DoOrbit(W->OrbitRadius, W->OrbitVelocity);
@@ -308,7 +308,7 @@ void Navigate(WPStruct * W) {
 		VelScale[EastC] = Abs(sinf(Nav.WPBearing));
 
 		CheckProximity(Min(GPS.vAcc * 1.5f, NV.Mission.ProximityAltitude),
-				WP.Action == navOrbit ? WP.OrbitRadius : Min(GPS.hAcc * 1.5f,
+				(WP.Action == navOrbit) ? WP.OrbitRadius : Min(GPS.hAcc * 1.5f,
 						NV.Mission.ProximityRadius));
 
 		NavYaw(W);

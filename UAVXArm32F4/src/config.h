@@ -66,6 +66,7 @@
 #define ALT_ROC_LPF_HZ 			(0.2f)
 #define ALT_ROC_THRESHOLD_MPS 	(0.03f)
 #define ALT_HOLD_BAND_M			(10.0f)
+#define ALT_HOLD_DECAY_S		(3.0f)
 
 #define ALT_MIN_DESCENT_DMPS 	(4)
 #define ALT_MAX_DESCENT_DMPS	(20)

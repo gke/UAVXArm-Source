@@ -22,9 +22,8 @@
 #ifndef _uavx_h
 #define _uavx_h
 
-//#define DONT_USE_USE_MPU_DLPF // definitely use for now with 250Hz DLPF => 8KHz gyro sampling
+#define USE_MAX_RAW_IMU_TELEMETRY
 
-//#define USE_ORIGIN_INFLIGHT
 #define USE_FAILSAFE_LANDING
 
 // Black Box stuff

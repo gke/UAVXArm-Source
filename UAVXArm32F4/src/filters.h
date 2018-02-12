@@ -30,11 +30,19 @@ real32 kth_smallest(real32 a[], uint16 n, uint16 k);
 void InitSmoothr32xn(HistStruct * F);
 real32 Smoothr32xn(HistStruct * F, uint8 n, real32 v);
 
-real32 SimpleFilter(real32 O, real32 N, const real32 K);
-real32 SimpleFilterCoefficient(real32 CutHz, real32 dT);
-real32 LPFilter(HistStruct * F, const idx Order, real32 v, const real32 CutHz, real32 dT);
-real32 LPFilterBW(HistStruct * F, real32 v, const real32 CutHz, real32 dT);
+real32 LPF1(real32 O, real32 N, const real32 K);
+real32 LPF1Coefficient(real32 CutHz, real32 dT);
+real32 LPFn(HistStruct * F, const idx Order, real32 v, const real32 CutHz, real32 dT);
+real32 LPD5BW(HistStruct * F, real32 v, const real32 CutHz, real32 dT);
 real32 PavelDifferentiator(HistStruct *F, real32 v);
+
+typedef struct {
+	boolean enable;
+	real32 q, r, p, est, estP, k;
+} KFStruct;
+
+void InitAccGyroKF(KFStruct *F, real32 Q, real32 R);
+real32 DoAccGyroKF(KFStruct *F, real32 v);
 
 real32 Threshold(real32 v, real32 t);
 real32 DeadZone(real32 v, real32 t);

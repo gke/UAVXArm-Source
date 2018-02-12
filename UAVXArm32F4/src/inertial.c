@@ -46,7 +46,7 @@ real32 CalculateAccConfidence(real32 AccMag) {
 		//TODO: if (F.IsFixedWing && (Acc[BF] * GRAVITY_MPS_S_R > 0.5f) && (accNorm > Sqr(1.2f)))
 		//	conf = 0.0f;
 
-		confp = SimpleFilter(confp, conf, 0.1f);
+		confp = LPF1(confp, conf, 0.1f);
 	}
 
 	return (confp);
@@ -215,20 +215,12 @@ void UpdateHeading(void) {
 	if (F.Emulation) {
 		MagHeading = EstMagHeading;
 		Heading = Make2Pi(MagHeading + MagVariation);
-	} else if (F.IsFixedWing) {
-		if (F.GPSValid && (GPS.gspeed > 1.0f)) {// no wind adjustment for now
-			Heading = GPS.heading;
-			MagHeading = Make2Pi(Heading - MagVariation); // fake for compass reading
-			F.ValidHeading = true;
-		}
 	} else {
 
 		if (CurrStateEst == MadgwickIMU) {
 			GetMagnetometer();
-			if (F.NewMagValues) {
+			if (F.NewMagValues)
 				CalculateMagneticHeading();
-				F.ValidHeading = true;
-			}
 		} else
 			MagHeading = A[Yaw].Angle;
 
@@ -237,12 +229,10 @@ void UpdateHeading(void) {
 
 		Heading = Make2Pi(MagHeading + MagVariation);
 
-
-		// override for all aircraft
-		if (F.GPSValid && (GPS.gspeed > 1.0f)) {// no wind adjustment for now
+		// override for FW aircraft
+		if (F.IsFixedWing && F.GPSValid && (GPS.gspeed > 1.0f)) {// no wind adjustment for now
 			Heading = GPS.heading;
-			F.ValidHeading = true;
-			MagHeading = Make2Pi(Heading - MagVariation); // fake for compass reading
+		    MagHeading = Make2Pi(Heading - MagVariation); // fake for compass reading
 		}
 	}
 
@@ -315,7 +305,6 @@ void MadgwickMARGUpdate(real32 gx, real32 gy, real32 gz, real32 ax, real32 ay,
 
 	if (F.NewMagValues) {
 		F.NewMagValues = false;
-		F.ValidHeading = true;
 
 		// Normalise magnetometer measurement
 		normR = invSqrt(Sqr(mx) + Sqr(my) + Sqr(mz));
@@ -477,7 +466,6 @@ void MadgwickUpdate(boolean AHRS, real32 gx, real32 gy, real32 gz, real32 ax,
 
 		if (F.NewMagValues) { // no compensation for latency
 			F.NewMagValues = false;
-			F.ValidHeading = true;
 
 			KpMag = CalculateMagConfidence();
 
@@ -537,7 +525,7 @@ void TrackPitchAttitude(void) {
 	if (F.IsFixedWing && (DesiredThrottle < IdleThrottle)
 			&& (State == InFlight)) {
 		if (mSClock() > GlidingTimemS)
-			FWGlideAngleOffsetRad = SimpleFilter(FWGlideAngleOffsetRad,
+			FWGlideAngleOffsetRad = LPF1(FWGlideAngleOffsetRad,
 					A[Pitch].Angle, 0.1f);
 	} else
 		GlidingTimemS = mSClock() + 5000;
@@ -547,7 +535,7 @@ void TrackPitchAttitude(void) {
 void UpdateInertial(void) {
 	int32 a;
 
-	if (F.Emulation && ((State == InFlight)|| (State == Launching)))
+	if (F.Emulation && ((State == InFlight) || (State == Launching)))
 		DoEmulation(); // produces ROC, Altitude etc.
 	else
 		GetIMU(); // 397uS !!!!!!!!!!!!!!!!!!

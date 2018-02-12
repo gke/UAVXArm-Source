@@ -140,10 +140,10 @@ typedef union {
 				UseManualAltHold :1,
 
 				// 4
-				Signal :1,
+				Saturation :1,
 				DumpingBlackBox :1,
 				ParametersValid :1,
-				RCNewValues :1,
+				Signal :1,
 				UsingWPNavigation :1,
 				IMUActive :1,
 				MagnetometerActive :1,
@@ -167,12 +167,12 @@ typedef union {
 				ValidGPSVel :1,
 				RCFrameReceived :1, // zzz
 				ValidGPSPos :1,
-				ValidHeading :1,
+				Unused6_1 :1,
 
 				// 7
 				YawActive :1,
 				HaveGPS :1,
-				UsingCompoundPPM :1,
+				RCNewValues :1,
 				NewNavUpdate :1,
 				HaveExtMem :1,
 				UsingRapidDescent :1, // was MPU6050

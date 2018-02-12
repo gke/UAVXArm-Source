@@ -49,23 +49,31 @@ enum AttitudeModes {
 enum DerivativeFilterTypes {maDFilt, pavelDFilt, mlDFilt, unknownDFilt};
 
 typedef struct {
-	real32 Desired, Error, Kp, Ki, Kd, IntE, IntLim, Max;
-	real32 PTerm, ITerm, DTerm, FFTerm;
+	real32 Desired, Error, Kp, Ki, IntE, IntLim, Max;
+	real32 PTerm, ITerm;
+} PIStruct;
+
+typedef struct {
+	real32 Desired, Error, Kp, Kd, Max;
+	real32 PTerm, DTerm;
 
 	real32 RateP, RateD, RateDp;
 	HistStruct RateF, RateDF;
-} PIDStruct;
+} PDStruct;
 
 typedef struct {
 	real32 Stick;
-	PIDStruct P, R;
+	real32 Control; // zzz used by last good Ken version
+	PIStruct P;
+	PDStruct R;
 	real32 Angle;
 	real32 NavCorr, NavCorrP;
 	real32 Out;
 } AxisStruct;
 
 typedef struct {
-	PIDStruct P, R;
+	PIStruct P;
+	PDStruct R;
 } AltStruct;
 
 AltStruct Alt;
@@ -73,7 +81,7 @@ AltStruct Alt;
 void ZeroThrottleCompensation(void);
 void DoAltitudeControl(void);
 void ZeroIntegrators(void);
-real32 ComputeRateDerivative(AxisStruct *C);
+real32 ComputeRateDerivative(PDStruct *C);
 
 void DoControl(void);
 void InitControl(void);
@@ -82,15 +90,14 @@ AxisStruct A[3];
 
 idx AttitudeMode;
 real32 TiltThrFFFrac;
-real32 CurrAccLPFHz, CurrGyroLPFHz, CurrDerivativeLPFHz, CurrYawLPFHz;
-idx DerivativeLPFOrder;
+real32 CurrAccLPFHz, CurrGyroLPFHz, CurrYawLPFHz, CurrServoLPFHz;
 boolean UsingPavelFilter;
 
 real32 CameraAngle[3], OrbitCamAngle;
 real32 DesiredHeading, SavedHeading;
 real32 CurrMaxTiltAngle;
 real32 Altitude;
-real32 AltComp, AltCompDecayS, ROC, MinROCMPS;
+real32 AltComp, ROC, MinROCMPS;
 real32 CruiseThrottle;
 real32 BattThrFFComp, TiltThrFFComp;
 real32 AltAccComp;
@@ -103,7 +110,7 @@ real32 FWRollPitchFFFrac, FWAileronDifferentialFrac,
 		MaxRollAngleRad, FWGlideAngleOffsetRad, FWBoardPitchAngleRad,
 		FWSpoilerDecayS, FWAileronRudderFFFrac,
 		FWAltSpoilerFFFrac, BestROCMPS;
-real32 ThrottleGain;
+real32 MaxControlGainReduction;
 real32 GS;
 
 #endif

@@ -49,10 +49,11 @@ real32 Acc[3], Rate[3];
 real32 RateEnergySum;
 uint32 RateEnergySamples;
 
-real32 GyroLPFreqHz, AccLPFreqHz;
+real32 AccLPFreqHz;
 
-const idx RollPitchGyroLPFOrder = 2;
-const idx RollPitchAccLPFOrder = 2;
+const idx GyroLPFOrder = 2;
+const idx YawLPFOrder = 2;
+const idx AccLPFOrder = 2;
 
 // NED
 // P,R,Y
@@ -63,9 +64,9 @@ void GetIMU(void) {
 
 	ReadAccAndGyro(true);
 
-	if (P(GyroLPFHz) > 0)
-		for (a = X; a <= Z; a++) // TODO: perhaps add slewlimiter?
-			RawGyro[a] = LPFilter(&GyroF[a], RollPitchGyroLPFOrder, RawGyro[a],
+	if (!UsingHWLPF)
+		for (a = X; a <= Z; a++)
+			RawGyro[a] = LPFn(&GyroF[a], GyroLPFOrder, RawGyro[a],
 					CurrGyroLPFHz, CurrPIDCycleS);
 
 	UpdateGyroTempComp();
@@ -74,9 +75,11 @@ void GetIMU(void) {
 	Rate[Roll] = (RawGyro[Y] - GyroBias[Y]) * GyroScale[CurrAttSensorType];
 	Rate[Yaw] = -(RawGyro[Z] - GyroBias[Z]) * GyroScale[CurrAttSensorType];
 
-	if (P(AccLPFHz) > 0)
+#if defined(V4_BOARD)
+	if (!UsingHWLPF)
+#endif
 		for (a = X; a <= Z; a++)
-			RawAcc[a] = LPFilter(&AccF[a], RollPitchAccLPFOrder, RawAcc[a],
+			RawAcc[a] = LPFn(&AccF[a], AccLPFOrder, RawAcc[a],
 					CurrAccLPFHz, CurrPIDCycleS);
 
 	if (CurrAttSensorType == InfraRedAngle) {
@@ -158,9 +161,12 @@ void ErectGyros(int32 TS) {
 void InitSWFilters(void) {
 	idx a;
 
+	LPF1DriveK = LPF1Coefficient(CurrGyroLPFHz, CurrPIDCycleS);
+	LPF1ServoK = LPF1Coefficient(CurrServoLPFHz, CurrPIDCycleS);
+
 	for (a = X; a <= Z; a++)
-		AccF[a].Primed = GyroF[a].Primed = A[a].P.RateF.Primed = A[a].R.RateF.Primed
-				= A[a].P.RateDF.Primed = A[a].R.RateDF.Primed = false;
+		AccF[a].Primed = GyroF[a].Primed = A[a].R.RateF.Primed
+				= A[a].R.RateDF.Primed = false;
 } // InitSWFilters
 
 

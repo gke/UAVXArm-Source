@@ -129,7 +129,7 @@ typedef struct {
 
 CamStruct Cam;
 
-extern real32 DriveLPFTau, ServoLPFTau;
+extern real32 LPF1DriveK, LPF1ServoK;
 extern uint8 const DrivesUsed[];
 extern uint8 NoOfDrives;
 extern const uint8 DM[];

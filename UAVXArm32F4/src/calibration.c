@@ -414,6 +414,8 @@ void CalibrateAccSixPointSphere(uint8 s) {
 		NV.AccCal.Bias[a] = SphereOrigin[a];
 	}
 
+	NV.AccCal.DynamicAccBias[Z] = 0.0f;
+
 	NVChanged = true;
 	UpdateNV();
 
@@ -515,6 +517,8 @@ void CalibrateAccSixPoint(uint8 s) {
 
 	for (a = X; a <= Z; a++)
 		NV.AccCal.Scale[a] *= (GRAVITY_MPS_S / (real32) MPU_1G);
+
+	NV.AccCal.DynamicAccBias[Z] = 0.0f;
 
 	NVChanged = true;
 	UpdateNV();

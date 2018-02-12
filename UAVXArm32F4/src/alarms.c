@@ -39,7 +39,7 @@ void CheckLandingSwitch(void) {
 	boolean Switch;
 
 	if (F.Emulation)
-		F.LandingSwitch = Altitude < 0.1f;
+		F.AccZBump = F.LandingSwitch = Altitude < 0.1f;
 	else {
 		Switch = !digitalRead(&GPIOPins[LandingSel]); // active to ground
 
@@ -99,7 +99,7 @@ boolean FailPreflight(void) {
 			|| !F.IMUActive //
 			|| !F.BaroActive //
 			|| !F.IMUCalibrated
-			|| !((F.MagnetometerActive && F.MagnetometerCalibrated) || F.IsFixedWing)//
+		|| !((F.MagnetometerActive && F.MagnetometerCalibrated) || F.IsFixedWing)//
 			|| (RC[NavModeRC] > FromPercent(20)) //
 			|| F.LowBatt //
 			|| F.spiFatal //

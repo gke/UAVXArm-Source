@@ -38,7 +38,7 @@ void StatsMax(uint8 u, int16 v);
 enum Statistics {
 	GPSAltitudeS,
 	AltitudeS,
-	ESCI2CFailS,
+	SaturationS,
 	GPSMinSatsS,
 	MinROCS,
 	MaxROCS,

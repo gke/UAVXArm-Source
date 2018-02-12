@@ -23,11 +23,11 @@
 
 // 0.97, 2.9, 3.9, 5.9, 9.9, 17.85, 33.48ms
 const uint16 MPUGyroLPFHz[] = { 250, 184, 98, 41, 20, 10, 5, 3600 };
-const uint8 CurrGyroLPFSel = 2; // 0 => 250Hz forces 8Khz sampling before DLPF
+uint8 CurrGyroLPFSel = 2; // 0 => 250Hz forces 8Khz sampling before DLPF
 
 // 1.94, 5.8, 7.8, 11.8, 19.8, 35.7, 66.96, 1.94ms
 const uint16 MPUAccLPFHz[] = { 480, 184, 92, 41, 20, 10, 5, 460 };
-const uint8 CurrAccLPFSel = 4; // V4 Board acc is always 1Khz sampling
+uint8 CurrAccLPFSel = 4; // V4 Board acc is always 1Khz sampling
 
 const uint8 MPUDLPFMask[] = { MPU_RA_DLPF_BW_256, MPU_RA_DLPF_BW_188,
 		MPU_RA_DLPF_BW_98, MPU_RA_DLPF_BW_42, MPU_RA_DLPF_BW_20,
@@ -75,6 +75,9 @@ void ReadAccAndGyro(boolean UseSelectedAttSensors) { // Roll Right +, Pitch Up +
 	mpu6xxxLastUpdateuS = uSClock();
 	mpuReads++;
 
+	for (a = 0; a < 7; a++)
+		ShadowRawIMU[a] = B[a];
+
 	if ((CurrAttSensorType == InfraRedAngle) && !IsMulticopter) {
 
 		// scale reading for angle arcsin(adc)
@@ -89,13 +92,15 @@ void ReadAccAndGyro(boolean UseSelectedAttSensors) { // Roll Right +, Pitch Up +
 
 	ComputeMPU6XXXTemperature(B[3]);
 
-	for (a = 4; a <= 6; a++) {
 #if !defined(INC_DFT)
-		Noise[Limit(Abs(B[a] - BP[a]) / SlewHistScale, 0, 7)]++;
+	if (P(GyroSlewRate) > 0)
+		for (a = 4; a <= 6; a++) {
+			Noise[Limit(Abs(B[a] - BP[a]) / SlewHistScale, 0, 7)]++;
+			B[a]
+					= SensorSlewLimit(GyroFailS, &BP[a], B[a],
+							SlewLimitGyroClicks);
+		}
 #endif
-		if (P(GyroSlewRate) > 0)
-			B[a] = SensorSlewLimit(GyroFailS, &BP[a], B[a], SlewLimitGyroClicks);
-	}
 
 	if (UseSelectedAttSensors)
 		switch (CurrAttSensorType) {
@@ -186,6 +191,8 @@ void CalibrateAccAndGyro(uint8 s) {
 		GyroBias[c] = NV.GyroCal.C[c] = g[0][c]; // use starting temperature
 	}
 
+	NV.AccCal.DynamicAccBias[Z] = 0.0f;
+
 	F.IMUCalibrated = Abs(TempDiff) < (RangeT * 2.0f); // check if too fast!!!
 	if (F.IMUCalibrated) {
 
@@ -221,12 +228,7 @@ void InitMPU6XXX(void) {
 	// THE UPDATING OF REGISTERS IS ASYNCHRONOUS
 	// THE MPU6050 HAS COMMON DLPF CONFIG FOR ACC/GYRO, THE MPU6500 HAS A SEPARATE DLPF CONFIG FOR ACC
 
-#if defined(USE_MPU_DLPF)
-	const uint8 DisableGyroDLPF = 0;
-#else
-	const uint8 DisableGyroDLPF = 1; // Gyro 1 -> 8800Hz 2 -> 3600Hz
-#endif
-
+	uint8 DisableGyroDLPF = (UsingHWLPF) ? 0 : 1;
 
 	CheckMPU6XXXActive();
 	Delay1mS(100); // was 5
@@ -254,12 +256,7 @@ void InitMPU6XXX(void) {
 			| MPU_RA_DHPF_1P25);
 
 #if defined(V4_BOARD) // MPU6500
-
-#if defined(USE_MPU_DLPF)
-	const uint8 DisableAccDLPF = 0;  // Acc 1KHz
-#else
-	const uint8 DisableAccDLPF = 1;  // Acc 1KHz
-#endif
+	uint8 DisableAccDLPF = (UsingHWLPF)? 0: 1;
 	sioWriteataddr(SIOIMU, MPU_ID, MPU_RA_ACC_CONFIG2, (DisableAccDLPF << 3) & MPUDLPFMask[CurrAccLPFSel]);
 #else
 

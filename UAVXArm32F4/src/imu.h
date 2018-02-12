@@ -42,7 +42,7 @@ void CalculateGyroRates(void);
 void InitRatesAndAngles(void);
 void ErectGyros(int32 d);
 
-#define ACC_TRIM_STEP 20
+#define ACC_TRIM_STEP 5 // was 20 - too coarse
 
 void ShowAccType(uint8 s);
 void ShowGyroType(uint8 s, uint8 g);
@@ -59,14 +59,13 @@ extern HistStruct GyroF[3];
 extern const uint8 MPUMap[];
 extern const real32 MPUSign[];
 
-extern real32 GyroLPFreqHz, AccLPFreqHz;
+extern real32 AccLPFreqHz;
 extern real32 GyroBias[];
 extern const real32 GyroScale[];
 extern uint8 CurrAttSensorType;
 extern real32 Acc[], Rate[];
 extern real32 RateEnergySum;
 extern uint32 RateEnergySamples;
-extern const idx RollPitchLPFOrder;
 
 #endif
 

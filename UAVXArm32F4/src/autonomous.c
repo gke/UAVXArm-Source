@@ -45,6 +45,28 @@ void InitiateDescent(void) {
 
 } // InitiateDescent
 
+boolean ProbableLanding(void) {
+
+	switch (CurrMotorStopSel) {
+	case landContactSw:
+		return F.LandingSwitch;
+		break;
+	case landDescentRate:
+		return NotDescending();
+		break;
+	case landAccZBump:
+		return F.AccZBump;
+		break;
+	case landDescentRateAndAccZ:
+		return (NotDescending() && F.AccZBump);
+		break;
+	case landNoStop:
+	default:
+		return false;
+		break;
+	}
+
+} // ProbableLanding
 
 boolean DoLanding(void) {
 	static uint32 LastLandUpdateuS;
@@ -76,23 +98,22 @@ boolean DoLanding(void) {
 		break;
 	case Descent:
 		dTmS = dTUpdate(uSClock(), &LastLandUpdateuS) * 1000;
-		if (NotDescending() && (F.AccZBump || F.LandingSwitch)) {
+
+		if (ProbableLanding()) {
 			bucketmS = Max(0, bucketmS - dTmS);
 			if (bucketmS <= 0.0f)
 				LandingState = DescentStopped;
-		} else
+		} else {
 			bucketmS = Min(bucketmS + dTmS * 2, NAV_LAND_TIMEOUT_MS);
+			F.AccZBump = false;
+		}
+
 		mSTimer(mSClock(), NavStateTimeout, bucketmS);
 		break;
 	case DescentStopped:
-		if (UsingSpecial)
-			HasLanded = true;
-		else
-			HasLanded = false;
+		HasLanded = true;
 		break;
 	} // switch
-
-	F.AccZBump = false;
 
 	return (HasLanded);
 } // DoLanding
@@ -228,18 +249,10 @@ void UpdateRTHSwState(void) { // called in rc.c on every rx packet
 					NavState = PIC;
 					break;
 				case SwMiddle:
-#if defined(USE_ORIGIN_INFLIGHT)
-					if (!F.OriginValid)
-					CaptureHomePosition();
-#endif
 					if (F.OriginValid)
 						InitiatePH();
 					break;
 				case SwHigh:
-#if defined(USE_ORIGIN_INFLIGHT)
-					if (!F.OriginValid)
-					CaptureHomePosition();
-#endif
 					if (F.OriginValid)
 						InitiateRTH();
 #if defined(USE_FAILSAFE_LANDING)
@@ -381,7 +394,6 @@ void DoNavigation(void) {
 					OrbitCamAngle = HALF_PI - atan2f(Altitude
 							- WP.OrbitAltitude, WP.OrbitRadius);
 					OrbitCamAngle = Limit(OrbitCamAngle, 0.0f, HALF_PI);
-					NavState = OrbitingPOI;
 					break;
 				case navVia:
 				case navPerch: // fixed wing just orbits

@@ -112,7 +112,8 @@ void DoEmulation(void) {
 		ROC += Accel * dT;
 	}
 
-	if (((State != InFlight) && (State != Launching)) ||((Altitude <= 0.05f) && (ROC <= 0.0f)))
+	if (((State != InFlight) && (State != Launching)) || ((Altitude <= 0.05f)
+			&& (ROC <= 0.0f)))
 		FakeAltitude = ROC = 0.0f;
 	else
 		FakeAltitude += ROC * dT;
@@ -226,8 +227,7 @@ void InitEmulation(void) {
 
 		mS[FakeGPSUpdate] = 0;
 
-		Altitude = RangefinderAltitude = FakeAltitude = ROC
-				= 0.0f;
+		Altitude = RangefinderAltitude = FakeAltitude = ROC = 0.0f;
 		BaroAltitude = OriginAltitude;
 		SetDesiredAltitude(0.0f);
 	}

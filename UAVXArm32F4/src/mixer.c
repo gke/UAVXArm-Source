@@ -311,17 +311,21 @@ boolean RescaleMix(real32 CurrThrottlePW) {
 	AvailableSwing
 			= Min(OUT_MAXIMUM - CurrThrottlePW, CurrThrottlePW - THR_START_PW);
 
-	if (DemandSwing > AvailableSwing) {
+	F.Saturation = DemandSwing > AvailableSwing;
+
+	if (F.Saturation) {
+
+		NV.Stats[SaturationS]++;
+
 		Scale = AvailableSwing / DemandSwing;
 		Rl *= Scale;
 		Pl *= Scale;
 
 		if (UAVXAirframe != TriAF)
 			Yl *= Scale;
+	}
 
-		return (true);
-	} else
-		return (false);
+	return (F.Saturation);
 
 } // RescaleMix
 
@@ -344,7 +348,7 @@ void DoMulticopterMix(void) {
 
 		CurrThrottlePW = Limit(CurrThrottlePW, IdleThrottlePW, OUT_MAXIMUM);
 	}
-	NetThrottle = CurrThrottlePW;
+	NetThrottle = CurrThrottlePW; // for logging only
 
 	UpdateMulticopterMix(CurrThrottlePW);
 

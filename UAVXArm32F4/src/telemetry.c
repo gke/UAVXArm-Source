@@ -45,6 +45,8 @@ uint16 RxCheckSumErrors = 0;
 uint8 TxPacketTag;
 uint8 CurrTelType = UAVXTelemetry;
 
+int16 ShadowRawIMU[7];
+
 void TxNextLine(uint8 s) {
 	TxChar(s, ASCII_CR);
 	TxChar(s, ASCII_LF);
@@ -277,7 +279,8 @@ void SendFlightPacket(uint8 s) {
 	SendPacketHeader(s);
 
 	TxESCu8(s, UAVXFlightPacketTag);
-	TxESCu8(s, TELEMETRY_FLAG_BYTES + 11 + 3 * 10 + 34 + 1+ CurrMaxPWMOutputs * 3 + 3);
+	TxESCu8(s, TELEMETRY_FLAG_BYTES + 11 + 3 * 10 + 34 + 1 + CurrMaxPWMOutputs
+			* 3 + 3);
 	for (b = 0; b < TELEMETRY_FLAG_BYTES; b++)
 		TxESCu8(s, F.AllFlags[b]);
 
@@ -580,10 +583,11 @@ void SendCalibrationPacket(uint8 s) {
 	TxESCi16(s, 1.0 / CurrPIDCycleS);
 	TxESCi16(s, CurrAccLPFHz);
 	TxESCi16(s, CurrGyroLPFHz);
-	TxESCi16(s, CurrDerivativeLPFHz);
+	TxESCi16(s, CurrYawLPFHz);
+	TxESCi16(s, CurrServoLPFHz);
 	TxESCi16(s, gyroGlitches);
 
-	for (a = 23; a < 32; a++)
+	for (a = 24; a < 32; a++)
 		TxESCi16(s, -1);
 
 	SendPacketTrailer(s);
@@ -864,6 +868,27 @@ void SendMission(uint8 s) {
 
 	SendOriginPacket(s);
 } // SendMission
+
+
+void SendRawIMU(uint8 s) {
+	idx i;
+
+	SendPacketHeader(s);
+
+	TxESCu8(s, UAVXRawIMUPacketTag);
+	TxESCu8(s, 16);
+
+	TxESCi32(s, mpu6xxxLastUpdateuS);
+
+	for (i = 0; i < 3; i++)
+		TxESCi16(s, ShadowRawIMU[i] - NV.AccCal.Bias[i]);
+
+	for (i = 4; i < 7; i++)
+		TxESCi16(s, ShadowRawIMU[i] - GyroBias[i]);
+
+	SendPacketTrailer(s);
+} // SendRawIMU
+
 
 //______________________________________________________________________________________________
 
@@ -1199,6 +1224,16 @@ void CheckTelemetry(uint8 s) {
 					SendCalibrationPacket(s);
 			}
 			break;
+#if !defined(USE_MAX_RAW_IMU_TELEMETRY)
+		case UAVXRawIMUTelemetry:
+			SetTelemetryBaudRate(s, 115200);
+			if (NowmS >= mS[TelemetryUpdate]) {
+				mSTimer(NowmS, TelemetryUpdate, 20); // max rate
+				if (State == InFlight)
+					SendRawIMU(s);
+			}
+			break;
+#endif
 		case UAVXAnglePIDTelemetry:
 		case UAVXRatePIDTelemetry:
 		case UAVXAltPIDTelemetry:
