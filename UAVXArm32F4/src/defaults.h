@@ -53,14 +53,17 @@ const ParamStruct_t DefaultParams[] = { //
 				{ MaxYawRate, 0, 255, { 12, 12, 9, 9 } }, //  *10 deg/S 64
 
 				// Altitude Hold
-				{ AltPosKp, 0, 255, { 10, 10, 16, 16 } }, //  07
-				{ AltPosKi, 0, 255, { 8, 8, 12, 12 } }, //  02
-				{ AltPosIntLimit, 0, 255, { 10, 10, 10, 10 } }, // 100
-				{ AltVelKp, 0, 255, { 12, 12, 10, 10, } }, //  30
+				{ AltHoldBand, 0, 255, { 10,10,10,10 } }, // 103
+				{ AltPosKp, 0, 255, { 13, 13, 16, 16 } }, //  07
+				{ AltPosKi, 0, 255, { 2, 2, 12, 12 } }, //  02
+				{ AltPosIntLimit, 0, 255, { 15, 15, 10, 10 } }, // 100
+				{ AltVelKp, 0, 255, { 21, 21, 10, 10, } }, //  30
+				{ AltVelKi, 0, 255, { 8, 8, 8, 8 } }, // 102
+				{ AltVelIntLimit, 0, 255, { 30, 30, 20, 20 } }, //  % 67
 				{ AltVelKd, 0, 255, { 0, 0, 0, 0 } }, //  14
-				{ AltLPF, 0, 255, { 10, 10, 10, 10 } }, //  *10 58
-				{ MaxAltHoldComp, 0, 255, { 10, 10, 15, 15 } }, //  % 67
 
+				{ VRSDescentRate, 0, 255, { 30, 30, 30, 30} }, // 104
+				{ AltLPF, 0, 255, { 10, 10, 10, 10 } }, //  *0.1 58
 
 				{ RFSensorType, 0, 255, { UnknownRF, UnknownRF, UnknownRF,
 						UnknownRF } }, // 09
@@ -115,7 +118,7 @@ const ParamStruct_t DefaultParams[] = { //
 				{ NavCrossTrackKp, 0, 255, { 4, 4, 4, 4 } }, //  49
 
 				{ NavRTHAlt, 0, 255, { 10, 10, 30, 30 } }, //  33
-				{ BestROC, 0, 255, { 2, 2, 3, 3 } }, // 73
+				{ MaxROC, 0, 255, { 2, 2, 3, 3 } }, // 73
 				{ MaxDescentRateDmpS, 0, 255, { 10, 10, 25, 25 } }, //  46
 				{ DescentDelayS, 0, 255, { 15, 15, 15, 15 } }, //  47
 
@@ -169,11 +172,11 @@ const ParamStruct_t DefaultParams[] = { //
 				{ ComboPort1Config, 0, 255, { CPPM_GPS_M7to10, CPPM_GPS_M7to10,
 						CPPM_GPS_M7to10, CPPM_GPS_M7to10 } }, //  15
 #if defined(V4_BOARD)
-				{	ComboPort2Config, 0, 255, {I2C_RF_V4, I2C_RF_V4, I2C_RF_V4,
-						I2C_RF_V4}}, // 76,
+				{	ComboPort2Config, 0, 255, {RF_V4, RF_V4, RF_V4,
+						RF_V4}}, // 76,
 #else
-				{ ComboPort2Config, 0, 255, { I2C_RF_BatV_V3, I2C_RF_BatV_V3,
-						I2C_RF_BatV_V3, I2C_RF_BatV_V3 } }, // 76,
+				{ ComboPort2Config, 0, 255, { RF_BatV_I2C_V3, RF_BatV_I2C_V3,
+						RF_BatV_I2C_V3, RF_BatV_I2C_V3 } }, // 76,
 #endif
 				{ AFType, 0, 255, { QuadXAF, QuadXAF, AileronSpoilerFlapsAF,
 						ElevonAF } }, // ,44c
@@ -197,10 +200,7 @@ const ParamStruct_t DefaultParams[] = { //
 				// Unused
 
 
-				{ Unused102, 0, 255, { 0, } }, // 102
 
-				{ Unused103, 0, 255, { 0, } }, // 103
-				{ Unused104, 0, 255, { 0, } }, // 104
 				{ Unused105, 0, 255, { 0, } }, // 105
 				{ Unused106, 0, 255, { 0, } }, // 106
 				{ Unused107, 0, 255, { 0, } }, // 107

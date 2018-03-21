@@ -33,7 +33,9 @@ uint8 NavSwStateP = SwUnknown;
 
 boolean NotDescending(void) {
 
-	return (Abs(ROCF) < ALT_MIN_DESCENT_MPS);
+	//return (Abs(ROCF) < ALT_MIN_DESCENT_MPS);
+	//return((AltComp < -(Alt.R.IntLim * 0.75f)) && (Abs(ROCF) < 1.0f));
+	return false;
 
 } // NotDescending
 
@@ -52,13 +54,13 @@ boolean ProbableLanding(void) {
 		return F.LandingSwitch;
 		break;
 	case landDescentRate:
-		return NotDescending();
+		return false; //TODO: NotDescending();
 		break;
 	case landAccZBump:
 		return F.AccZBump;
 		break;
 	case landDescentRateAndAccZ:
-		return (NotDescending() && F.AccZBump);
+		return false; // TODO: (NotDescending() && F.AccZBump);
 		break;
 	case landNoStop:
 	default:
@@ -79,15 +81,15 @@ boolean DoLanding(void) {
 	CheckLandingSwitch();
 
 	DesiredThrottle = F.IsFixedWing ? 0 : CruiseThrottle;
-	SetDesiredAltitude(-100.0f); // all the way
+	Alt.P.Desired = -100.0f; // TODO: redundant?
 
 	switch (LandingState) {
 	case InitDescent:
-		if (Abs(Altitude) < NAV_LAND_M) {
+	//	if (Abs(Altitude) < NAV_LAND_M) {
 			bucketmS = 1000;
 			mSTimer(mSClock(), NavStateTimeout, bucketmS); // let descent actually start
 			LandingState = CommenceDescent;
-		}
+	//	}
 		break;
 	case CommenceDescent:
 		if (mSClock() > mS[NavStateTimeout]) {
@@ -124,18 +126,28 @@ void InitiateShutdown(uint8 s) {
 	ZeroNavCorrections();
 	DesiredThrottle = 0.0f;
 	StopDrives();
-	NavState = s;
-	AlarmState = NoAlarms;
+	AlarmState = s;
 	State = Shutdown;
 } // InitiateShutdown
 
 
 void DoAutoLanding(void) {
 
-	if (DoLanding())
-		InitiateShutdown(Touchdown);
+	if (DoLanding()) {
+		InitiateShutdown(NoAlarms);
+		NavState = Touchdown;
+	}
 
 } // DoAutoLanding
+
+void DoForcedLanding(void) {
+
+	AlarmState = ForcedLanding;
+
+	if (DoLanding())
+		InitiateShutdown(ForcedLanding);
+
+} // DoForcedLanding
 
 
 void CheckFence(void) {
@@ -256,8 +268,14 @@ void UpdateRTHSwState(void) { // called in rc.c on every rx packet
 					if (F.OriginValid)
 						InitiateRTH();
 #if defined(USE_FAILSAFE_LANDING)
-					else
+					else if (!F.ForcedLanding){
+						SetDesiredAltitude(-100.0f);
 						F.ForcedLanding = true;
+						// assume we are close to a hover in case cruise has not been captured yet.
+						if (NavState == PIC) CruiseThrottle = StickThrottle;
+						LandingState = InitDescent;
+						F.AccZBump = false;
+					}
 #endif
 					break;
 				} // switch
@@ -265,16 +283,25 @@ void UpdateRTHSwState(void) { // called in rc.c on every rx packet
 				NavSwStateP = NavSwState;
 			}
 
-			F.AltControlEnabled = !(F.UseManualAltHold || (Nav.Sensitivity
-					< NAV_ALT_THRESHOLD_STICK) || (F.IsFixedWing && (NavState
-					== PIC)));
+			// refresh even if switch not changed
 
-			if ((!F.HoldingAlt) && !(F.Navigate || F.ReturnHome))
-				SetDesiredAltitude(Altitude);
+			if (F.ForcedLanding) { // override everything!
 
-			if (F.AltControlEnabled && !((NavState == HoldingStation)
-					|| (NavState == PIC) || (NavState == Touchdown)))
+				F.AltControlEnabled = true;
 				StickThrottle = CruiseThrottle;
+
+			} else {
+
+				F.AltControlEnabled = (Nav.Sensitivity
+						>= NAV_ALT_THRESHOLD_STICK) && !F.UseManualAltHold;
+
+				if (!(F.HoldingAlt || F.Navigate || F.ReturnHome))
+					SetDesiredAltitude(Altitude);
+
+				if (F.AltControlEnabled && !((NavState == HoldingStation)
+						|| (NavState == PIC) || (NavState == Touchdown)))
+					StickThrottle = CruiseThrottle;
+			}
 		}
 
 		DesiredThrottle = StickThrottle;
@@ -327,8 +354,8 @@ void DoNavigation(void) {
 					SetDesiredAltitude(WP.Pos[DownC]);
 					NavState = Takeoff;
 				} else {
-					A[Pitch].NavCorr = A[Roll].NavCorr = 0.0f;
-					SetDesiredAltitude(-100.0f); // override WP
+					A[Pitch].NavCorr = A[Roll].NavCorr = 0.0f; //TODO: Why?
+					SetDesiredAltitude(-100.0f); // override WP altitude
 				}
 				break;
 			case Touchdown:
@@ -439,10 +466,11 @@ void DoNavigation(void) {
 		}
 	} else { // PIC
 
-		if (F.ForcedLanding)
-			DoAutoLanding();
-
 		NavState = PIC;
+
+		if (F.ForcedLanding)
+			DoForcedLanding();
+
 		if (F.NewNavUpdate)
 			F.NewNavUpdate = false;
 		Nav.WPBearing = DesiredHeading;

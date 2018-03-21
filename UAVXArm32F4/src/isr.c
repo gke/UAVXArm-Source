@@ -171,7 +171,7 @@ void DMA1_Stream3_IRQHandler(void) {
 	DMA_ClearITPendingBit(DMA1_Stream3, DMA_IT_TCIF3);
 	DMA_Cmd(DMA1_Stream3, DISABLE);
 
-	if (CurrComboPort2Config == GPS_RF_V4) {
+	if (CurrComboPort2Config == RF_GPS_V4) {
 		TxQHead[2] = TxQNewHead[2];
 		if (TxQHead[I2CSerial] != TxQTail[2])
 		serialTxDMA(2);
@@ -200,7 +200,7 @@ void USART2_IRQHandler(void) {
 #if defined(V4_BOARD)
 #if (MAX_SERIAL_PORTS > 2)
 void USART3_IRQHandler(void) {
-	if (CurrComboPort2Config == GPS_RF_V4)
+	if (CurrComboPort2Config == RF_GPS_V4)
 	serialISR(2);
 } // USART2_IRQHandler
 #endif

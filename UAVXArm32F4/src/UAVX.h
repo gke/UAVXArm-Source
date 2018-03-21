@@ -22,6 +22,8 @@
 #ifndef _uavx_h
 #define _uavx_h
 
+//#define USE_ALT_MAF
+
 #define USE_MAX_RAW_IMU_TELEMETRY
 
 #define USE_FAILSAFE_LANDING

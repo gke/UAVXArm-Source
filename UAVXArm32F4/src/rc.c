@@ -42,11 +42,8 @@ uint8 SpekFrameNo = 0;
 
 boolean SBusFailsafe = false;
 boolean SBusSignalLost = false;
-boolean SBusFutabaValidFrame = false;
 
-// Deltang
-
-uint8 RSSIDeltang = 0;
+uint8 RSSI;
 
 // Common
 
@@ -240,12 +237,35 @@ void DoSBus(void) {
 	RCInp[16].Raw = RCFrame.u.b[22] & 0b0001 ? 2000 : 1000;
 	RCInp[17].Raw = RCFrame.u.b[22] & 0b0010 ? 2000 : 1000;
 
+	if (CurrComboPort1Config == FrSkyFBus_M7to10)
+		FrSkyDLinkuS = RCLastFrameuS;
+
 	F.RCNewValues = true;
 
 } // DoSBus
 
+void CheckSBusFlags(uint32 NowuS) {
 
-void SpektrumSBusISR(uint8 v) { // based on MultiWii
+	SBusSignalLost = (RCFrame.u.b[22] & SBUS_SIGNALLOST_MASK) != 0;
+	SBusFailsafe = (RCFrame.u.b[22] & SBUS_FAILSAFE_MASK) != 0;
+
+	F.RCFrameOK = !SBusSignalLost;
+	if (F.RCFrameOK) {
+		F.RCFrameReceived = F.Signal = true;
+		RCFrameIntervaluS = NowuS - RCLastFrameuS;
+		RCLastFrameuS = NowuS;
+		SignalCount++;
+	} else {
+		SignalCount -= RC_GOOD_RATIO;
+		incStat(RCGlitchesS);
+	}
+
+	SignalCount = Limit1(SignalCount, RC_GOOD_BUCKET_MAX);
+	F.Signal = SignalCount > 0;
+
+} // CheckSBusFlags
+
+void RCUSARTISR(uint8 v) { // based on MultiWii
 
 	enum {
 		SBusWaitSentinel, SBusWaitData, SBusWaitEnd
@@ -258,6 +278,26 @@ void SpektrumSBusISR(uint8 v) { // based on MultiWii
 	RCFrame.lastByteReceived = NowuS;
 
 	switch (CurrComboPort1Config) {
+	case FrSkyFBus_M7to10:
+		RxFrSkySPort(v);
+		if (FrSkyPacketReceived) {
+			if (FrSkyPacketTag == 0) {
+
+				memcpy(&RCFrame.u.b[0], &FrSkyPacket[0], 24);
+
+				RSSI = RCFrame.u.b[23];
+
+				CheckSBusFlags(NowuS);
+
+			} else {
+				if (FrSkyPacketTag == 1) {
+					//	TODO: RxCTS[RCSerial] = true;
+					//	TxFrSkySPort(RCSerial);
+					//	RxCTS[RCSerial] = false;
+				}
+			}
+		}
+		break;
 	case FutabaSBus_M7to10:
 
 		if (Interval > SBUS_MIN_SYNC_PAUSE_US) {
@@ -280,23 +320,8 @@ void SpektrumSBusISR(uint8 v) { // based on MultiWii
 			break;
 		case SBusWaitEnd:
 
-			SBusFutabaValidFrame = v == SBUS_END_BYTE; // Futaba should be zero others not!
-			SBusSignalLost = (RCFrame.u.b[22] & SBUS_SIGNALLOST_MASK) != 0;
-			SBusFailsafe = (RCFrame.u.b[22] & SBUS_FAILSAFE_MASK) != 0;
+			CheckSBusFlags(NowuS);
 
-			F.RCFrameOK = !SBusSignalLost;
-			if (F.RCFrameOK) {
-				F.RCFrameReceived = F.Signal = true;
-				RCFrameIntervaluS = NowuS - RCLastFrameuS;
-				RCLastFrameuS = NowuS;
-				SignalCount++;
-			} else {
-				SignalCount -= RC_GOOD_RATIO;
-				incStat(RCGlitchesS);
-			}
-
-			SignalCount = Limit1(SignalCount, RC_GOOD_BUCKET_MAX);
-			F.Signal = SignalCount > 0;
 			RCFrame.index = 0;
 			RCFrame.state = SBusWaitSentinel;
 
@@ -306,7 +331,6 @@ void SpektrumSBusISR(uint8 v) { // based on MultiWii
 	case Deltang1024_M7to10:
 	case Spektrum1024_M7to10:
 	case Spektrum2048_M7to10:
-	case BadDM9_M7to10:
 		if (Interval > (uint32) MIN_SPEK_SYNC_PAUSE_US) {
 			RCSyncWidthuS = Interval;
 			RCFrame.index = 0;
@@ -323,7 +347,7 @@ void SpektrumSBusISR(uint8 v) { // based on MultiWii
 		break;
 	} // switch
 
-} // SpektrumSBusISR
+} // RCUSARTISR
 
 boolean CheckDeltang(void) {
 	// http://www.deltang.co.uk/serial.htm
@@ -343,20 +367,20 @@ boolean CheckDeltang(void) {
 } // CheckDeltang
 
 
-void CheckSpektrumSBus(void) {
+void CheckSerialRC(void) {
 	uint8 i;
 	uint16 v;
 
 	if (F.RCFrameReceived) {
 		F.RCFrameReceived = false;
 		switch (CurrComboPort1Config) {
+		case FrSkyFBus_M7to10:
 		case FutabaSBus_M7to10:
 			DoSBus();
 			break;
 		case Deltang1024_M7to10:
 		case Spektrum1024_M7to10:
 		case Spektrum2048_M7to10:
-		case BadDM9_M7to10:
 
 			for (i = 2; i < SPEK_FRAME_SIZE; i += 2)
 				if ((RCFrame.u.b[i] & RCFrame.u.b[i + 1]) != 0xff) {
@@ -372,7 +396,7 @@ void CheckSpektrumSBus(void) {
 				}
 
 			if (CurrComboPort1Config == Deltang1024_M7to10)
-				RSSIDeltang = RCFrame.u.b[1] & 0x1f;
+				RSSI = RCFrame.u.b[1] & 0x1f;
 			else
 				LostFrameCount = ((uint16) RCFrame.u.b[0] << 8) //TODO:???
 						| RCFrame.u.b[1];
@@ -384,7 +408,7 @@ void CheckSpektrumSBus(void) {
 			break;
 		}// switch
 	}
-} // CheckSpektrumSBus
+} // CheckSerialRC
 
 
 // Code-based Spektrum satellite receiver binding for the HobbyKing Pocket Quad
@@ -469,12 +493,13 @@ void DoSpektrumBind(void) {
 		Delay1uS(120);
 	}
 
-	InitSerialPort(RCSerial, true);
+	InitSerialPort(RCSerial, true, false);
 
 	while (!F.RCFrameReceived)
-		CheckSpektrumSBus();
+		CheckSerialRx();
 
 } // DoSpektrumBind
+
 
 void UpdateRCMap(void) {
 	uint8 c;
@@ -541,11 +566,10 @@ void InitRC(void) {
 		SpekOffset = (1500 - 988) * 2;
 		RxEnabled[RCSerial] = true;
 		break;
-	case BadDM9_M7to10:
-		SpekChanShift = 2;
-		SpekChanMask = 0x03;
-		SpekScale = 1.2f;
-		SpekOffset = 1500 - 910;
+	case FrSkyFBus_M7to10:
+		DiscoveredRCChannels = SBUS_CHANNELS;
+		RxCTS[RCSerial] = false;
+		serialBaudRate(RCSerial, 115200);
 		RxEnabled[RCSerial] = true;
 		break;
 	default:
@@ -622,9 +646,9 @@ void CheckRC(void) {
 	case Deltang1024_M7to10:
 	case Spektrum1024_M7to10:
 	case Spektrum2048_M7to10:
-	case BadDM9_M7to10:
+	case FrSkyFBus_M7to10:
 	case FutabaSBus_M7to10:
-		CheckSpektrumSBus();
+		CheckSerialRC();
 		break;
 	default:
 		F.RCNewValues = F.Signal = false;
@@ -771,7 +795,6 @@ void CheckRxLoopback(void) {
 			break;
 		case ParallelPPM:
 			break;
-		case BadDM9_M7to10:
 		case Deltang1024_M7to10:
 		case Spektrum1024_M7to10:
 		case Spektrum2048_M7to10:

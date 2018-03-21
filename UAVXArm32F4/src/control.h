@@ -54,18 +54,18 @@ typedef struct {
 } PIStruct;
 
 typedef struct {
-	real32 Desired, Error, Kp, Kd, Max;
-	real32 PTerm, DTerm;
+	real32 Desired, Error, Kp, Ki, IntE, IntLim, Kd, Max;
+	real32 PTerm, ITerm, DTerm;
 
 	real32 RateP, RateD, RateDp;
 	HistStruct RateF, RateDF;
-} PDStruct;
+} PIDStruct;
 
 typedef struct {
 	real32 Stick;
 	real32 Control; // zzz used by last good Ken version
 	PIStruct P;
-	PDStruct R;
+	PIDStruct R;
 	real32 Angle;
 	real32 NavCorr, NavCorrP;
 	real32 Out;
@@ -73,7 +73,7 @@ typedef struct {
 
 typedef struct {
 	PIStruct P;
-	PDStruct R;
+	PIDStruct R;
 } AltStruct;
 
 AltStruct Alt;
@@ -81,7 +81,7 @@ AltStruct Alt;
 void ZeroThrottleCompensation(void);
 void DoAltitudeControl(void);
 void ZeroIntegrators(void);
-real32 ComputeRateDerivative(PDStruct *C);
+real32 ComputeRateDerivative(PIDStruct *C);
 
 void DoControl(void);
 void InitControl(void);
@@ -106,10 +106,10 @@ real32 StickDeadZone;
 real32 OrientationRad, OrientS, OrientC;
 
 real32 FWRollPitchFFFrac, FWAileronDifferentialFrac,
-		FWPitchThrottleFFFrac, MaxAltHoldCompFrac, FWMaxClimbAngleRad, FWClimbThrottleFrac,
+		FWPitchThrottleFFFrac, FWMaxClimbAngleRad, FWClimbThrottleFrac,
 		MaxRollAngleRad, FWGlideAngleOffsetRad, FWBoardPitchAngleRad,
 		FWSpoilerDecayS, FWAileronRudderFFFrac,
-		FWAltSpoilerFFFrac, BestROCMPS;
+		FWAltSpoilerFFFrac, MaxROCMPS, VRSDescentRateMPS;
 real32 MaxControlGainReduction;
 real32 GS;
 

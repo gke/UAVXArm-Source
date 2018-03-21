@@ -62,6 +62,7 @@ void ResetMainTimeouts(void) {
 	uint32 NowmS;
 
 	NowmS = mSClock();
+	mSTimer(mSClock(), CrashedTimeout, CRASHED_TIMEOUT_MS);
 	mSTimer(NowmS, ArmedTimeout, ARMED_TIMEOUT_MS);
 	mSTimer(NowmS, RxFailsafeTimeout, RC_NO_CHANGE_TIMEOUT_MS);
 
@@ -144,6 +145,49 @@ int main() {
 	uSTimer(uSClock(), NextCycleUpdate, CurrPIDCycleuS);
 
 	State = Preflight;
+
+//#define BARO_TESTING
+
+#if defined(BARO_TESTING)
+
+	int16 kkk;
+	uint32 start = uSClock();
+
+	for (kkk = 0; kkk < 256; kkk++)
+		LSBBaro[kkk] = 0;
+
+	for (kkk = 0; kkk < 3000; kkk++) {
+		while (!DEBUGNewBaro)
+			GetBaro();
+		DEBUGNewBaro = false;
+
+		LEDToggle(LEDGreenSel);
+
+		TxVal32(0, BaroTempVal, 0, ',');
+		TxVal32(0, BaroPressVal, 0, ',');
+		TxVal32(0, BaroTemperature * 1000, 3, ',');
+		TxVal32(0, BaroPressure * 100, 2, ',');
+		TxVal32(0, BaroRawAltitude * 1000, 3, ',');
+		TxVal32(0, BaroAltitude * 1000, 3, ',');
+		TxNextLine(0);
+
+		LSBBaro[BaroPressVal & 0xff]++;
+
+	}
+
+	TxVal32(0, (uSClock() - start) / 3000, 3, ',');
+	TxNextLine(0);
+
+	for (kkk = 0; kkk < 256; kkk++) {
+		TxVal32(0, kkk, 0, ',');
+		TxVal32(0, LSBBaro[kkk], 0, ',');
+		TxNextLine(0);
+	}
+
+	LEDsOn();
+	while (true) {
+	};
+#endif
 
 	//#define KF_TESTING
 #if defined(KF_TESTING)
@@ -277,8 +321,8 @@ int main() {
 				break;
 			case Warmup:
 
-				BatteryCurrentADCZero = LPF1(BatteryCurrentADCZero,
-						analogRead(BattCurrentAnalogSel), 0.5f);
+				BatteryCurrentADCZero = LPF1(BatteryCurrentADCZero, analogRead(
+						BattCurrentAnalogSel), 0.5f);
 
 				if (mSClock() > mS[WarmupTimeout]) {
 					UbxSaveConfig(GPSTxSerial); //does this save ephemeris stuff?
@@ -321,8 +365,9 @@ int main() {
 						}
 					} else {
 						if (mSClock() > mS[ArmedTimeout])
-							InitiateShutdown(PIC);
+							InitiateShutdown(ArmingTimeout);
 						else {
+
 							if (F.GPSToLaunchRequired && !F.OriginValid)
 								CaptureHomePosition();
 
@@ -430,9 +475,9 @@ int main() {
 								THR_LOW_DELAY_MS);
 						State = Landing;
 					} else {
-						if (UpsideDownMulticopter())
-							InitiateShutdown(Touchdown);
-						else {
+						if (UpsideDownMulticopter()) {
+							InitiateShutdown(UpsideDown);
+						} else {
 							RateEnergySum
 									+= Sqr(Abs(Rate[X]) + Abs(Rate[Y]) + Abs(Rate[Z]));
 							RateEnergySamples++;
@@ -458,7 +503,7 @@ int main() {
 				BlackBoxEnabled = true;
 				SendRawIMU(TelemetrySerial);
 				BlackBoxEnabled = false;
-		}
+			}
 #endif
 		} // if next cycle
 

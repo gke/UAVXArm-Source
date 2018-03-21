@@ -427,22 +427,22 @@ void SendAltPIDPacket(uint8 s) {
 		SendPacketHeader(s);
 
 		TxESCu8(s, UAVXAltPIDPacketTag);
-		TxESCu8(s, 4 + 1 + 10); // 15
+		TxESCu8(s, 4 + 1 + 11); // 16
 
 		TxESCi16(s, Limit(Altitude * 100.0f, -32768, 32767));
 		TxESCi16(s, Limit(Alt.P.Desired * 100.0f, -32768, 32767));
 
-		TxESCu8(s, 10);
+		TxESCu8(s, 11);
 
 		TxESCi8(s, Limit((Alt.P.Error / ALT_HOLD_BAND_M) * 128.0f, -128 , 127));
 
-		TxESCi8(s, Limit((Alt.P.PTerm / ALT_MAX_ROC_MPS) * 128.0f, -128 , 127));
-		TxESCi8(s, Limit((Alt.P.ITerm / ALT_MAX_ROC_MPS) * 128.0f, -128 , 127));
-
-		TxESCi8(s, Limit((Alt.R.Desired / ALT_MAX_ROC_MPS) * 128.0f, -128, 127));
-		TxESCi8(s, Limit((ROC / ALT_MAX_ROC_MPS) * 128.0f, -128, 127));
+		TxESCi8(s, Limit((Alt.P.PTerm / Alt.R.Max) * 128.0f, -128 , 127));
+		TxESCi8(s, Limit((Alt.P.ITerm / Alt.R.Max) * 128.0f, -128 , 127));
+		TxESCi8(s, Limit((Alt.R.Desired / Alt.R.Max) * 128.0f, -128, 127));
+		TxESCi8(s, Limit((ROC / Alt.R.Max) * 128.0f, -128, 127));
 
 		TxESCi8(s, Limit(Alt.R.PTerm * 128.0f, -128 , 127));
+		TxESCi8(s, Limit(Alt.R.ITerm * 128.0f, -128 , 127));
 		TxESCi8(s, Limit(Alt.R.DTerm * 128.0f, -128 , 127));
 
 		TxESCi8(s, Limit(AltComp * 128.0f, -128 , 127));
@@ -542,7 +542,7 @@ void SendFusionPacket(uint8 s) {
 	TxESCi16(s, AccZ * 1000.0f);
 
 	TxESCi24(s, BaroRawAltitude * 100.0f);
-	TxESCi16(s, 0); // * 100
+	TxESCi16(s, ROCF * 100);
 	TxESCi16(s, NV.AccCal.DynamicAccBias[Z] * 1000.0f);
 
 	TxESCi16(
@@ -1094,7 +1094,7 @@ void ProcessRxPacket(uint8 s) {
 				break;
 			case miscGPSBypass:
 				if ((GPSRxSerial != TelemetrySerial) && !Armed()) {
-					InitiateShutdown(Landed);
+					InitiateShutdown(GPSSerialBypass);
 					SendAckPacket(s, miscGPSBypass, true);
 					ProcessGPSBypass(); // requires power cycle to escape
 				} else
@@ -1225,12 +1225,12 @@ void CheckTelemetry(uint8 s) {
 			}
 			break;
 #if !defined(USE_MAX_RAW_IMU_TELEMETRY)
-		case UAVXRawIMUTelemetry:
+			case UAVXRawIMUTelemetry:
 			SetTelemetryBaudRate(s, 115200);
 			if (NowmS >= mS[TelemetryUpdate]) {
 				mSTimer(NowmS, TelemetryUpdate, 20); // max rate
 				if (State == InFlight)
-					SendRawIMU(s);
+				SendRawIMU(s);
 			}
 			break;
 #endif
@@ -1272,11 +1272,10 @@ void CheckTelemetry(uint8 s) {
 			mavlinkUpdate(s);
 			break;
 		case FrSkyV1Telemetry:
-		case FrSkyV2SPortTelemetry:
 			SetTelemetryBaudRate(s, 9600);
 			if (NowmS >= mS[TelemetryUpdate]) {
 				mSTimer(NowmS, TelemetryUpdate, FRSKY_TEL_INTERVAL_MS);
-				SendFrSkyTelemetry(s);
+				SendFrSkyHubTelemetry(s);
 			}
 			break;
 		default:

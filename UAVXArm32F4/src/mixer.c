@@ -69,7 +69,7 @@ void DoMix(void) {
 #define OUT_MAX_SPOILER 0.3f // so we still have some aileron control left
 	real32 TempRudder, TempElevator, TempAileron, TempSpoilerFlaps;
 
-	if (F.Bypass)
+	if (F.Bypass) // do here at lowest level rather than complicating higher level logic
 		PW[ThrottleC] = DesiredThrottle;
 	else
 		PW[ThrottleC] = ThrottleSuppressed ? 0.0f : DesiredThrottle + AltComp;

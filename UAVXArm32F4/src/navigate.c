@@ -253,7 +253,7 @@ void NavPI_P(void) {
 
 			Ppos = Limit1(Nav.C[a].PosE * Nav.PosKp, NavMaxVel);
 
-			Nav.C[a].PosIntE += Nav.C[a].PosE * Nav.PosKi * NavdT;
+			Nav.C[a].PosIntE += (Nav.C[a].PosE * Nav.PosKi * NavdT);
 			Ipos = Nav.C[a].PosIntE;
 
 			Nav.C[a].DesVel = Ppos + Ipos;

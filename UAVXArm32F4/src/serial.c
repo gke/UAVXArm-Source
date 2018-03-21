@@ -36,6 +36,7 @@ volatile int16 RxQTail[MAX_SERIAL_PORTS];
 volatile int16 RxQHead[MAX_SERIAL_PORTS];
 volatile int16 RxQNewHead[MAX_SERIAL_PORTS];
 volatile boolean RxEnabled[MAX_SERIAL_PORTS];
+volatile boolean RxCTS[MAX_SERIAL_PORTS];
 
 uint8 TxCheckSum[MAX_SERIAL_PORTS];
 uint32 SoftUSARTBaudRate = 115200;
@@ -188,7 +189,7 @@ void serialISR(uint8 s) {
 		ch = USART_ReceiveData(SerialPorts[s].USART);
 		if (RxEnabled[s]) {
 			if ((s == RCSerial) && RxUsingSerial)
-				SpektrumSBusISR(ch);
+				RCUSARTISR(ch);
 			else {
 				RxQ[s][RxQTail[s]] = ch;
 				RxQTail[s] = (RxQTail[s] + 1) & (SERIAL_BUFFER_SIZE - 1);

@@ -22,7 +22,7 @@
 #ifndef _altitude_h
 #define _altitude_h
 
-real32 Airspeed; // zzz logical place for air related stuff
+real32 Airspeed;
 
 //#define MS56XX_CYCLE_MS 	10
 //#define MS56XX_HZ			(1000.0f/MS56XX_CYCLE_MS)
@@ -55,10 +55,8 @@ extern RFStruct RF[];
 
 void ReadBaroCalibration(void);
 real32 CompensateBaro(uint32 ut, uint32 up);
-real32 CompensateBaro2(uint32 ut, uint32 up);
 void StartBaro(boolean ReadPressure);
 boolean BaroCheckCRC(void);
-boolean IsBaroActive(void);
 void GetBaro(void);
 void GetDensityAltitude(void);
 void InitBarometer(void);
@@ -84,16 +82,25 @@ void SetDesiredAltitude(real32 Desired);
 void UpdateAltitudeAndROC(void);
 void BaroTest(uint8 s);
 
+extern boolean DEBUGNewBaro;
+
+extern uint32 BaroTempVal, BaroPressVal, BaroVal;
 extern real32 BaroPressure, BaroTemperature, CompensatedBaroPressure;
 extern boolean AcquiringPressure;
 extern real32 OriginAltitude, BaroAltitude;
 extern real32 ROC, ROCF;
-extern int32 BaroVal;
 extern uint8 BaroType;
-extern real32 AltdT;
+extern real32 AltdT, AltdTR;
 extern real32 AltLPFHz;
 extern uint16 ms56xx_ManufacturersData;
 extern real32 BaroRawAltitude, BaroRawAltitudeP; // fusion filter output
+
+extern HistStruct ROCLPF, FROCLPF, BaroLPF;
+extern const uint8 AltLPFOrder;
+extern const uint8 ROCLPFOrder;
+extern const uint8 ROCFLPFOrder;
+
+extern uint32 LSBBaro[];
 
 #endif
 

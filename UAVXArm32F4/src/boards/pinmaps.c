@@ -52,16 +52,16 @@ const uint8 i2cMap[] = {2, 2, 2, 2, 2, 2, 2, 2, 2}; // always I2C2
 #endif
 
 #if defined(V4_BOARD)
-const boolean spiDevUsed[] = {true, true, true, true, false, false, false, false, false};
+boolean spiDevUsed[] = {true, true, true, true, false, false, false, false, false};
 #include "pinsf4v4.h"
 #elif defined(V3_BOARD)
-const boolean spiDevUsed[] = {false, false, false, false, false, false, false, false, false};
+boolean spiDevUsed[] = {false, false, false, false, false, false, false, false, false};
 #include "pinsf4v3.h"
 #elif defined(V2_BOARD)
-const boolean spiDevUsed[] = {false, false, false, false, false, false, false, false, false};
+boolean spiDevUsed[] = {false, false, false, false, false, false, false, false, false};
 #include "pinsf4v2.h"
 #elif defined(V2_F1_BOARD)
-const boolean spiDevUsed[] = {false, false, false, false, false, false, false, false, false};
+boolean spiDevUsed[] = {false, false, false, false, false, false, false, false, false};
 #include "pinsf1v2.h"
 #else
 // mbed

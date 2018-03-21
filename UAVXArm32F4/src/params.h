@@ -60,12 +60,18 @@ enum ComboPort1Types {
 	Deltang1024_M7to10,
 	Spektrum1024_M7to10,
 	Spektrum2048_M7to10,
-	BadDM9_M7to10,
+	FrSkyFBus_M7to10,
 	ComboPort1ConfigUnknown
 };
 
 enum ComboPort2Types {
-	I2C_RF_BatV_V3, I2C_RF_V4, GPS_RF_V4, Unused_RF_V4, ComboPort2Unused
+	RF_BatV_I2C_V3,
+	RF_V4,
+	RF_Baro_V4,
+	RF_Mag_V4,
+	RF_Baro_Mag_V4,
+	RF_GPS_V4,
+	ComboPort2Unused
 };
 
 enum AFs {
@@ -169,13 +175,13 @@ enum Params { // MAX 128
 
 	FWRollPitchFF, // 65
 	FWPitchThrottleFF, // 66
-	MaxAltHoldComp, // 67
+	AltVelIntLimit, // 67
 	FWMaxClimbAngle, // 68
 	NavMaxAngle, // 69
 	FWSpoilerDecayTime, // 70
 	FWAileronDifferential, // 71
 	ASSensorType, // 72,
-	BestROC, // 73,
+	MaxROC, // 73,
 	Config2Bits, // 74
 	MaxPitchAngle, // 75
 	ComboPort2Config, // 76
@@ -206,9 +212,9 @@ enum Params { // MAX 128
 	//
 	AltPosIntLimit, // 100
 	MotorStopSel, // 101
-	Unused102, // 102
-	Unused103, // 103
-	Unused104, // 104
+	AltVelKi, // 102
+	AltHoldBand, // 103
+	VRSDescentRate, // 104
 	Unused105, // 105
 	Unused106, // 106
 	Unused107, // 107

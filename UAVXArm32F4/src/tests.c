@@ -733,7 +733,7 @@ void ReceiverTest(uint8 s) {
 	if (RxUsingSerial) {
 		if (CurrComboPort1Config == Deltang) {
 			TxString(s, "\r\nRSSI: ");
-			TxVal32(s, RSSIDeltang, 0, ' ');
+			TxVal32(s, RSSI, 0, ' ');
 		} else {
 			TxString(s, "\r\nPacket Loss: ");
 			TxVal32(s, LostFrameCount, 0, ' ');
@@ -747,7 +747,7 @@ void ReceiverTest(uint8 s) {
 		TxChar(s, RxChMnem[RMap[c]]);
 		TxString(s, ": \t");
 		if ((CurrComboPort1Config == Spektrum1024_M7to10) || (CurrComboPort1Config == Spektrum2048_M7to10)
-				|| (CurrComboPort1Config == Deltang1024_M7to10) || (CurrComboPort1Config == BadDM9_M7to10GKE))
+				|| (CurrComboPort1Config == Deltang1024_M7to10) )
 			TxVal32(s, RCInp[c].SpekRaw, 3, ' ');
 		TxVal32(s, RCInp[c].Raw, 3, ' ');
 		TxString(s, " \t");

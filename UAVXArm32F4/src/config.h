@@ -76,7 +76,7 @@
 
 #define DESCENT_RADIUS_M  			10.0f
 #define DESCENT_VELOCITY_MPS		1.5f
-#define DESCENT_MIN_ROC_MPS			(-3.0f)
+//#define DESCENT_MIN_ROC_MPS			(-3.0f) moved to a parameter
 #define DESCENT_ALT_DIFF_M			10.0f
 #define DESCENT_SAFETY_ALT_M		(15.0f)
 

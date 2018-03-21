@@ -105,7 +105,7 @@ typedef struct {
 #define SPEKTRUM_CHANNEL1	0x04
 #define SPEKTRUM_CHANNEL2	0x05
 
-void CheckSpektrumSBus(void);
+void CheckSerialRx(void);
 void DoRCSerial(uint32 Now);
 void DoSpektrum(void);
 void Spek1024LoopBack(void);
@@ -150,7 +150,7 @@ void UpdateRCMap(void);
 
 void RCSerialISR(uint32 Now);
 void RCParallelISR(TIM_TypeDef *tim);
-void SpektrumSBusISR(uint8 ch);
+void RCUSARTISR(uint8 ch);
 
 extern RCInpDefStruct_t RCInp[];
 extern uint32 RCLastFrameuS;
@@ -175,8 +175,11 @@ extern boolean RxLoopbackEnabled;
 
 extern uint8 CurrComboPort1Config, CurrComboPort2Config;
 extern uint16 LostFrameCount;
-extern uint8 RSSIDeltang;
+extern uint8 RSSI;
 
+extern boolean SBusFailsafe;
+extern boolean SBusSignalLost;
+extern boolean SBusFutabaValidFrame;
 
 #endif
 

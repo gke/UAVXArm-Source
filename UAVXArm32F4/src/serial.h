@@ -39,6 +39,7 @@ extern volatile int16 RxQTail[];
 extern volatile int16 RxQHead[];
 extern volatile int16 RxQNewHead[];
 extern volatile boolean RxEnabled[];
+extern volatile boolean RxCTS[];
 
 extern uint8 TxCheckSum[];
 

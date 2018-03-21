@@ -80,13 +80,14 @@ real32 Thermal(real32 East, real32 North) {
 
 
 void DoEmulation(void) {
-
+	static uint32 LastAltUpdatemS = 0;
 	const real32 RollPitchInertiaR = (12.0f / (EM_MASS * Sqr(EM_ARM_LEN)));
 	const real32 InertiaR[3] = { RollPitchInertiaR, RollPitchInertiaR,
 			RollPitchInertiaR * 3.0f };
 	real32 Temp, Accel, Thrust;
 	int32 a;
 	real32 EffSink;
+	uint32 NowmS;
 
 	if (F.IsFixedWing) {
 
@@ -98,7 +99,7 @@ void DoEmulation(void) {
 		Airspeed
 				= Limit((1.0 + dThrottle) * EM_CRUISE_MPS, AS_MIN_MPS, AS_MAX_MPS);
 
-		EffSink = (EXP_THERMAL_SINK_MPS + Sl * DESCENT_MIN_ROC_MPS) / cosf(
+		EffSink = (EXP_THERMAL_SINK_MPS + Sl * VRSDescentRateMPS) / cosf(
 				A[Roll].Angle);
 		ROC = (dThrottle * 30.0f); // + EffSink);
 
@@ -112,6 +113,8 @@ void DoEmulation(void) {
 		ROC += Accel * dT;
 	}
 
+	ROCF = LPFn(&FROCLPF, ROCFLPFOrder, ROC, AltLPFHz * 0.25f, AltdT); // used for landing and cruise throttle tracking
+
 	if (((State != InFlight) && (State != Launching)) || ((Altitude <= 0.05f)
 			&& (ROC <= 0.0f)))
 		FakeAltitude = ROC = 0.0f;
@@ -120,7 +123,17 @@ void DoEmulation(void) {
 
 	GPS.altitude = BaroAltitude = FakeAltitude + OriginAltitude;
 	Altitude = FakeAltitude;
-	F.BaroActive = F.NewAltitudeValue = true;
+	F.BaroActive = true;
+
+	NowmS = mSClock();
+	if (NowmS > mS[AltUpdate]) { // 5 cycles @ 10mS -> 50mS or 20Hz
+		mSTimer(NowmS, AltUpdate, ALT_UPDATE_MS);
+
+		AltdT = (NowmS - LastAltUpdatemS) * 0.001f;
+		AltdTR = 1.0f / AltdT;
+		LastAltUpdatemS = NowmS;
+		F.NewAltitudeValue = true;
+	}
 
 	if (FakeAltitude <= 0.05f) {
 		for (a = Pitch; a <= Yaw; a++)

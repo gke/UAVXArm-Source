@@ -215,9 +215,8 @@ boolean UpsideDownMulticopter(void) {
 
 	UpsideDown = false;
 
-	if (IsMulticopter) {
-		if ((Abs(A[Roll].Angle) < CRASHED_ANGLE_RAD) && (Abs(A[Pitch].Angle)
-				< CRASHED_ANGLE_RAD))
+	if (false) { //IsMulticopter) {
+		if (Abs(A[Roll].Angle) < CRASHED_ANGLE_RAD)
 			mSTimer(mSClock(), CrashedTimeout, CRASHED_TIMEOUT_MS);
 		else {
 			if ((mSClock() > mS[CrashedTimeout]) && (DesiredThrottle

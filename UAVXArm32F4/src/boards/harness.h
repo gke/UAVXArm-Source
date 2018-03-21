@@ -124,10 +124,10 @@ typedef struct {
 	USART_TypeDef* USART;
 	uint8 USART_AF;
 	GPIO_TypeDef* Port;
-	uint16 TxPin;
-	uint16 TxPinSource;
-	uint16 RxPin;
-	uint16 RxPinSource;
+	const uint16 TxPin;
+	const uint16 TxPinSource;
+	const uint16 RxPin;
+	const uint16 RxPinSource;
 
 	boolean InterruptsUsed;
 	IRQn_Type ISR;
@@ -145,20 +145,20 @@ typedef struct {
 typedef struct {
 	boolean Used;
 	I2C_TypeDef* I2C;
-	uint8 I2CNo;
+	const uint8 I2CNo;
 	GPIO_TypeDef* SCLPort;
-	uint16 SCLPin;
-	uint8 SCLPinSource;
+	const uint16 SCLPin;
+	const uint8 SCLPinSource;
 	GPIO_TypeDef* SDAPort;
-	uint16 SDAPin;
-	uint8 SDAPinSource;
-	uint8 I2C_AF;
+	const uint16 SDAPin;
+	const uint8 SDAPinSource;
+	const uint8 I2C_AF;
 } I2CPortDef;
 
 typedef struct {
 	SPI_TypeDef* SPIx;
 	GPIO_TypeDef* Port;
-	struct {
+	const struct {
 		int16 Pin;
 		int16 PinSource;
 	} P[3];
@@ -168,7 +168,7 @@ typedef struct {
 extern SPIPortDef SPIPorts[];
 extern PinDef SPISelectPins[];
 
-extern const boolean spiDevUsed[];
+extern boolean spiDevUsed[];
 
 //extern void pinMode(PinDef * d, GPIOMode_TypeDef m, GPIOPuPd_TypeDef PuPd);
 //extern void pinInit(PinDef * d);
@@ -180,11 +180,11 @@ extern void pinInit(PinDef * d);
 extern void pinInitOutput(PinDef * d);
 extern void pinInitMode(PinDef * d,boolean IsInput);
 extern void serialBaudRate(uint8 s, uint32 BaudRate);
-extern void serialInitSBus(uint8 s, boolean Enable);
-extern void InitSerialPort(uint8 s, boolean Enable);
+//zzzextern void serialInitSBus(uint8 s, boolean Enable);
+extern void InitSerialPort(uint8 s, boolean Enable, boolean SBusConfig);
 extern void InitPWMPin(PinDef * u, uint16 pwmprescaler, uint32 pwmperiod, uint32 pwmwidth, boolean usingpwm);
 
-extern void InitRCComboPort(void);
+extern void InitComboPorts(void);
 
 extern void i2cInit(uint8 I2CCurr);
 extern void i2cUnstick(uint8 I2CCurr);

@@ -21,7 +21,7 @@
 
 #include "UAVX.h"
 
-__attribute__((always_inline))   inline boolean digitalRead(PinDef * d) {
+__attribute__((always_inline))    inline boolean digitalRead(PinDef * d) {
 	return (GPIO_ReadInputDataBit(d->Port, d->Pin));
 } // digitalRead
 
@@ -487,9 +487,9 @@ void serialBaudRate(uint8 s, uint32 BaudRate) {
 		USART_Cmd(u->USART, ENABLE);
 		break;
 	} // switch
-} // serialInitSBus
+} // serialBaudRate
 
-void serialInitSBus(uint8 s, boolean Enable) {
+void serialInitSBusREDUNDANT(uint8 s, boolean Enable) { // zzz
 	GPIO_InitTypeDef GPIO_InitStructure;
 	USART_InitTypeDef USART_InitStructure;
 	DMA_InitTypeDef DMA_InitStructure;
@@ -596,7 +596,7 @@ void serialInitSBus(uint8 s, boolean Enable) {
 
 } // serialInitSBus
 
-void InitSerialPort(uint8 s, boolean Enable) {
+void InitSerialPort(uint8 s, boolean Enable, boolean SBusConfig) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 	USART_InitTypeDef USART_InitStructure;
 	DMA_InitTypeDef DMA_InitStructure;
@@ -627,8 +627,17 @@ void InitSerialPort(uint8 s, boolean Enable) {
 
 #endif
 	USART_StructInit(&USART_InitStructure);
-	USART_InitStructure.USART_Parity = USART_Parity_No;
-	USART_InitStructure.USART_BaudRate = u->Baud;
+
+	if (SBusConfig) {
+		USART_InitStructure.USART_BaudRate = 100000; // 96000; //100000;
+		USART_InitStructure.USART_WordLength = USART_WordLength_9b;
+		USART_InitStructure.USART_StopBits = USART_StopBits_2;
+		USART_InitStructure.USART_Parity = USART_Parity_Even;
+		USART_Init(u->USART, &USART_InitStructure);
+	} else {
+		USART_InitStructure.USART_Parity = USART_Parity_No;
+		USART_InitStructure.USART_BaudRate = u->Baud;
+	}
 	USART_Init(u->USART, &USART_InitStructure);
 
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
@@ -824,15 +833,32 @@ void InitSensorInterrupts(void) {
 #endif
 }
 
-void InitRCComboPort(void) {
-	uint8 CurrNoOfRCPins;
+void InitComboPorts(void) {
+	uint8 i, CurrNoOfRCPins;
+
+#if defined(V4_BOARD)
+
+	if (CurrComboPort2Config != RF_GPS_V4) {
+		I2CPorts[i2cMap[ms56xxSel]-1].Used |= (CurrComboPort2Config == RF_Baro_V4) || (CurrComboPort2Config == RF_Baro_Mag_V4);
+		I2CPorts[i2cMap[hmc5xxxSel]-1].Used |= (CurrComboPort2Config == RF_Mag_V4) || (CurrComboPort2Config == RF_Baro_Mag_V4);
+
+		spiDevUsed[ms56xxSel] = (CurrComboPort2Config != RF_Baro_V4) && (CurrComboPort2Config != RF_Baro_Mag_V4);
+		spiDevUsed[hmc5xxxSel] = (CurrComboPort2Config != RF_Mag_V4) && (CurrComboPort2Config != RF_Baro_Mag_V4);
+
+		//spiDevUsed[ms56xxSel] = false;
+		//I2CPorts[1].Used = true;
+
+		for (i = 0; i < MAX_I2C_PORTS; i++)
+			i2cInit(i);
+	}
+#endif
 
 	switch (CurrComboPort1Config) {
 	case CPPM_GPS_M7to10:
 		CurrMaxPWMOutputs = 6 + 4;
 		CurrNoOfRCPins = 1;
 		GPSTxSerial = GPSRxSerial = RCSerial;
-		InitSerialPort(GPSRxSerial, false);
+		InitSerialPort(GPSRxSerial, false, false);
 		RxUsingSerial = false;
 		break;
 	case ParallelPPM:
@@ -840,35 +866,33 @@ void InitRCComboPort(void) {
 		CurrNoOfRCPins = MAX_RC_INPS; //P(RCChannels);
 		RxUsingSerial = false;
 #if defined(V4_BOARD)
-		if (CurrComboPort2Config == GPS_RF_V4){
+		if (CurrComboPort2Config == RF_GPS_V4) {
 			GPSRxSerial = GPSTxSerial = I2CSerial;
-			InitSerialPort(GPSRxSerial, false);
+			InitSerialPort(GPSRxSerial, false, CurrComboPort1Config == FutabaSBus_M7to10); // zzz
 		} else
-#endif
+#else
 		{
 			GPSRxSerial = TelemetrySerial;
 			GPSTxSerial = SoftSerialTx;
 		}
+#endif
 		break;
 	default:
 		CurrMaxPWMOutputs = 6 + 4;
 		CurrNoOfRCPins = 0;
 		RxUsingSerial = true;
 #if defined(V4_BOARD)
-		if (CurrComboPort2Config == GPS_RF_V4) {
+		if (CurrComboPort2Config == RF_GPS_V4) {
 			GPSRxSerial = GPSTxSerial = I2CSerial;
-			InitSerialPort(GPSRxSerial, false);
-	} else
+			InitSerialPort(GPSRxSerial, false, CurrComboPort1Config == FutabaSBus_M7to10); // zzz
+		} else
 #endif
 		{
 			GPSRxSerial = TelemetrySerial;
 			GPSTxSerial = SoftSerialTx;
 		}
 
-		if (CurrComboPort1Config == FutabaSBus_M7to10)
-			serialInitSBus(RCSerial, false);
-		else
-			InitSerialPort(RCSerial, false); // Spektrum
+		InitSerialPort(RCSerial, false, CurrComboPort1Config == FutabaSBus_M7to10);
 		break;
 	} // switch
 
@@ -881,7 +905,7 @@ void InitRCComboPort(void) {
 #endif
 	InitRCPins(CurrNoOfRCPins);
 
-} // InitRCComboPort
+} // InitComboPorts
 
 void InitHarness(void) {
 	GPIO_InitTypeDef GPIO_InitStructure;
@@ -925,7 +949,6 @@ void InitHarness(void) {
 #if (MAX_SERIAL_PORTS >2)
 	USART_DeInit(USART3);
 #endif
-
 
 #ifdef STM32F1
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
@@ -979,7 +1002,7 @@ void InitHarness(void) {
 
 	Delay1mS(10);
 
-	InitSerialPort(TelemetrySerial, true);
+	InitSerialPort(TelemetrySerial, true, false);
 
 	digitalWrite(&GPIOPins[Aux2Sel], 1); // soft USART Tx
 

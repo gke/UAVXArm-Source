@@ -91,13 +91,13 @@ void DoConfigBits(void) {
 	F.UsingGPSAltitude = (P(Config1Bits) & UseGPSAltMask) != 0;
 
 	// Config2
-	UsingPavelFilter = (P(Config2Bits) & UsePavelFilterMask) != 0;
+	UsingPavelFilter = false; // TODO: skip for now (P(Config2Bits) & UsePavelFilterMask) != 0;
 	UsingFastStart = (P(Config2Bits) & UseFastStartMask) != 0;
 	UsingBLHeliPrograming = (P(Config2Bits) & UseBLHeliMask) != 0;
 	UsingGliderStrategy = ((P(Config2Bits) & UseGliderStrategyMask) != 0)
 			&& F.IsFixedWing;
 	F.UsingTurnToWP = (P(Config2Bits) & UseTurnToWPMask) != 0;
-	UsingHWLPF = (P(Config2Bits) & UseHWLPFMask) != 0;
+	UsingHWLPF = false; // TODO: use SW for now (P(Config2Bits) & UseHWLPFMask) != 0;
 
 	//... currentl unused
 
@@ -183,11 +183,21 @@ void RegeneratePIDCoeffs(void) {
 	Alt.P.Kp = (real32) P(AltPosKp) * 0.018f;
 	Alt.P.Ki = (real32) P(AltPosKi) * 0.0074f;
 	Alt.P.IntLim = (real32) P(AltPosIntLimit) * 0.035; // 0.35 0.15f;
-	Alt.P.Max = ALT_HOLD_BAND_M;
+	Alt.P.Max = (real32) P(AltHoldBand) * 1.0f;
+
+	Alt.R.Max = Alt.P.Max * Alt.P.Kp; // default
+
+	SetP(MaxROC, Limit(Alt.R.Max, 1, ALT_MAX_ROC_MPS) * 10);
+	MaxROCMPS = P(MaxROC) * 0.1f;
+
+	VRSDescentRateMPS = -P(VRSDescentRate) * 0.1f;
 
 	Alt.R.Kp = (real32) P(AltVelKp) * 0.0026f;
+	Alt.R.IntLim = (real32) P(AltVelIntLimit) * 0.01f;
+	//Alt.R.Ki = (real32) P(AltVelKi) * 0.2f * Alt.R.IntLim;
+	Alt.R.Ki = (real32) P(AltVelKi) * 0.001f;
+
 	Alt.R.Kd = (real32) P(AltVelKd) * 0.00016f;
-	Alt.R.Max = ALT_MAX_ROC_MPS; // default
 
 	// Camera
 	Cam.RollKp = P(RollCamKp) * 0.1f;
@@ -244,10 +254,10 @@ void UpdateParameters(void) {
 					|| (CurrGPSType != P(GPSProtocol)) //
 					|| (CurrMotorStopSel != P(MotorStopSel)) //
 					|| (CurrwsNoOfLeds != P(WS2812Leds))) {
-				if ((P(Config2Bits) & UseConfigRebootMask) != 0)
+			//	TODO: always attempt restart if ((P(Config2Bits) & UseConfigRebootMask) != 0)
 					NVIC_SystemReset();
-				else
-					Catastrophe();
+			//	else
+			//		Catastrophe();
 			}
 
 			memset(&A, 0, sizeof(A[3]));
@@ -265,9 +275,6 @@ void UpdateParameters(void) {
 
 		IdleThrottlePW = IdleThrottle
 				= FromPercent(LimitP(PercentIdleThr, RC_THRES_START + 1, 20));
-
-		BestROCMPS = LimitP(BestROC, 1, 5);
-		MaxAltHoldCompFrac = FromPercent(LimitP(MaxAltHoldComp, 5, 30));
 
 		FWPitchThrottleFFFrac = FromPercent(P(FWPitchThrottleFF));
 
@@ -614,12 +621,12 @@ void InitParameters(void) {
 
 #if defined(V4_BOARD) // give ComboPort1 priority for GPS
 	if ((CurrComboPort1Config == CPPM_GPS_M7to10) && (CurrComboPort2Config
-					== GPS_RF_V4)) {
-		CurrComboPort2Config = Unused_RF_V4;
+					== RF_GPS_V4)) {
+		CurrComboPort2Config = RF_V4;
 		SetP(ComboPort2Config, CurrComboPort2Config);
 	}
 #else
-	if (CurrComboPort2Config != I2C_RF_BatV_V3) {
+	if (CurrComboPort2Config == RF_GPS_V4) {
 		CurrComboPort2Config = ComboPort2Unused;
 		SetP(ComboPort2Config, CurrComboPort2Config);
 	}
@@ -632,7 +639,7 @@ void InitParameters(void) {
 	CurrGyroLPFHz = MPUGyroLPFHz[CurrGyroLPFSel];
 
 	if (CurrComboPort1Config != ComboPort1ConfigUnknown) {
-		InitRCComboPort();
+		InitComboPorts();
 		InitRC();
 
 		if ((CurrESCType != ESCUnknown) && (UAVXAirframe != AFUnknown))

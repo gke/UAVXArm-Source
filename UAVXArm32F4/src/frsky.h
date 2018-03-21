@@ -22,7 +22,21 @@
 #ifndef _frsky_h
 #define _frsky_h
 
-void SendFrSkyTelemetry(uint8 s);
+void SendFrSkyHubTelemetry(uint8 s);
+
+void RxFrSkySPort(uint8 v);
+void TxFrSkySPort(uint8 s);
+
+extern uint32 FrSkyDLinkuS;
+
+extern uint32 FrSkySPortLastTxuS;
+extern uint8 FrSkyRxPacketByteCount;
+extern uint8 FrSkyRxPacketLength;
+extern uint8 FrSkyReceivedPacketTag;
+
+extern uint32 FrSkyRxErrors;
+extern boolean FrSkyPacketReceived;
+extern uint8 FrSkyPacket[];
 
 #endif
 

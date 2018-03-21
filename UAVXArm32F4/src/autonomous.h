@@ -28,7 +28,7 @@ enum Coords {
 
 typedef struct {
 	PIStruct P;
-	PDStruct R;
+	PIDStruct R;
 	real32 Acc;
 	real32 DesPos, Pos, PosE, PosIntE;
 	real32 DesVel, Vel, VelE;
@@ -103,7 +103,8 @@ typedef struct {
 } WPStruct;
 
 enum AlarmStates {
-	NoAlarms, Monitoring, BatteryLow, LostSignal, HitFenceRTH
+	NoAlarms, Monitoring, BatteryLow, LostSignal, HitFenceRTH, UpsideDown, ForcedLanding, GPSSerialBypass,
+	ArmingTimeout
 };
 
 enum LandingStates {
