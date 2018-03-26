@@ -267,8 +267,7 @@ void UpdateRTHSwState(void) { // called in rc.c on every rx packet
 				case SwHigh:
 					if (F.OriginValid)
 						InitiateRTH();
-#if defined(USE_FAILSAFE_LANDING)
-					else if (!F.ForcedLanding){
+					else if (!F.ForcedLanding){ // TODO: battery at least for 1s brushed
 						SetDesiredAltitude(-100.0f);
 						F.ForcedLanding = true;
 						// assume we are close to a hover in case cruise has not been captured yet.
@@ -276,7 +275,6 @@ void UpdateRTHSwState(void) { // called in rc.c on every rx packet
 						LandingState = InitDescent;
 						F.AccZBump = false;
 					}
-#endif
 					break;
 				} // switch
 

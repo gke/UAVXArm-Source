@@ -22,13 +22,7 @@
 #ifndef _uavx_h
 #define _uavx_h
 
-//#define USE_ALT_MAF
-
-#define USE_MAX_RAW_IMU_TELEMETRY
-
-#define USE_FAILSAFE_LANDING
-
-// Black Box stuff
+// CleanFlight etc. Black Box stuff
 //#define BLACKBOX
 #define STATIC_UNIT_TESTED
 #define timeUs_t int
@@ -160,21 +154,8 @@
 #include "tests.h"
 #include "tune.h"
 
-
 #include "soar/ekf.h"
 #include "soar/soar.h"
-
-//#include "utils.h"
-
-// AQ
-
-extern void InitSPKF(void);
-extern void UpdateSPKF(void);
-
-extern void *aqDataCalloc(uint16 count, uint16 size);
-extern real32 p[];
-
-real32 xxx,yyy,zzz;
 
 #endif
 

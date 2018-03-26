@@ -1224,8 +1224,7 @@ void CheckTelemetry(uint8 s) {
 					SendCalibrationPacket(s);
 			}
 			break;
-#if !defined(USE_MAX_RAW_IMU_TELEMETRY)
-			case UAVXRawIMUTelemetry:
+		case UAVXRawIMUTelemetry:
 			SetTelemetryBaudRate(s, 115200);
 			if (NowmS >= mS[TelemetryUpdate]) {
 				mSTimer(NowmS, TelemetryUpdate, 20); // max rate
@@ -1233,7 +1232,6 @@ void CheckTelemetry(uint8 s) {
 				SendRawIMU(s);
 			}
 			break;
-#endif
 		case UAVXAnglePIDTelemetry:
 		case UAVXRatePIDTelemetry:
 		case UAVXAltPIDTelemetry:

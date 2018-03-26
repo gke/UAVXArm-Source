@@ -88,7 +88,8 @@ enum TelemetryTypes {
 	UAVXAnglePIDTelemetry,
 	UAVXRatePIDTelemetry,
 	UAVXAltPIDTelemetry,
-	UAVXRawIMUTelemetry
+	UAVXRawIMUTelemetry,
+	UAVXFastRawIMUTelemetry
 };
 
 void TxString(uint8 s, const char *);

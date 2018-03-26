@@ -834,9 +834,10 @@ void InitSensorInterrupts(void) {
 }
 
 void InitComboPorts(void) {
-	uint8 i, CurrNoOfRCPins;
+	uint8 CurrNoOfRCPins;
 
 #if defined(V4_BOARD)
+	uint8 i;
 
 	if (CurrComboPort2Config != RF_GPS_V4) {
 		I2CPorts[i2cMap[ms56xxSel]-1].Used |= (CurrComboPort2Config == RF_Baro_V4) || (CurrComboPort2Config == RF_Baro_Mag_V4);

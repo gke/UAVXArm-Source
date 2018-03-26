@@ -81,6 +81,7 @@ enum mSTimes {
 	CrashedTimeout,
 	ThermalTimeout,
 	CruiseTimeout,
+	OpticalUpdate,
 	mSLastArrayEntry
 };
 

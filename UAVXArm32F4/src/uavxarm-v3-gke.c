@@ -150,27 +150,29 @@ int main() {
 
 #if defined(BARO_TESTING)
 
-	int16 kkk;
+	int16 kkk, cycles;
 	uint32 start = uSClock();
 
 	for (kkk = 0; kkk < 256; kkk++)
 		LSBBaro[kkk] = 0;
 
+	cycles = 10;
 	for (kkk = 0; kkk < 3000; kkk++) {
 		while (!DEBUGNewBaro)
 			GetBaro();
 		DEBUGNewBaro = false;
 
 		LEDToggle(LEDGreenSel);
-
-		TxVal32(0, BaroTempVal, 0, ',');
-		TxVal32(0, BaroPressVal, 0, ',');
-		TxVal32(0, BaroTemperature * 1000, 3, ',');
-		TxVal32(0, BaroPressure * 100, 2, ',');
-		TxVal32(0, BaroRawAltitude * 1000, 3, ',');
-		TxVal32(0, BaroAltitude * 1000, 3, ',');
-		TxNextLine(0);
-
+		if (cycles-- <= 0) {
+			cycles = 10;
+			TxVal32(0, BaroTempVal, 0, ',');
+			TxVal32(0, BaroPressVal, 0, ',');
+			TxVal32(0, BaroTemperature * 1000, 3, ',');
+			TxVal32(0, BaroPressure * 100, 2, ',');
+			TxVal32(0, BaroRawAltitude * 1000, 3, ',');
+			TxVal32(0, BaroAltitude * 1000, 3, ',');
+			TxNextLine(0);
+		}
 		LSBBaro[BaroPressVal & 0xff]++;
 
 	}
@@ -498,13 +500,13 @@ int main() {
 					* 100.0f) / CurrPIDCycleuS : 0);
 
 			Probe(0);
-#if defined(USE_MAX_RAW_IMU_TELEMETRY)
-			if ((CurrTelType == UAVXRawIMUTelemetry) && (State == InFlight)) {
+
+			if ((CurrTelType == UAVXFastRawIMUTelemetry) && (State == InFlight)) {
 				BlackBoxEnabled = true;
 				SendRawIMU(TelemetrySerial);
 				BlackBoxEnabled = false;
 			}
-#endif
+
 		} // if next cycle
 
 		CheckBatteries();
