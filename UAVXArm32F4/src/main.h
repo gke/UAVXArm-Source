@@ -22,9 +22,11 @@
 #ifndef _main_h
 #define _main_h
 
-#define ArmingSwitch digitalRead(&GPIOPins[ArmedSel])
-
-
+#if defined(OMNIBUSF4V1_BOARD)
+#define ArmingSwitch (false)
+#else
+#define ArmingSwitch (digitalRead(&GPIOPins[ArmedSel]))
+#endif
 
 //________________________________________________________________________________________
 
@@ -40,7 +42,7 @@ extern uint32 LastUpdateuS;
 extern const char SerHello[];
 
 enum uSTimes {
-	NextCycleUpdate, MemReady, LastCycleTime, uSLastArrayEntry
+	NextCycleUpdate, MemReady, LastCycleTime, NextGyroUpdate, uSLastArrayEntry
 };
 
 

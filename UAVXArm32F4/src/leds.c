@@ -175,9 +175,10 @@ enum Colours { // RGB order
 
 // LEDYellowSel, LEDRedSel, LEDBlueSel, LEDGreenSel, LEDNone
 
-uint8 CurrwsNoOfLeds, wsNoOfLeds;
 
-#if defined(USE_WS2812) || defined(USE_WS2812B)
+uint8 CurrwsNoOfLeds = 0;
+
+#if (defined(USE_WS2812) || defined(USE_WS2812B)) && !defined(OMNIBUSF4V1_BOARD)
 
 // Y/O, R, B, G
 const wsLEDStruct wsLEDColours[] = { { 0xff, 0x45, 0 }, { 0xff, 0, 0 }, { 0, 0,
@@ -185,24 +186,14 @@ const wsLEDStruct wsLEDColours[] = { { 0xff, 0x45, 0 }, { 0xff, 0, 0 }, { 0, 0,
 
 uint16 wsPWMBuffer[MAX_PWM_BUFFER_SIZE];
 wsLEDStruct wsLEDs[MAX_WS2812_LEDS];
-uint32 wsCurrLED = 0;
-uint8 wsGroupSize;
+uint8 wsNoOfLeds, wsGroupSize;
 uint16 wsBufferSize;
+uint32 wsCurrLED = 0;
 boolean incomplete = false;
 
-static void wsInitBuffers(void) {
-	int16 i;
-
-	for (i = 0; i < wsBufferSize; i++)
-		wsPWMBuffer[i] = 0;
-
-	for (i = 0; i < wsNoOfLeds; i++) {
-		wsLEDs[i].r = 0;
-		wsLEDs[i].g = 0;
-		wsLEDs[i].b = 0;
-	}
-} // wsInitBuffers
-
+// Recommendation post 2013 from WorldSemi are now: 0 = 400ns high/850ns low, and 1 = 850ns high, 400ns low"
+// Currently the timings are 0 = 350ns high/800ns and 1 = 700ns high/650ns low.
+// Betaflight timings are 0 = 350ns high/800ns and 1 = 700ns high/650ns low.
 
 static void wsStartDMA1(uint16 BuffSize) {
 	static DMA_InitTypeDef dma_init = { .DMA_BufferSize = MAX_WS2812_LEDS * 24,
@@ -227,6 +218,21 @@ static void wsStartDMA1(uint16 BuffSize) {
 	TIM_DMACmd(TIM8, TIM_DMA_CC1, ENABLE);
 
 } // wsStartDMA1
+
+
+static void wsInitBuffers(void) {
+	int16 i;
+
+	for (i = 0; i < wsBufferSize; i++)
+		wsPWMBuffer[i] = 0;
+
+	for (i = 0; i < wsNoOfLeds; i++) {
+		wsLEDs[i].r = 0;
+		wsLEDs[i].g = 0;
+		wsLEDs[i].b = 0;
+	}
+} // wsInitBuffers
+
 
 void wsInit(void) { // hard coded to PORTC Pin 6 Aux1
 	GPIO_InitTypeDef GPIO_InitStructure;
@@ -291,11 +297,6 @@ void wsInit(void) { // hard coded to PORTC Pin 6 Aux1
 	}
 
 } // wsInit
-
-
-// Recommendation post 2013 from WorldSemi are now: 0 = 400ns high/850ns low, and 1 = 850ns high, 400ns low"
-// Currently the timings are 0 = 350ns high/800ns and 1 = 700ns high/650ns low.
-// Betaflight timings are 0 = 350ns high/800ns and 1 = 700ns high/650ns low.
 
 #define ss 33 // 168.0f
 static void wsGenPWM(uint16 ** const dest, const uint8 color) {
@@ -422,30 +423,30 @@ void UpdatewsLed(void) {
 
 			switch (State) {
 			case Preflight:
-				wsLED(LEDRedSel);
+				wsLED(ledRedSel);
 				break;
 			case Ready:
-				wsLED(LEDYellowSel);
+				wsLED(ledYellowSel);
 				break;
 			case Starting:
-				wsLED(LEDYellowSel);
+				wsLED(ledYellowSel);
 				break;
 			case Warmup:
-				wsLED(LEDYellowSel);
+				wsLED(ledYellowSel);
 				break;
 			case Landing:
 			case Landed:
 			case InFlight:
 				if (F.OriginValid)
-					wsLED(LEDBlueSel);
+					wsLED(ledBlueSel);
 				else
-					wsLED(LEDGreenSel);
+					wsLED(ledGreenSel);
 				break;
 			case Shutdown:
 				wsLED(MAX_LEDS);
 				break;
 			case IREmulate:
-				wsLED(LEDGreenSel);
+				wsLED(ledGreenSel);
 				break;
 			default:
 				wsLED(MAX_LEDS);
@@ -481,37 +482,43 @@ void UpdatewsLed(void) {
 
 //______________________________________________________________
 
-uint8 LEDChase[] = { LEDBlueSel, LEDGreenSel, LEDRedSel, LEDYellowSel };
+uint8 LEDChase[] = { ledBlueSel, ledGreenSel, ledRedSel, ledYellowSel };
 boolean LEDsSaved[4] = { false };
 uint8 LEDPattern = 0;
 boolean UsingExtLEDs = false;
 
 void BeeperOff(void) {
+	if (BeeperSel < MAX_GPIO_PINS)
 #if defined(V1_BOARD)
-	digitalWrite(&GPIOPins[BeeperSel], 1);
+		digitalWrite(&GPIOPins[BeeperSel], 1);
 #else
-	digitalWrite(&GPIOPins[BeeperSel], 0);
+		digitalWrite(&GPIOPins[BeeperSel], 0);
 #endif
 } // BeeperOff
 
 void BeeperOn(void) {
+	if (BeeperSel < MAX_GPIO_PINS)
 #if defined(V1_BOARD)
-	digitalWrite(&GPIOPins[BeeperSel], 0);
+		digitalWrite(&GPIOPins[BeeperSel], 0);
 #else
-	digitalWrite(&GPIOPins[BeeperSel], 1);
+		digitalWrite(&GPIOPins[BeeperSel], 1);
 #endif
 } // BeeperOn
 
 void BeeperToggle(void) {
-	digitalToggle(&GPIOPins[BeeperSel]);
+	if (BeeperSel < MAX_GPIO_PINS)
+		digitalToggle(&GPIOPins[BeeperSel]);
 } // BeeperToggle
 
 boolean BeeperIsOn(void) {
+	if (BeeperSel < MAX_GPIO_PINS)
 #if defined(V1_BOARD)
-	return (digitalRead(&GPIOPins[BeeperSel]) == 0);
+		return (digitalRead(&GPIOPins[BeeperSel]) == 0);
 #else
-	return (digitalRead(&GPIOPins[BeeperSel]) != 0);
+		return (digitalRead(&GPIOPins[BeeperSel]) != 0);
 #endif
+	else
+		return false;
 } // BeeperIsOn
 
 void LEDOn(uint8 l) {
@@ -616,6 +623,5 @@ void InitLEDs(void) {
 	BeeperOff();
 
 } // InitLEDs
-
 
 

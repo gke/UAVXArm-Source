@@ -185,7 +185,7 @@ void InitMagnetometer(void) {
 		ReadMagnetometer(); // discard initial values
 
 		for (s = 0; s < Samples; s++) {
-			LEDToggle(LEDRedSel);
+			LEDToggle(ledRedSel);
 
 			sioWrite(SIOMag, HMC5XXX_ID, HMC5XXX_MODE, 0x01); // Perform single conversion
 			Delay1mS(50);
@@ -268,7 +268,7 @@ void CalibrateHMC5XXX(uint8 s) {
 	uint16 Population[2][2][2];
 	uint16 a, ss;
 
-	LEDOn(LEDBlueSel);
+	LEDOn(ledBlueSel);
 
 	if (F.MagnetometerActive && !F.IsFixedWing) {
 
@@ -283,20 +283,20 @@ void CalibrateHMC5XXX(uint8 s) {
 			while (mSClock() < mS[MagnetometerUpdate]) {
 			};
 
-			LEDToggle(LEDBlueSel);
+			LEDToggle(ledBlueSel);
 
 			if (ReadMagnetometer()) {
 				GetMagSample(ss);
 
 				if (Population[I2(d[ss][X])][I2(d[ss][Y])][I2(d[ss][Z])]
 						< (MAG_CAL_SAMPLES / 7)) { // should be 8
-					LEDOff(LEDYellowSel);
-					LEDOn(LEDGreenSel);
+					LEDOff(ledYellowSel);
+					LEDOn(ledGreenSel);
 					Population[I2(d[ss][X])][I2(d[ss][Y])][I2(d[ss][Z])]++;
 					ss++;
 				} else {
-					LEDOn(LEDYellowSel);
-					LEDOff(LEDGreenSel);
+					LEDOn(ledYellowSel);
+					LEDOff(ledGreenSel);
 				}
 			}
 		}
@@ -327,14 +327,14 @@ void CalibrateHMC5XXX(uint8 s) {
 
 
 boolean MagnetometerIsActive(void) {
-	boolean r;
-	uint8 v = 0;
 
-	sioReadBlock(SIOMag, HMC5XXX_ID, HMC5XXX_TAG, 1, &v);
+	if (currMagType == hmc5xxxMag) {
+		uint8 v = 0;
+		sioReadBlock(SIOMag, HMC5XXX_ID, HMC5XXX_TAG, 1, &v);
 
-	r = v == 'H';
-
-	return (r);
+		return (v == 'H');
+	} else
+		return (false);
 }
 //  MagnetometerActive
 

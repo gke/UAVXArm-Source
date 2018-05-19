@@ -27,7 +27,6 @@ extern volatile uint32 TicksuS;
 void cycleCounterInit(void);
 uint32 uSClock(void);
 void Delay1uS(uint16);
-void delay(uint16 d);
 uint32 mSClock(void);
 void Delay1mS(uint16);
 real32 dTUpdate(uint32 NowuS, uint32 * LastUpdateuS);

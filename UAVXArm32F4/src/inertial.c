@@ -62,7 +62,7 @@ real32 CalculateMagConfidence(void) {
 
 
 	if (State == InFlight) {
-		c = KpMagBase * (1.0f - Rate[Yaw] / MAX_MAG_YAW_RATE_RADPS); // linear for now
+		c = KpMagBase * (1.0f - Rate[Yaw] / (60.0f * D2R)); // linear for now
 		c = Limit(c, 0.0f, KpMagBase);
 	} else
 		c = KpMagBase * 5.0f;
@@ -195,7 +195,8 @@ void VersanoCompensation(void) {
 
 void InitMadgwick(void) {
 
-	GetIMU();
+	ReadFilteredGyroAndAcc();
+	ScaleRateAndAcc();
 
 	real32 normR = 1.0f / sqrtf(Sqr(Acc[BF]) + Sqr(Acc[LR]) + Sqr(Acc[UD]));
 
@@ -232,7 +233,7 @@ void UpdateHeading(void) {
 		// override for FW aircraft
 		if (F.IsFixedWing && F.GPSValid && (GPS.gspeed > 1.0f)) {// no wind adjustment for now
 			Heading = GPS.heading;
-		    MagHeading = Make2Pi(Heading - MagVariation); // fake for compass reading
+			MagHeading = Make2Pi(Heading - MagVariation); // fake for compass reading
 		}
 	}
 
@@ -525,8 +526,8 @@ void TrackPitchAttitude(void) {
 	if (F.IsFixedWing && (DesiredThrottle < IdleThrottle)
 			&& (State == InFlight)) {
 		if (mSClock() > GlidingTimemS)
-			FWGlideAngleOffsetRad = LPF1(FWGlideAngleOffsetRad,
-					A[Pitch].Angle, 0.1f);
+			FWGlideAngleOffsetRad = LPF1(FWGlideAngleOffsetRad, A[Pitch].Angle,
+					0.1f);
 	} else
 		GlidingTimemS = mSClock() + 5000;
 } // TrackPitchAttitude
@@ -537,8 +538,13 @@ void UpdateInertial(void) {
 
 	if (F.Emulation && ((State == InFlight) || (State == Launching)))
 		DoEmulation(); // produces ROC, Altitude etc.
-	else
-		GetIMU(); // 397uS !!!!!!!!!!!!!!!!!!
+	else {
+		Probe(1);
+		if (!UseGyroOS)
+			ReadFilteredGyroAndAcc();
+		ScaleRateAndAcc();
+		Probe(0);
+	}
 
 	if (CurrStateEst == MadgwickMARG)
 		MadgwickMARGUpdate(Rate[Roll], Rate[Pitch], Rate[Yaw], Acc[BF],

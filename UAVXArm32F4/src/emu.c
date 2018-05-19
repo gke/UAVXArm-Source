@@ -113,7 +113,7 @@ void DoEmulation(void) {
 		ROC += Accel * dT;
 	}
 
-	ROCF = LPFn(&FROCLPF, ROCFLPFOrder, ROC, AltLPFHz * 0.25f, AltdT); // used for landing and cruise throttle tracking
+	ROCF = LPFn(&FROCLPF, ROC, AltdT); // used for landing and cruise throttle tracking
 
 	if (((State != InFlight) && (State != Launching)) || ((Altitude <= 0.05f)
 			&& (ROC <= 0.0f)))

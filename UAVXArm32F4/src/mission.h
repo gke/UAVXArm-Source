@@ -22,11 +22,7 @@
 #ifndef _mission_h
 #define _mission_h
 
-#if defined(STM32F1)
-#define NAV_MAX_WAYPOINTS 3
-#else
 #define NAV_MAX_WAYPOINTS 11
-#endif
 
 typedef struct {
 	int32 LatitudeRaw; // 1e7/degree

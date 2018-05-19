@@ -74,6 +74,16 @@ void PendSV_Handler(void) {
 
 // RC Timers
 
+void TIM8_BRK_TIM12_IRQHandler(void) {
+
+	if (TIM_GetITStatus(TIM8, TIM_IT_CC2) == SET) {
+		//RCSerialISR(TIM_GetCapture1(TIM8));
+		LEDToggle(ledYellowSel);
+		TIM_ClearITPendingBit(TIM8, TIM_IT_CC2);
+	}
+
+} // TIM8_BRK_TIM12_IRQHandler
+
 void TIM2_IRQHandler(void) {
 
 	if (CurrComboPort1Config == CPPM_GPS_M7to10) {
@@ -87,7 +97,11 @@ void TIM2_IRQHandler(void) {
 
 void TIM3_IRQHandler(void) {
 
-	if (CurrComboPort1Config == ParallelPPM)
+	if (CurrComboPort1Config == CPPM_GPS_M7to10) {
+		if (TIM_GetITStatus(TIM3, TIM_IT_CC1) == SET)
+			RCSerialISR(TIM_GetCapture1(TIM3));
+		TIM_ClearITPendingBit(TIM3, TIM_IT_CC1);
+	} else if (CurrComboPort1Config == ParallelPPM)
 		RCParallelISR(TIM3);
 
 } // TIM3_IRQHandler
@@ -98,35 +112,9 @@ void TIM3_IRQHandler(void) {
 // DMA
 
 
-#if defined(STM32F1)
-
-void DMA1_Channel4_IRQHandler(void) {
-
-	DMA_ClearITPendingBit(DMA1_IT_TC4);
-	DMA_Cmd(DMA1_Channel4, DISABLE);
-
-	TxQHead[0] = TxQNewHead[0];
-
-	if (TxQHead[0] != TxQTail[0])
-	serialTxDMA(0);
-} // DMA1_Channel4_IRQHandler
-
-void DMA1_Channel7_IRQHandler(void) {
-
-	DMA_ClearITPendingBit(DMA1_IT_TC7);
-	DMA_Cmd(DMA1_Channel7, DISABLE);
-
-	TxQHead[1] = TxQNewHead[1];
-
-	if (TxQHead[1] != TxQTail[1])
-	serialTxDMA(1);
-} // DMA1_Channel7_IRQHandler
-
-
-#else
-
 void DMA2_Stream2_IRQHandler(void) {
 
+#if (defined(USE_WS2812) || defined(USE_WS2812B)) && !defined(OMNIBUSF4V1_BOARD)
 	// Half-Transfer completed
 	if (DMA_GetITStatus(DMA2_Stream2, DMA_IT_HTIF2)) {
 		DMA_ClearITPendingBit(DMA2_Stream2, DMA_IT_HTIF2);
@@ -138,6 +126,7 @@ void DMA2_Stream2_IRQHandler(void) {
 		DMA_ClearITPendingBit(DMA2_Stream2, DMA_IT_TCIF2);
 		wsUpdateBuffer(wsPWMBuffer + (wsBufferSize >> 1));
 	}
+#endif
 
 } // DMA2_Stream2_IRQHandler
 
@@ -181,7 +170,6 @@ void DMA1_Stream3_IRQHandler(void) {
 
 #endif
 
-#endif
 
 //______________________________________________________________________________________________
 

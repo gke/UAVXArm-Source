@@ -19,8 +19,21 @@
 //    You should have received a copy of the GNU General Public License along with this program.
 //    If not, see http://www.gnu.org/licenses/
 
+#ifndef _pinsf1v2_h
+#define _pinsf1v2_h
 
 #include "../UAVX.h"
+
+const uint8 currIMUType = mpu6050IMU;
+const uint8 currBaroType = ms5611Baro
+const uint8 currMagType = hmc5xxxMag;
+const uint8 currGimbalType = noGimbal;
+
+// imuSel, baroSel, magSel, memSel, gpsSel, rfSel, escSel, flowSel, asSel
+const uint8 spiMap[] = {2, 2, 2, 2, 2, 2, 2, 2, 2}; // SPI2
+const uint8 i2cMap[] = {2, 2, 2, 2, 2, 2, 2, 2, 2}; // I2C2
+
+boolean spiDevUsed[] = {false, false, false, false, false, false, false, false, false};
 
 PinDef RCPins[MAX_RC_INPS] = {
     { GPIOA, GPIO_Pin_0, GPIO_PinSource0, GPIO_Mode_IPU, 0, 0,
@@ -156,5 +169,5 @@ SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
         115200 }
     };
 
-
+#endif
 

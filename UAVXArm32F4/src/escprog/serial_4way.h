@@ -136,6 +136,7 @@ void esc4wayProcess(uint8 s);
 esc4wayAck_e esc4wayProcessCmd(esc4wayCmd_e command, uint16_t addr, uint8_t *data, int inLen, int *outLen);
 
 boolean DoMSPCmds(uint8_t s);
+void CheckBLHeli(void);
 void DoBLHeliSuite(uint8_t s);
 
 void  DoEscProgramming(void);

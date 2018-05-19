@@ -22,7 +22,7 @@
 
 #include "UAVX.h"
 
-uint8 GPSRxSerial, GPSTxSerial;
+uint8 GPSRxSerial, GPSTxSerial, RCSerial, TelemetrySerial;
 
 // Rewritten from AQ original Copyright © 2011 Bill Nesbitt
 
@@ -38,17 +38,16 @@ volatile int16 RxQNewHead[MAX_SERIAL_PORTS];
 volatile boolean RxEnabled[MAX_SERIAL_PORTS];
 volatile boolean RxCTS[MAX_SERIAL_PORTS];
 
+volatile uint32 RxDMAPos[MAX_SERIAL_PORTS];
+
 uint8 TxCheckSum[MAX_SERIAL_PORTS];
 uint32 SoftUSARTBaudRate = 115200;
 boolean RxUsingSerial = false;
 
 void serialTxDMA(uint8 s) {
 
-#if defined(STM32F1)
-	SerialPorts[s].TxDMAStream->CMAR = (uint32) &TxQ[s][TxQHead[s]];
-#else
 	SerialPorts[s].TxDMAStream->M0AR = (uint32) &TxQ[s][TxQHead[s]];
-#endif
+
 	if (TxQTail[s] > TxQHead[s]) { // Tail not wrapped around yet
 		DMA_SetCurrDataCounter(SerialPorts[s].TxDMAStream, TxQTail[s]
 				- TxQHead[s]);
@@ -67,13 +66,12 @@ boolean serialAvailable(uint8 s) {
 	//uint8 ch;
 
 	switch (s) {
+	case USBSerial:
+		r = usbAvailable();
+		break;
 	case SoftSerialTx:
 		r = false;
 		break;
-		//case USB_SERIAL:
-		//	//r = TM_INT_USB_VCP_AddReceived();
-		//	r = TM_USB_VCP_Getc(&ch) == TM_USB_VCP_DATA_OK;
-		//	break;
 	default:
 		if (SerialPorts[s].DMAUsed) {
 			RxQTail[s] = SERIAL_BUFFER_SIZE - DMA_GetCurrDataCounter(
@@ -97,9 +95,9 @@ uint8 RxChar(uint8 s) {
 	switch (s) {
 	case SoftSerialTx:
 		break;
-		//case USB_SERIAL:
-		//	TM_USB_VCP_Getc(&ch);
-		//	break;
+	case USBSerial:
+		ch = USBRxChar();
+		break;
 	default:
 		if (SerialPorts[s].DMAUsed || SerialPorts[s].InterruptsUsed) {
 			ch = RxQ[s][RxQHead[s]];
@@ -119,9 +117,15 @@ uint8 PollRxChar(uint8 s) {
 	case SoftSerialTx:
 		return (ASCII_NUL);
 		break;
-		//case USB_SERIAL:
-		//	return(0); // zzz
-		//	break;
+	case USBSerial:
+		if (serialAvailable(s)) {
+			ch = USBRxChar();
+			if (!Armed())
+				USBTxChar(ch); // echo for UAVPSet
+			return (ch);
+		} else
+			return (ASCII_NUL);
+		break;
 	default:
 		if (serialAvailable(s)) {
 			ch = RxChar(s);
@@ -144,12 +148,12 @@ void TxChar(uint8 s, uint8 ch) {
 		BlackBox(ch);
 
 	switch (s) {
+	case USBSerial:
+		USBTxChar(ch);
+		break;
 	case SoftSerialTx:
 		SoftTxChar(ch); // blocking???
 		break;
-		//case USB_SERIAL:
-		//	TM_USB_VCP_Putc(ch);
-		//	break;
 	default:
 		if (SerialPorts[s].DMAUsed || SerialPorts[s].InterruptsUsed) {
 			NewTail = (TxQTail[s] + 1) & (SERIAL_BUFFER_SIZE - 1);

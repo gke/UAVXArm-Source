@@ -22,6 +22,22 @@
 
 uint32 spiErrors = 0;
 
+// mpu60xxSel, ms56xxSel, hmc5xxxSel, memSel, gpsSel, rfSel, escSel, flowSel, asSel
+// 20 20 8 20 20 unused MBaud
+
+const spiDefStruct spiDef[] = {
+#if defined(GO_FAST) && defined(SPI_MPU)
+		{	false, spi_21, spi_0_65625},
+		{	false, spi_10_5, spi_10_5},
+		{	true, spi_10_5, spi_10_5},
+#else
+		{ false, spi_10_5, spi_0_65625 }, { false, spi_10_5, spi_10_5 }, {
+				true, spi_5_250, spi_5_250 },
+#endif
+		{ false, spi_10_5, spi_10_5 }, { false, spi_10_5, spi_10_5 }, { false,
+				spi_10_5, spi_10_5 }, { false, spi_10_5, spi_10_5 }, { false,
+				spi_10_5, spi_10_5 } };
+
 SPI_TypeDef * spiSetBaudRate(uint8 devSel, boolean R) {
 	// It would be good if there was some consistency with SPI protocols!!!
 	// All of this for the HMC5983.
@@ -70,6 +86,18 @@ void spiSelect(uint8 devSel, boolean Sel) {
 		digitalWrite(&SPISelectPins[devSel], 1);
 
 } // spiSelect
+
+
+void spiClearSelects(void) {
+	idx i;
+
+	if (spiDevUsed[imuSel]) {
+		for (i = 0; i < MAX_SPI_DEVICES; i++)
+			spiSelect(i, false); // TODO do it again but why is this being changed?
+		Delay1mS(100);
+	}
+} // spiClearSelects
+
 
 uint8 spiSend(SPI_TypeDef * SPIx, uint8 d) {
 
@@ -129,9 +157,9 @@ boolean spiReadBlock(uint8 devSel, uint8 id, uint8 d, uint8 len, uint8* data) {
 
 	// KLUDGE
 
-	if (devSel == mpu60xxSel)
+	if (devSel == imuSel)
 		Prefix = 0x80;
-	else if (devSel == hmc5xxxSel) {
+	else if (devSel == magSel) {
 		if (len > 1)
 			Prefix = 0xc0;
 		else

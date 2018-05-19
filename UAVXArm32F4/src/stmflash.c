@@ -21,10 +21,9 @@
 
 #include "UAVX.h"
 
-__attribute__((__section__(".scratchflash")))  const int8 FlashNV[NV_FLASH_SIZE];
+__attribute__((__section__(".scratchflash")))   const int8 FlashNV[NV_FLASH_SIZE];
 #define FLASH_SCRATCH_ADDR (0x8000000+NV_FLASH_SIZE)
 #define FLASH_SCRATCH_SECTOR	FLASH_Sector_1 // 11
-
 
 boolean NVChanged = false;
 
@@ -42,33 +41,27 @@ boolean UpdateNV(void) {
 	boolean r = true;
 
 	//for (i = 0; i < l; i++) // TODO: optimise to word compares
-		//	r &= v[i] == FlashNV[a + i]; //*(int8 *) (FLASH_SCRATCH_ADDR + a + i);
+	//	r &= v[i] == FlashNV[a + i]; //*(int8 *) (FLASH_SCRATCH_ADDR + a + i);
 
 
-		if (NVChanged) {
-			FLASH_Unlock();
-#if defined(STM32F1)
-			FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPRTERR);
-			r = FLASH_ErasePage(FLASH_SCRATCH_ADDR) == FLASH_COMPLETE;
-#else
-			FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_OPERR
-					| FLASH_FLAG_WRPERR | FLASH_FLAG_PGAERR | FLASH_FLAG_PGPERR
-					| FLASH_FLAG_PGSERR);
-			r = FLASH_EraseSector(FLASH_SCRATCH_SECTOR, VoltageRange_3)
-					== FLASH_COMPLETE;
-#endif
-			if (r) {
-				for (i = 0; i < sizeof(NV); i += 4) {
-					r = FLASH_ProgramWord(FLASH_SCRATCH_ADDR + i,
-							*(uint32 *) ((uint8 *) &NV + i)) == FLASH_COMPLETE;
-					if (!r)
-						break;
-				}
+	if (NVChanged) {
+		FLASH_Unlock();
+		FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR
+				| FLASH_FLAG_PGAERR | FLASH_FLAG_PGPERR | FLASH_FLAG_PGSERR);
+		r = FLASH_EraseSector(FLASH_SCRATCH_SECTOR, VoltageRange_3)
+				== FLASH_COMPLETE;
+		if (r) {
+			for (i = 0; i < sizeof(NV); i += 4) {
+				r = FLASH_ProgramWord(FLASH_SCRATCH_ADDR + i,
+						*(uint32 *) ((uint8 *) &NV + i)) == FLASH_COMPLETE;
+				if (!r)
+					break;
 			}
-			FLASH_Lock();
 		}
+		FLASH_Lock();
+	}
 
-		NVChanged = false;
+	NVChanged = false;
 
 	return (r);
 } // UpdateNV

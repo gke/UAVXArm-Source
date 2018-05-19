@@ -22,27 +22,43 @@
 #ifndef _filters_h
 #define _filters_h
 
+#define MAX_LPF_ORDER 6
+typedef struct {
+	uint8 order;
+	real32 tau;
+	uint8 head, tail;
+	real32 sum;
+	real32 s;
+	real32 h[MAX_LPF_ORDER]; // for rate of change use
+	real32 c[MAX_LPF_ORDER]; //zzz
+
+	real32 q, r, p, x, xP, k;
+
+} filterStruct;
+
 void DFT8(real32 v, real32 *DFT);
 
 real32 kth_smallest(real32 a[], uint16 n, uint16 k);
 #define median(a,n) kth_smallest(a,n,(((n)&1)?((n)/2):(((n)/2)-1)))
 
-void InitSmoothr32xn(HistStruct * F);
-real32 Smoothr32xn(HistStruct * F, uint8 n, real32 v);
+real32 PavelDifferentiator(filterStruct *F, real32 v);
+
+real32 FIRF(filterStruct *F, real32 v);
+real32 MAF(filterStruct *F, real32 v);
+
+real32 Smoothr32xn(filterStruct * F, real32 v);
 
 real32 LPF1(real32 O, real32 N, const real32 K);
 real32 LPF1Coefficient(real32 CutHz, real32 dT);
-real32 LPFn(HistStruct * F, const idx Order, real32 v, const real32 CutHz, real32 dT);
-real32 LPD5BW(HistStruct * F, real32 v, const real32 CutHz, real32 dT);
-real32 PavelDifferentiator(HistStruct *F, real32 v);
 
-typedef struct {
-	boolean enable;
-	real32 q, r, p, est, estP, k;
-} KFStruct;
+void initLPFn(filterStruct * F, const idx order, const real32 CutHz);
+real32 LPFn(filterStruct * F, real32 v, real32 dT);
+void initKalynFastLPKF(filterStruct *F, real32 Q, real32 R, real32 CutHz);
+real32 KalynFastLPKF(filterStruct *F, real32 v, real32 dT);
+void initFujinFastLPKF(filterStruct *F, real32 CutHz);
+real32 FujinFastLPKF(filterStruct *F, real32 v, real32);
 
-void InitAccGyroKF(KFStruct *F, real32 Q, real32 R);
-real32 DoAccGyroKF(KFStruct *F, real32 v);
+real32 gen_random(int32 seed, real32 max);
 
 real32 Threshold(real32 v, real32 t);
 real32 DeadZone(real32 v, real32 t);
@@ -57,6 +73,20 @@ real32 DecayX(real32 v, real32 d, real32 dT);
 real32 scaleRangef(real32 v, real32 srcMin, real32 srcMax, real32 destMin,
 		real32 destMax);
 
-#endif
+//__________________________________________________________________________
 
+
+enum {RC1, RC2, KalynFastKF, FujinFastKF, NoOSF};
+
+typedef real32 (*OSLPFPtr)(filterStruct *  F, real32 v, real32 dT);
+extern OSLPFPtr OSF;
+extern filterStruct AccF[3], GyroF[3], OSGyroF[3];
+extern filterStruct ROCLPF, FROCLPF, BaroLPF;
+
+extern real32 CurrAccLPFHz, CurrGyroLPFHz, CurrYawLPFHz, CurrServoLPFHz, CurrOSLPFHz, CurrOSLPKFQ;
+extern boolean UsingPavelFilter;
+
+void InitSWFilters(void);
+
+#endif
 

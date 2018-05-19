@@ -23,38 +23,29 @@
 #ifndef _harness_h
 #define _harness_h
 
-
-enum GPIOSelectors {
-	BeeperSel, ArmedSel, LandingSel,
-	Aux1Sel, Aux2Sel, ProbeSel, Aux4Sel,
-	MPU6XXXIntSel, HMC5XXXRdySel,
+enum {
+	imuSel, baroSel, magSel, memSel, gpsSel, rfSel, escSel, flowSel, assel
 };
+
+enum {mpu6000IMU, mpu6050IMU, noIMU};
+enum {ms5611Baro, ms5607Baro, bmp085Baro, noBaro};
+enum {hmc5xxxMag, noMag};
+enum {servoGimbal, noGimbal};
+
 enum GPIOSelectorsBF {
 	BaroXCLRSel = 2, BaroEOCSel = 3
 };
 
-enum ADCSelectors {
-	RangefinderAnalogSel,
-	BattCurrentAnalogSel,
-	BattVoltsAnalogSel,
-	RollAnalogSel,
-	PitchAnalogSel,
-	YawAnalogSel
-};
 
 enum LEDSelectors {
-	LEDYellowSel, LEDRedSel, LEDBlueSel, LEDGreenSel,
+	ledYellowSel, ledRedSel, ledBlueSel, ledGreenSel,
 };
 
 typedef struct {
 	TIM_TypeDef *Tim;
 	uint16 Channel;
 	uint16 CC;
-#ifdef STM32F1
-	volatile uint16 * CCR;
-#else
 	volatile uint32 * CCR;
-#endif
 	uint8 TimAF;
 } TIMChannelDef;
 
@@ -65,13 +56,8 @@ typedef struct {
 	uint16 Pin;
 	uint16 PinSource;
 	GPIOMode_TypeDef Mode;
-#ifdef STM32F1
-	uint16 U1, U2;
-#else
 	GPIOOType_TypeDef OType;
 	GPIOPuPd_TypeDef PuPd;
-#endif
-
 	boolean TimerUsed;
 	TIMChannelDef Timer;
 
@@ -80,6 +66,7 @@ typedef struct {
 } PinDef;
 
 typedef struct {
+	boolean Used;
 	ADC_TypeDef* ADCx;
 	GPIO_TypeDef* Port;
 	uint16 Pin;
@@ -93,34 +80,8 @@ typedef struct {
 	uint8 Rank;
 } AnalogPinDef;
 
-#ifdef STM32F1
-
 typedef struct {
-	USART_TypeDef* USART;
-	uint8 USART_AF;
-	GPIO_TypeDef* Port;
-	uint16 TxPin;
-	uint16 TxPinSource;
-	uint16 RxPin;
-	uint16 RxPinSource;
-	//	uint32 Clk;
-	//	uint32 USARTClk;
-	//	uint32 AF;
-	boolean InterruptsUsed;
-	IRQn_Type ISR;
-
-	boolean DMAUsed;
-	uint32 DMAChannel;
-	DMA_Channel_TypeDef * TxDMAStream;
-	IRQn_Type TxDMAISR;
-	DMA_Channel_TypeDef * RxDMAStream;
-	uint32 Baud;
-
-}SerialPortDef;
-
-#else
-
-typedef struct {
+	boolean Used;
 	USART_TypeDef* USART;
 	uint8 USART_AF;
 	GPIO_TypeDef* Port;
@@ -141,7 +102,6 @@ typedef struct {
 
 } SerialPortDef;
 
-#endif // STM32F1
 typedef struct {
 	boolean Used;
 	I2C_TypeDef* I2C;
@@ -156,13 +116,13 @@ typedef struct {
 } I2CPortDef;
 
 typedef struct {
+	boolean Used;
 	SPI_TypeDef* SPIx;
 	GPIO_TypeDef* Port;
 	const struct {
 		int16 Pin;
 		int16 PinSource;
 	} P[3];
-	boolean Used;
 } SPIPortDef;
 
 extern SPIPortDef SPIPorts[];
@@ -175,10 +135,11 @@ extern boolean spiDevUsed[];
 
 extern void systemReset(boolean toBootloader);
 
+extern void InitHarnessPorts(void);
 extern void InitHarness(void);
 extern void pinInit(PinDef * d);
 extern void pinInitOutput(PinDef * d);
-extern void pinInitMode(PinDef * d,boolean IsInput);
+extern void pinInitMode(PinDef * d, boolean IsInput);
 extern void serialBaudRate(uint8 s, uint32 BaudRate);
 //zzzextern void serialInitSBus(uint8 s, boolean Enable);
 extern void InitSerialPort(uint8 s, boolean Enable, boolean SBusConfig);
@@ -205,12 +166,12 @@ extern PinDef GPIOPins[];
 extern PinDef PWMPins[];
 extern SerialPortDef SerialPorts[];
 
+const uint8 currIMUType;
+const uint8 currBaroType;
+const uint8 currMagType;
+const uint8 currGimbalType;
+
 //________________________________________________________________________________________________
-
-
-enum {
-	mpu60xxSel, ms56xxSel, hmc5xxxSel, memSel, gpsSel, rfSel, escSel, flowSel, assel
-};
 
 #define spi_21 			SPI_BaudRatePrescaler_2
 #define spi_10_5 		SPI_BaudRatePrescaler_4
@@ -225,20 +186,9 @@ extern const uint8 spiMap[];
 extern const uint16 spiDevBaudRate[];
 extern const uint8 i2cMap[];
 
-/*
- #define I2CLite 1
- #define I2CIMU	1
- #define I2CBaro	1
- #define I2CMag	1
- #define I2CTemp	1
- #define I2CLCD	1
- #define I2CESC	1
- #define I2CEEPROM 1
- */
-
-#define SIOIMU		mpu60xxSel
-#define SIOBaro		ms56xxSel
-#define SIOMag		hmc5xxxSel
+#define SIOIMU		imuSel
+#define SIOBaro		baroSel
+#define SIOMag		magSel
 #define SIOMem 		memSel
 #define SIORF		rfSel  // not SPI
 #define SIOESC		escSel // i2c ESCs
@@ -247,12 +197,7 @@ extern const uint8 i2cMap[];
 #define MAX_SPI_PORTS 3
 #define MAX_I2C_PORTS 2
 
-#define TelemetrySerial 0
-#define RCSerial 1
-#define I2CSerial 2
-#define USBSerial 3
-#define SoftSerialTx 4
-
+enum {Serial0, Serial1, Serial2, SoftSerialTx, USBSerial };
 
 // Drives
 
@@ -311,6 +256,22 @@ extern const uint8 i2cMap[];
 #define MAX_PWM_OUTPUTS 10
 #define MAX_LEDS 4
 
+enum GPIOSelectors {
+	BeeperSel, ArmedSel, LandingSel,
+	Aux1Sel, Aux2Sel, ProbeSel, Aux4Sel,
+	imuIntSel, magRdySel,
+};
+
+enum ADCSelectors {
+	RangefinderAnalogSel,
+	BattCurrentAnalogSel,
+	BattVoltsAnalogSel,
+	// Unused
+	RollAnalogSel,
+	PitchAnalogSel,
+	YawAnalogSel
+};
+
 //________________________________________________________________________________________________
 
 // V3 Nano Board using I2C sensors
@@ -324,6 +285,22 @@ extern const uint8 i2cMap[];
 #define MAX_SERIAL_PORTS 2
 #define MAX_PWM_OUTPUTS 10
 #define MAX_LEDS 4
+
+enum GPIOSelectors {
+	BeeperSel, ArmedSel, LandingSel,
+	Aux1Sel, Aux2Sel, ProbeSel, Aux4Sel,
+	MPU6XXXIntSel, HMC5XXXRdySel,
+};
+
+enum ADCSelectors {
+	RangefinderAnalogSel,
+	BattCurrentAnalogSel,
+	BattVoltsAnalogSel,
+	// Unused
+	RollAnalogSel,
+	PitchAnalogSel,
+	YawAnalogSel
+};
 
 //________________________________________________________________________________________________
 
@@ -339,6 +316,21 @@ extern const uint8 i2cMap[];
 #define MAX_PWM_OUTPUTS 10
 #define MAX_LEDS 4
 
+enum GPIOSelectors {
+	BeeperSel, ArmedSel, LandingSel,
+	Aux1Sel, Aux2Sel, ProbeSel, Aux4Sel,
+	MPU6XXXIntSel, HMC5XXXRdySel,
+};
+
+enum ADCSelectors {
+	RangefinderAnalogSel,
+	BattCurrentAnalogSel,
+	BattVoltsAnalogSel,
+	RollAnalogSel,
+	PitchAnalogSel,
+	YawAnalogSel
+};
+
 //________________________________________________________________________________________________
 
 // V2 Board with F1 processor designed to also act as a UAVP adapter
@@ -353,9 +345,72 @@ extern const uint8 i2cMap[];
 #define MAX_PWM_OUTPUTS 10
 #define MAX_LEDS 4
 
+enum GPIOSelectors {
+	BeeperSel, ArmedSel, LandingSel,
+	Aux1Sel, Aux2Sel, ProbeSel, Aux4Sel,
+	MPU6XXXIntSel, HMC5XXXRdySel,
+};
+
+enum ADCSelectors {
+	RangefinderAnalogSel,
+	BattCurrentAnalogSel,
+	BattVoltsAnalogSel,
+	RollAnalogSel,
+	PitchAnalogSel,
+	YawAnalogSel
+};
+
 //________________________________________________________________________________________________
 
-// V1 Board was mbed based - included for a historical note
+// OmniBus Board (bare bones  - no baro, mag, rf etc.)
+
+#elif defined(OMNIBUSF4V1_BOARD)
+
+#define INCLUDE_USB
+
+#define USE_USB_OTG_FS
+#define USB_OTG_FS_CORE
+#define USE_EMBEDDED_PHY
+#define VBUS_SENSING_ENABLED
+#define USE_DEVICE_MODE
+
+#define USB_DETECT_PIN //  you need to be able to force Windows to release USB
+
+#define USB_DISCONNECT_GPIO    GPIOA
+#define USB_DISCONNECT_PIN     GPIO_Pin_12
+
+// commonly PA8 or PC5
+#define VBUS_GPIO		GPIOC
+#define VBUS_PIN		GPIO_Pin_5
+
+#define MAX_RC_INPS 0
+#define ANALOG_CHANNELS 2
+#define MAX_GPIO_PINS 6
+#define MAX_SPI_DEVICES 1
+#define MAX_SERIAL_PORTS 2 // plus USB and Soft USART
+#define MAX_PWM_OUTPUTS 6 // 10
+#define MAX_LEDS 1
+
+enum GPIOSelectors {
+	BeeperSel, InverterSel, MPU6XXXIntSel, ProbeSel,
+	// unused
+	Aux2Sel,
+	Aux4Sel,
+	LandingSel,
+	HMC5XXXRdySel
+};
+
+enum ADCSelectors {
+	BattCurrentAnalogSel,
+	BattVoltsAnalogSel,
+	// unused returns 0
+	RangefinderAnalogSel,
+	RollAnalogSel,
+	PitchAnalogSel,
+	YawAnalogSel
+};
+
+
 
 #else
 

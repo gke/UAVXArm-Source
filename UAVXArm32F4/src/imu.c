@@ -41,46 +41,25 @@ const real32 GyroScale[] = { //
 
 uint8 CurrAttSensorType = UAVXArm32IMU;
 
-HistStruct AccF[3];
-HistStruct GyroF[3];
-
 real32 GyroBias[3];
 real32 Acc[3], Rate[3];
 real32 RateEnergySum;
 uint32 RateEnergySamples;
 
-real32 AccLPFreqHz;
-
-const idx GyroLPFOrder = 2;
-const idx YawLPFOrder = 2;
-const idx AccLPFOrder = 2;
-
 // NED
 // P,R,Y
 // BF, LR, UD
 
-void GetIMU(void) {
+
+void ScaleRateAndAcc(void) {
 	idx a;
 
-	ReadAccAndGyro(true);
-
-	if (!UsingHWLPF)
-		for (a = X; a <= Z; a++)
-			RawGyro[a] = LPFn(&GyroF[a], GyroLPFOrder, RawGyro[a],
-					CurrGyroLPFHz, CurrPIDCycleS);
-
-	UpdateGyroTempComp();
+	for (a = X; a <= Z; a++)
+		RawGyro[a] = LPFn(&GyroF[a], RawGyro[a], dT);
 
 	Rate[Pitch] = (RawGyro[X] - GyroBias[X]) * GyroScale[CurrAttSensorType];
 	Rate[Roll] = (RawGyro[Y] - GyroBias[Y]) * GyroScale[CurrAttSensorType];
 	Rate[Yaw] = -(RawGyro[Z] - GyroBias[Z]) * GyroScale[CurrAttSensorType];
-
-#if defined(V4_BOARD)
-	if (!UsingHWLPF)
-#endif
-		for (a = X; a <= Z; a++)
-			RawAcc[a] = LPFn(&AccF[a], AccLPFOrder, RawAcc[a],
-					CurrAccLPFHz, CurrPIDCycleS);
 
 	if (CurrAttSensorType == InfraRedAngle) {
 
@@ -94,7 +73,7 @@ void GetIMU(void) {
 
 	F.IMUFailure = !F.IMUCalibrated;
 
-} // GetIMU
+} // ScaleRateAndAcc
 
 void ErectGyros(int32 TS) {
 	const int32 IntervalmS = 2;
@@ -104,9 +83,9 @@ void ErectGyros(int32 TS) {
 	int32 s = TS * 1000 / IntervalmS;
 	boolean Moving = false;
 
-	LEDOn(LEDRedSel);
+	LEDOn(ledRedSel);
 
-	GetIMU();
+	ReadFilteredGyro();
 
 	for (g = X; g <= Z; g++)
 		MaxRawGyro[g] = MinRawGyro[g] = Av[g] = RawGyro[g];
@@ -114,7 +93,7 @@ void ErectGyros(int32 TS) {
 	for (i = 1; i < s; i++) {
 		Delay1mS(IntervalmS);
 
-		GetIMU();
+		ReadFilteredGyro();
 
 		for (g = X; g <= Z; g++) {
 
@@ -139,7 +118,7 @@ void ErectGyros(int32 TS) {
 		SaveLEDs();
 		LEDsOff();
 		for (i = 0; i < 4; i++) {
-			LEDToggle(LEDYellowSel);
+			LEDToggle(ledYellowSel);
 			DoBeep(8, 2);
 		}
 		RestoreLEDs();
@@ -154,20 +133,10 @@ void ErectGyros(int32 TS) {
 		}
 	}
 
-	LEDOff(LEDRedSel);
+	LEDOff(ledRedSel);
 
 } // ErectGyros
 
-void InitSWFilters(void) {
-	idx a;
-
-	LPF1DriveK = LPF1Coefficient(CurrGyroLPFHz, CurrPIDCycleS);
-	LPF1ServoK = LPF1Coefficient(CurrServoLPFHz, CurrPIDCycleS);
-
-	for (a = X; a <= Z; a++)
-		AccF[a].Primed = GyroF[a].Primed = A[a].R.RateF.Primed
-				= A[a].R.RateDF.Primed = false;
-} // InitSWFilters
 
 
 void InitIMU(void) {
@@ -177,7 +146,7 @@ void InitIMU(void) {
 	InitMPU6XXX();
 
 	if (F.UsingAnalogGyros) {
-		ReadAccAndGyro(true);
+		ReadFilteredGyro();
 		for (a = X; a <= Z; a++)
 			GyroBias[a] = RawGyro[a]; //  until erect gyros
 	} else if (CurrAttSensorType == InfraRedAngle) {
@@ -191,9 +160,8 @@ void InitIMU(void) {
 	for (a = 0; a < 8; a++)
 		Noise[a] = 0;
 
-	InitSWFilters();
-
-	GetIMU();
+	ReadFilteredGyroAndAcc();
+	ScaleRateAndAcc();
 
 	r = true;
 	for (a = X; a <= Z; a++)

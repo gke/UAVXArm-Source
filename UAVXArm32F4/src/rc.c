@@ -74,6 +74,13 @@ boolean RxLoopbackEnabled = false;
 uint8 CurrComboPort1Config = ComboPort1ConfigUnknown;
 uint8 CurrComboPort2Config = ComboPort2Unused;
 
+void EnableRC(void) {
+
+	if (CurrComboPort1Config != ParallelPPM)
+		RxEnabled[RCSerial] = true;
+
+} // EnableRC
+
 void RCSerialISR(uint32 TimerVal) {
 	int32 Temp;
 	uint32 NowuS;
@@ -472,13 +479,9 @@ void DoSpektrumBind(void) {
 
 	p.Port = SerialPorts[RCSerial].Port;
 	p.Pin = SerialPorts[RCSerial].RxPin;
-#if defined(STM32F1)
-	p.Mode = GPIO_Mode_Out_PP;
-#else
 	p.Mode = GPIO_Mode_OUT;
 	p.OType = GPIO_OType_PP;
 	p.PuPd = GPIO_PuPd_UP;
-#endif
 
 	pinInit(&p);
 	// need to power the Rx off one of the pins so power up can be controlled.
@@ -787,7 +790,7 @@ void SpekLoopback(boolean HiRes) {
 	}
 } // SpekLoopback
 
-void CheckRxLoopback(void) {
+void CheckRCLoopback(void) {
 
 	if (RxLoopbackEnabled)
 		switch (CurrComboPort1Config) {
@@ -807,7 +810,7 @@ void CheckRxLoopback(void) {
 			break;
 		} // switch
 
-} // CheckRxLoopback
+} // CheckRCLoopback
 
 boolean ActiveCh(uint8 r) {
 	return DiscoveredRCChannels > Map[r];
@@ -823,7 +826,7 @@ void UpdateControls(void) {
 	if (F.RCNewValues) {
 		F.RCNewValues = false;
 
-		LEDOn(LEDGreenSel);
+		LEDOn(ledGreenSel);
 
 		MapRC(); // re-map channel order for specific Tx
 

@@ -48,9 +48,9 @@ void CommissioningTest(uint8 s) {
 	spiSelect(i, false); // do it again but why is this being changed?
 #endif
 
-	LEDOn(LEDRedSel);
+	LEDOn(ledRedSel);
 	Delay1mS(10000);
-	LEDOn(LEDBlueSel);
+	LEDOn(ledBlueSel);
 
 	LEDsAndBuzzer(s);
 
@@ -107,7 +107,7 @@ void CommissioningTest(uint8 s) {
 	TxNextLine(s);
 
 	InitIMU();
-	GetIMU();
+	ReadFilteredGyroAndAcc(); ScaleRateAndAcc();
 
 	if (false)
 	InertialTest(s);
@@ -152,7 +152,7 @@ void CommissioningTest(uint8 s) {
 	while (true) {
 		Delay1mS(1);
 
-		GetIMU();
+		ReadFilteredGyroAndAcc(); ScaleRateAndAcc();
 
 		F.BaroActive = true; // force
 		if (mSClock() >= mS[BaroUpdate]) {
@@ -240,7 +240,7 @@ void CommissioningTest(uint8 s) {
 		dTR = 1.0f / dT;
 		dTROn2 = dTR * 0.5f;
 
-		GetIMU();
+		ReadFilteredGyroAndAcc(); ScaleRateAndAcc();
 		DoMadgwickAttitude(false);
 
 		if (mSClock() > Timeout) {
@@ -309,23 +309,6 @@ void GPSDebug(uint8 s) {
 #define IM 139968
 #define IA 3877
 #define IC 29573
-
-real32 gen_random(int32 seed, real32 max) { // must be to give independent distributions
-	/* -*- mode: c -*-
-	 * $Id: random.c,v 1.2 2003/12/30 01:21:23 davidw Exp $
-	 * http://www.bagley.org/~doug/shootout/
-	 */
-	static boolean Primed = false;
-	static int32 last = 42;
-
-	if (!Primed) {
-		last = seed;
-		Primed = true;
-	}
-
-	last = (last * IA + IC) % IM;
-	return (max * last / IM);
-}
 
 void SphereFitTest(void) {
 	uint16 OK;
@@ -613,7 +596,7 @@ void InertialTest(uint8 s) {
 
 	TxString(s, "\r\nInertial test\r\n");
 
-	ReadAccAndGyro(true);
+	ReadAccAndGyro();
 
 	TxString(s, "\r\nSIO: 0x");
 	TxValH(s, MPU_ID);
@@ -640,7 +623,7 @@ void InertialTest(uint8 s) {
 
 	ErectGyros(20);
 
-	GetIMU();
+	ReadFilteredGyroAndAcc(); ScaleRateAndAcc();
 
 	TxString(s, "\r\nMPU6XXX Acc. Cal. @ ");
 	TxVal32(s, (NV.AccCal.TRef) * 10.0f, 1, 0);

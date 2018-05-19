@@ -53,7 +53,7 @@ typedef struct {
 	uint8 b :8;
 } wsLEDStruct;
 
-void wsInit(void);
+extern void wsInit(void);
 void wsUpdateBuffer(uint16_t* buffer);
 void wsSetColours(int i, uint8 R, uint8 G, uint8 B);
 void wsLEDColour(int i, const wsLEDStruct w);
@@ -63,8 +63,10 @@ void UpdatewsLed(void);
 extern const wsLEDStruct wsLEDColours[];
 
 extern uint16 wsPWMBuffer[];
-extern uint8 CurrwsNoOfLeds;
 extern uint16 wsBufferSize;
+extern uint8 CurrwsNoOfLeds, wsNoOfLeds, wsGroupSize;
+
+
 
 #endif
 

@@ -21,23 +21,17 @@
 
 #include "UAVX.h"
 
-__attribute__((always_inline))    inline boolean digitalRead(PinDef * d) {
-	return (GPIO_ReadInputDataBit(d->Port, d->Pin));
+__attribute__((always_inline))                   inline boolean digitalRead(PinDef * d) {
+	return GPIO_ReadInputDataBit(d->Port, d->Pin);
 } // digitalRead
 
 __attribute__((always_inline)) inline void digitalWrite(PinDef * d, uint8 m) {
 
-#ifdef STM32F1
-	if (m)
-	d->Port->BSRR = d->Pin;
-	else
-	d->Port->BRR = d->Pin;
-#else
 	if (m)
 		d->Port->BSRRL = d->Pin;
 	else
 		d->Port->BSRRH = d->Pin;
-#endif // STM32F1
+
 } // digitalWrite
 
 __attribute__((always_inline)) inline void digitalToggle(PinDef * d) {
@@ -45,33 +39,14 @@ __attribute__((always_inline)) inline void digitalToggle(PinDef * d) {
 } // digitalToggle
 
 
-#ifdef STM32F1
-
-#define AIRCR_VECTKEY_MASK    ((uint32)0x05FA0000)
-
-void systemReset(boolean toBootloader) {
-	if (toBootloader) {
-		// 1FFFF000 -> 20000200 -> SP
-		// 1FFFF004 -> 1FFFF021 -> PC
-		*((uint32 *) 0x20004FF0) = 0xDEADBEEF; // 20KB STM32F103
-	}
-
-	// Generate system reset
-	SCB->AIRCR = AIRCR_VECTKEY_MASK | (uint32) 0x04;
-}
-
-#endif // STM32F1
 void pinInit(PinDef * d) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 
 	GPIO_StructInit(&GPIO_InitStructure);
 	GPIO_InitStructure.GPIO_Pin = d->Pin;
 	GPIO_InitStructure.GPIO_Mode = d->Mode;
-
-#ifndef STM32F1
 	GPIO_InitStructure.GPIO_OType = d->OType;
 	GPIO_InitStructure.GPIO_PuPd = d->PuPd;
-#endif
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(d->Port, &GPIO_InitStructure);
 } // pinInit
@@ -88,12 +63,11 @@ void pinInitMode(PinDef * d, boolean IsInput) {
 	else
 		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
 
-#ifndef STM32F1
 	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
 	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
-#endif
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
 	GPIO_Init(d->Port, &GPIO_InitStructure);
+
 } // pinInitMode
 
 
@@ -102,13 +76,9 @@ void pinInitOutput(PinDef * d) {
 
 	GPIO_StructInit(&GPIO_InitStructure);
 	GPIO_InitStructure.GPIO_Pin = d->Pin;
-#ifdef STM32F1
-	// force pin to output zzz
-#else
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
 	GPIO_InitStructure.GPIO_OType = d->OType;
 	GPIO_InitStructure.GPIO_PuPd = d->PuPd;
-#endif
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(d->Port, &GPIO_InitStructure);
 } // pinInitOutput
@@ -123,6 +93,7 @@ void NVICDisable(IRQn_Type ISR) {
 	NVIC_Init(&NVIC_InitStructure);
 
 } // NVICDisable
+
 
 TIM_ICInitTypeDef TIM_ICInitStructure = { 0, }; // global for rc
 
@@ -149,11 +120,7 @@ void InitRCPins(uint8 PPMInputs) {
 
 	TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
 	TIM_TimeBaseStructure.TIM_Period = 0xFFFF; // TODO: 32 bit period?
-#ifdef STM32F1
-	TIM_TimeBaseStructure.TIM_Prescaler = TIMER_PS - 1;
-#else
 	TIM_TimeBaseStructure.TIM_Prescaler = (TIMER_PS >> 1) - 1;
-#endif
 
 	// Pin specific
 	for (i = 0; i < PPMInputs; i++) {
@@ -161,9 +128,8 @@ void InitRCPins(uint8 PPMInputs) {
 
 		pinInit(u);
 
-#ifndef STM32F1
 		GPIO_PinAFConfig(u->Port, u->PinSource, u->Timer.TimAF);
-#endif
+
 		NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 		NVIC_InitStructure.NVIC_IRQChannel = u->PinISR;
 		NVIC_Init(&NVIC_InitStructure);
@@ -194,10 +160,8 @@ void i2cInit(uint8 i2cCurr) {
 
 	if (d->Used) {
 
-#ifndef STM32F1
 		GPIO_PinAFConfig(d->SCLPort, d->SCLPinSource, d->I2C_AF);
 		GPIO_PinAFConfig(d->SDAPort, d->SDAPinSource, d->I2C_AF);
-#endif
 
 		i2cUnstick(i2cCurr); // attempt to unfreeze slave(s) - initialises pins
 		if (F.i2cFatal)
@@ -238,12 +202,8 @@ void i2cUnstick(uint8 i2cCurr) {
 
 	GPIO_StructInit(&GPIO_InitStructure);
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-#ifdef STM32F1
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_OD;
-#else
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
 	GPIO_InitStructure.GPIO_OType = GPIO_OType_OD;
-#endif
 	GPIO_InitStructure.GPIO_Pin = d->SCLPin;
 	GPIO_Init(d->SCLPort, &GPIO_InitStructure);
 
@@ -280,12 +240,8 @@ void i2cUnstick(uint8 i2cCurr) {
 
 	GPIO_InitStructure.GPIO_Pin = d->SCLPin;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-#ifdef STM32F1
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_OD;
-#else
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
 	GPIO_InitStructure.GPIO_OType = GPIO_OType_OD;
-#endif
 	GPIO_Init(d->SCLPort, &GPIO_InitStructure);
 
 	GPIO_InitStructure.GPIO_Pin = d->SDAPin;
@@ -298,7 +254,6 @@ enum {
 };
 
 void spiInitGPIOPins(uint8 spiPort, boolean highClock) {
-#if defined(V4_BOARD)
 	GPIO_InitTypeDef GPIO_InitStructure;
 	SPIPortDef * p;
 
@@ -307,20 +262,19 @@ void spiInitGPIOPins(uint8 spiPort, boolean highClock) {
 	GPIO_StructInit(&GPIO_InitStructure);
 
 	GPIO_InitStructure.GPIO_Pin = p->P[sckPin].Pin | p->P[mosiPin].Pin
-	| p->P[misoPin].Pin;
+			| p->P[misoPin].Pin;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
 	if (highClock)
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+		GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
 	else
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
+		GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
 	GPIO_Init(p->Port, &GPIO_InitStructure);
-#endif
+
 } // spiInitGPIOPins
 
 void spiInit(uint8 spiPort) {
-#if defined(V4_BOARD)
 	volatile uint8 dummyread __attribute__((unused));
 	enum {
 		CS, SCK, MISO, MOSI
@@ -331,16 +285,30 @@ void spiInit(uint8 spiPort) {
 
 	p = &SPIPorts[spiPort];
 
-	if ((p->SPIx == SPI2) && p->Used) {
-
-		RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI2, ENABLE);
+	if (p->Used) {
 
 		spiInitGPIOPins(spiPort, false);
 
-		GPIO_PinAFConfig(p->Port, p->P[sckPin].PinSource, GPIO_AF_SPI2);
-		GPIO_PinAFConfig(p->Port, p->P[misoPin].PinSource, GPIO_AF_SPI2);
-		GPIO_PinAFConfig(p->Port, p->P[mosiPin].PinSource, GPIO_AF_SPI2);
-
+		switch (spiPort) {
+		case 0:
+			RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1, ENABLE);
+			GPIO_PinAFConfig(p->Port, p->P[sckPin].PinSource, GPIO_AF_SPI1);
+			GPIO_PinAFConfig(p->Port, p->P[misoPin].PinSource, GPIO_AF_SPI1);
+			GPIO_PinAFConfig(p->Port, p->P[mosiPin].PinSource, GPIO_AF_SPI1);
+			break;
+		case 1:
+			RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI2, ENABLE);
+			GPIO_PinAFConfig(p->Port, p->P[sckPin].PinSource, GPIO_AF_SPI2);
+			GPIO_PinAFConfig(p->Port, p->P[misoPin].PinSource, GPIO_AF_SPI2);
+			GPIO_PinAFConfig(p->Port, p->P[mosiPin].PinSource, GPIO_AF_SPI2);
+			break;
+		case 2:
+			RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI3, ENABLE);
+			GPIO_PinAFConfig(p->Port, p->P[sckPin].PinSource, GPIO_AF_SPI3);
+			GPIO_PinAFConfig(p->Port, p->P[misoPin].PinSource, GPIO_AF_SPI3);
+			GPIO_PinAFConfig(p->Port, p->P[mosiPin].PinSource, GPIO_AF_SPI3);
+			break;
+		}
 		SPI_DeInit(p->SPIx);
 		SPI_StructInit(&SPI_InitStructure);
 		SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex; // MISO & MOSI
@@ -367,27 +335,36 @@ void spiInit(uint8 spiPort) {
 
 		dummyread = SPI_I2S_ReceiveData(p->SPIx);
 	}
-#endif
 
 } // spiInit
 
 
 void spiDeInit(uint8 spiPort) {
-#if defined(V4_BOARD)
+
 	GPIO_InitTypeDef GPIO_InitStructure;
 	SPIPortDef * p;
 
 	p = &SPIPorts[spiPort];
 
-	if (p->SPIx == SPI2) {
-		SPI_I2S_DeInit(SPI2);
+	if (p->Used) {
+		SPI_I2S_DeInit(p->SPIx);
 
 		SPI_Cmd(p->SPIx, DISABLE);
-		RCC_APB2PeriphClockCmd(RCC_APB1Periph_SPI2, DISABLE);
+		switch (spiPort) {
+		case 0:
+			RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1, DISABLE);
+			break;
+		case 1:
+			RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI2, DISABLE);
+			break;
+		case 2:
+			RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI3, DISABLE);
+			break;
+		}
 
 		/* All SPI-Pins to input with weak internal pull-downs */
 		GPIO_InitStructure.GPIO_Pin = p->P[sckPin].Pin | p->P[misoPin].Pin
-		| p->P[mosiPin].Pin;
+				| p->P[mosiPin].Pin;
 		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
 		GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
 
@@ -395,7 +372,7 @@ void spiDeInit(uint8 spiPort) {
 
 		spiSetDivisor(p->SPIx, 2); // 21 MHz SPI clock (within 20 +/- 10%)
 	}
-#endif
+
 } // spiDeInit
 
 
@@ -411,11 +388,7 @@ void InitPWMPin(PinDef * u, uint16 pwmprescaler, uint32 pwmperiod,
 		//TIM_Cmd(u->Timer.Tim, DISABLE);
 		//TIM_CtrlPWMOutputs(u->Timer.Tim, DISABLE);
 
-#ifdef STM32F1
-		//GPIO_PinAFConfig(u->Port, u->PinSource, u->Timer.TimAF);
-#else
 		GPIO_PinAFConfig(u->Port, u->PinSource, u->Timer.TimAF);
-#endif
 
 		TIM_OCStructInit(&TIM_OCInitStructure);
 		TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM2;
@@ -446,15 +419,13 @@ void InitPWMPin(PinDef * u, uint16 pwmprescaler, uint32 pwmperiod,
 		}
 
 		TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
-#ifdef STM32F1
-		TIM_TimeBaseStructure.TIM_Prescaler = pwmprescaler - 1; // 1uSec tick
-#else
+
 		if ((u->Timer.Tim == TIM1 || u->Timer.Tim == TIM8 || u->Timer.Tim
 				== TIM9 || u->Timer.Tim == TIM10 || u->Timer.Tim == TIM11))
 			TIM_TimeBaseStructure.TIM_Prescaler = pwmprescaler - 1;
 		else
 			TIM_TimeBaseStructure.TIM_Prescaler = (pwmprescaler >> 1) - 1;
-#endif
+
 		TIM_TimeBaseStructure.TIM_Period = pwmperiod - 1;
 
 		TIM_Cmd(u->Timer.Tim, ENABLE);
@@ -489,7 +460,7 @@ void serialBaudRate(uint8 s, uint32 BaudRate) {
 	} // switch
 } // serialBaudRate
 
-void serialInitSBusREDUNDANT(uint8 s, boolean Enable) { // zzz
+void InitSerialPortxxx(uint8 s, boolean Enable, boolean SBusConfig) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 	USART_InitTypeDef USART_InitStructure;
 	DMA_InitTypeDef DMA_InitStructure;
@@ -498,103 +469,99 @@ void serialInitSBusREDUNDANT(uint8 s, boolean Enable) { // zzz
 
 	u = &SerialPorts[s];
 
-	GPIO_StructInit(&GPIO_InitStructure);
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-#ifdef STM32F1
-	GPIO_InitStructure.GPIO_Pin = u->TxPin;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
-	GPIO_Init(u->Port, &GPIO_InitStructure);
+	if (u->Used) {
 
-	GPIO_InitStructure.GPIO_Pin = u->RxPin;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
-	GPIO_Init(u->Port, &GPIO_InitStructure);
-#else
-	GPIO_StructInit(&GPIO_InitStructure);
-	GPIO_InitStructure.GPIO_Pin = u->TxPin | u->RxPin;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-	//GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
-	GPIO_Init(u->Port, &GPIO_InitStructure);
+		GPIO_StructInit(&GPIO_InitStructure);
+		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 
-	GPIO_PinAFConfig(u->Port, u->TxPinSource, u->USART_AF);
-	GPIO_PinAFConfig(u->Port, u->RxPinSource, u->USART_AF);
+		GPIO_StructInit(&GPIO_InitStructure);
+		GPIO_InitStructure.GPIO_Pin = u->TxPin | u->RxPin;
+		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+		//GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+		GPIO_Init(u->Port, &GPIO_InitStructure);
 
-#endif
+		GPIO_PinAFConfig(u->Port, u->TxPinSource, u->USART_AF);
+		GPIO_PinAFConfig(u->Port, u->RxPinSource, u->USART_AF);
 
-	USART_StructInit(&USART_InitStructure);
-	USART_InitStructure.USART_BaudRate = 100000; // 96000; //100000;
-	USART_InitStructure.USART_WordLength = USART_WordLength_9b;
-	USART_InitStructure.USART_StopBits = USART_StopBits_2;
-	USART_InitStructure.USART_Parity = USART_Parity_Even;
-	USART_Init(u->USART, &USART_InitStructure);
+		USART_StructInit(&USART_InitStructure);
 
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+		if (SBusConfig) {
+			USART_InitStructure.USART_WordLength = USART_WordLength_9b;
+			USART_InitStructure.USART_StopBits = USART_StopBits_2;
+			USART_InitStructure.USART_Parity = USART_Parity_Even;
+		} else
+			USART_InitStructure.USART_Parity = USART_Parity_No;
 
-	TxQTail[s] = TxQHead[s] = TxQNewHead[s] = 0;
+		USART_InitStructure.USART_BaudRate = u->Baud;
 
-	if (u->DMAUsed) {
-		// Common
-		DMA_StructInit(&DMA_InitStructure);
-		DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
-		DMA_InitStructure.DMA_Priority = DMA_Priority_Medium;
-		DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32) &u->USART->DR;
-		DMA_InitStructure.DMA_BufferSize = SERIAL_BUFFER_SIZE;
+		USART_Init(u->USART, &USART_InitStructure);
 
-		// Receive DMA
-		DMA_DeInit(u->RxDMAStream);
+		if (u->InterruptsUsed) {
 
-		DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32) &u->USART->DR;
-		DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
-#ifdef STM32F1
-		DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;
-		DMA_InitStructure.DMA_MemoryBaseAddr = (uint32) RxQ[s];
-#else
-		while (DMA_GetCmdStatus(u->RxDMAStream) != DISABLE) {
-		};
-		DMA_InitStructure.DMA_Channel = u->DMAChannel;
-		DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralToMemory;
-		DMA_InitStructure.DMA_Memory0BaseAddr = (uint32) RxQ[s];
-#endif
-		DMA_Init(u->RxDMAStream, &DMA_InitStructure);
-		DMA_Cmd(u->RxDMAStream, ENABLE);
-		USART_DMACmd(u->USART, USART_DMAReq_Rx, ENABLE);
+			RxQTail[s] = RxQHead[s] = TxQTail[s] = TxQHead[s] = 0;
+			NVIC_InitStructure.NVIC_IRQChannel = u->ISR;
+			NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+			NVIC_Init(&NVIC_InitStructure);
 
-		RxQTail[s] = RxQHead[s] = SERIAL_BUFFER_SIZE - DMA_GetCurrDataCounter(
-				u->RxDMAStream);
+			USART_ITConfig(u->USART, USART_IT_RXNE, ENABLE);
+			USART_ITConfig(u->USART, USART_IT_TXE, ENABLE);
 
-		// Transmit DMA
-		NVIC_InitStructure.NVIC_IRQChannel = u->TxDMAISR;
-		NVIC_Init(&NVIC_InitStructure);
+		} else {
 
-		DMA_DeInit(u->TxDMAStream);
-#ifdef STM32F1
-		DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralDST;
-#else
-		while (DMA_GetCmdStatus(u->TxDMAStream) != DISABLE) {
-		};
-		DMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToPeripheral;
-		//	DMA_InitStructure.DMA_Memory0BaseAddr = (uint32) TxQ[s];
-#endif
-		DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
-		DMA_Init(u->TxDMAStream, &DMA_InitStructure);
+			TxQTail[s] = TxQHead[s] = 0;
 
-		DMA_SetCurrDataCounter(u->TxDMAStream, 0);
-		DMA_ITConfig(u->TxDMAStream, DMA_IT_TC, ENABLE);
+			// Common
+			DMA_StructInit(&DMA_InitStructure);
+			DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
+			DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
+			DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+			DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)
+					& u->USART->DR;
+			DMA_InitStructure.DMA_Priority = DMA_Priority_Medium;
+			DMA_InitStructure.DMA_Channel = u->DMAChannel;
+			DMA_InitStructure.DMA_BufferSize = SERIAL_BUFFER_SIZE;
 
-		USART_DMACmd(u->USART, USART_DMAReq_Tx, ENABLE);
-	} else if (u->InterruptsUsed) {
-		RxQTail[s] = RxQHead[s] = 0;
-		NVIC_InitStructure.NVIC_IRQChannel = u->ISR;
-		NVIC_Init(&NVIC_InitStructure);
+			// Receive DMA
+			DMA_DeInit(u->RxDMAStream);
+			while (DMA_GetCmdStatus(u->RxDMAStream) != DISABLE) {
+			};
 
-		USART_ITConfig(u->USART, USART_IT_RXNE, ENABLE);
+			DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralToMemory;
+			DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t) RxQ[s];
+			DMA_Init(u->RxDMAStream, &DMA_InitStructure);
+			RxDMAPos[s] = DMA_GetCurrDataCounter(DMA1_Stream1);
+			DMA_Cmd(u->RxDMAStream, ENABLE);
+			USART_DMACmd(u->USART, USART_DMAReq_Rx, ENABLE);
+
+			// Transmit DMA
+			NVIC_Init(&NVIC_InitStructure);
+			NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+			NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;
+			NVIC_InitStructure.NVIC_IRQChannel = u->TxDMAISR;
+			NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+			NVIC_Init(&NVIC_InitStructure);
+
+			DMA_DeInit(u->TxDMAStream);
+			while (DMA_GetCmdStatus(u->TxDMAStream) != DISABLE) {
+			};
+
+			DMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToPeripheral;
+			DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t) TxQ[s];
+			DMA_Init(u->TxDMAStream, &DMA_InitStructure);
+
+			DMA_SetCurrDataCounter(u->TxDMAStream, 0);
+			DMA_ITConfig(u->TxDMAStream, DMA_IT_TC, ENABLE);
+
+			USART_DMACmd(u->USART, USART_DMAReq_Tx, ENABLE);
+
+		}
+
+		RxEnabled[s] = true;
+		USART_Cmd(u->USART, ENABLE);
+
 	}
+} // InitSerialPort
 
-	RxEnabled[s] = Enable;
-	USART_Cmd(u->USART, ENABLE);
-
-} // serialInitSBus
 
 void InitSerialPort(uint8 s, boolean Enable, boolean SBusConfig) {
 	GPIO_InitTypeDef GPIO_InitStructure;
@@ -605,116 +572,101 @@ void InitSerialPort(uint8 s, boolean Enable, boolean SBusConfig) {
 
 	u = &SerialPorts[s];
 
-	GPIO_StructInit(&GPIO_InitStructure);
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-#ifdef STM32F1
-	GPIO_InitStructure.GPIO_Pin = u->TxPin;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
-	GPIO_Init(u->Port, &GPIO_InitStructure);
+	if (u->Used) {
 
-	GPIO_InitStructure.GPIO_Pin = u->RxPin;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
-	GPIO_Init(u->Port, &GPIO_InitStructure);
-#else
-	GPIO_StructInit(&GPIO_InitStructure);
-	GPIO_InitStructure.GPIO_Pin = u->TxPin | u->RxPin;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-	//GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
-	GPIO_Init(u->Port, &GPIO_InitStructure);
+		GPIO_StructInit(&GPIO_InitStructure);
+		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+		GPIO_StructInit(&GPIO_InitStructure);
+		GPIO_InitStructure.GPIO_Pin = u->TxPin | u->RxPin;
+		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+		//GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+		GPIO_Init(u->Port, &GPIO_InitStructure);
 
-	GPIO_PinAFConfig(u->Port, u->TxPinSource, u->USART_AF);
-	GPIO_PinAFConfig(u->Port, u->RxPinSource, u->USART_AF);
+		GPIO_PinAFConfig(u->Port, u->TxPinSource, u->USART_AF);
+		GPIO_PinAFConfig(u->Port, u->RxPinSource, u->USART_AF);
 
-#endif
-	USART_StructInit(&USART_InitStructure);
+		USART_StructInit(&USART_InitStructure);
 
-	if (SBusConfig) {
-		USART_InitStructure.USART_BaudRate = 100000; // 96000; //100000;
-		USART_InitStructure.USART_WordLength = USART_WordLength_9b;
-		USART_InitStructure.USART_StopBits = USART_StopBits_2;
-		USART_InitStructure.USART_Parity = USART_Parity_Even;
+		if (SBusConfig) {
+			USART_InitStructure.USART_BaudRate = 100000; // 96000; //100000;
+			USART_InitStructure.USART_WordLength = USART_WordLength_9b;
+			USART_InitStructure.USART_StopBits = USART_StopBits_2;
+			USART_InitStructure.USART_Parity = USART_Parity_Even;
+			USART_Init(u->USART, &USART_InitStructure);
+		} else {
+			USART_InitStructure.USART_Parity = USART_Parity_No;
+			USART_InitStructure.USART_BaudRate = u->Baud;
+		}
 		USART_Init(u->USART, &USART_InitStructure);
-	} else {
-		USART_InitStructure.USART_Parity = USART_Parity_No;
-		USART_InitStructure.USART_BaudRate = u->Baud;
+
+		NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+		NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;
+		NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+
+		TxQTail[s] = TxQHead[s] = TxQNewHead[s] = 0;
+
+		if (u->InterruptsUsed) {
+			RxQTail[s] = RxQHead[s] = 0;
+			NVIC_InitStructure.NVIC_IRQChannel = u->ISR;
+			NVIC_Init(&NVIC_InitStructure);
+
+			USART_ITConfig(u->USART, USART_IT_RXNE, ENABLE);
+		} else {
+			// Common
+			DMA_StructInit(&DMA_InitStructure);
+			DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+			DMA_InitStructure.DMA_Priority = DMA_Priority_Medium;
+			DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32) &u->USART->DR;
+			DMA_InitStructure.DMA_BufferSize = SERIAL_BUFFER_SIZE;
+
+			// Receive DMA
+			DMA_DeInit(u->RxDMAStream);
+			while (DMA_GetCmdStatus(u->RxDMAStream) != DISABLE) {
+			};
+
+			DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32) &u->USART->DR;
+			DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
+			DMA_InitStructure.DMA_Channel = u->DMAChannel;
+			DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralToMemory;
+			DMA_InitStructure.DMA_Memory0BaseAddr = (uint32) RxQ[s];
+
+			DMA_Init(u->RxDMAStream, &DMA_InitStructure);
+			DMA_Cmd(u->RxDMAStream, ENABLE);
+			USART_DMACmd(u->USART, USART_DMAReq_Rx, ENABLE);
+
+			RxQTail[s] = RxQHead[s] = SERIAL_BUFFER_SIZE
+					- DMA_GetCurrDataCounter(u->RxDMAStream);
+
+			// Transmit DMA
+			NVIC_InitStructure.NVIC_IRQChannel = u->TxDMAISR;
+			NVIC_Init(&NVIC_InitStructure);
+
+			DMA_DeInit(u->TxDMAStream);
+			while (DMA_GetCmdStatus(u->TxDMAStream) != DISABLE) {
+			};
+
+			DMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToPeripheral;
+			//	DMA_InitStructure.DMA_Memory0BaseAddr = (uint32) TxQ[s];
+			DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
+			DMA_Init(u->TxDMAStream, &DMA_InitStructure);
+
+			DMA_SetCurrDataCounter(u->TxDMAStream, 0);
+			DMA_ITConfig(u->TxDMAStream, DMA_IT_TC, ENABLE);
+
+			USART_DMACmd(u->USART, USART_DMAReq_Tx, ENABLE);
+		}
+
+		RxEnabled[s] = Enable;
+		USART_Cmd(u->USART, ENABLE);
 	}
-	USART_Init(u->USART, &USART_InitStructure);
-
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-
-	TxQTail[s] = TxQHead[s] = TxQNewHead[s] = 0;
-
-	if (u->DMAUsed) {
-		// Common
-		DMA_StructInit(&DMA_InitStructure);
-		DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
-		DMA_InitStructure.DMA_Priority = DMA_Priority_Medium;
-		DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32) &u->USART->DR;
-		DMA_InitStructure.DMA_BufferSize = SERIAL_BUFFER_SIZE;
-
-		// Receive DMA
-		DMA_DeInit(u->RxDMAStream);
-
-		DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32) &u->USART->DR;
-		DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
-#ifdef STM32F1
-		DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;
-		DMA_InitStructure.DMA_MemoryBaseAddr = (uint32) RxQ[s];
-#else
-		while (DMA_GetCmdStatus(u->RxDMAStream) != DISABLE) {
-		};
-		DMA_InitStructure.DMA_Channel = u->DMAChannel;
-		DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralToMemory;
-		DMA_InitStructure.DMA_Memory0BaseAddr = (uint32) RxQ[s];
-#endif
-		DMA_Init(u->RxDMAStream, &DMA_InitStructure);
-		DMA_Cmd(u->RxDMAStream, ENABLE);
-		USART_DMACmd(u->USART, USART_DMAReq_Rx, ENABLE);
-
-		RxQTail[s] = RxQHead[s] = SERIAL_BUFFER_SIZE - DMA_GetCurrDataCounter(
-				u->RxDMAStream);
-
-		// Transmit DMA
-		NVIC_InitStructure.NVIC_IRQChannel = u->TxDMAISR;
-		NVIC_Init(&NVIC_InitStructure);
-
-		DMA_DeInit(u->TxDMAStream);
-#ifdef STM32F1
-		DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralDST;
-#else
-		while (DMA_GetCmdStatus(u->TxDMAStream) != DISABLE) {
-		};
-		DMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToPeripheral;
-		//	DMA_InitStructure.DMA_Memory0BaseAddr = (uint32) TxQ[s];
-#endif
-		DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
-		DMA_Init(u->TxDMAStream, &DMA_InitStructure);
-
-		DMA_SetCurrDataCounter(u->TxDMAStream, 0);
-		DMA_ITConfig(u->TxDMAStream, DMA_IT_TC, ENABLE);
-
-		USART_DMACmd(u->USART, USART_DMAReq_Tx, ENABLE);
-	} else if (u->InterruptsUsed) {
-		RxQTail[s] = RxQHead[s] = 0;
-		NVIC_InitStructure.NVIC_IRQChannel = u->ISR;
-		NVIC_Init(&NVIC_InitStructure);
-
-		USART_ITConfig(u->USART, USART_IT_RXNE, ENABLE);
-	}
-
-	RxEnabled[s] = Enable;
-	USART_Cmd(u->USART, ENABLE);
 
 } // InitSerialPort
 
 void InitAnalogPorts(void) {
 	uint8 a;
 	ADC_InitTypeDef ADC_InitStructure;
-#ifndef STM32F1
 	ADC_CommonInitTypeDef ADC_CommonInitStructure;
-#endif
+
 	DMA_InitTypeDef DMA_InitStructure;
 	AnalogPinDef * u, *ux;
 
@@ -724,10 +676,9 @@ void InitAnalogPorts(void) {
 		ux = &AnalogPins[0];
 
 		DMA_DeInit(ux->DMAStream);
-#ifndef STM32F1
 		while (DMA_GetCmdStatus(ux->DMAStream) != DISABLE) {
 		};
-#endif
+
 		DMA_StructInit(&DMA_InitStructure);
 		DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32) &ux->ADCx->DR;
 		DMA_InitStructure.DMA_BufferSize = ANALOG_CHANNELS;
@@ -738,68 +689,41 @@ void InitAnalogPorts(void) {
 		DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
 		DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
 		DMA_InitStructure.DMA_Priority = DMA_Priority_High;
-#ifdef STM32F1
-		DMA_InitStructure.DMA_MemoryBaseAddr = (uint32) ADCValues;
-#else
 		DMA_InitStructure.DMA_Channel = ux->DMAChannel;
 		DMA_InitStructure.DMA_Memory0BaseAddr = (uint32) ADCValues;
 		//DMA_InitStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_HalfFull;
-#endif
+
 		DMA_Init(ux->DMAStream, &DMA_InitStructure);
 		DMA_Cmd(ux->DMAStream, ENABLE);
 
-#ifndef STM32F1
 		ADC_CommonStructInit(&ADC_CommonInitStructure);
 		ADC_CommonInit(&ADC_CommonInitStructure);
-#endif
+
 		ADC_StructInit(&ADC_InitStructure);
 		ADC_InitStructure.ADC_ContinuousConvMode = ENABLE;
 		ADC_InitStructure.ADC_ScanConvMode = ENABLE;
-#ifdef STM32F1
-		ADC_InitStructure.ADC_NbrOfChannel = ANALOG_CHANNELS;
-#else
 		ADC_InitStructure.ADC_NbrOfConversion = ANALOG_CHANNELS;
-#endif
 		ADC_Init(ux->ADCx, &ADC_InitStructure);
 
 		for (a = 0; a < ANALOG_CHANNELS; a++) {
 			u = &AnalogPins[a];
-#ifdef STM32F1
-			ADC_RegularChannelConfig(u->ADCx, u->ADCChannel, u->Rank,
-					ADC_SampleTime_28Cycles5);
-#else
+
 			ADC_RegularChannelConfig(u->ADCx, u->ADCChannel, u->Rank,
 					ADC_SampleTime_28Cycles);
-#endif
 		}
-#ifndef STM32F1
+
 		ADC_DMARequestAfterLastTransferCmd(ux->ADCx, ENABLE);
-#endif
 
 		ADC_DMACmd(ux->ADCx, ENABLE);
 		ADC_Cmd(ux->ADCx, ENABLE);
 
-#ifdef STM32F1
-		a = 2;
-		while (a-- > 0) {
-			Delay1mS(5);
-			ADC_ResetCalibration(ux->ADCx);
-			while (ADC_GetResetCalibrationStatus(ux->ADCx)) {
-			}
-			ADC_StartCalibration(ux->ADCx);
-			while (ADC_GetCalibrationStatus(ux->ADCx)) {
-			}
-		}
-		ADC_SoftwareStartConvCmd(ux->ADCx, ENABLE);
-#else
 		ADC_SoftwareStartConv(ux->ADCx);
-#endif // STM32F1
 	}
 
 } // InitAnalog
 
 void InitSensorInterrupts(void) {
-#if defined(V4_BOARD)
+#if defined(SPI_MPU)
 	EXTI_InitTypeDef EXTI_InitStruct;
 	NVIC_InitTypeDef NVIC_InitStructure;
 	/*
@@ -831,80 +755,152 @@ void InitSensorInterrupts(void) {
 	//SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOC, EXTI_PinSource15);
 
 #endif
-}
+} // InitSensorInterrupts
+
+void usbEnableInterrupt(void) {
+	NVIC_InitTypeDef NVIC_InitStructure;
+
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
+
+	NVIC_InitStructure.NVIC_IRQChannel = OTG_FS_IRQn;
+
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStructure);
+
+} // usbEnableInterrupt
+
 
 void InitComboPorts(void) {
 	uint8 CurrNoOfRCPins;
 
-#if defined(V4_BOARD)
+	CurrNoOfRCPins = 0;
+
+#if defined(V3_BOARD)
+
+	uint8 i;
+
+	//for (i = 0; i < MAX_SERIAL_PORTS; i++)
+	//	USART_DeInit(SerialPorts[i].USART);
+
+	switch (CurrComboPort1Config) {
+		case CPPM_GPS_M7to10:
+		CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 10;
+		CurrNoOfRCPins = 1;
+		GPSTxSerial = GPSRxSerial = Serial1;
+		InitSerialPort(GPSRxSerial, false, false);
+		RxUsingSerial = false;
+		break;
+		case ParallelPPM:
+		CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 6;
+		CurrNoOfRCPins = MAX_RC_INPS; //P(RCChannels);
+		RxUsingSerial = false;
+		GPSRxSerial = Serial0;
+		GPSTxSerial = SoftSerialTx;
+		break;
+		default:
+		CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 10;
+		CurrNoOfRCPins = 0;
+		RxUsingSerial = true;
+		GPSRxSerial = TelemetrySerial;
+		GPSTxSerial = SoftSerialTx;
+		RCSerial = Serial1;
+		InitSerialPort(RCSerial, false, CurrComboPort1Config
+				== FutabaSBus_M7to10);
+		break;
+	} // switch
+
+#elif defined(V4_BOARD)
 	uint8 i;
 
 	if (CurrComboPort2Config != RF_GPS_V4) {
-		I2CPorts[i2cMap[ms56xxSel]-1].Used |= (CurrComboPort2Config == RF_Baro_V4) || (CurrComboPort2Config == RF_Baro_Mag_V4);
-		I2CPorts[i2cMap[hmc5xxxSel]-1].Used |= (CurrComboPort2Config == RF_Mag_V4) || (CurrComboPort2Config == RF_Baro_Mag_V4);
+		I2CPorts[i2cMap[baroSel] - 1].Used |= (CurrComboPort2Config
+				== RF_Baro_V4) || (CurrComboPort2Config == RF_Baro_Mag_V4);
+		I2CPorts[i2cMap[magSel] - 1].Used
+		|= (CurrComboPort2Config == RF_Mag_V4) || (CurrComboPort2Config
+				== RF_Baro_Mag_V4);
 
-		spiDevUsed[ms56xxSel] = (CurrComboPort2Config != RF_Baro_V4) && (CurrComboPort2Config != RF_Baro_Mag_V4);
-		spiDevUsed[hmc5xxxSel] = (CurrComboPort2Config != RF_Mag_V4) && (CurrComboPort2Config != RF_Baro_Mag_V4);
+		spiDevUsed[baroSel] = (CurrComboPort2Config != RF_Baro_V4)
+		&& (CurrComboPort2Config != RF_Baro_Mag_V4);
+		spiDevUsed[magSel] = (CurrComboPort2Config != RF_Mag_V4)
+		&& (CurrComboPort2Config != RF_Baro_Mag_V4);
 
 		//spiDevUsed[ms56xxSel] = false;
 		//I2CPorts[1].Used = true;
 
 		for (i = 0; i < MAX_I2C_PORTS; i++)
-			i2cInit(i);
+		i2cInit(i);
 	}
-#endif
 
 	switch (CurrComboPort1Config) {
-	case CPPM_GPS_M7to10:
-		CurrMaxPWMOutputs = 6 + 4;
+		case CPPM_GPS_M7to10:
+		CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 10;
 		CurrNoOfRCPins = 1;
-		GPSTxSerial = GPSRxSerial = RCSerial;
+		InitRCPins(CurrNoOfRCPins);
+		GPSTxSerial = GPSRxSerial = Serial1;
 		InitSerialPort(GPSRxSerial, false, false);
 		RxUsingSerial = false;
 		break;
-	case ParallelPPM:
-		CurrMaxPWMOutputs = 6;
+		case ParallelPPM:
+		CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 6;
 		CurrNoOfRCPins = MAX_RC_INPS; //P(RCChannels);
+		InitRCPins(CurrNoOfRCPins);
 		RxUsingSerial = false;
-#if defined(V4_BOARD)
+
 		if (CurrComboPort2Config == RF_GPS_V4) {
-			GPSRxSerial = GPSTxSerial = I2CSerial;
-			InitSerialPort(GPSRxSerial, false, CurrComboPort1Config == FutabaSBus_M7to10); // zzz
-		} else
-#else
-		{
-			GPSRxSerial = TelemetrySerial;
-			GPSTxSerial = SoftSerialTx;
-		}
-#endif
-		break;
-	default:
-		CurrMaxPWMOutputs = 6 + 4;
-		CurrNoOfRCPins = 0;
-		RxUsingSerial = true;
-#if defined(V4_BOARD)
-		if (CurrComboPort2Config == RF_GPS_V4) {
-			GPSRxSerial = GPSTxSerial = I2CSerial;
-			InitSerialPort(GPSRxSerial, false, CurrComboPort1Config == FutabaSBus_M7to10); // zzz
-		} else
-#endif
-		{
-			GPSRxSerial = TelemetrySerial;
+			GPSRxSerial = GPSTxSerial = Serial2;
+			InitSerialPort(GPSRxSerial, false, CurrComboPort1Config
+					== FutabaSBus_M7to10); // zzz
+		} else {
+			GPSRxSerial = Serial0;
 			GPSTxSerial = SoftSerialTx;
 		}
 
-		InitSerialPort(RCSerial, false, CurrComboPort1Config == FutabaSBus_M7to10);
+		break;
+		default:
+		CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 10;
+		CurrNoOfRCPins = 0;
+		RxUsingSerial = true;
+
+		if (CurrComboPort2Config == RF_GPS_V4) {
+			GPSRxSerial = GPSTxSerial = Serial2;
+			InitSerialPort(GPSRxSerial, false, CurrComboPort1Config
+					== FutabaSBus_M7to10); // zzz
+		} else {
+			GPSRxSerial = TelemetrySerial;
+			GPSTxSerial = SoftSerialTx;
+		}
+		RCSerial = Serial1;
+		InitSerialPort(RCSerial, false, CurrComboPort1Config
+				== FutabaSBus_M7to10);
 		break;
 	} // switch
 
-	if (UsingDCMotors)
-		CurrMaxPWMOutputs = 4;
-
-#if defined(V4_BOARD)
 	if (CurrwsNoOfLeds > 0) // temporary KLUDGE - need to remap gimbal function
 	CurrMaxPWMOutputs = 4;
+
+#elif defined(OMNIBUSF4V1_BOARD)
+
+	RxUsingSerial = !((CurrComboPort1Config == CPPM_GPS_M7to10)
+			|| (CurrComboPort1Config == FutabaSBus_M7to10));
+
+	RCSerial = Serial0;
+	InitSerialPort(Serial0, false, CurrComboPort1Config
+			== FutabaSBus_M7to10);
+
+	TelemetrySerial = USBSerial;
+
+	if (SerialPorts[Serial2].Used) {
+		GPSRxSerial = GPSTxSerial = Serial2;
+		InitSerialPort(GPSRxSerial, false, false);
+	}
+
+	CurrMaxPWMOutputs = 4;
+
+#else
+
 #endif
-	InitRCPins(CurrNoOfRCPins);
 
 } // InitComboPorts
 
@@ -913,19 +909,12 @@ void InitHarness(void) {
 	uint8 i;
 
 	// Using all ports - could be generalised but .... later
-#ifdef STM32F1
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE);
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
-#else
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
 
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE); // for interrupts zzz
 	//RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
-#endif // STM32F1
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1, ENABLE);
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM8, ENABLE);
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
@@ -934,14 +923,8 @@ void InitHarness(void) {
 
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C2, ENABLE);
-
-#ifdef STM32F1
-	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
-	//RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA2, ENABLE);
-#else
-	//RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA1, ENABLE);
+	//gke? RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA1, ENABLE);
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2, ENABLE);
-#endif
 
 	USART_DeInit(USART1);
 #if (MAX_SERIAL_PORTS >1)
@@ -951,19 +934,12 @@ void InitHarness(void) {
 	USART_DeInit(USART3);
 #endif
 
-#ifdef STM32F1
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
-#if (MAX_SERIAL_PORTS >1)
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
-#endif
-#else
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
 #if (MAX_SERIAL_PORTS >1)
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
 #endif
 #if (MAX_SERIAL_PORTS >2)
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3, ENABLE);
-#endif
 #endif
 
 	RCC_ClearFlag();
@@ -976,12 +952,6 @@ void InitHarness(void) {
 	GPIO_Init(GPIOB, &GPIO_InitStructure);
 	GPIO_Init(GPIOC, &GPIO_InitStructure);
 
-#ifdef STM32F1
-	// Turn off JTAG port used for LEDs
-	GPIO_PinRemapConfig(GPIO_Remap_SWJ_JTAGDisable, ENABLE);
-#else
-
-#endif // STM32F1
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
 
 	for (i = 0; i < MAX_PWM_OUTPUTS; i++) { // switch off all (potential) motor output pins
@@ -1003,9 +973,10 @@ void InitHarness(void) {
 
 	Delay1mS(10);
 
-	InitSerialPort(TelemetrySerial, true, false);
+	InitSerialPort(Serial0, true, false); // Must have telemetry initially!
 
-	digitalWrite(&GPIOPins[Aux2Sel], 1); // soft USART Tx
+	if (Aux2Sel < MAX_GPIO_PINS)
+		digitalWrite(&GPIOPins[Aux2Sel], 1); // soft USART Tx
 
 	for (i = 0; i < MAX_SPI_DEVICES; i++) { // deselect all
 		pinInit(&SPISelectPins[i]);
@@ -1014,12 +985,6 @@ void InitHarness(void) {
 
 	for (i = 0; i < MAX_SPI_PORTS; i++)
 		spiInit(i);
-
-#if defined(INCLUDE_USB)
-
-	TM_USB_VCP_Init();
-
-#endif
 
 	InitAnalogPorts();
 

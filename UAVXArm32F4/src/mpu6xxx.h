@@ -35,6 +35,8 @@ extern const uint8 MPUDLPFMask[];
 
 extern const char * DHPFName[];
 
+extern filterStruct OSLPF[3];
+
 extern uint8 MPU6XXXDLPF;
 extern uint8 MPU6XXXDHPF;
 extern uint8 MPU6XXXAccDLPF;
@@ -43,8 +45,11 @@ extern real32 MPU6XXXTemperature;
 void CalibrateAccAndGyro(uint8 s);
 void InitMPU6XXX(void);
 void CheckMPU6XXXActive(void);
-void ReadAccAndGyro(boolean UseSelectedAttSensors);
+void ReadFilteredGyroAndAcc(void);
+void ReadFilteredAcc(void);
+void ReadFilteredGyro(void);
 void UpdateGyroTempComp(void);
+boolean MPU6XXXReady(void);
 
 void ComputeMPU6XXXTemperature(int16 T);
 
@@ -53,6 +58,7 @@ extern uint32 mpu6xxxLastUpdateuS;
 extern real32 RawAcc[], RawGyro[];
 extern uint32 gyroGlitches;
 extern uint32 mpuReads;
+extern boolean UseGyroOS;
 
 extern uint32 Noise[];
 extern uint16 SlewLimitGyroClicks;

@@ -46,6 +46,8 @@ real32 MPU6XXXTemperature = 25.0f;
 uint8 MPU_ID = MPU_0x68_ID;
 uint32 mpu6xxxLastUpdateuS = 0;
 
+boolean UseGyroOS = false;
+
 real32 RawAcc[3], RawGyro[3];
 
 uint32 Noise[8];
@@ -57,15 +59,79 @@ uint16 SlewHistScale = 8;
 
 void ComputeMPU6XXXTemperature(int16 T) {
 
-#if defined(V4_BOARD)
-	MPU6XXXTemperature = (real32) (T + 0) * (1.0f/333.87f) + 21.0f;
-#else
-	MPU6XXXTemperature = ((real32) T + 12456.0f) * 0.002941f;
-#endif
+	MPU6XXXTemperature = (currIMUType == mpu6000IMU) ? (real32) (T + 0) * (1.0f
+			/ 333.87f) + 21.0f : ((real32) T + 12456.0f) * 0.002941f;
 
 } // ComputeMPU6XXXTemperature
 
-void ReadAccAndGyro(boolean UseSelectedAttSensors) { // Roll Right +, Pitch Up +, Yaw ACW +
+
+void ReadFilteredGyro(void) { // Roll Right +, Pitch Up +, Yaw ACW +
+	static uint32 LastUpdateuS = 0;
+	real32 GyrodT;
+	uint32 NowuS;
+	int16 B[3];
+	static int16 BP[3] = { 0, };
+	idx a;
+
+	sioReadBlocki16vataddr(SIOIMU, MPU_ID, MPU_RA_GYRO_XOUT_H, 3, B, true);
+
+	NowuS = uSClock();
+	GyrodT = (NowuS - LastUpdateuS) * 0.000001f;
+	LastUpdateuS = NowuS;
+
+	/* rethink dT gke zzz
+	 #if !defined(INC_DFT)
+
+	 if (UseGyroOS) zzzz
+	 if (P(GyroSlewRate) > 0)
+	 for (a = 0; a < 3; a++) {
+	 Noise[Limit(Abs(B[a] - BP[a]) / SlewHistScale, 0, 7)]++;
+	 B[a]
+	 = SensorSlewLimit(GyroFailS, &BP[a], B[a],
+	 SlewLimitGyroClicks);
+	 }
+	 #endif
+	 */
+
+	for (a = X; a <= Z; a++) {
+		ShadowRawIMU[a + 4] = B[a];
+		RawGyro[a] = OSF(&OSGyroF[a], (real32) B[a], GyrodT);
+	}
+
+} // ReadFilteredGyro
+
+
+void ReadFilteredAcc(void) { // Roll Right +, Pitch Up +, Yaw ACW +
+	static uint32 LastUpdateuS = 0;
+	real32 AccdT;
+	uint32 NowuS;
+	int16 B[4];
+	idx a;
+
+	sioReadBlocki16vataddr(SIOIMU, MPU_ID, MPU_RA_ACC_XOUT_H, 4, B, true);
+
+	NowuS = uSClock();
+	AccdT = (NowuS - LastUpdateuS) * 0.000001f;
+	LastUpdateuS = NowuS;
+
+	for (a = 0; a < 4; a++)
+		ShadowRawIMU[a] = B[a];
+
+
+	ComputeMPU6XXXTemperature(B[3]);
+
+} // ReadRawAcc
+
+void ReadFilteredGyroAndAcc(void) {
+	uint8 a;
+
+	ReadFilteredGyro();
+	ReadFilteredAcc();
+
+} //ReadFilteredGyroAndAcc
+
+
+void ReadAccAndGyro(void) { // Roll Right +, Pitch Up +, Yaw ACW +
 	int16 B[7];
 	idx a;
 	static int16 BP[7] = { 0, 0, 0, 0, 0, 0, 0 };
@@ -92,34 +158,18 @@ void ReadAccAndGyro(boolean UseSelectedAttSensors) { // Roll Right +, Pitch Up +
 
 	ComputeMPU6XXXTemperature(B[3]);
 
-#if !defined(INC_DFT)
-	if (P(GyroSlewRate) > 0)
-		for (a = 4; a <= 6; a++) {
-			Noise[Limit(Abs(B[a] - BP[a]) / SlewHistScale, 0, 7)]++;
-			B[a]
-					= SensorSlewLimit(GyroFailS, &BP[a], B[a],
-							SlewLimitGyroClicks);
-		}
-#endif
-
-	if (UseSelectedAttSensors)
-		switch (CurrAttSensorType) {
-		case InfraRedAngle:
-		case UAVXArm32IMU:
-		case FreeIMU:
-			RawGyro[X] = (real32) B[4];
-			RawGyro[Y] = (real32) B[5];
-			RawGyro[Z] = (real32) B[6];
-			break;
-		default: // MLX90609Gyro, ADXRS150Gyro, LY530Gyro, ADXRS300Gyro,
-			RawGyro[Pitch] = analogRead(PitchAnalogSel);
-			RawGyro[Roll] = analogRead(RollAnalogSel);
-			RawGyro[Yaw] = analogRead(YawAnalogSel);
-		}
-	else { // MPU6xxx
+	switch (CurrAttSensorType) {
+	case InfraRedAngle:
+	case UAVXArm32IMU:
+	case FreeIMU:
 		RawGyro[X] = (real32) B[4];
 		RawGyro[Y] = (real32) B[5];
 		RawGyro[Z] = (real32) B[6];
+		break;
+	default: // MLX90609Gyro, ADXRS150Gyro, LY530Gyro, ADXRS300Gyro,
+		RawGyro[Pitch] = analogRead(PitchAnalogSel);
+		RawGyro[Roll] = analogRead(RollAnalogSel);
+		RawGyro[Yaw] = analogRead(YawAnalogSel);
 	}
 
 	//	CurrAttSensorType == InfraRed
@@ -141,7 +191,7 @@ void CalibrateAccAndGyro(uint8 s) {
 	real32 t[2];
 	real32 ThresholdT, TempDiff;
 
-	LEDOn(LEDBlueSel);
+	LEDOn(ledBlueSel);
 
 	for (c = X; c <= Z; c++) {
 		for (i = 0; i < 2; i++)
@@ -152,10 +202,10 @@ void CalibrateAccAndGyro(uint8 s) {
 	ts = 0;
 	ThresholdT = -100.0f;
 	do {
-		ReadAccAndGyro(false);
+		ReadAccAndGyro();
 		if (MPU6XXXTemperature > ThresholdT) {
 			for (i = 0; i < Samples; i++) {
-				ReadAccAndGyro(false);
+				ReadAccAndGyro();
 				t[ts] += MPU6XXXTemperature;
 				RawAcc[Z] -= MPU_1G;
 				for (c = X; c <= Z; c++) {
@@ -169,7 +219,7 @@ void CalibrateAccAndGyro(uint8 s) {
 				DoBeep(1, 1);
 		} else {
 			Delay1mS(100);
-			LEDToggle(LEDBlueSel);
+			LEDToggle(ledBlueSel);
 		}
 	} while (ts < 2);
 
@@ -200,7 +250,7 @@ void CalibrateAccAndGyro(uint8 s) {
 		UpdateNV();
 		UpdateGyroTempComp();
 		DoBeep(8, 1);
-		LEDOff(LEDBlueSel);
+		LEDOff(ledBlueSel);
 		SendAckPacket(s, UAVXMiscPacketTag, 1);
 	} else {
 		Catastrophe();
@@ -228,7 +278,7 @@ void InitMPU6XXX(void) {
 	// THE UPDATING OF REGISTERS IS ASYNCHRONOUS
 	// THE MPU6050 HAS COMMON DLPF CONFIG FOR ACC/GYRO, THE MPU6500 HAS A SEPARATE DLPF CONFIG FOR ACC
 
-	uint8 DisableGyroDLPF = (UsingHWLPF) ? 0 : 1;
+	uint8 DisableGyroDLPF = 1;
 
 	CheckMPU6XXXActive();
 	Delay1mS(100); // was 5
@@ -237,7 +287,7 @@ void InitMPU6XXX(void) {
 			<< MPU_RA_PWR1_DEVICE_RESET_BIT);
 	Delay1mS(100);
 
-	if (spiDevUsed[SIOIMU]) {
+	if (currIMUType == mpu6000IMU) {
 		sioWrite(SIOIMU, MPU_ID, MPU_RA_SIGNAL_PATH_RESET, 7); // reset gyro, acc, temp
 		Delay1mS(100);
 	}
@@ -255,22 +305,23 @@ void InitMPU6XXX(void) {
 	sioWriteataddr(SIOIMU, MPU_ID, MPU_RA_ACC_CONFIG, (MPUAccFS << 3)
 			| MPU_RA_DHPF_1P25);
 
-#if defined(V4_BOARD) // MPU6500
-	uint8 DisableAccDLPF = (UsingHWLPF)? 0: 1;
-	sioWriteataddr(SIOIMU, MPU_ID, MPU_RA_ACC_CONFIG2, (DisableAccDLPF << 3) & MPUDLPFMask[CurrAccLPFSel]);
-#else
+	if (currIMUType == mpu6000IMU) {
+		uint8 DisableAccDLPF = 1;
+		sioWriteataddr(SIOIMU, MPU_ID, MPU_RA_ACC_CONFIG2,
+				(DisableAccDLPF << 3) & MPUDLPFMask[CurrAccLPFSel]);
+	} else {
 
-	// Enable I2C master mode
-	uint8 v = sioReadataddr(SIOIMU, MPU_ID, MPU_RA_USER_CTRL);
-	bitClear(v, MPU_RA_USERCTRL_I2C_MST_EN_BIT);
-	sioWrite(SIOIMU, MPU_ID, MPU_RA_USER_CTRL, v);
+		// Enable I2C master mode
+		uint8 v = sioReadataddr(SIOIMU, MPU_ID, MPU_RA_USER_CTRL);
+		bitClear(v, MPU_RA_USERCTRL_I2C_MST_EN_BIT);
+		sioWrite(SIOIMU, MPU_ID, MPU_RA_USER_CTRL, v);
 
-	// Allow bypass access to slave I2C devices (Magnetometer)
-	v = sioReadataddr(SIOIMU, MPU_ID, MPU_RA_INT_PIN_CFG);
-	bitSet(v, MPU_RA_INTCFG_I2C_BYPASS_EN_BIT);
-	sioWrite(SIOIMU, MPU_ID, MPU_RA_INT_PIN_CFG, v);
+		// Allow bypass access to slave I2C devices (Magnetometer)
+		v = sioReadataddr(SIOIMU, MPU_ID, MPU_RA_INT_PIN_CFG);
+		bitSet(v, MPU_RA_INTCFG_I2C_BYPASS_EN_BIT);
+		sioWrite(SIOIMU, MPU_ID, MPU_RA_INT_PIN_CFG, v);
 
-#endif
+	}
 
 	Delay1mS(100);
 
@@ -281,27 +332,29 @@ void InitMPU6XXX(void) {
 
 	MPU6XXXDLPF = sioReadataddr(SIOIMU, MPU_ID, MPU_RA_CONFIG) & 0x07;
 	MPU6XXXDHPF = sioReadataddr(SIOIMU, MPU_ID, MPU_RA_ACC_CONFIG) & 0x07;
-#if defined(V4_BOARD)
-	MPU6000DLPF = sioReadataddr(SIOIMU, MPU_ID, MPU_RA_ACC_CONFIG2) & 0x07;
-#endif
+	if (currIMUType == mpu6000IMU)
+		MPU6000DLPF = sioReadataddr(SIOIMU, MPU_ID, MPU_RA_ACC_CONFIG2) & 0x07;
 
 	Delay1mS(100); // added to prevent apparent SPI hang
 
 } // InitMPU6XXX
 
+boolean MPU6XXXReady(void) {
+
+	return (sioRead(SIOIMU, MPU_ID, MPU_RA_INT_STATUS) && 1) != 0;
+} // MPU6XXXReady
+
 
 void CheckMPU6XXXActive(void) {
 	boolean r;
 
-#if defined(BRICE)
-	MPU_ID = MPU_0x69_ID;
-	MPU6XXXId = sioRead(SIOIMU, MPU_ID, MPU_RA_WHO_AM_I);
-	r = true;
-#else
-#if defined(V4_BOARD)
-	MPU6XXXId = sioRead(SIOIMU, MPU_ID, MPU_RA_WHO_AM_I);
-	r = MPU6XXXId == 0x70;
-#else
+	//sioWrite(SIOIMU, MPU_ID, MPU_RA_PWR_MGMT_1, 1
+	//		<< MPU_RA_PWR1_DEVICE_RESET_BIT);
+
+	//#if defined(USE_MPU6000)
+	//		MPU6XXXId = sioRead(SIOIMU, MPU_ID, MPU_RA_WHO_AM_I);
+	//		r = MPU6XXXId == 0x70;
+	//#else
 	Delay1mS(35);
 	MPU_ID = MPU_0x69_ID;
 	MPU6XXXId = sioRead(SIOIMU, MPU_ID, MPU_RA_WHO_AM_I);
@@ -312,8 +365,6 @@ void CheckMPU6XXXActive(void) {
 		MPU6XXXId = sioRead(SIOIMU, MPU_ID, MPU_RA_WHO_AM_I);
 		r = MPU6XXXId == ((MPU_ID >> 1) & 0xfe);
 	}
-#endif
-#endif
 
 	F.IMUActive = r;
 

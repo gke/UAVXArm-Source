@@ -29,11 +29,8 @@ real32 CameraAngle[3];
 real32 OrbitCamAngle = 0.0f;
 real32 TiltThrFF;
 
-real32 CurrAccLPFHz = 20;
-real32 CurrGyroLPFHz = 100;
-real32 CurrYawLPFHz = 75;
-real32 CurrServoLPFHz = 20;
-boolean UsingPavelFilter;
+
+uint8 CurrOSLPFType;
 
 idx AttitudeMode = AngleMode;
 real32 DesiredHeading, SavedHeading;
@@ -273,13 +270,13 @@ real32 ComputeAttitudeRateDerivative(PIDStruct *R) {
 	real32 r;
 
 	if (UsingPavelFilter) {
-		R->RateD = PavelDifferentiator(&R->RateDF, R->Error) * dTR;
-		R->RateD = LPFn(&R->RateF, 1, R->RateD, CurrGyroLPFHz, dT);
+		R->RateD = FIRF(&R->RateDF, R->Error) * dTR;
+		R->RateD = LPFn(&R->RateF, R->RateD, dT);
 	} else {
-		r = LPFn(&R->RateF, 1, R->Error, CurrGyroLPFHz, dT);
+		r = LPFn(&R->RateF, R->Error, dT);
 		R->RateD = (r - R->RateP) * dTR;
 		R->RateP = r;
-		R->RateD = Smoothr32xn(&R->RateDF, 4, R->RateD);
+		R->RateD = MAF(&R->RateDF, R->RateD);
 	}
 
 	return (R->RateD);
@@ -584,8 +581,6 @@ void InitControl(void) {
 	for (a = Pitch; a <= Yaw; a++) {
 
 		A[a].P.IntE = A[a].R.IntE = 0.0f;
-
-		A[a].R.RateF.Primed = A[a].R.RateDF.Primed = false;
 
 		A[a].NavCorr = 0.0f;
 		A[a].Out = 0.0f;

@@ -25,10 +25,6 @@
 boolean DEBUGNewBaro = false; // zzz
 uint32 LSBBaro[256] = { 0, };
 
-const uint8 AltLPFOrder = 1;
-const uint8 ROCLPFOrder = 2;
-const uint8 ROCFLPFOrder = 2;
-
 #define MS56XX_PROM 		0xA0
 #define MS56XX_PRESS 		0x40
 #define MS56XX_TEMP 		0x50
@@ -60,12 +56,11 @@ uint32 NextBaroUpdateuS;
 real32 Airspeed;
 uint8 CurrRFSensorType;
 
-HistStruct AccZLPF;
+filterStruct AccZLPF;
 real32 AltLPFHz;
 
-uint8 BaroType = MS5611Baro;
+uint8 BaroType = ms5611Baro;
 
-HistStruct ROCLPF, FROCLPF, BaroLPF;
 real32 FakeBaroAltitude;
 real32 AltdT, AltdTR;
 
@@ -78,8 +73,7 @@ void UpdateAccZ(real32 AccZdT) {
 		NV.AccCal.DynamicAccBias[Z] = NV.AccCal.DynamicAccBias[Z] * K_ACC_BIAS
 				+ AccZ * (1.0 - K_ACC_BIAS);
 
-	AccZ = LPFn(&AccZLPF, AltLPFOrder, AccZ, AltLPFHz, AccZdT)
-			- NV.AccCal.DynamicAccBias[Z];
+	AccZ = LPFn(&AccZLPF, AccZ, AccZdT) - NV.AccCal.DynamicAccBias[Z];
 
 	F.AccZBump = AccZ > ACCZ_LANDING_MPS_S;
 
@@ -101,7 +95,7 @@ void ZeroAltitude(void) {
 	OriginAltitude = BaroAltitude;
 
 	ROC = ROCF = Altitude = AltitudeP = AccZ = 0.0f;
-	ROCLPF.Primed = FROCLPF.Primed = BaroLPF.Primed = AccZLPF.Primed = false;
+
 } // ZeroAltitude
 
 // -----------------------------------------------------------
@@ -176,7 +170,7 @@ real32 CompensateBaro2(uint32 ut, uint32 up) {
 	ms56xxdt = (int32) ut - ((uint32) ms56xx_c[5] << 8);
 	ms56xxt = 2000 + (int32) (((int64) ms56xxdt * ms56xx_c[6]) >> 23);
 
-	if (BaroType == MS5611Baro) {
+	if (BaroType == ms5611Baro) {
 
 		off = ((int64) ms56xx_c[2] << 16) + (((int64) ms56xx_c[4] * ms56xxdt)
 				>> 7);
@@ -235,9 +229,11 @@ void StartBaro(boolean ReadPressure) {
 	uint8 d = 0;
 
 	if (ReadPressure)
-		sioWriteBlock(SIOBaro, MS56XX_ID, (MS56XX_PRESS | MS56XX_OSR_XXXX), 0, &d);
+		sioWriteBlock(SIOBaro, MS56XX_ID, (MS56XX_PRESS | MS56XX_OSR_XXXX), 0,
+				&d);
 	else
-		sioWriteBlock(SIOBaro, MS56XX_ID, (MS56XX_TEMP | MS56XX_OSR_XXXX), 0, &d);
+		sioWriteBlock(SIOBaro, MS56XX_ID, (MS56XX_TEMP | MS56XX_OSR_XXXX), 0,
+				&d);
 
 } // StartBaro
 
@@ -269,8 +265,7 @@ void GetBaro(void) {
 
 				BaroRawAltitude = CalculateDensityAltitude(true, BaroPressure);
 
-				BaroAltitude = LPFn(&BaroLPF, AltLPFOrder, BaroRawAltitude,
-						AltLPFHz, BarodT);
+				BaroAltitude = LPFn(&BaroLPF, BaroRawAltitude, BarodT);
 
 				UpdateAccZ(BarodT); // stale ~180uS
 
@@ -290,7 +285,8 @@ void GetBaro(void) {
 			}
 			StartBaro(AcquiringPressure);
 
-			NextBaroUpdateuS = uSClock() + ms56xxSampleIntervaluS[MS56XX_OSR_XXXX >> 1];
+			NextBaroUpdateuS = uSClock()
+					+ ms56xxSampleIntervaluS[MS56XX_OSR_XXXX >> 1];
 		}
 	} else
 		BaroAltitude = 0.0f;
@@ -328,24 +324,25 @@ void CheckBaroActive(void) {
 	uint8 B[2] = { 0, 0 };
 	uint8 i = 0;
 
-	sioWriteBlock(SIOBaro, MS56XX_ID, MS56XX_RESET, 0, &i);
+	if (currBaroType == ms5611Baro) {
+		if (spiDevUsed[baroSel]) {
+			sioWriteBlock(SIOBaro, MS56XX_ID, MS56XX_RESET, 0, &i);
 
-	Delay1mS(3);
+			Delay1mS(3);
 
-	sioReadBlock(SIOBaro, MS56XX_ID, MS56XX_PROM, 2, B);
-	ms56xx_ManufacturersData = ((uint16) B[0] << 8) | B[1];
+			sioReadBlock(SIOBaro, MS56XX_ID, MS56XX_PROM, 2, B);
+			ms56xx_ManufacturersData = ((uint16) B[0] << 8) | B[1];
 
-#if defined(V4_BOARD)
-	F.BaroActive = ms56xx_ManufacturersData != 0;
-#else
-	F.BaroActive = true; // TODO: risky?
-#endif
+			F.BaroActive = ms56xx_ManufacturersData != 0;
+		} else
+			F.BaroActive = true; // TODO: risky?
+	} else
+		F.BaroActive = false;
 
 } // CheckBaroActive
 
 void InitBarometer(void) {
 
-	BaroLPF.Primed = AccZLPF.Primed = false;
 	BaroTempVal = BaroPressVal = BaroVal = 0;
 	AccZ = 0.0f;
 
@@ -357,7 +354,8 @@ void InitBarometer(void) {
 
 		AcquiringPressure = false; // temperature must be first
 		StartBaro(AcquiringPressure);
-		NextBaroUpdateuS = uSClock() + ms56xxSampleIntervaluS[MS56XX_OSR_XXXX >> 1];
+		NextBaroUpdateuS = uSClock() + ms56xxSampleIntervaluS[MS56XX_OSR_XXXX
+				>> 1];
 
 		BaroWarmupCycles = 50;
 		while (BaroWarmupCycles > 0)// just warming up the ms56xx!
@@ -696,7 +694,7 @@ void UpdateAltitudeEstimates(void) {
 		else {
 			ROC = (Altitude - AltitudeP) * AltdTR;
 			AltitudeP = Altitude;
-			ROC = LPFn(&ROCLPF, ROCLPFOrder, ROC, AltLPFHz, AltdT);
+			ROC = LPFn(&ROCLPF, ROC, AltdT);
 		}
 
 		if (UAVXAirframe == Instrumentation)
@@ -704,7 +702,7 @@ void UpdateAltitudeEstimates(void) {
 		else if (!F.IsFixedWing)
 			ROC = Limit1(ROC, Alt.R.Max);
 
-		ROCF = LPFn(&FROCLPF, ROCFLPFOrder, ROC, AltLPFHz * 0.25f, AltdT); // used for landing and cruise throttle tracking
+		ROCF = LPFn(&FROCLPF, ROC, AltdT); // used for landing and cruise throttle tracking
 
 		StatsMax(AltitudeS, Altitude);
 		StatsMinMax(MinROCS, MaxROCS, ROC * 100.0f);

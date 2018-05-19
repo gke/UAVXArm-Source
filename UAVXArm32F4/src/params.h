@@ -215,8 +215,8 @@ enum Params { // MAX 128
 	AltVelKi, // 102
 	AltHoldBand, // 103
 	VRSDescentRate, // 104
-	Unused105, // 105
-	Unused106, // 106
+	OSLPFType, // 105
+	OSLPFHz, // 106
 	Unused107, // 107
 	Unused108, // 108
 	Unused109, // 109
@@ -264,9 +264,9 @@ typedef struct {
 #define	UseFastStartMask		(1<<1)
 #define UseBLHeliMask 			(1<<2)
 #define UseGliderStrategyMask	(1<<3)
-#define UseConfigRebootMask		(1<<4)
+#define UseGyroOSMask			(1<<4)
 #define	UseTurnToWPMask			(1<<5)
-#define	UseHWLPFMask			(1<<6)
+#define	UnusedUseHWLPFMask			(1<<6)
 
 // bit 7 unusable in UAVPSet
 
@@ -282,7 +282,7 @@ extern int8 CP[];
 extern const real32 AFOrientation[];
 extern uint8 UAVXAirframe;
 extern boolean IsMulticopter, UsingFastStart, UsingBLHeliPrograming,
-		UsingGliderStrategy, UsingHWLPF;
+		UsingGliderStrategy;
 extern uint8 CurrMotorStopSel;
 
 extern real32 AltCompDecayS;

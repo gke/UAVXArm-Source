@@ -34,9 +34,6 @@ typedef struct {
 	uint32 OSSMask;
 } ms56xxDefStruct;
 
-enum BaroTypes {
-	BMP085Baro, MS5611Baro, MS5607Baro, BaroUnknown
-};
 
 typedef const struct {
 	uint16 intervalmS;
@@ -47,6 +44,7 @@ typedef const struct {
 extern uint8 CurrRFSensorType;
 
 extern RFStruct RF[];
+filterStruct AccZLPF;
 
 // Measurement Specialities Baro
 
@@ -94,11 +92,6 @@ extern real32 AltdT, AltdTR;
 extern real32 AltLPFHz;
 extern uint16 ms56xx_ManufacturersData;
 extern real32 BaroRawAltitude, BaroRawAltitudeP; // fusion filter output
-
-extern HistStruct ROCLPF, FROCLPF, BaroLPF;
-extern const uint8 AltLPFOrder;
-extern const uint8 ROCLPFOrder;
-extern const uint8 ROCFLPFOrder;
 
 extern uint32 LSBBaro[];
 

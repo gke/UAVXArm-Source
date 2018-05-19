@@ -20,17 +20,17 @@
 
 #define USE_TXRX_LED (MAX_LEDS>0)
 #if defined(USE_TXRX_LED)
-# define RX_LED_OFF   LEDOff(LEDBlueSel)
-# define RX_LED_ON    LEDOn(LEDBlueSel)
+# define RX_LED_OFF   LEDOff(ledBlueSel)
+# define RX_LED_ON    LEDOn(ledBlueSel)
 
-# define TX_LED_OFF   LEDOff(LEDYellowSel)
-# define TX_LED_ON    LEDOn(LEDYellowSel)
+# define TX_LED_OFF   LEDOff(ledYellowSel)
+# define TX_LED_ON    LEDOn(ledYellowSel)
 
-#define LED0_OFF		LEDOff(LEDRedSel)
-#define LED0_ON			LEDOn(LEDRedSel)
+#define LED0_OFF		LEDOff(ledRedSel)
+#define LED0_ON			LEDOn(ledRedSel)
 
-#define LED1_OFF		LEDOff(LEDGreenSel)
-#define LED1_ON			LEDOn(LEDGreenSel)
+#define LED1_OFF		LEDOff(ledGreenSel)
+#define LED1_ON			LEDOn(ledGreenSel)
 
 #else
 # define RX_LED_OFF   do {} while(0)
@@ -75,11 +75,11 @@ static void setDisconnected(void) {
 	deviceInfo.signature = 0;
 }
 
-__attribute__((always_inline))                                    inline boolean isEscHi(uint8_t selEsc) {
+__attribute__((always_inline))                                     inline boolean isEscHi(uint8_t selEsc) {
 	return digitalRead(&PWMPins[selEsc]);
 }
 
-__attribute__((always_inline))                                    inline boolean isEscLo(uint8_t selEsc) {
+__attribute__((always_inline))                                     inline boolean isEscLo(uint8_t selEsc) {
 	return !digitalRead(&PWMPins[selEsc]);
 }
 
@@ -117,10 +117,11 @@ int esc4wayInit(void) {
 
 	StopPwmAllMotors();
 
-	for (i = 0; i < NoOfDrives; i++) {// switch off all (potential) motor output pins
-		pinInitMode(&PWMPins[i], true); // TODO: original code uses 2MHz pin clock?
-		setEscHi(i);
-	}
+	for (i = 0; i < NoOfDrives; i++)
+		if (i < MAX_PWM_OUTPUTS) {// switch off all (potential) motor output pins
+			pinInitMode(&PWMPins[i], true); // TODO: original code uses 2MHz pin clock?
+			setEscHi(i);
+		}
 
 	escCount = NoOfDrives; // escIdx;
 	return escCount;
@@ -308,7 +309,7 @@ void esc4wayProcess(uint8 s) {
 			crcIn = 0;
 			esc = readByteCrc();
 			if (esc == cmd_Local_Escape) { //assume rest will follow quickly?
-				LEDOn(LEDYellowSel);
+				LEDOn(ledYellowSel);
 
 				command = readByteCrc();
 				addr = readByteCrc() << 8;
@@ -348,7 +349,7 @@ void esc4wayProcess(uint8 s) {
 				writeByte(crcOut >> 8);
 				writeByte(crcOut & 0xff);
 
-				LEDOff(LEDYellowSel);
+				LEDOff(ledYellowSel);
 
 			}
 		}
@@ -628,7 +629,7 @@ void mspFooter(uint8_t s) {
 }
 
 boolean DoMSPCmds(uint8_t s) {
-	int i,l;
+	int i, l;
 	boolean mspContinue = true;
 
 #define MSP_PROTOCOL_VERSION	0
@@ -673,7 +674,7 @@ boolean DoMSPCmds(uint8_t s) {
 
 	do {
 		if (GetMSPPacket(s)) {
-			LEDOn(LEDBlueSel);
+			LEDOn(ledBlueSel);
 			switch (reqCmd) {
 			case MSP_API_VERSION: // 1
 				mspHeader(s, 3, MSP_API_VERSION);
@@ -805,7 +806,7 @@ boolean DoMSPCmds(uint8_t s) {
 			default:
 				break;
 			} // switch
-			LEDOff(LEDBlueSel);
+			LEDOff(ledBlueSel);
 		}
 	} while (mspContinue);
 
@@ -816,7 +817,7 @@ void DoBLHeliSuite(uint8_t s) {
 
 	uint32_t Timeout = mSClock() + 5000;
 
-	LEDOn(LEDYellowSel);
+	LEDOn(ledYellowSel);
 
 	while ((mSClock() < Timeout) && !serialAvailable(s)) {
 	};
@@ -840,3 +841,9 @@ void DoBLHeliSuite(uint8_t s) {
 	LEDsOff();
 }
 
+void CheckBLHeli(void) {
+if ((P(Config2Bits) & UseBLHeliMask) != 0)
+	DoBLHeliSuite(TelemetrySerial);
+else
+	Delay1mS(1000); // let things settle!
+} // CheckBLHeli

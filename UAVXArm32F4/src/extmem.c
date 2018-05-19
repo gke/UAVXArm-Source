@@ -43,7 +43,7 @@ boolean EraseExtMem(void) {
 
 	SaveLEDs();
 	LEDsOff();
-	LEDOn(LEDBlueSel);
+	LEDOn(ledBlueSel);
 
 #if defined(USE_EXT_MEM_ERASE)
 
@@ -61,8 +61,8 @@ boolean EraseExtMem(void) {
 				TxChar(0,'*');
 				r &= flashErasePage(memSel, a);
 
-				LEDToggle(LEDBlueSel);
-				LEDToggle(LEDYellowSel);
+				LEDToggle(ledBlueSel);
+				LEDToggle(ledYellowSel);
 			} else {
 				uSTimer(uSClock(), MemReady, 0);
 			}
@@ -73,8 +73,8 @@ boolean EraseExtMem(void) {
 
 	for (i = 0; i < 10; i++) {
 		Delay1mS(100);
-		LEDToggle(LEDBlueSel);
-		LEDToggle(LEDYellowSel);
+		LEDToggle(ledBlueSel);
+		LEDToggle(ledYellowSel);
 	}
 
 #endif
@@ -138,7 +138,7 @@ boolean EraseExtMem(void) {
 
 	SaveLEDs();
 	LEDsOff();
-	LEDOn(LEDBlueSel);
+	LEDOn(ledBlueSel);
 
 	if (F.HaveExtMem) {
 		memset(&B, -1, sizeof(B));
@@ -148,8 +148,8 @@ boolean EraseExtMem(void) {
 
 			if (mSClock() > TimeoutmS) {
 				TimeoutmS += 100;
-				LEDToggle(LEDBlueSel);
-				LEDToggle(LEDYellowSel);
+				LEDToggle(ledBlueSel);
+				LEDToggle(ledYellowSel);
 			}
 		}
 	} else
@@ -249,11 +249,11 @@ boolean Write32ExtMem(uint32 a, int32 d) {
 
 void InitExtMem(void) {
 
+	if (sizeof(NV) >= NV_FLASH_SIZE)
+		Catastrophe();
+
 	uS[MemReady] = uSClock();
 
-#if defined(STM32F1)
-	F.HaveExtMem = false;
-#else
 #if defined(V4_BOARD)
 	F.HaveExtMem = flashInit();
 #else
@@ -267,7 +267,6 @@ void InitExtMem(void) {
 	v = ReadExtMem(MEM_SIZE - 1);
 	F.HaveExtMem = v == 0b01010101;
 	WriteBlockExtMem(MEM_SIZE - 1, 1, &SaveVal);
-#endif
 #endif
 
 } // InitMem

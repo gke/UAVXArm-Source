@@ -21,6 +21,53 @@
 
 #include "UAVX.h"
 
+///////////////////////////////////////////////////////////////////////////////
+// Cycle Counter
+///////////////////////////////////////////////////////////////////////////////
+
+//******************************************************************************
+
+// From http://forums.arm.com/index.php?showtopic=13949
+//https://my.st.com/public/STe2ecommunities/mcu/Lists/cortex_mx_stm32/Flat.aspx?RootFolder=https%3a%2f%2fmy.st.com%2fpublic%2fSTe2ecommunities%2fmcu%2fLists%2fcortex_mx_stm32%2fcompensating%20latencies%20on%20STM32F4%20interrupts&FolderCTID=0x01200200770978C69A1141439FE559EB459D7580009C4E14902C3CDE46A77F0FFD06506F5B&currentviews=2629
+/*
+volatile unsigned int *DWT_CYCCNT   = (volatile unsigned int *)0xE0001004; //address of the register
+volatile unsigned int *DWT_CONTROL = (volatile unsigned int *) 0xE0001000; //address of the register
+volatile unsigned int *SCB_DEMCR = (volatile unsigned int *) 0xE000EDFC; //address of the register
+
+void SysTick_HandlerOLD(void) {
+	sysTickCycleCounter = *DWT_CYCCNT;
+	sysTickUptime++;
+
+	// sd card support
+	if (sd_card_timer != 0x00)
+		sd_card_timer--;
+
+}
+
+void EnableTiming(void) {
+	static int enabled = 0;
+
+	if (!enabled) {
+		*SCB_DEMCR = *SCB_DEMCR | 0x01000000;
+		*DWT_CYCCNT = 0; // reset the counter
+		*DWT_CONTROL = *DWT_CONTROL | 1; // enable the counter
+		enabled = 1;
+	}
+}
+
+void TimingDelay(unsigned int tick) {
+	unsigned int start, current;
+
+	start = *DWT_CYCCNT;
+	do {
+		current = *DWT_CYCCNT;
+	} while ((current - start) < tick);
+}
+
+*/
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 volatile uint32 TicksuS;
 
 void cycleCounterInit(void) {
@@ -50,7 +97,6 @@ uint32 uSClock(void) { // wraps at 71 minutes
 
 } // uSClock
 
-
 void Delay1uS(uint16 d) {
 	// TODO: needs round up
 	uint32 TimeOut;
@@ -62,7 +108,7 @@ void Delay1uS(uint16 d) {
 } // Delay1uS
 
 
-__attribute__((always_inline))     inline uint32 mSClock(void) {
+__attribute__((always_inline))      inline uint32 mSClock(void) {
 	return (sysTickUptime);
 } // mSClock
 
@@ -75,16 +121,6 @@ void Delay1mS(uint16 d) {
 	};
 
 } // Delay1mS
-
-void delay(uint16 d) {
-	// TODO: needs round up
-	uint32 TimeOut;
-
-	TimeOut = mSClock() + d + 1; // clock may be rolling over
-	while (mSClock() < TimeOut) {
-	};
-
-} // delay
 
 real32 dTUpdate(uint32 NowuS, uint32 * LastUpdateuS) {
 	real32 dT;

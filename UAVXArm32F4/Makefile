@@ -9,13 +9,16 @@ SVN_REV := "$(shell "C:\Program Files (x86)\Subversion\bin\svnversion" -cn . | s
 
 INSTALL_DIR = "C:/Flight/gitHub/UAVXArm.git/UAVXArm/firmware"
 
+TARGET=UAVXArm32F4_$(SVN_REV)_OMNIBUSF4V1
+CONFIG= -DUSE_ATOLLIC -DOMNIBUSF4V1_BOARD -DARM_MATH_CM4  -DHSE_VALUE=8000000
+
 #TARGET=UAVXArm32F4_$(SVN_REV)_V4
-#CONFIG= -DV4_BOARD   -DARM_MATH_CM4  -DHSE_VALUE=8000000
+#CONFIG= -DV4_BOARD -DARM_MATH_CM4  -DHSE_VALUE=8000000
 
 #==========================================================================================
 
-TARGET=UAVXArm32F4_$(SVN_REV)_V3
-CONFIG= -DV3_BOARD  -DARM_MATH_CM4 -DHSE_VALUE=8000000
+#TARGET=UAVXArm32F4_$(SVN_REV)_V3
+#CONFIG= -DV3_BOARD -DARM_MATH_CM4 -DHSE_VALUE=8000000
 
 #==========================================================================================
 
@@ -34,30 +37,7 @@ LINK_SCRIPT=stm32f4_eeprom16k.ld
 
 # System configuration - UNCOMMENT AS DESIRED
 
-#Windows 7
-
-#TCHAIN="C:/Program Files (x86)/Atollic/TrueSTUDIO for STMicroelectronics STM32 Lite 2.3.0/ARMTools/bin/"
-#TCHAIN="C:/Program Files (x86)/yagarto/bin/"
-#TCHAIN="C:/Program Files (x86)/CodeSourcery/Sourcery_CodeBench_Lite_for_ARM_EABI/bin/"
-#TCHAIN="C:/MentorGraphics/CodeSourcery/Sourcery_CodeBench_Lite_for_ARM_EABI/bin/"
-#TCHAIN="C:\Program Files\GNU Tools ARM Embedded\4.9 2015q3\bin\"
-TCHAIN="C:\Program Files\GNU Tools ARM Embedded\5.3 2016q1\bin\"
-
-#Windows XP
-#TCHAIN="C:/Program Files/Atollic/TrueSTUDIO for STMicroelectronics STM32 Lite 2.3.0/ARMTools/bin/"
-#TCHAIN="C:/Program Files/yagarto/bin/"
-
-#Atollic TrueStudio
-#CC=$(TCHAIN)arm-atollic-eabi-gcc
-#OBJCOPY=$(TCHAIN)arm-atollic-eabi-objcopy
-#OPT = -O0
-
-#Yagarto currently gcc 4.6.2
-#OPT = -Os
-#CC=$(TCHAIN)arm-none-eabi-gcc
-#OBJCOPY=$(TCHAIN)arm-none-eabi-objcopy
-
-#Code Sourcery current gcc 4.6.1
+TCHAIN="C:\gcc\bin\"
 #OPT = -O3
 #OPT = -Os
 OPT = -O3
@@ -66,6 +46,7 @@ OBJCOPY = $(TCHAIN)arm-none-eabi-objcopy
 
 #FPFLAGS= -mcpu=cortex-m4 -mthumb -mfloat-abi=softfp -mfpu=fpv4-sp-d16 -mlittle-endian 
 FPFLAGS=  -D__FPU_PRESENT -D__VFP_FP__ -mthumb -march=armv7e-m -mtune=cortex-m4 -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard 
+WARNINGS= -Wall
 
 #STM32F405RG -nostdinc -Wdouble-promotion -D__FPU_PRESENT -nostdinc -mlittle-endian
 #mthumb-interwork
@@ -82,18 +63,53 @@ LINKER_FLAGS= -lm $(FPFLAGS) -Wl,--gc-sections -T$(LINK_SCRIPT) -static \
 ASSEMBLER_FLAGS=-c -g $(OPT) $(FPFLAGS) -x assembler-with-cpp  \
 	-Isrc \
 	-Isrc\stm \
-	-Ilib\Device\ST\STM32F4xx\Include \
-	-Ilib\CMSIS\inc \
-	-Ilib\Std\inc
-
-COMPILER_FLAGS=-c -g  $(OPT) $(FPFLAGS) $(CONFIG) -Wall -ffunction-sections -fdata-sections \
-	-D"STM32F4XX" -D"USE_STDPERIPH_DRIVER"  \
+	-Ilib\STM32F4xx_StdPeriph_Driver\inc \
+	-Ilib\STM32F4\Drivers\CMSIS\Device\ST\STM32F4xx\Include \
 	-Isrc \
-	-Iincludes \
 	-Isrc\stm \
-	-Ilib\Device\ST\STM32F4xx\Include \
-	-Ilib\CMSIS\inc \
-	-Ilib\Std\inc
+	-Ilib\CMSIS\Include \
+	-Ilib\STM32F4\Drivers\CMSIS\Device\ST\STM32F4xx\Include \
+	-Ilib\Device\STM32F4xx\Include \
+	-Ilib\CMSIS\Include \
+	-Ilib\DSP_Lib\Include \
+	-Ilib\STM32F4xx_StdPeriph_Driver\inc \
+	-Ilib\STM32_USB_OTG_Driver\inc \
+	-Ilib\STM32_USB_Device_Library\Class\cdc\inc \
+	-Ilib\STM32_USB_Device_Library\Class\hid\inc \
+	-Ilib\STM32_USB_Device_Library\Class\hid_cdc_wrapper\inc \
+	-Ilib\STM32_USB_Device_Library\Class\msc\inc \
+	-Ilib\STM32_USB_Device_Library\Core\inc \
+	-Ilib\STM32_USB-FS-Device_Driver\inc \
+	-Ilib\Std\inc \
+	-Isrc\vcp \
+	-Isrc\vcp\vcpf4 \
+	-Isrc\vcp\vcp_hal \
+	-Isrc\vcp\drivers 
+
+#-Wall 
+COMPILER_FLAGS=-c -g  $(OPT) $(FPFLAGS) $(CONFIG) -ffunction-sections -fdata-sections \
+	-D"STM32F405xx" -D"USE_STDPERIPH_DRIVER"  \
+	-Isrc \
+	-Isrc\stm \
+	-Ilib\CMSIS\Include \
+	-Ilib\STM32F4\Drivers\CMSIS\Device\ST\STM32F4xx\Include \
+	-Ilib\Device\STM32F4xx\Include \
+	-Ilib\CMSIS\Include \
+	-Ilib\DSP_Lib\Include \
+	-Ilib\STM32F4xx_StdPeriph_Driver\inc \
+	-Ilib\STM32_USB_OTG_Driver\inc \
+	-Ilib\STM32_USB_Device_Library\Class\cdc\inc \
+	-Ilib\STM32_USB_Device_Library\Class\hid\inc \
+	-Ilib\STM32_USB_Device_Library\Class\hid_cdc_wrapper\inc \
+	-Ilib\STM32_USB_Device_Library\Class\msc\inc \
+	-Ilib\STM32_USB_Device_Library\Core\inc \
+	-Ilib\STM32_USB-FS-Device_Driver\inc \
+	-Ilib\Std\inc \
+	-Isrc\escprog \
+	-Isrc\vcp \
+	-Isrc\vcp\vcpf4 \
+	-Isrc\vcp\vcp_hal \
+	-Isrc\vcp\drivers 
 
 # Define sources and objects
 SRC := $(wildcard */*/*/*/*/*/*/*.c) \

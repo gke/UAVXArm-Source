@@ -22,10 +22,6 @@
 #ifndef _misctypesandmacros_h
 #define _misctypesandmacros_h
 
-#if defined(INCLUDE_USB)
-#include "tm_stm32f4_usb_vcp.h"
-#endif
-
 typedef unsigned char uint8;
 typedef signed char int8;
 typedef uint16_t uint16;
@@ -117,11 +113,11 @@ typedef struct {
 } real32x15Window;
 
 typedef struct {
+	uint8 order;
+	boolean Primed;
+	real32 s;
 	real32 c[5];
 	real32 h[64]; // for rate of change use
-	real32 S;
-	real32 Tau;
-	boolean Primed;
 	uint8 Head, Tail;
 } HistStruct;
 
@@ -171,7 +167,7 @@ typedef struct {
 #define GRAVITY_MPS_S 9.80665f // m/s^2 9.7803267714 @ Equator use mid latitudes
 #define GRAVITY_MPS_S_R (1.0f/GRAVITY_MPS_S)
 
-#define PI   		3.14159265358979323846f
+#define PI   		3.14159265358979323846
 
 #define RadiansToDegrees(r) ((r)*(180.0f/PI))
 #define DegreesToRadians(r)	((r)*(PI/180.0f))

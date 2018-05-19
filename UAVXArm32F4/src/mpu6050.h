@@ -23,7 +23,6 @@
 #define MPU_RA_CONFIG           0x1A // LPF
 #define MPU_RA_GYRO_CONFIG      0x1B
 
-
 #define MPU_RA_ACC_CONFIG       0x1C
 #define MPU_RA_ACC_CONFIG2      0x1D // MPU6500
 

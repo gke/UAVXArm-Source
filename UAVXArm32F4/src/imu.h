@@ -51,15 +51,11 @@ void GetAccelerations(void);
 void CalibrateAccsAndGyros(uint8 s);
 void CalculateAccelerations(void);
 void InitIMU(void);
-void InitSWFilters(void);
-
-extern HistStruct AccF[3];
-extern HistStruct GyroF[3];
+void ScaleRateAndAcc(void);
 
 extern const uint8 MPUMap[];
 extern const real32 MPUSign[];
 
-extern real32 AccLPFreqHz;
 extern real32 GyroBias[];
 extern const real32 GyroScale[];
 extern uint8 CurrAttSensorType;

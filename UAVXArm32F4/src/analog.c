@@ -36,7 +36,7 @@ real32 analogRead(uint8 c) {
 void InitAnalog(void) {
 	int32 a;
 
-	for ( a = 0; a<ANALOG_CHANNELS; a++)
+	for ( a = 0; a < ANALOG_CHANNELS; a++)
 		ADCValues[a] = 0;
 
 } // InitAnalog

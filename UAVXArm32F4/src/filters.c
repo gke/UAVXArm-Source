@@ -20,6 +20,7 @@
 
 #include "UAVX.h"
 
+
 void DFT8(real32 v, real32 *DFT) { // 137uS
 #if defined(INC_DFT)
 	const real32 mR = 0.125f;
@@ -64,7 +65,7 @@ void DFT8(real32 v, real32 *DFT) { // 137uS
 // Algorithm from N. Wirth's book, implementation by N. Devillard.
 // This code in public domain.
 
-typedef float elem_type;
+typedef real32 elem_type;
 
 #define ELEM_SWAP(a,b) { register elem_type t=(a);(a)=(b);(b)=t; }
 
@@ -116,162 +117,118 @@ real32 kth_smallest(real32 a[], uint16 n, uint16 k) {
 
 //#define median(a,n) kth_smallest(a,n,(((n)&1)?((n)/2):(((n)/2)-1)))
 
-
-// FIR filter
-
-
-void InitSmoothr32xn(HistStruct * F) {
-	F->Primed = false;
-} // InitSmooth32xn
-
-real32 Smoothr32xn(HistStruct * F, uint8 n, real32 v) {
-	idx i, p;
-
-	if (!F->Primed) {
-		for (i = 0; i < n; i++)
-			F->h[i] = v;
-
-		F->Head = 0;
-		F->Tail = (n - 1);
-
-		F->S = v * (real32) n;
-		F->Primed = true;
-	} else {
-		p = F->Head;
-		F->S -= F->h[p];
-		F->Head = (p + 1) & (n - 1);
-		p = F->Tail;
-		p = (p + 1) & (n - 1);
-		F->h[p] = v;
-		F->Tail = p;
-		F->S += v;
-	}
-
-	return (F->S / (real32) n);
-} // Smoothr32xn
-
-inline real32 LPF1Coefficient(real32 CutHz, real32 dT) {
-
-	return (dT / ((1.0f / (TWO_PI * CutHz)) + dT));
-} // LPF1Coefficient
-
-__attribute__((always_inline))          inline real32 LPF1(real32 O, real32 N, const real32 K) {
-
-	return (O + (N - O) * K);
-} // LPF1
-
-
 real32 LeadFilter(real32 Pos, real32 VelP, real32 Vel, real32 Lag) {
 
 	return (Pos + Vel * Lag + (Vel - VelP) * Sqr(Lag));
 } // LeadFilter
 
 
-real32 LPD5BW(HistStruct * F, real32 v, const real32 CutHz, real32 dT) {
-	real32 r;
+void initMA(filterStruct * F, uint8 order) {
 	idx i;
 
-	// WARNING - the priming process uses the first dT only and so
-	// this is better instantiated using a constant for dT
-	if (!F->Primed) {
-		real32 wc, k1, k2, k3, a0, a1, a2, b1, b2;
+	F->order = order;
+	for (i = 0; i < F->order; i++)
+		F->h[i] = 0.0f;
 
-		wc = tan(PI * CutHz * dT);
-		k1 = sqrtf(2.0f) * wc;
-		k2 = Sqr(wc);
-		a0 = k2 / (1.0f + k1 + k2);
-		a1 = 2.0f * a0;
-		a2 = a0;
-		k3 = 2.0f * a0 / k2;
-		b1 = -2.0f * a0 + k3;
-		b2 = 1 - 2.0f * a0 - k3;
-		F->c[0] = a0;
-		F->c[1] = a1;
-		F->c[2] = a2;
-		F->c[3] = b1;
-		F->c[4] = b2;
+	F->head = 0;
+	F->tail = (F->order - 1);
 
-		for (i = 0; i < 5; i++)
-			F->h[i] = v;
-		F->Primed = true;
-	}
+	F->s = 0.0f;
 
-	for (i = 4; i > 0; i--)
-		F->h[i] = F->h[i - 1];
-	F->h[0] = v;
+} // initMA
 
-	r = 0.0f;
-	for (i = 0; i < 5; i++)
-		r += F->h[i] * F->c[i];
+real32 MAF(filterStruct * F, real32 v) {
+	idx i, p;
 
-	return (r);
-} // LPD5BW
+	p = F->head;
+	F->s -= F->h[p];
+	F->head = (p + 1) & (F->order - 1);
+	p = F->tail;
+	p = (p + 1) & (F->order - 1);
+	F->h[p] = v;
+	F->tail = p;
+	F->s += v;
+
+	return (F->s / (real32) F->order);
+} // FIRF
 
 
-real32 PavelDifferentiator(HistStruct *F, real32 v) {
+real32 initFIRF(filterStruct *F, uint8 order, const real32 * C) {
 	// Pavel Holoborodko, see http://www.holoborodko.com/pavel/numerical-methods/
 	// numerical-derivative/smooth-low-noise-differentiators/
 
 	idx i;
-	//const idx N = 5;
-	//static const real32 C[] = { 0.625f, 0.25f, -1.0f, -0.25f, 0.375f };
 
-	const idx N = 6;
-	// h[0] = 3/8, h[-1] = 1/2, h[-2] = -1/2, h[-3] = -3/4, h[-4] = 1/8, h[-5] = 1/4
-	const real32 C[] = { 0.375f, 0.5f, -0.5f, -0.75, 0.125f, 0.25f };
+	F->order = (order > MAX_LPF_ORDER) ? MAX_LPF_ORDER : order;
+
+	for (i = 0; i < F->order; i++) {
+		F->h[i] = 0.0f;
+		F->c[i] = C[i];
+	}
+
+} // initFIRF
+
+
+__attribute__((always_inline))        inline real32 FIRF(filterStruct *F, real32 v) {
+
+	idx i;
+
+	// inefficient but OK for short vectors
+	for (i = F->order; i > 0; --i)
+		F->h[i] = F->h[i - 1];
+	F->h[0] = v;
 
 	real32 r = 0.0f;
-
-	if (!F->Primed) {
-		for (i = 0; i < N; i++)
-			F->h[i] = v;
-		F->Primed = true;
-	} else {
-		for (i = N; i > 0; --i)
-			F->h[i] = F->h[i - 1];
-		F->h[0] = v;
-	}
-
-	for (i = 0; i < N; ++i)
-		r += C[i] * F->h[i];
+	for (i = 0; i < F->order; ++i)
+		r += F->c[i] * F->h[i];
 
 	return (r);
-} // Pavel
+} // FIRF
 
 
-__attribute__((always_inline)) inline real32 LPFn(HistStruct * F, const idx Order, real32 v,
-		const real32 CutHz, real32 dT) {
+real32 initLPF1Coefficient(real32 CutHz, real32 dT) {
+
+	return (dT / ((1.0f / (TWO_PI * CutHz)) + dT));
+} // initLPF1Coefficient
+
+__attribute__((always_inline))                 inline real32 LPF1(real32 O, real32 N, const real32 K) {
+
+	return (O + (N - O) * K);
+} // LPF1
+
+
+void initLPFn(filterStruct * F, const idx order, const real32 CutHz) {
 	idx n;
-	real32 AdjCutHz;
-	// AdjCutHz = CutHz /(sqrtf(powerf(2, 1/Order) -1))
+
+	// AdjCutHz = CutHz /(sqrtf(powf(2, 1/order) -1))
 	const real32 ScaleF[] = { 1.0f, 1.553773974f, 1.961459177f, 2.298959223f };
 
-	if (!F->Primed) {
-		for (n = 1; n <= Order; n++)
-			F->h[n] = v;
-		F->Primed = true;
+	F->order = Limit(order, 1, 4); //MAX_LPF_ORDER);
 
-		AdjCutHz = CutHz * ScaleF[Order];
+	for (n = 1; n <= F->order; n++)
+		F->h[n] = 0.0f;
 
-		F->Tau = 1.0f / (TWO_PI * AdjCutHz);
+	F->tau = 1.0f / (TWO_PI * CutHz * ScaleF[F->order - 1]);
 
-		//F->S = dT / (F->Tau + dT);
-	}
+} // initLPFn
 
-	F->S = dT / (F->Tau + dT);
+__attribute__((always_inline))        inline real32 LPFn(filterStruct * F, real32 v, real32 dT) {
+	idx n;
+
+	real32 s = dT / (F->tau + dT); // more compute but deals with sampling jitter
 
 	F->h[0] = v;
 
-	for (n = 1; n <= Order; n++)
-		F->h[n] += (F->h[n - 1] - F->h[n]) * F->S;
+	for (n = 1; n <= F->order; n++)
+		F->h[n] += (F->h[n - 1] - F->h[n]) * s;
 
-	return (F->h[Order]);
+	return (F->h[F->order]);
 
 } // LPFn
 
 
 #define MAX_Q_SAMPLES 256
-static float d[MAX_Q_SAMPLES][3];
+static real32 d[MAX_Q_SAMPLES][3];
 
 real32 calculateMean(idx a) {
 	idx i;
@@ -280,66 +237,98 @@ real32 calculateMean(idx a) {
 	for (i = 0; i < MAX_Q_SAMPLES; i++)
 		temp += d[i][a];
 
-	return(temp / MAX_Q_SAMPLES );
+	return (temp / MAX_Q_SAMPLES);
 } // calculateMean
 
 
 real32 calculateBiasCorrectedVariance(uint16 a, real32 *mean_val) {
-    idx i;
-    real64 mean = calculateMean(a);
-    real64 temp = 0.0;
+	idx i;
+	real64 mean = calculateMean(a);
+	real64 temp = 0.0;
 
-    *mean_val = (float) mean;
-    for (i = 0; i < MAX_Q_SAMPLES; i++)
-        temp += Sqr(d[i][a] - mean);
+	*mean_val = (real32) mean;
+	for (i = 0; i < MAX_Q_SAMPLES; i++)
+		temp += Sqr(d[i][a] - mean);
 
-    return (real32) temp / (MAX_Q_SAMPLES - 1); //?? -1
+	return (real32) temp / (MAX_Q_SAMPLES - 1); //?? -1
 } // calculateBiasCorrectedVariance
+
+//_____________________________________________________________________________
+
+// KF Variants
 
 //.gyro_kalman_enable = true,
 //.gyro_kalman_q = 0.000900,
 //.gyro_kalman_r = 0.08,
 //.gyro_kalman_p = 0
 
-//Fast two-state Kalman from Kalyn (RaceFlight/BetaFlight
+// Fast two-state Kalman Filter from Kalyn (RaceFlight)
+
+void initKalynFastLPKF(filterStruct *F, real32 Q, real32 R, real32 CutHz) {
+
+	F->q = Q * 0.000001f;
+	F->r = R * 0.001f;
+	F->p = 0.0f;
+	F->x = F->xP = 0.0f;
+	F->k = 0.0f;
+
+} // initKalynFastLPKF
 
 
-void InitAccGyroKF(KFStruct *F, real32 Q, real32 R) {
+__attribute__((always_inline))        inline real32 KalynFastLPKF(filterStruct *F, real32 v, real32 dT) { // ~0.42uS F4 @ 168MHz
 
-	F->enable = true;
-	F->q = Q; // process noise covariance 0.05deg/s at 100Hz? 0.005 deg/sqrt(Hz)
-	F->r = R; // measurement noise covariance
-	F->p = 0.0f; // estimation error
-	F->est = F->estP = 0.0f; // state
-	F->k = 0.0f; //Kalman gain
+	//project the state ahead using acceleration
+	F->x += (F->x - F->xP); // linear extrapolation -  dT and 1/dT cancel
 
-} // InitAccGyroKF
+	//update last state
+	F->xP = F->x;
+
+	//prediction update
+	F->p = F->p + F->q;
+
+	//measurement update
+	F->k = F->p / (F->p + F->r);
+	F->x += F->k * (v - F->x);
+	F->p = (1.0f - F->k) * F->p;
+
+	return (F->x);
+
+} // KalynFastKF
 
 
-real32 DoAccGyroKF(KFStruct *F, real32 v) { // ~0.42uS F4 @ 168MHz
+// Fujin implementation of  Kalyn aka rs2k's fast "kalman" filter
 
-	if (F->enable) {
+//real32 gain = -QOnR * 0.5f + sqrtf(Sqr(QOnR) * 0.25f + QOnR);
+//CutHz = -LN(1.0f - 2.0f * gain) * (1.0f/dT) * 0.5f / PI;
+//=>
+//2.0f * PI * CutHz * dT = -LN(1.0f - 2.0f * gain);
 
-		//project the state ahead using acceleration
-		F->est += (F->est - F->estP); // linear extrapolation -  dT and 1/dT cancel
+void initFujinFastLPKF(filterStruct *F, real32 CutHz) {
 
-		//update last state
-		F->estP = F->est;
+	F->tau = 1.0f / (TWO_PI * CutHz);
+	//real32 a = dT / (F->tau + dT);
 
-		//prediction update
-		F->p = F->p + F->q;
+	F->p = 0.0f; // set initial value, can be zero if unknown
+	F->xP = 0.0f; // set initial value, can be zero if unknown
+	//F->k = 0.5f * a; // "kalman" gain - half of RC coefficient
 
-		//measurement update
-		F->k = F->p / (F->p + F->r);
-		F->est += F->k * (v - F->est);
-		F->p = (1.0f - F->k) * F->p;
+} // initFujinFastLPKF
 
-		return (F->est);
-	} else
-		return (v);
+__attribute__((always_inline))        inline real32 FujinFastLPKF(filterStruct *F, real32 v, real32 dT) {
 
-} // DoAccGyroKF
+	F->k = 0.5f * dT / (F->tau + dT);
 
+	//update last state
+	F->x += (F->x - F->xP);
+
+	//prediction update
+	F->xP = F->x;
+
+	//measurement update
+	F->x += F->k * (v - F->x);
+
+	return F->xP;
+} // FujinFastLPKF
 
 int16 SensorSlewLimit(uint8 sensor, int16 * O, int16 N, int16 Slew) {
 	int16 L, H;
@@ -471,3 +460,87 @@ real32 scaleRangef(real32 v, real32 srcMin, real32 srcMax, real32 destMin,
 	real32 b = srcMax - srcMin;
 	return ((a / b) + destMin);
 } // scaleRangef
+
+//____________________________________________________________________________
+
+/// Initialise all SW filters in one place
+
+
+extern uint8 CurrOSLPFType;
+
+real32 CurrAccLPFHz = 20.0f;
+real32 CurrGyroLPFHz = 100.0f;
+real32 CurrYawLPFHz = 75.0f;
+real32 CurrServoLPFHz = 20.0f;
+real32 CurrOSLPFHz = 500.0f;
+real32 CurrOSLPKFQ = 500.0f;
+boolean UsingPavelFilter = false;
+
+filterStruct AccF[3], GyroF[3], OSGyroF[3];
+OSLPFPtr OSF;
+
+filterStruct ROCLPF, FROCLPF, BaroLPF;
+
+void InitSWFilters(void) {
+
+	const idx GyroLPFOrder = 2;
+	const idx YawLPFOrder = 2;
+	const idx AccLPFOrder = 2;
+
+	const idx DerivLPFOrder = 1;
+
+	const uint8 AltLPFOrder = 1;
+	const uint8 ROCLPFOrder = 2;
+	const uint8 ROCFLPFOrder = 2;
+
+	idx a;
+
+	const real32 rKF = 88;
+
+	LPF1DriveK = initLPF1Coefficient(CurrGyroLPFHz, CurrPIDCycleS);
+	LPF1ServoK = initLPF1Coefficient(CurrServoLPFHz, CurrPIDCycleS);
+
+	for (a = X; a <= Z; a++) {
+
+		switch (CurrOSLPFType) {
+		case KalynFastKF:
+			initKalynFastLPKF(&OSGyroF[a], CurrOSLPKFQ, rKF, CurrOSLPFHz); // 0.011? 0.025
+			OSF = KalynFastLPKF;
+			break;
+		case FujinFastKF:
+			initFujinFastLPKF(&OSGyroF[a], CurrOSLPFHz);
+			OSF = FujinFastLPKF;
+		case RC1:
+			// RC1
+			initLPFn(&OSGyroF[a], 1, CurrOSLPFHz);
+			OSF = LPFn;
+			break;
+		default:
+			// RC2
+			initLPFn(&OSGyroF[a], 2, CurrOSLPFHz);
+			OSF = LPFn;
+			break;
+		} // switch
+
+		initLPFn(&AccF[a], AccLPFOrder, CurrAccLPFHz);
+		initLPFn(&GyroF[a], GyroLPFOrder, CurrGyroLPFHz);
+
+		initLPFn(&A[a].R.RateF, DerivLPFOrder, CurrGyroLPFHz); // derivative
+
+		// Pavel Holoborodko, see http://www.holoborodko.com/pavel/numerical-methods/
+		// numerical-derivative/smooth-low-noise-differentiators/
+		const real32 C[] = { 0.375f, 0.5f, -0.5f, -0.75, 0.125f, 0.25f };
+		if (UsingPavelFilter)
+			initFIRF(&A[a].R.RateDF, 6, C);
+		else
+			initMA(&A[a].R.RateDF, 4);
+	}
+
+	initLPFn(&AccZLPF, AltLPFOrder, AltLPFHz);
+
+	initLPFn(&BaroLPF, AltLPFOrder, AltLPFHz);
+	initLPFn(&ROCLPF, ROCLPFOrder, AltLPFHz);
+	initLPFn(&FROCLPF, ROCFLPFOrder, AltLPFHz * 0.25f);
+
+} // InitSWFilters
+

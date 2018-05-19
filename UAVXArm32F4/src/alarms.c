@@ -25,7 +25,7 @@ boolean PreflightFail = false;
 uint8 ArmingMethod;
 
 void Probe(uint8 p) {
-	digitalWrite(&GPIOPins[ProbeSel], p);
+	if (ProbeSel < MAX_GPIO_PINS) digitalWrite(&GPIOPins[ProbeSel], p);
 } // Probe
 
 void Marker(void) {
@@ -41,7 +41,8 @@ void CheckLandingSwitch(void) {
 	if (F.Emulation)
 		F.AccZBump = F.LandingSwitch = Altitude < 0.1f;
 	else {
-		Switch = !digitalRead(&GPIOPins[LandingSel]); // active to ground
+
+		Switch = (LandingSel < MAX_GPIO_PINS) ? !digitalRead(&GPIOPins[LandingSel]) : false; // active to ground
 
 		if (Switch != SwitchP)
 			if (Count == 0) {
@@ -95,12 +96,12 @@ boolean FailPreflight(void) {
 			|| ((Armed() && FirstPass) //
 					&& !((UAVXAirframe == Instrumentation) || (UAVXAirframe
 							== IREmulation))) //
+			|| (RC[NavModeRC] > FromPercent(20)) //
 			|| F.ThrottleOpen //
 			|| !F.IMUActive //
-			|| !F.BaroActive //
 			|| !F.IMUCalibrated
-		|| !((F.MagnetometerActive && F.MagnetometerCalibrated) || F.IsFixedWing)//
-			|| (RC[NavModeRC] > FromPercent(20)) //
+			|| ((currBaroType != noBaro)&&!F.BaroActive) //
+			|| ((currMagType != noMag) && !(F.MagnetometerActive && F.MagnetometerCalibrated))//
 			|| F.LowBatt //
 			|| F.spiFatal //
 			|| F.i2cFatal //
@@ -119,7 +120,7 @@ void DoCalibrationAlarm(void) {
 	if (!F.IMUCalibrated || !((F.MagnetometerActive && F.MagnetometerCalibrated) || F.IsFixedWing)) {
 		if (mSClock() > TimeoutmS) {
 			TimeoutmS = mSClock() + 500;
-			LEDToggle(LEDYellowSel);
+			LEDToggle(ledYellowSel);
 		}
 	}
 
@@ -183,11 +184,11 @@ void CheckAlarms(void) {
 			if (BeeperIsOn()) {
 				mSTimer(mSClock(), BeeperUpdate, BeeperOffTime);
 				BeeperOff();
-				LEDOff(LEDRedSel);
+				LEDOff(ledRedSel);
 			} else {
 				mSTimer(mSClock(), BeeperUpdate, BeeperOnTime);
 				BeeperOn();
-				LEDOn(LEDRedSel);
+				LEDOn(ledRedSel);
 			}
 		}
 	} else {

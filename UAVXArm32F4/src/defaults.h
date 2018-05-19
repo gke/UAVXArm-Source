@@ -87,6 +87,8 @@ const ParamStruct_t DefaultParams[] = { //
 				{ YawLPFHz, 0, 255, { 50, 50, 50, 50 } }, // 78
 				{ GyroLPFSel, 0, 255, { 2, 2, 2, 2 } }, // 48
 				{ AccLPFSel, 0, 255, { 4, 4, 4, 4 } }, // P90,
+				{ OSLPFType, 0, 255, { RC2, } }, // 105
+				{ OSLPFHz, 0, 255, { 40, } }, // 106 *10
 
 				// Rx
 				{ RCChannels, 0, 255, { 7, 7, 7, 7 } }, //  37c
@@ -165,10 +167,21 @@ const ParamStruct_t DefaultParams[] = { //
 								| GPSToLaunchRequiredMask, UseRapidDescentMask
 								| UseManualAltHoldMask, UseRapidDescentMask
 								| UseManualAltHoldMask } }, //  16c
-				{ Config2Bits, 0, 255, { UseConfigRebootMask,
-						UseConfigRebootMask | UseFastStartMask,
-						UseConfigRebootMask | UseFastStartMask,
-						UseConfigRebootMask | UseFastStartMask } }, //  74
+#if defined(V4_BOARD)
+				{ Config2Bits, 0, 255, { //
+						UseGyroOSMask | UseFastStartMask,
+						UseGyroOSMask | UseFastStartMask,
+						UseGyroOSMask | UseFastStartMask,
+						UseGyroOSMask | UseFastStartMask } }, //  74
+#else
+				{ Config2Bits, 0, 255, { //
+						UseFastStartMask ,
+						UseFastStartMask,
+						UseFastStartMask,
+						UseFastStartMask } }, //  74
+
+
+#endif
 				{ ComboPort1Config, 0, 255, { CPPM_GPS_M7to10, CPPM_GPS_M7to10,
 						CPPM_GPS_M7to10, CPPM_GPS_M7to10 } }, //  15
 #if defined(V4_BOARD)
@@ -199,10 +212,6 @@ const ParamStruct_t DefaultParams[] = { //
 
 				// Unused
 
-
-
-				{ Unused105, 0, 255, { 0, } }, // 105
-				{ Unused106, 0, 255, { 0, } }, // 106
 				{ Unused107, 0, 255, { 0, } }, // 107
 				{ Unused108, 0, 255, { 0, } }, // 108
 				{ Unused109, 0, 255, { 0, } }, // 109

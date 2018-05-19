@@ -22,6 +22,8 @@
 #ifndef _uavx_h
 #define _uavx_h
 
+#define USE_GYRO_OS
+
 // CleanFlight etc. Black Box stuff
 //#define BLACKBOX
 #define STATIC_UNIT_TESTED
@@ -41,8 +43,6 @@
 
 // Options
 
-#if !defined(STM32F1)
-
 #define USE_WS2812
 //#define USE_WS2812B
 
@@ -51,8 +51,6 @@
 #define INC_RC_TEL
 
 #define INC_BARO_FULL_MATH
-
-#endif
 
 #define VOLT_MEASUREMENT_ONBOARD
 
@@ -63,8 +61,6 @@
 
 //#define MPU6XXX_INT
 //#define HMC5XXX_INT
-
-//#define BRICE // Drotek IMU
 
 //#define USE_DIGITAL_SERVOS
 
@@ -86,20 +82,11 @@
 //#define MAVLINK_EXTERNAL_RX_BUFFER
 
 #define ADC_SCALE (1.0f/4096.0f)	// 12bit normalise to 1.0
-#if defined(STM32F1)
-
-#define TIMER_PS 72
-#include "stm32f10x.h"
-#include "system_stm32f10x.h"
-
-#else
 
 #define STM32F4
 #define TIMER_PS 168
 #include "stm32f4xx.h"
 #include "system_stm32f4xx.h"
-
-#endif // STM32F1
 
 #include "misctypes.h"
 #include "config.h"
@@ -111,20 +98,19 @@
 #include "escprog/serial_4way_stk.h"
 #include "escprog/serial_4way_avr.h"
 
-
 #include "main.h"
 #include "filters.h"
 #include "alarms.h"
 #include "analog.h"
-#include "airspeed.h"
+#include "as.h"
 #include "altitude.h"
-#include "autolaunch.h"
-#include "battery.h"
-#include "blackbox.h"
-#include "calibration.h"
+#include "launch.h"
+#include "batt.h"
+#include "bb.h"
+#include "calib.h"
 #include "clocks.h"
 #include "control.h"
-#include "autonomous.h"
+#include "auto.h"
 #include "emu.h"
 #include "frsky.h"
 #include "gps.h"
@@ -138,8 +124,8 @@
 #include "magvar.h"
 #include "mavlink.h"
 #include "mission.h"
-#include "navigate.h"
-#include "nonvolatile.h"
+#include "nav.h"
+#include "nv.h"
 #include "mixer.h"
 #include "outputs.h"
 #include "params.h"
@@ -149,10 +135,14 @@
 #include "rc.h"
 #include "spiflash.h"
 #include "stats.h"
-#include "telemetry.h"
-#include "temperature.h"
+#include "telem.h"
+#include "temp.h"
 #include "tests.h"
 #include "tune.h"
+
+#include "vcp/drivers/drv_usb.h"
+#include "vcp/drivers/drv_system.h"
+#include "vcp/vcpf4/usbd_cdc_vcp.h"
 
 #include "soar/ekf.h"
 #include "soar/soar.h"

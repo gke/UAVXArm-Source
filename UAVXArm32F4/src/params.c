@@ -96,8 +96,15 @@ void DoConfigBits(void) {
 	UsingBLHeliPrograming = (P(Config2Bits) & UseBLHeliMask) != 0;
 	UsingGliderStrategy = ((P(Config2Bits) & UseGliderStrategyMask) != 0)
 			&& F.IsFixedWing;
+
+	UseGyroOS = ((P(Config2Bits) & UseGyroOSMask) != 0) && !F.Emulation;
+
+#if defined(V3_BOARD)
+	UseGyroOS = false; // 1KHz limited by i2c so probably not worth it
+	//SetP(Config2Bits, P(Config2Bits) & ~UseGyroOSMask);
+#endif
+
 	F.UsingTurnToWP = (P(Config2Bits) & UseTurnToWPMask) != 0;
-	UsingHWLPF = false; // TODO: use SW for now (P(Config2Bits) & UseHWLPFMask) != 0;
 
 	//... currentl unused
 
@@ -213,11 +220,7 @@ void SetPIDPeriod(void) {
 	if (CurrESCType == ESCSyncPWM)
 		CurrPIDCycleuS = PID_SYNCPWM_CYCLE_2050US;
 	else
-#if defined(V4_BOARD)
-		CurrPIDCycleuS = PID_CYCLE_2000US >> 1;
-#else
-		CurrPIDCycleuS = PID_CYCLE_2000US;
-#endif
+		CurrPIDCycleuS = spiDevUsed[imuSel] ? PID_CYCLE_2000US >> 1: PID_CYCLE_2000US;
 
 	CurrPIDCycleS = CurrPIDCycleuS * 1.0e-6;
 
@@ -255,7 +258,9 @@ void UpdateParameters(void) {
 					|| (CurrMotorStopSel != P(MotorStopSel)) //
 					|| (CurrwsNoOfLeds != P(WS2812Leds))) {
 			//	TODO: always attempt restart if ((P(Config2Bits) & UseConfigRebootMask) != 0)
-					NVIC_SystemReset();
+			//NVIC_SystemReset();
+			InitHarness();
+			InitParameters();
 			//	else
 			//		Catastrophe();
 			}
@@ -346,6 +351,14 @@ void UpdateParameters(void) {
 
 		CurrYawLPFHz = LimitP(YawLPFHz, 25, 255);
 		CurrServoLPFHz = LimitP(ServoLPFHz, 10, 100);
+#if defined(V3_BOARD)
+		SetP(OSLPFHz, Limit(P(OSLPFHz), 2, 5)); // 1KHz limited by i2c
+#else
+		SetP(OSLPFHz, Limit(P(OSLPFHz), 2, 40)); // 8KHz
+#endif
+		CurrOSLPKFQ = CurrOSLPFHz = (real32)P(OSLPFHz) * 100.0f;
+
+		CurrOSLPFType = P(OSLPFType);
 
 		InitSWFilters();
 
@@ -447,11 +460,11 @@ void DoStickProgramming(void) {
 		if (SticksState == SticksChanged) {
 			if ((P(ArmingMode) != SwitchArming) && (StickPattern == (THR_LO
 					| YAW_CE | PIT_CE | ROL_HI)) && ArmingSwitch && !StickArmed) {
-				LEDOn(LEDBlueSel);
+				LEDOn(ledBlueSel);
 				//DoBeep(3, 0);
 				StickArmed = true;
 				SticksState = MonitorSticks;
-				LEDOff(LEDBlueSel);
+				LEDOff(ledBlueSel);
 			} else {
 				NewCurrPS = NV.CurrPS;
 				switch (StickPattern) {
@@ -468,11 +481,11 @@ void DoStickProgramming(void) {
 				} // switch
 
 				if (NewCurrPS != NV.CurrPS) {
-					LEDOn(LEDBlueSel);
+					LEDOn(ledBlueSel);
 					// IGNORE	NV.CurrPS = NewCurrPS;
 					DoBeeps(NV.CurrPS + 1);
 					F.ParametersChanged = true;
-					LEDOff(LEDBlueSel);
+					LEDOff(ledBlueSel);
 				}
 				SticksState = MonitorSticks;
 			}
@@ -484,11 +497,11 @@ void DoStickProgramming(void) {
 		if (SticksState == SticksChanged) {
 			if ((P(ArmingMode) != SwitchArming) && (StickPattern == (THR_LO
 					| YAW_CE | PIT_CE | ROL_LO)) && StickArmed) {
-				LEDOn(LEDBlueSel);
+				LEDOn(ledBlueSel);
 				//DoBeep(1, 0);
 				StickArmed = false;
 				SticksState = MonitorSticks;
-				LEDOff(LEDBlueSel);
+				LEDOff(ledBlueSel);
 			} else {
 				BFTrim = LRTrim = 0.0f;
 				Changed = false;
@@ -592,7 +605,7 @@ void InitParameters(void) {
 
 	// must have these
 	CurrStateEst = P(StateEst);
-	if (F.IsFixedWing && CurrStateEst != MadgwickIMU) {
+	if ((F.IsFixedWing || (currMagType == noMag)) && CurrStateEst != MadgwickIMU) {
 		SetP(StateEst, MadgwickIMU);
 		CurrStateEst = MadgwickIMU;
 	}

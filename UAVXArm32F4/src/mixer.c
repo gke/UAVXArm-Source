@@ -31,6 +31,7 @@ const real32 AFOrientation[AFUnknown + 1] = { // K1 arm relative to board North
 				0, 0, // Instrumentation, IREmulation
 				0 }; // AFUnknown
 
+
 const uint8 SM[] = { ThrottleC, RightAileronC, LeftAileronC, ElevatorC,
 		RudderC, RightSpoilerC, LeftSpoilerC };
 
@@ -365,9 +366,10 @@ void DoMulticopterMix(void) {
 
 void MixAndLimitCam(void) {
 
+#if !defined(OMNIBUSF4V1_BOARD)
 	real32 NewCamPitch, NewCamRoll;
 
-	if (!UsingDCMotors) {
+	if (!UsingDCMotors && (currGimbalType == servoGimbal)) {
 		if (UAVXAirframe == GimbalAF) {
 			NewCamRoll = A[Roll].Angle;
 			NewCamPitch = A[Pitch].Angle;
@@ -388,6 +390,7 @@ void MixAndLimitCam(void) {
 			PW[CamPitchC] = NewCamPitch;
 		}
 	}
+#endif
 } // MixAndLimitCam
 
 void InitServoSense(void) {

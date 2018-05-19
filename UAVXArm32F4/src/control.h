@@ -58,7 +58,7 @@ typedef struct {
 	real32 PTerm, ITerm, DTerm;
 
 	real32 RateP, RateD, RateDp;
-	HistStruct RateF, RateDF;
+	filterStruct RateF, RateDF;
 } PIDStruct;
 
 typedef struct {
@@ -90,8 +90,8 @@ AxisStruct A[3];
 
 idx AttitudeMode;
 real32 TiltThrFFFrac;
-real32 CurrAccLPFHz, CurrGyroLPFHz, CurrYawLPFHz, CurrServoLPFHz;
-boolean UsingPavelFilter;
+
+uint8 CurrOSLPFType;
 
 real32 CameraAngle[3], OrbitCamAngle;
 real32 DesiredHeading, SavedHeading;

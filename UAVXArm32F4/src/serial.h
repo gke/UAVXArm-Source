@@ -22,8 +22,7 @@
 #ifndef _serial_h
 #define _serial_h
 
-extern uint8 GPSRxSerial;
-extern uint8 GPSTxSerial;
+extern uint8 GPSRxSerial, GPSTxSerial, RCSerial, TelemetrySerial;
 
 extern boolean RxUsingSerial;
 

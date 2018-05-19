@@ -31,7 +31,7 @@ enum StateEstimators {
 void InitMadgwick(void);
 void UpdateInertial(void);
 
-void GetIMU(void);
+void ScaleIMU(void);
 
 void CheckNavEnable(void);
 

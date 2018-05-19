@@ -28,9 +28,11 @@ typedef struct {
 	uint32 WriteRate;
 } spiDefStruct;
 
+
 extern const spiDefStruct spiDef[];
 
 extern void spiSelect(uint8 devSel, boolean Sel);
+extern void spiClearSelects(void);
 extern SPI_TypeDef * spiSetBaudRate(uint8 devSelS, boolean R);
 extern void spiSetDivisor(SPI_TypeDef *SPIx, uint16 d);
 

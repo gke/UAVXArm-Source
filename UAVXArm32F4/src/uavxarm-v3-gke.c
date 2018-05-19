@@ -22,6 +22,7 @@
 
 Flags F;
 uint8 State;
+boolean FirstIMU;
 uint32 CurrPIDCycleuS = PID_CYCLE_2000US;
 real32 CurrPIDCycleS;
 volatile uint32 uS[uSLastArrayEntry];
@@ -36,7 +37,7 @@ void InitMisc(void) {
 	State = Preflight;
 
 	for (i = 0; i < FLAG_BYTES; i++)
-		F.AllFlags[i] = false;
+		F.AllFlags[i] = 0;
 
 	for (i = 0; i < mSLastArrayEntry; i++)
 		mS[i] = 0;
@@ -48,6 +49,18 @@ void InitMisc(void) {
 	IdleThrottle = FromPercent(10);
 
 } // InitMisc
+
+
+inline void DoHouseKeeping(void) {
+
+	CheckBatteries();
+	CheckAlarms();
+	DoCalibrationAlarm();
+
+	CheckTelemetry(TelemetrySerial);
+	UpdatewsLed();
+
+} // DoHousekeeping
 
 void CalculatedT(uint32 NowuS) {
 
@@ -68,27 +81,28 @@ void ResetMainTimeouts(void) {
 
 } // ResetMainTimeouts
 
+void DoTesting(void) {
 
-int main() {
-	uint32 NowuS;
-	static uint32 LastUpdateuS = 0;
+	//#define COMMISSIONING_TEST
+	//#define USB_TESTING
+	//#define KF_TESTING
+	//#define BARO_TESTING
 
-	CheckParametersInitialised();
+#if defined(USB_TESTING)
 
-	InitClocks();
+	usbTxString("starting USB Test (! to force restart)\n");
 
-	InitHarness();
-
-	InitMisc();
-	InitAnalog();
-	InitLEDs();
-
-	if (sizeof(NV) >= NV_FLASH_SIZE)
-		Catastrophe();
-
-	InitExtMem();
-
-#if defined(COMMISSIONING_TEST)
+	while (true) {
+		if (serialAvailable(USBSerial)) {
+			LEDToggle(ledYellowSel);
+			uint8 ch = RxChar(USBSerial);
+			if (ch == '!')
+			NVIC_SystemReset();
+			else
+			TxChar(USBSerial, ch);
+		}
+	}
+#elif defined(COMMISSIONING_TEST)
 
 	ReadBlockNV(0, sizeof(NV), (int8 *) (&NV));
 
@@ -98,71 +112,21 @@ int main() {
 
 	CommissioningTest(0);
 
-#else
-
-#if defined(V4_BOARD)
-	for (i = 0; i < 4; i++)
-	spiSelect(i, false); // TODO do it again but why is this being changed?
-	Delay1mS(100);
-#endif
-
-	InitParameters();
-
-	if ((P(Config2Bits) & UseBLHeliMask) != 0)
-		DoBLHeliSuite(TelemetrySerial);
-	else
-		Delay1mS(1000); // let things settle!
-
-	LEDOn(LEDGreenSel);
-	InitIMU(); // connects pass through for mag
-
-	LEDOn(LEDBlueSel);
-	InitMagnetometer();
-
-	InitMadgwick();
-
-	LEDOn(LEDYellowSel);
-	InitBarometer();
-
-	InitControl();
-	InitNavigation();
-
-	LEDsOff();
-
-	if (GPSRxSerial != TelemetrySerial)
-		InitGPS();
-	InitEmulation();
-
-	InitTemperature();
-
-	InitPollRxPacket();
-
-	if (CurrComboPort1Config != ParallelPPM)
-		RxEnabled[RCSerial] = true;
-
-	FirstPass = true;
-	mSTimer(mSClock(), LastBattery, 0);
-	uSTimer(uSClock(), NextCycleUpdate, CurrPIDCycleuS);
-
-	State = Preflight;
-
-//#define BARO_TESTING
-
-#if defined(BARO_TESTING)
+#elif defined(BARO_TESTING)
 
 	int16 kkk, cycles;
 	uint32 start = uSClock();
 
 	for (kkk = 0; kkk < 256; kkk++)
-		LSBBaro[kkk] = 0;
+	LSBBaro[kkk] = 0;
 
 	cycles = 10;
 	for (kkk = 0; kkk < 3000; kkk++) {
 		while (!DEBUGNewBaro)
-			GetBaro();
+		GetBaro();
 		DEBUGNewBaro = false;
 
-		LEDToggle(LEDGreenSel);
+		LEDToggle(ledGreenSel);
 		if (cycles-- <= 0) {
 			cycles = 10;
 			TxVal32(0, BaroTempVal, 0, ',');
@@ -189,41 +153,136 @@ int main() {
 	LEDsOn();
 	while (true) {
 	};
-#endif
 
-	//#define KF_TESTING
-#if defined(KF_TESTING)
+#elif defined(KF_TESTING)
 
-	KFStruct K;
+	const real32 qKF = 1000; // 400
+	const real32 rKF = 100; // 88
 
-	InitAccGyroKF(&K, 0.0009f, 0.08f);
-	GyroF[Roll].Primed = false;
+	const real32 SampleHz = 8000.0f;
+	const real32 NyquistHz = 4000.0f;
+	const real32 PIDHz = 1000;
+	const real32 GyroHz = 100.0f;
+
+	real32 OverSampledT = 1.0f / SampleHz;
+	real32 PIDdT = 1.0f/ PIDHz;
+
+	filterStruct KalynF, FujinF, OSLPF, FinalLPF;
+	int kkk;
+	real32 Kalyn, Fujin, OSRC, RC, RN;
+
 	NowuS = uSClock();
+	uint32 NextmS = mSClock();
+
 	uint32 PrevuS = NowuS;
-	TxString(0, "Raw, KF, LPF, P, K");
+
+	kkk = 0;
+
+	const real32 GyroSignalHz = 50.0f;
+	const real32 s2Hz = 7000.0f;
+	const real32 s3Hz = 23000.0f;
+	const real32 s4Hz = 33000.0f;
+
+	real32 TimeS = 0.0f;
+	real32 NextTimeS = 0.0f;
+
+	initKalynFastLPKF(&KalynF, qKF, rKF, NyquistHz); // 0.011? 0.025
+	initFujinFastLPKF(&FujinF, 300); //NyquistHz);
+	initLPFn(&OSLPF, 2, NyquistHz);
+	initLPFn(&FinalLPF, 1, GyroHz);
+
+	TxString(0, "TimemS, Noise, Raw, Kalyn, Fujin, RC, RC2");
 	TxNextLine(0);
-	while (true) {
+	do {
 
-		Delay1mS(2);
+		// mix signals with offsets - could add some noise
+		RN = 1.0f * (real32) rand()/RAND_MAX;
+		real32 v =
+		sinf(TWO_PI * GyroSignalHz * TimeS)
+		+ sinf(TWO_PI * s2Hz * TimeS)
+		+ sinf(TWO_PI * s3Hz * TimeS) + sinf(TWO_PI * s4Hz * TimeS)
+		+ RN;
 
-		PrevuS = NowuS;
-		NowuS = uSClock();
+		Kalyn = KalynFastLPKF(&KalynF, v, OverSampledT);
+		Fujin = FujinFastLPKF(&FujinF, v, OverSampledT);
+		OSRC = LPFn(&OSLPF, v, OverSampledT);
 
-		ReadAccAndGyro(true);
+		if (TimeS > NextTimeS) {
+			NextTimeS = TimeS + PIDdT;
+			RC = LPFn(&FinalLPF, OSRC, GyroHz);
+		}
 
-		TxVal32(0, RawGyro[Roll], 0, ',');
-		TxVal32(0, DoAccGyroKF(&K, RawGyro[Roll]), 0, ',');
-		TxVal32(0, LPFn(&GyroF[Roll], 2, RawGyro[Roll], CurrGyroLPFHz,
-						(NowuS - PrevuS) * 0.000001f), 0, ','); //
-		//TxVal32(0, LPFn(&GyroF[Roll], 2, RawGyro[Roll], 200,
-		//		(NowuS - PrevuS) * 0.000001f), 0, ','); //
-		TxVal32(0, K.p * 100000, 5, ',');
-
-		TxVal32(0, K.k * 100000, 5, ',');
-
+		TxVal32(0, TimeS * 1000000, 3, ',');
+		TxVal32(0, RN * 100, 2, ',');
+		TxVal32(0, v * 100, 2, ',');
+		TxVal32(0, Kalyn * 100, 2, ',');
+		TxVal32(0, Fujin * 100, 2, ',');
+		TxVal32(0, OSRC * 100, 2, ',');
+		TxVal32(0, RC * 100, 2, ',');
 		TxNextLine(0);
-	}
+
+		TimeS += OverSampledT;
+
+	}while (TimeS < 1.0f);
+
+	LEDsOn();
+	while (true) {
+	};
+#else
+	// NO TESTS
 #endif
+
+} // DoTesting
+
+
+int main() {
+	uint32 NowuS;
+	static uint32 LastUpdateuS = 0;
+
+	InitMisc();
+
+	CheckParametersInitialised();
+
+	InitParameters();
+
+	InitClocks();
+	InitHarness();
+
+	USBForceReconnect();
+
+	InitAnalog();
+	InitLEDs();
+	InitExtMem();
+	InitPollRxPacket();
+
+	spiClearSelects();
+
+	//CheckBLHeli();
+
+	InitIMU();
+	InitMagnetometer();
+	InitMadgwick();
+	InitBarometer();
+	InitTemperature();
+
+	InitEmulation();
+
+	DoTesting(); // if any - does not exit
+
+	InitControl();
+	InitNavigation();
+
+	LEDsOff();
+
+	InitGPS();
+
+	EnableRC();
+
+	mSTimer(mSClock(), LastBattery, 0);
+	uSTimer(uSClock(), NextCycleUpdate, CurrPIDCycleuS);
+
+	FirstPass = true;
+	State = Preflight;
 
 	while (true) {
 
@@ -233,7 +292,7 @@ int main() {
 			RCStart = 0;
 			//F.ThrottleOpen = F.Navigate = F.ReturnHome = false;
 		} else {
-			CheckRxLoopback();
+			CheckRCLoopback();
 			UpdateControls(); // avoid loop sync delay
 
 			if (State == Launching) // Placed here to defeat RC controls KLUDGE!
@@ -241,8 +300,29 @@ int main() {
 
 		}
 
-		NowuS = uSClock();
-		if (NowuS >= uS[NextCycleUpdate]) {
+		if (UseGyroOS) {
+			FirstIMU = true;
+			do {
+				if (MPU6XXXReady()) {
+					Probe(1);
+					if (FirstIMU)
+						ReadFilteredGyroAndAcc();
+					else
+						ReadFilteredGyro();
+					FirstIMU = false;
+					Probe(0);
+				}
+
+				DoHouseKeeping();
+
+				NowuS = uSClock();
+			} while (NowuS < uS[NextCycleUpdate]);
+		} else {
+			DoHouseKeeping();
+			NowuS = uSClock();
+		}
+
+		if (UseGyroOS || (NowuS >= uS[NextCycleUpdate])) {
 
 			Probe(1);
 
@@ -271,13 +351,13 @@ int main() {
 				StopDrives();
 
 				if (FailPreflight()) {
-					LEDOn(LEDRedSel);
-					LEDOff(LEDGreenSel);
+					LEDOn(ledRedSel);
+					LEDOff(ledGreenSel);
 
 				} else {
 
-					LEDOff(LEDRedSel);
-					LEDOn(LEDGreenSel);
+					LEDOff(ledRedSel);
+					LEDOn(ledGreenSel);
 
 					DoBeep(8, 2);
 
@@ -291,7 +371,7 @@ int main() {
 				break;
 			case Ready:
 				if (Armed() || (UAVXAirframe == Instrumentation)) {
-					LEDOn(LEDYellowSel);
+					LEDOn(ledYellowSel);
 					RxLoopbackEnabled = false;
 					State = Starting;
 				} else
@@ -302,8 +382,7 @@ int main() {
 
 				DoBeep(8, 2);
 
-				if (GPSRxSerial == TelemetrySerial)
-					InitGPS();
+				InitGPS();
 
 				DoBeep(8, 2);
 				InitBlackBox();
@@ -334,7 +413,7 @@ int main() {
 
 					ResetMainTimeouts();
 
-					LEDOff(LEDYellowSel);
+					LEDOff(ledYellowSel);
 
 					State = (UAVXAirframe == IREmulation) ? IREmulate : Landed;
 				}
@@ -432,7 +511,7 @@ int main() {
 						ResetMainTimeouts();
 						mSTimer(mSClock(), ThrottleIdleTimeout,
 								THR_LOW_DELAY_MS);
-						LEDOn(LEDGreenSel);
+						LEDOn(ledGreenSel);
 						State = Landed;
 					}
 				}
@@ -506,19 +585,10 @@ int main() {
 				SendRawIMU(TelemetrySerial);
 				BlackBoxEnabled = false;
 			}
-
-		} // if next cycle
-
-		CheckBatteries();
-		CheckAlarms();
-		DoCalibrationAlarm();
-
-		CheckTelemetry(TelemetrySerial);
-		UpdatewsLed();
+		}
 
 	} // while true
 
-#endif // COMMISSIONING_TEST
 	return (0);
 
 } // loop

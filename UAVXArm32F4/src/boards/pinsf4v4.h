@@ -19,7 +19,21 @@
 //    You should have received a copy of the GNU General Public License along with this program.
 //    If not, see http://www.gnu.org/licenses/
 
+#ifndef _pinsf4v4_h
+#define _pinsf4v4_h
+
 #include "UAVX.h"
+
+const uint8 currIMUType = mpu6000IMU;
+const uint8 currBaroType = ms5611Baro;
+const uint8 currMagType = hmc5xxxMag;
+const uint8 currGimbalType = noGimbal;
+
+// imuSel, baroSel, magSel, memSel, gpsSel, rfSel, escSel, flowSel, asSel
+const uint8 spiMap[] = {2, 2, 2, 2, 2, 2, 2, 2, 2}; // SPI2
+const uint8 i2cMap[] = {2, 2, 2, 2, 2, 2, 2, 2, 2}; // I2C2
+
+boolean spiDevUsed[] = {true, true, true, true, false, false, false, false, false};
 
 PinDef RCPins[MAX_RC_INPS] = {
 	{ GPIOA, GPIO_Pin_0, GPIO_PinSource0, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP,
@@ -52,9 +66,8 @@ I2CPortDef I2CPorts[MAX_I2C_PORTS] = {
 	};
 
 AnalogPinDef AnalogPins[ANALOG_CHANNELS] = {
-	{ ADC1, GPIOC, GPIO_Pin_0, ADC_Channel_10, DMA_Channel_0, DMA2_Stream0, 1}, // RF
-	{ ADC1, GPIOC, GPIO_Pin_1, ADC_Channel_11, DMA_Channel_0, DMA2_Stream0, 2}, // Amps
-	{ ADC1, GPIOC, GPIO_Pin_2, ADC_Channel_12, DMA_Channel_0, DMA2_Stream0, 3}, // Volts
+	{ true, ADC1, GPIOC, GPIO_Pin_1, ADC_Channel_11, DMA_Channel_0, DMA2_Stream0, 2},
+	{ true, ADC1, GPIOC, GPIO_Pin_2, ADC_Channel_12, DMA_Channel_0, DMA2_Stream0, 3}
 	};
 
 PinDef PWMPins[MAX_PWM_OUTPUTS] = {
@@ -119,18 +132,15 @@ PinDef GPIOPins[MAX_GPIO_PINS] = {
 	};
 
 SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
-	{ SPI1, GPIOA,  {{GPIO_Pin_5, GPIO_PinSource5},
+	{ false, SPI1, GPIOA,  {{GPIO_Pin_5, GPIO_PinSource5},
 			{GPIO_Pin_6, GPIO_PinSource6},
-			{GPIO_Pin_7, GPIO_PinSource7}},
-			false},
-	{ SPI2, GPIOB, {{GPIO_Pin_13, GPIO_PinSource13},
+			{GPIO_Pin_7, GPIO_PinSource7}}},
+	{ true, SPI2, GPIOB, {{GPIO_Pin_13, GPIO_PinSource13},
 			{GPIO_Pin_14, GPIO_PinSource14},
-			{GPIO_Pin_15, GPIO_PinSource15}},
-			true},
-	{ SPI3, GPIOC, {{GPIO_Pin_10, GPIO_PinSource10},
+			{GPIO_Pin_15, GPIO_PinSource15}}},
+	{ false, SPI3, GPIOC, {{GPIO_Pin_10, GPIO_PinSource10},
 			{GPIO_Pin_11, GPIO_PinSource11},
-			{GPIO_Pin_12, GPIO_PinSource12}},
-			false}
+			{GPIO_Pin_12, GPIO_PinSource12}}}
 	};
 
 PinDef SPISelectPins[MAX_SPI_DEVICES] = {
@@ -145,7 +155,7 @@ PinDef SPISelectPins[MAX_SPI_DEVICES] = {
 };
 
 SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
-    { USART1, GPIO_AF_USART1, GPIOA,
+    { true, USART1, GPIO_AF_USART1, GPIOA,
         GPIO_Pin_9, GPIO_PinSource9,
         GPIO_Pin_10, GPIO_PinSource10,
         true, USART1_IRQn,
@@ -154,7 +164,7 @@ SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
         DMA2_Stream5,
         115200
         },
-    { USART2, GPIO_AF_USART2, GPIOA,
+    { true, USART2, GPIO_AF_USART2, GPIOA,
         GPIO_Pin_2, GPIO_PinSource2,
         GPIO_Pin_3, GPIO_PinSource3,
         true, USART2_IRQn,
@@ -163,7 +173,7 @@ SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
         DMA1_Stream5,
         115200
     	},
-    { USART3, GPIO_AF_USART3, GPIOB,
+    { true, USART3, GPIO_AF_USART3, GPIOB,
         GPIO_Pin_10, GPIO_PinSource10,
         GPIO_Pin_11, GPIO_PinSource11,
         true, USART3_IRQn, // rx int used?
@@ -185,5 +195,5 @@ PinDef LEDPins[MAX_LEDS] = { // LEDYellowSel, LEDRedSel, LEDBlueSel, LEDGreenSel
 		false, { 0, }, 0, },
 	};
 
-
+#endif
 
