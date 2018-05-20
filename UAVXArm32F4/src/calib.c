@@ -323,16 +323,6 @@ int8 getCurrDir(real32 s[3]) {
 		return -1;
 } // getCurrDir
 
-
-#if defined(STM32F1)
-
-void CalibrateAccSixPoint(uint8 s) {
-
-
-} // CalibrateAccSixPoint
-
-#else
-
 real32 sp[ACC_CAL_SPHERE_CYCLES * 6][3];
 
 void CalibrateAccSixPointSphere(uint8 s) {
@@ -346,7 +336,7 @@ void CalibrateAccSixPointSphere(uint8 s) {
 	SaveLEDs();
 	LEDsOff();
 
-	LEDOn(LEDBlueSel);
+	LEDOn(ledBlueSel);
 
 	for (a = X; a <= Z; a++)
 		axisCalibrated[a] = false;
@@ -357,7 +347,7 @@ void CalibrateAccSixPointSphere(uint8 s) {
 
 	do {
 
-		ReadAccAndGyro(false);
+		ReadFilteredAcc();
 		dp = getCurrDir(RawAcc);
 
 		if (dp >= 0) {
@@ -366,7 +356,7 @@ void CalibrateAccSixPointSphere(uint8 s) {
 				Currdp = dp;
 
 				DoBeep(2, 1);
-				LEDOff(LEDRedSel);
+				LEDOff(ledRedSel);
 
 				Delay1mS(100); // short delay to reduce post move shake
 
@@ -374,20 +364,20 @@ void CalibrateAccSixPointSphere(uint8 s) {
 				do {
 					Delay1mS(2);
 
-					ReadAccAndGyro(false);
+					ReadFilteredAcc();
 					dp = getCurrDir(RawAcc);
 
 					if (Currdp == dp) {
-						LEDOff(LEDYellowSel);
-						LEDOn(LEDGreenSel);
+						LEDOff(ledYellowSel);
+						LEDOn(ledGreenSel);
 						for (a = X; a <= Z; a++)
 							sp[N][a] = RawAcc[a];
 
 						N++;
 						calCycles++;
 					} else {
-						LEDOn(LEDYellowSel);
-						LEDOff(LEDGreenSel);
+						LEDOn(ledYellowSel);
+						LEDOff(ledGreenSel);
 					}
 
 				} while (calCycles < ACC_CAL_SPHERE_CYCLES);
@@ -396,10 +386,10 @@ void CalibrateAccSixPointSphere(uint8 s) {
 				calDirCnt++;
 
 				DoBeep(5, 1);
-				LEDOff(LEDYellowSel);
-				LEDOff(LEDGreenSel);
+				LEDOff(ledYellowSel);
+				LEDOff(ledGreenSel);
 			} else
-				LEDOn(LEDRedSel);
+				LEDOn(ledRedSel);
 		}
 
 	} while (calDirCnt != 6);
@@ -439,7 +429,7 @@ void CalibrateAccSixPoint(uint8 s) {
 	SaveLEDs();
 	LEDsOff();
 
-	LEDOn(LEDBlueSel);
+	LEDOn(ledBlueSel);
 
 	for (d = 0; d < 6; d++) {
 		axisCalibrated[d] = false;
@@ -453,7 +443,7 @@ void CalibrateAccSixPoint(uint8 s) {
 
 	do {
 
-		ReadAccAndGyro(false);
+		ReadFilteredAcc();
 		dp = getCurrDir(RawAcc);
 
 		if (dp >= 0) {
@@ -462,7 +452,7 @@ void CalibrateAccSixPoint(uint8 s) {
 				Currdp = dp;
 
 				DoBeep(2, 1);
-				LEDOff(LEDRedSel);
+				LEDOff(ledRedSel);
 
 				Delay1mS(100); // short delay to reduce post move shake
 
@@ -470,19 +460,19 @@ void CalibrateAccSixPoint(uint8 s) {
 				do {
 					Delay1mS(2);
 
-					ReadAccAndGyro(false);
+					ReadFilteredAcc();
 					dp = getCurrDir(RawAcc);
 
 					if (Currdp == dp) {
-						LEDOff(LEDYellowSel);
-						LEDOn(LEDGreenSel);
+						LEDOff(ledYellowSel);
+						LEDOn(ledGreenSel);
 						pushForBiasCalc(&calState, RawAcc);
 						for (a = X; a <= Z; a++)
 							sensorSamples[dp][a] += RawAcc[a];
 						calCycles++;
 					} else {
-						LEDOn(LEDYellowSel);
-						LEDOff(LEDGreenSel);
+						LEDOn(ledYellowSel);
+						LEDOff(ledGreenSel);
 					}
 
 				} while (calCycles < ACC_CAL_CYCLES);
@@ -491,10 +481,10 @@ void CalibrateAccSixPoint(uint8 s) {
 				calDirCnt++;
 
 				DoBeep(5, 1);
-				LEDOff(LEDYellowSel);
-				LEDOff(LEDGreenSel);
+				LEDOff(ledYellowSel);
+				LEDOff(ledGreenSel);
 			} else
-				LEDOn(LEDRedSel);
+				LEDOn(ledRedSel);
 		}
 
 	} while (calDirCnt != 6);
@@ -532,6 +522,6 @@ void CalibrateAccSixPoint(uint8 s) {
 
 } // CalibrateAccSixPoint
 
-#endif
+
 
 

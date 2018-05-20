@@ -114,7 +114,7 @@ void TIM3_IRQHandler(void) {
 
 void DMA2_Stream2_IRQHandler(void) {
 
-#if (defined(USE_WS2812) || defined(USE_WS2812B)) && !defined(OMNIBUSF4V1_BOARD)
+#if (defined(USE_WS2812) || defined(USE_WS2812B)) && (defined(UAVXF4V4) || defined(UAVXF4V3))
 	// Half-Transfer completed
 	if (DMA_GetITStatus(DMA2_Stream2, DMA_IT_HTIF2)) {
 		DMA_ClearITPendingBit(DMA2_Stream2, DMA_IT_HTIF2);
@@ -153,7 +153,7 @@ void DMA1_Stream6_IRQHandler(void) {
 
 } // DMA1_Channel6_IRQHandler
 
-#if defined(V4_BOARD)
+#if defined(UAVXF4V4) || defined(UAVXF4V3)
 
 void DMA1_Stream3_IRQHandler(void) {
 
@@ -162,7 +162,7 @@ void DMA1_Stream3_IRQHandler(void) {
 
 	if (CurrComboPort2Config == RF_GPS_V4) {
 		TxQHead[2] = TxQNewHead[2];
-		if (TxQHead[I2CSerial] != TxQTail[2])
+		if (TxQHead[2] != TxQTail[2])
 		serialTxDMA(2);
 	}
 
@@ -185,7 +185,7 @@ void USART2_IRQHandler(void) {
 } // USART2_IRQHandler
 #endif
 
-#if defined(V4_BOARD)
+#if defined(UAVXF4V4) || defined (UAVXF4V3)
 #if (MAX_SERIAL_PORTS > 2)
 void USART3_IRQHandler(void) {
 	if (CurrComboPort2Config == RF_GPS_V4)

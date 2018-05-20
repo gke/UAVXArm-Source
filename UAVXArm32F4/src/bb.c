@@ -75,7 +75,7 @@ void DumpBlackBox(uint8 s) {
 	uint16 i;
 	boolean Finish;
 
-#if defined(V4_BOARD)
+#if defined(UAVXF4V4)
 	MaxMemoryUsed = MEM_SIZE; // Read32ExtMem(0);
 	a = MEM_BLOCK_SIZE;
 #else

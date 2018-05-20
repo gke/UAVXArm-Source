@@ -22,10 +22,10 @@
 #ifndef _main_h
 #define _main_h
 
-#if defined(OMNIBUSF4V1_BOARD)
-#define ArmingSwitch (false)
-#else
+#if defined(UAVXF4V3) || defined(UAVXF4V4)
 #define ArmingSwitch (digitalRead(&GPIOPins[ArmedSel]))
+#else
+#define ArmingSwitch (false)
 #endif
 
 //________________________________________________________________________________________

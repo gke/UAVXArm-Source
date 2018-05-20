@@ -5,33 +5,18 @@ SHELL=cmd
 
 SVN_REV := "$(shell "C:\Program Files (x86)\Subversion\bin\svnversion" -cn . | sed -e 's/[MS]//g' -e 's/^[[:digit:]]*://')" 
 
-#EXPFLAGS =  
-
 INSTALL_DIR = "C:/Flight/gitHub/UAVXArm.git/UAVXArm/firmware"
 
-TARGET=UAVXArm32F4_$(SVN_REV)_OMNIBUSF4V1
-CONFIG= -DUSE_ATOLLIC -DOMNIBUSF4V1_BOARD -DARM_MATH_CM4  -DHSE_VALUE=8000000
+#-------------------------------------------------------------
 
-#TARGET=UAVXArm32F4_$(SVN_REV)_V4
-#CONFIG= -DV4_BOARD -DARM_MATH_CM4  -DHSE_VALUE=8000000
+#BOARD= OMNIBUSF4V1
+#BOARD= UAVXF4V4
+BOARD= UAVXF4V3
 
-#==========================================================================================
-
-#TARGET=UAVXArm32F4_$(SVN_REV)_V3
-#CONFIG= -DV3_BOARD -DARM_MATH_CM4 -DHSE_VALUE=8000000
-
-#==========================================================================================
-
-# COMMISSIONING
-
-#TARGET=LevArm32F4_V4_Test
-#CONFIG = -DARM_MATH_CM4 -DV4_BOARD -DCOMMISSIONING_TEST $(V1)  -DHSE_VALUE=8000000
-
-#TARGET=LevArm32F4_V3_Test
-#CONFIG= -DARM_MATH_CM4 -DCOMMISSIONING_TEST $(V1) -DV3_BOARD -DUSE_UAVP_COMMS -DHSE_VALUE=8000000 
-
-#==========================================================================================
-
+#-------------------------------------------------------------
+ 
+TARGET=uavx_$(BOARD)_r$(SVN_REV)
+CONFIG= -DARM_MATH_CM4  -DHSE_VALUE=8000000
 
 LINK_SCRIPT=stm32f4_eeprom16k.ld
 
@@ -87,7 +72,7 @@ ASSEMBLER_FLAGS=-c -g $(OPT) $(FPFLAGS) -x assembler-with-cpp  \
 	-Isrc\vcp\drivers 
 
 #-Wall 
-COMPILER_FLAGS=-c -g  $(OPT) $(FPFLAGS) $(CONFIG) -ffunction-sections -fdata-sections \
+COMPILER_FLAGS=-c -g  $(OPT) $(FPFLAGS) $(CONFIG) -D$(BOARD) -ffunction-sections -fdata-sections \
 	-D"STM32F405xx" -D"USE_STDPERIPH_DRIVER"  \
 	-Isrc \
 	-Isrc\stm \

@@ -239,16 +239,15 @@ int main() {
 	uint32 NowuS;
 	static uint32 LastUpdateuS = 0;
 
-	InitMisc();
-
-	CheckParametersInitialised();
-
-	InitParameters();
-
 	InitClocks();
+	USBGenerateDisconnectPulse();
+
+	InitMisc();
+	CheckParametersInitialised();
+	InitParameters();
 	InitHarness();
 
-	USBForceReconnect();
+	USBConnect();
 
 	InitAnalog();
 	InitLEDs();
@@ -452,8 +451,8 @@ int main() {
 							if (F.GPSToLaunchRequired && !F.OriginValid)
 								CaptureHomePosition();
 
-							if ((StickThrottle >= IdleThrottle)
-									&& (F.OriginValid || !F.GPSToLaunchRequired)) {
+							if ((StickThrottle >= IdleThrottle)) {
+								//	&& (F.OriginValid || !F.GPSToLaunchRequired)) {
 
 								ResetMainTimeouts();
 								setStat(RCGlitchesS, 0);

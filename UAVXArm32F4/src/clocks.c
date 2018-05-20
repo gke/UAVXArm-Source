@@ -75,7 +75,6 @@ void cycleCounterInit(void) {
 
 	RCC_GetClocksFreq(&clocks);
 	TicksuS = clocks.SYSCLK_Frequency / 1000000;
-
 	// enable DWT access
 	CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
 	// enable the CPU cycle counter

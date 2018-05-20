@@ -71,7 +71,7 @@ AnalogPinDef AnalogPins[ANALOG_CHANNELS] = {
 	{ true, ADC1, GPIOC, GPIO_Pin_0, ADC_Channel_10, DMA_Channel_0, DMA2_Stream0, 1}, // RF
 	{ true, ADC1, GPIOC, GPIO_Pin_1, ADC_Channel_11, DMA_Channel_0, DMA2_Stream0, 2}, // Amps
 	{ true, ADC1, GPIOC, GPIO_Pin_2, ADC_Channel_12, DMA_Channel_0, DMA2_Stream0, 3}, // Volts
-#if !defined(V4_BOARD)
+#if !defined(UAVXF4V4)
 	{ true, ADC1, GPIOC, GPIO_Pin_3, ADC_Channel_13, DMA_Channel_0, DMA2_Stream0, 4}, // Roll
 	{ true, ADC1, GPIOC, GPIO_Pin_4, ADC_Channel_14, DMA_Channel_0, DMA2_Stream0, 5}, // Pitch
 	{ true, ADC1, GPIOC, GPIO_Pin_5, ADC_Channel_15, DMA_Channel_0, DMA2_Stream0, 6},  // Yaw

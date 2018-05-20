@@ -366,7 +366,7 @@ void DoMulticopterMix(void) {
 
 void MixAndLimitCam(void) {
 
-#if !defined(OMNIBUSF4V1_BOARD)
+#if defined(UAVXF4V3) || defined(UAVXF4V4)
 	real32 NewCamPitch, NewCamRoll;
 
 	if (!UsingDCMotors && (currGimbalType == servoGimbal)) {

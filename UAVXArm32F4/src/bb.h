@@ -23,10 +23,10 @@
 #define _blockbox_h
 
 
-#if defined(V4_BOARD)
-#define MEM_BLOCK_SIZE 256  //256 page size for external Flash
-#else
+#if defined(UAVXF4V3)
 #define MEM_BLOCK_SIZE 32  // 64 max i2c driver limitation
+#else
+#define MEM_BLOCK_SIZE 256  //256 page size for external Flash
 #endif
 
 extern void BlackBox(uint8 ch);

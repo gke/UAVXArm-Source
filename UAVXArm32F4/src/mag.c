@@ -320,7 +320,7 @@ void CalibrateHMC5XXX(uint8 s) {
 		F.MagnetometerCalibrated = true;
 	}
 
-#if defined(V4_BOARD)
+#if defined(UAVXF4V4)
 	SendAckPacket(s, UAVXMiscPacketTag, F.MagnetometerCalibrated);
 #endif
 } // CalibrateHMC5XXX

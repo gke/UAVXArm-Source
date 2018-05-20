@@ -246,7 +246,7 @@ enum {Serial0, Serial1, Serial2, SoftSerialTx, USBSerial };
 
 // V4 Nano Board using SPI sensors
 
-#if defined(V4_BOARD)
+#if defined(UAVXF4V4)
 
 #define MAX_RC_INPS 8
 #define ANALOG_CHANNELS 3
@@ -276,7 +276,7 @@ enum ADCSelectors {
 
 // V3 Nano Board using I2C sensors
 
-#elif defined(V3_BOARD)
+#elif defined(UAVXF4V3)
 
 #define MAX_RC_INPS 8
 #define ANALOG_CHANNELS 6
@@ -306,7 +306,7 @@ enum ADCSelectors {
 
 // V2 Board designed to also act as a UAVP adapter
 
-#elif defined(V2_BOARD)
+#elif defined(UAVXF4V2)
 
 #define MAX_RC_INPS 8
 #define ANALOG_CHANNELS 6
@@ -335,7 +335,7 @@ enum ADCSelectors {
 
 // V2 Board with F1 processor designed to also act as a UAVP adapter
 
-#elif defined(V2_F1_BOARD)
+#elif defined(UAVXF1V2)
 
 #define MAX_RC_INPS 8
 #define ANALOG_CHANNELS 6
@@ -364,7 +364,7 @@ enum ADCSelectors {
 
 // OmniBus Board (bare bones  - no baro, mag, rf etc.)
 
-#elif defined(OMNIBUSF4V1_BOARD)
+#elif defined(OMNIBUSF4V1)
 
 #define INCLUDE_USB
 

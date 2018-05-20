@@ -62,7 +62,7 @@ real32 CalculateMagConfidence(void) {
 
 
 	if (State == InFlight) {
-		c = KpMagBase * (1.0f - Rate[Yaw] / (60.0f * D2R)); // linear for now
+		c = KpMagBase * (1.0f - Rate[Yaw] / MAX_MAG_YAW_RATE_RADPS); // linear for now
 		c = Limit(c, 0.0f, KpMagBase);
 	} else
 		c = KpMagBase * 5.0f;
@@ -546,13 +546,17 @@ void UpdateInertial(void) {
 		Probe(0);
 	}
 
-	if (CurrStateEst == MadgwickMARG)
+
+
+	if (CurrStateEst == MadgwickMARG) {
 		MadgwickMARGUpdate(Rate[Roll], Rate[Pitch], Rate[Yaw], Acc[BF],
 				Acc[LR], Acc[UD], Mag[X], Mag[Y], Mag[Z]);
-	else
+	}
+	else {
 		// IMU = 41uS
 		MadgwickUpdate(CurrStateEst == MadgwickAHRS, Rate[Roll], Rate[Pitch],
 				Rate[Yaw], Acc[BF], Acc[LR], Acc[UD], Mag[X], Mag[Y], Mag[Z]);
+	}
 
 	DoControl();
 

@@ -21,15 +21,15 @@
 
 #include "UAVX.h"
 
-#if defined(V4_BOARD)
+#if defined(UAVXF4V4)
 #include "pinsf4v4.h"
-#elif defined(V3_BOARD)
+#elif defined(UAVXF4V3)
 #include "pinsf4v3.h"
-#elif defined(V2_BOARD)
+#elif defined(UAVXF4V2)
 #include "pinsf4v2.h"
-#elif defined(V2_F1_BOARD)
+#elif defined(UAVXF1V2)
 #include "pinsf1v2.h"
-#elif defined(OMNIBUSF4V1_BOARD)
+#elif defined(OMNIBUSF4V1)
 #include "pinsomnibusf4v1.h"
 #else
 // mbed

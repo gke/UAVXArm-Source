@@ -22,11 +22,7 @@
 #ifndef _nonvolatile_h
 #define _nonvolatile_h
 
-#if defined(STM32F1)
-#define NV_FLASH_SIZE 2048
-#else
 #define NV_FLASH_SIZE 16384
-#endif
 
 #define PARAMS_ADDR_NV		0		// code assumes zero!
 #define MAX_PARAMETERS		128		// parameters in EEPROM start at zero
@@ -59,7 +55,7 @@ typedef struct {
 
 extern NVStruct NV;
 
-#if defined(V4_BOARD)
+#if defined(UAVXF4V4)
 #define MEM_SIZE 16777216
 #define MEM_PAGE_SIZE 256
 #define MEM_BUFFER_SIZE 256

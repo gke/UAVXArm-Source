@@ -167,38 +167,36 @@ const ParamStruct_t DefaultParams[] = { //
 								| GPSToLaunchRequiredMask, UseRapidDescentMask
 								| UseManualAltHoldMask, UseRapidDescentMask
 								| UseManualAltHoldMask } }, //  16c
-#if defined(V4_BOARD)
-				{ Config2Bits, 0, 255, { //
-						UseGyroOSMask | UseFastStartMask,
-						UseGyroOSMask | UseFastStartMask,
-						UseGyroOSMask | UseFastStartMask,
-						UseGyroOSMask | UseFastStartMask } }, //  74
-#else
+#if defined(UAVXF4V3)
 				{ Config2Bits, 0, 255, { //
 						UseFastStartMask ,
 						UseFastStartMask,
 						UseFastStartMask,
 						UseFastStartMask } }, //  74
-
-
+#else
+				{ Config2Bits, 0, 255, { //
+						UseGyroOSMask | UseFastStartMask,
+						UseGyroOSMask | UseFastStartMask,
+						UseGyroOSMask | UseFastStartMask,
+						UseGyroOSMask | UseFastStartMask } }, //  74
 #endif
 				{ ComboPort1Config, 0, 255, { CPPM_GPS_M7to10, CPPM_GPS_M7to10,
 						CPPM_GPS_M7to10, CPPM_GPS_M7to10 } }, //  15
-#if defined(V4_BOARD)
-				{	ComboPort2Config, 0, 255, {RF_V4, RF_V4, RF_V4,
-						RF_V4}}, // 76,
-#else
+#if defined(UAVXF4V3)
 				{ ComboPort2Config, 0, 255, { RF_BatV_I2C_V3, RF_BatV_I2C_V3,
 						RF_BatV_I2C_V3, RF_BatV_I2C_V3 } }, // 76,
+#else
+				{	ComboPort2Config, 0, 255, {RF_V4, RF_V4, RF_V4,
+						RF_V4}}, // 76,
 #endif
 				{ AFType, 0, 255, { QuadXAF, QuadXAF, AileronSpoilerFlapsAF,
 						ElevonAF } }, // ,44c
-#if defined(V4_BOARD)
+#if defined(UAVXF4V3)
+	{ TelemetryType, 0, 255, { UAVXTelemetry, UAVXTelemetry,
+						FrSkyV1Telemetry, MAVLinkTelemetry } }, //  45c
+#else
 				{	TelemetryType, 0, 255, {UAVXTelemetry, UAVXTelemetry,
 						FrSkyV1Telemetry, MAVLinkTelemetry}}, //  45c
-#else
-				{ TelemetryType, 0, 255, { UAVXTelemetry, UAVXTelemetry,
-						FrSkyV1Telemetry, MAVLinkTelemetry } }, //  45c
 #endif
 				{ ESCType, 0, 255, { ESCUnknown, ESCUnknown, ESCUnknown,
 						ESCUnknown } }, //  36c

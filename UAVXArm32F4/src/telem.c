@@ -971,12 +971,12 @@ void ProcessGPSBypass(void) {
 
 	while (true) {
 		if (serialAvailable(GPSRxSerial)) {
-			LEDToggle(LEDBlueSel);
+			LEDToggle(ledBlueSel);
 			TxChar(TelemetrySerial, RxChar(GPSRxSerial));
 		}
 		if (serialAvailable(TelemetrySerial)) {
 			TxChar(GPSTxSerial, RxChar(TelemetrySerial));
-			LEDToggle(LEDRedSel);
+			LEDToggle(ledRedSel);
 		}
 	}
 } // ProcessGPSBypass
@@ -1059,7 +1059,7 @@ void ProcessRxPacket(uint8 s) {
 	PacketReceived = false;
 	PacketsReceived[RxPacketTag]++;
 
-	LEDOn(LEDBlueSel);
+	LEDOn(ledBlueSel);
 
 	switch (RxPacketTag) {
 	case UAVXRequestPacketTag:
@@ -1079,7 +1079,8 @@ void ProcessRxPacket(uint8 s) {
 				SendCalibrationPacket(s);
 				break;
 			case miscCalMag:
-				CalibrateHMC5XXX(s);
+				if (MagnetometerIsActive())
+					CalibrateHMC5XXX(s);
 				SendCalibrationPacket(s);
 				break;
 			case miscLB:
@@ -1149,7 +1150,7 @@ void ProcessRxPacket(uint8 s) {
 		break;
 	} // switch
 
-	LEDOff(LEDBlueSel);
+	LEDOff(ledBlueSel);
 
 } // ProcessRxPacket
 

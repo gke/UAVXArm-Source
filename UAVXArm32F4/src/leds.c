@@ -178,7 +178,7 @@ enum Colours { // RGB order
 
 uint8 CurrwsNoOfLeds = 0;
 
-#if (defined(USE_WS2812) || defined(USE_WS2812B)) && !defined(OMNIBUSF4V1_BOARD)
+#if (defined(USE_WS2812) || defined(USE_WS2812B)) && (defined(UAVXF4V3) || defined(UAVXF4V4))
 
 // Y/O, R, B, G
 const wsLEDStruct wsLEDColours[] = { { 0xff, 0x45, 0 }, { 0xff, 0, 0 }, { 0, 0,
@@ -489,7 +489,7 @@ boolean UsingExtLEDs = false;
 
 void BeeperOff(void) {
 	if (BeeperSel < MAX_GPIO_PINS)
-#if defined(V1_BOARD)
+#if defined(UAVXF4V1)
 		digitalWrite(&GPIOPins[BeeperSel], 1);
 #else
 		digitalWrite(&GPIOPins[BeeperSel], 0);
@@ -498,7 +498,7 @@ void BeeperOff(void) {
 
 void BeeperOn(void) {
 	if (BeeperSel < MAX_GPIO_PINS)
-#if defined(V1_BOARD)
+#if defined(UAVXF4V1)
 		digitalWrite(&GPIOPins[BeeperSel], 0);
 #else
 		digitalWrite(&GPIOPins[BeeperSel], 1);
@@ -512,7 +512,7 @@ void BeeperToggle(void) {
 
 boolean BeeperIsOn(void) {
 	if (BeeperSel < MAX_GPIO_PINS)
-#if defined(V1_BOARD)
+#if defined(UAVXF4V1)
 		return (digitalRead(&GPIOPins[BeeperSel]) == 0);
 #else
 		return (digitalRead(&GPIOPins[BeeperSel]) != 0);
@@ -523,7 +523,7 @@ boolean BeeperIsOn(void) {
 
 void LEDOn(uint8 l) {
 
-#if defined(V1_BOARD)
+#if defined(UAVXF4V1)
 	if (State == InFlight)
 	LEDsOff();
 	else

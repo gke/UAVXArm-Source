@@ -43,7 +43,7 @@ void CommissioningTest(uint8 s) {
 	int8 pattern[32];
 	uint8 info[32];
 
-#if defined(V4_BOARD)
+#if defined(UAVXF4V4)
 	for (i = 0; i < 4; i++)
 	spiSelect(i, false); // do it again but why is this being changed?
 #endif

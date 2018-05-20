@@ -54,10 +54,10 @@ enum ESCTypes {
 };
 
 enum PWMCamTags {
-#if defined(OMNIBUSF4V1_BOARD)
-	CamRollC = 5, CamPitchC = 5
+#if defined(UAVXF4V3) || defined(UAVXF4V4)
+CamRollC = 8, CamPitchC = 9
 #else
-	CamRollC = 8, CamPitchC = 9
+	CamRollC = 5, CamPitchC = 5	
 #endif
 };
 
@@ -104,14 +104,15 @@ enum PWMTagsAileron {
 	RightAileronC,
 	LeftAileronC,
 	ElevatorC,
-#if defined(OMNIBUSF4V1_BOARD) // TODO: zzz
-	LeftSpoilerC = 5, // only available for non-parallel Rx
-		RudderC = 5,
-		RightSpoilerC = 5
-#else
+#if defined(UAVXF4V3) || defined(UAVXF4V4)
 	LeftSpoilerC = 7, // only available for non-parallel Rx
 	RudderC = 8,
 	RightSpoilerC = 9
+#else
+	LeftSpoilerC = 5, // only available for non-parallel Rx
+		RudderC = 5,
+		RightSpoilerC = 5
+
 #endif
 };
 enum PWMTagsElevon {

@@ -21,7 +21,7 @@
 
 #include "UAVX.h"
 
-#if defined(V4_BOARD)
+#if !defined(UAVXF4V3)
 
 boolean WriteBlockExtMem(uint32 a, uint16 l, int8 *v) {
 
@@ -254,9 +254,7 @@ void InitExtMem(void) {
 
 	uS[MemReady] = uSClock();
 
-#if defined(V4_BOARD)
-	F.HaveExtMem = flashInit();
-#else
+#if defined(UAVXF4V3)
 	int8 v, SaveVal;
 
 	F.HaveExtMem = true;
@@ -267,15 +265,15 @@ void InitExtMem(void) {
 	v = ReadExtMem(MEM_SIZE - 1);
 	F.HaveExtMem = v == 0b01010101;
 	WriteBlockExtMem(MEM_SIZE - 1, 1, &SaveVal);
+#else
+	F.HaveExtMem = flashInit();
 #endif
 
 } // InitMem
 
 void ShowStatusExtMem(uint8 s) {
-#if defined(V4_BOARD)
+#if !defined(UAVXF4V3)
 	flashShowStatus(s);
-#else
-
 #endif
 
 } // ShowStatusMem

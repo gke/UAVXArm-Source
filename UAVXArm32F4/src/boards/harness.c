@@ -777,7 +777,7 @@ void InitComboPorts(void) {
 
 	CurrNoOfRCPins = 0;
 
-#if defined(V3_BOARD)
+#if defined(UAVXF4V3)
 
 	uint8 i;
 
@@ -811,7 +811,7 @@ void InitComboPorts(void) {
 		break;
 	} // switch
 
-#elif defined(V4_BOARD)
+#elif defined(UAVXF4V4)
 	uint8 i;
 
 	if (CurrComboPort2Config != RF_GPS_V4) {
@@ -880,7 +880,7 @@ void InitComboPorts(void) {
 	if (CurrwsNoOfLeds > 0) // temporary KLUDGE - need to remap gimbal function
 	CurrMaxPWMOutputs = 4;
 
-#elif defined(OMNIBUSF4V1_BOARD)
+#elif defined(OMNIBUSF4V1)
 
 	RxUsingSerial = !((CurrComboPort1Config == CPPM_GPS_M7to10)
 			|| (CurrComboPort1Config == FutabaSBus_M7to10));

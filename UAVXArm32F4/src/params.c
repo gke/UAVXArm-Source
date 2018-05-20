@@ -99,7 +99,7 @@ void DoConfigBits(void) {
 
 	UseGyroOS = ((P(Config2Bits) & UseGyroOSMask) != 0) && !F.Emulation;
 
-#if defined(V3_BOARD)
+#if defined(UAVXF4V3)
 	UseGyroOS = false; // 1KHz limited by i2c so probably not worth it
 	//SetP(Config2Bits, P(Config2Bits) & ~UseGyroOSMask);
 #endif
@@ -351,7 +351,7 @@ void UpdateParameters(void) {
 
 		CurrYawLPFHz = LimitP(YawLPFHz, 25, 255);
 		CurrServoLPFHz = LimitP(ServoLPFHz, 10, 100);
-#if defined(V3_BOARD)
+#if defined(UAVXF4V3)
 		SetP(OSLPFHz, Limit(P(OSLPFHz), 2, 5)); // 1KHz limited by i2c
 #else
 		SetP(OSLPFHz, Limit(P(OSLPFHz), 2, 40)); // 8KHz
@@ -632,7 +632,7 @@ void InitParameters(void) {
 
 	DoConfigBits();
 
-#if defined(V4_BOARD) // give ComboPort1 priority for GPS
+#if defined(UAVXF4V4) // give ComboPort1 priority for GPS
 	if ((CurrComboPort1Config == CPPM_GPS_M7to10) && (CurrComboPort2Config
 					== RF_GPS_V4)) {
 		CurrComboPort2Config = RF_V4;
