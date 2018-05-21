@@ -23,8 +23,29 @@
 #ifndef _harness_h
 #define _harness_h
 
+#define MAX_RC_INPUTS 8
+#define MAX_PWM_OUTPUTS 10
+
+enum GPIOSelectors {
+	BeeperSel, ArmedSel, LandingSel,
+	Aux1Sel, Aux2Sel, ProbeSel, InverterSel,
+	MPU6XXXIntSel, HMC5XXXRdySel, MAX_GPIO_PINS
+};
+
+
+enum ADCSelectors {
+	RangefinderAnalogSel,
+	BattCurrentAnalogSel,
+	BattVoltsAnalogSel,
+	// Unused
+	RollAnalogSel,
+	PitchAnalogSel,
+	YawAnalogSel,
+	MAX_ANALOG_CHANNELS
+};
+
 enum {
-	imuSel, baroSel, magSel, memSel, gpsSel, rfSel, escSel, flowSel, assel
+	imuSel, baroSel, magSel, memSel, gpsSel, rfSel, escSel, flowSel, assel, maxDevSel
 };
 
 enum {mpu6000IMU, mpu6050IMU, noIMU};
@@ -38,7 +59,7 @@ enum GPIOSelectorsBF {
 
 
 enum LEDSelectors {
-	ledYellowSel, ledRedSel, ledBlueSel, ledGreenSel,
+	ledYellowSel, ledRedSel, ledBlueSel, ledGreenSel,MAX_LED_PINS
 };
 
 typedef struct {
@@ -52,6 +73,7 @@ typedef struct {
 extern TIM_ICInitTypeDef TIM_ICInitStructure;
 
 typedef struct {
+	boolean Used;
 	GPIO_TypeDef* Port;
 	uint16 Pin;
 	uint16 PinSource;
@@ -130,6 +152,17 @@ extern PinDef SPISelectPins[];
 
 extern boolean spiDevUsed[];
 
+extern uint8 CurrNoOfRCPins;
+
+extern const uint8 currIMUType;
+extern const uint8 currBaroType;
+extern const uint8 currMagType;
+extern const uint8 currGimbalType;
+
+
+extern uint8 GPSRxSerial, GPSTxSerial, RCSerial, TelemetrySerial;
+extern boolean RxUsingSerial;
+
 //extern void pinMode(PinDef * d, GPIOMode_TypeDef m, GPIOPuPd_TypeDef PuPd);
 //extern void pinInit(PinDef * d);
 
@@ -164,7 +197,9 @@ extern AnalogPinDef AnalogPins[];
 extern PinDef LEDPins[];
 extern PinDef GPIOPins[];
 extern PinDef PWMPins[];
+extern PinDef SPISelectPins[];
 extern SerialPortDef SerialPorts[];
+extern boolean usartUsed[];
 
 const uint8 currIMUType;
 const uint8 currBaroType;
@@ -197,7 +232,7 @@ extern const uint8 i2cMap[];
 #define MAX_SPI_PORTS 3
 #define MAX_I2C_PORTS 2
 
-enum {Serial0, Serial1, Serial2, SoftSerialTx, USBSerial };
+enum {Usart1, Usart2, Usart3, Uart4, SoftSerialTx, USBSerial };
 
 // Drives
 
@@ -242,181 +277,8 @@ enum {Serial0, Serial1, Serial2, SoftSerialTx, USBSerial };
 #define PWM_NEUTRAL		(1500)
 #define PWM_MAX_SERVO	(2200)
 
-//________________________________________________________________________________________________
+#define MAX_SERIAL_PORTS 4
 
-// V4 Nano Board using SPI sensors
-
-#if defined(UAVXF4V4)
-
-#define MAX_RC_INPS 8
-#define ANALOG_CHANNELS 3
-#define MAX_GPIO_PINS 8
-#define MAX_SPI_DEVICES 4
-#define MAX_SERIAL_PORTS 3 // plus USB and Soft USART
-#define MAX_PWM_OUTPUTS 10
-#define MAX_LEDS 4
-
-enum GPIOSelectors {
-	BeeperSel, ArmedSel, LandingSel,
-	Aux1Sel, Aux2Sel, ProbeSel, Aux4Sel,
-	imuIntSel, magRdySel,
-};
-
-enum ADCSelectors {
-	RangefinderAnalogSel,
-	BattCurrentAnalogSel,
-	BattVoltsAnalogSel,
-	// Unused
-	RollAnalogSel,
-	PitchAnalogSel,
-	YawAnalogSel
-};
-
-//________________________________________________________________________________________________
-
-// V3 Nano Board using I2C sensors
-
-#elif defined(UAVXF4V3)
-
-#define MAX_RC_INPS 8
-#define ANALOG_CHANNELS 6
-#define MAX_GPIO_PINS 6
-#define MAX_SPI_DEVICES 0
-#define MAX_SERIAL_PORTS 2
-#define MAX_PWM_OUTPUTS 10
-#define MAX_LEDS 4
-
-enum GPIOSelectors {
-	BeeperSel, ArmedSel, LandingSel,
-	Aux1Sel, Aux2Sel, ProbeSel, Aux4Sel,
-	MPU6XXXIntSel, HMC5XXXRdySel,
-};
-
-enum ADCSelectors {
-	RangefinderAnalogSel,
-	BattCurrentAnalogSel,
-	BattVoltsAnalogSel,
-	// Unused
-	RollAnalogSel,
-	PitchAnalogSel,
-	YawAnalogSel
-};
-
-//________________________________________________________________________________________________
-
-// V2 Board designed to also act as a UAVP adapter
-
-#elif defined(UAVXF4V2)
-
-#define MAX_RC_INPS 8
-#define ANALOG_CHANNELS 6
-#define MAX_GPIO_PINS 6
-#define MAX_SPI_DEVICES 1
-#define MAX_SERIAL_PORTS 2
-#define MAX_PWM_OUTPUTS 10
-#define MAX_LEDS 4
-
-enum GPIOSelectors {
-	BeeperSel, ArmedSel, LandingSel,
-	Aux1Sel, Aux2Sel, ProbeSel, Aux4Sel,
-	MPU6XXXIntSel, HMC5XXXRdySel,
-};
-
-enum ADCSelectors {
-	RangefinderAnalogSel,
-	BattCurrentAnalogSel,
-	BattVoltsAnalogSel,
-	RollAnalogSel,
-	PitchAnalogSel,
-	YawAnalogSel
-};
-
-//________________________________________________________________________________________________
-
-// V2 Board with F1 processor designed to also act as a UAVP adapter
-
-#elif defined(UAVXF1V2)
-
-#define MAX_RC_INPS 8
-#define ANALOG_CHANNELS 6
-#define MAX_GPIO_PINS 6
-#define MAX_SPI_DEVICES 1
-#define MAX_SERIAL_PORTS 2
-#define MAX_PWM_OUTPUTS 10
-#define MAX_LEDS 4
-
-enum GPIOSelectors {
-	BeeperSel, ArmedSel, LandingSel,
-	Aux1Sel, Aux2Sel, ProbeSel, Aux4Sel,
-	MPU6XXXIntSel, HMC5XXXRdySel,
-};
-
-enum ADCSelectors {
-	RangefinderAnalogSel,
-	BattCurrentAnalogSel,
-	BattVoltsAnalogSel,
-	RollAnalogSel,
-	PitchAnalogSel,
-	YawAnalogSel
-};
-
-//________________________________________________________________________________________________
-
-// OmniBus Board (bare bones  - no baro, mag, rf etc.)
-
-#elif defined(OMNIBUSF4V1)
-
-#define INCLUDE_USB
-
-#define USE_USB_OTG_FS
-#define USB_OTG_FS_CORE
-#define USE_EMBEDDED_PHY
-#define VBUS_SENSING_ENABLED
-#define USE_DEVICE_MODE
-
-#define USB_DETECT_PIN //  you need to be able to force Windows to release USB
-
-#define USB_DISCONNECT_GPIO    GPIOA
-#define USB_DISCONNECT_PIN     GPIO_Pin_12
-
-// commonly PA8 or PC5
-#define VBUS_GPIO		GPIOC
-#define VBUS_PIN		GPIO_Pin_5
-
-#define MAX_RC_INPS 0
-#define ANALOG_CHANNELS 2
-#define MAX_GPIO_PINS 6
-#define MAX_SPI_DEVICES 1
-#define MAX_SERIAL_PORTS 2 // plus USB and Soft USART
-#define MAX_PWM_OUTPUTS 6 // 10
-#define MAX_LEDS 1
-
-enum GPIOSelectors {
-	BeeperSel, InverterSel, MPU6XXXIntSel, ProbeSel,
-	// unused
-	Aux2Sel,
-	Aux4Sel,
-	LandingSel,
-	HMC5XXXRdySel
-};
-
-enum ADCSelectors {
-	BattCurrentAnalogSel,
-	BattVoltsAnalogSel,
-	// unused returns 0
-	RangefinderAnalogSel,
-	RollAnalogSel,
-	PitchAnalogSel,
-	YawAnalogSel
-};
-
-
-
-#else
-
-// mbed
-
-#endif
-
+void InitTarget(void);
 
 #endif

@@ -90,7 +90,7 @@ void DoTesting(void) {
 
 #if defined(USB_TESTING)
 
-	usbTxString("starting USB Test (! to force restart)\n");
+	USBTxString("starting USB Test (! to force restart)\n");
 
 	while (true) {
 		if (serialAvailable(USBSerial)) {
@@ -240,6 +240,7 @@ int main() {
 	static uint32 LastUpdateuS = 0;
 
 	InitClocks();
+	Delay1mS(1000);
 	USBGenerateDisconnectPulse();
 
 	InitMisc();
@@ -247,10 +248,9 @@ int main() {
 	InitParameters();
 	InitHarness();
 
-	USBConnect();
-
 	InitAnalog();
 	InitLEDs();
+
 	InitExtMem();
 	InitPollRxPacket();
 
@@ -303,13 +303,13 @@ int main() {
 			FirstIMU = true;
 			do {
 				if (MPU6XXXReady()) {
-					Probe(1);
+				//	Probe(1);
 					if (FirstIMU)
 						ReadFilteredGyroAndAcc();
 					else
-						ReadFilteredGyro();
+						ReadGyro();
 					FirstIMU = false;
-					Probe(0);
+				//	Probe(0);
 				}
 
 				DoHouseKeeping();
@@ -323,7 +323,7 @@ int main() {
 
 		if (UseGyroOS || (NowuS >= uS[NextCycleUpdate])) {
 
-			Probe(1);
+			//Probe(1);
 
 			UpdateDrives(); // from previous cycle - one cycle lag minimise jitter
 
@@ -401,8 +401,10 @@ int main() {
 				break;
 			case Warmup:
 
+#if defined(HAVE_CURRENT_SENSOR)
 				BatteryCurrentADCZero = LPF1(BatteryCurrentADCZero, analogRead(
-						BattCurrentAnalogSel), 0.5f);
+								BattCurrentAnalogSel), 0.5f);
+#endif
 
 				if (mSClock() > mS[WarmupTimeout]) {
 					UbxSaveConfig(GPSTxSerial); //does this save ephemeris stuff?
@@ -577,7 +579,7 @@ int main() {
 			setStat(UtilisationS, State == InFlight ? ((uSClock() - NowuS)
 					* 100.0f) / CurrPIDCycleuS : 0);
 
-			Probe(0);
+			//Probe(0);
 
 			if ((CurrTelType == UAVXFastRawIMUTelemetry) && (State == InFlight)) {
 				BlackBoxEnabled = true;

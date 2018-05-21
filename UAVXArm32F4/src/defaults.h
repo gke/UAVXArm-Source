@@ -63,7 +63,7 @@ const ParamStruct_t DefaultParams[] = { //
 				{ AltVelKd, 0, 255, { 0, 0, 0, 0 } }, //  14
 
 				{ VRSDescentRate, 0, 255, { 30, 30, 30, 30} }, // 104
-				{ AltLPF, 0, 255, { 10, 10, 10, 10 } }, //  *0.1 58
+				{ AltLPF, 0, 255, { 50, 50, 50, 50 } }, //  *0.1 58
 
 				{ RFSensorType, 0, 255, { UnknownRF, UnknownRF, UnknownRF,
 						UnknownRF } }, // 09

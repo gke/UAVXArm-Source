@@ -140,7 +140,7 @@ void RCParallelISR(TIM_TypeDef *tim) {
 
 	// scan ALL RC inputs as the channel pulses arrive
 	// in arbitrary order depending on Rx
-	for (c = 0; c < MAX_RC_INPS; c++) {
+	for (c = 0; c < MAX_RC_INPUTS; c++) {
 		u = &RCPins[c].Timer;
 
 		if ((u->Tim == tim) && (TIM_GetITStatus(tim, u->CC) == SET)) {

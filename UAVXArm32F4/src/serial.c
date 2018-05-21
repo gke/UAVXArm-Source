@@ -22,8 +22,6 @@
 
 #include "UAVX.h"
 
-uint8 GPSRxSerial, GPSTxSerial, RCSerial, TelemetrySerial;
-
 // Rewritten from AQ original Copyright © 2011 Bill Nesbitt
 
 volatile uint8 TxQ[MAX_SERIAL_PORTS][SERIAL_BUFFER_SIZE] __attribute__((aligned(4)));
@@ -218,21 +216,21 @@ void serialISR(uint8 s) {
 } // serialISR
 
 void SoftTxChar(uint8 ch) {
-	// MUST NOT BE USED IN FLIGHT
 	uint8 b;
 	uint16 d;
 
-	d = (uint16) (1000000.0f / SoftUSARTBaudRate + 0.5f); // expensive!
+	if (!Armed()) { // MUST NOT BE USED IN FLIGHT
+		d = (uint16) (1000000.0f / SoftUSARTBaudRate + 0.5f); // expensive!
 
-	digitalWrite(&GPIOPins[Aux2Sel], 0);
-	Delay1uS(d);
-	for (b = 0; b < 8; b++) {
-		digitalWrite(&GPIOPins[Aux2Sel], (ch & 1) != 0);
+		digitalWrite(&GPIOPins[Aux2Sel], 0);
 		Delay1uS(d);
-		ch = ch >> 1;
+		for (b = 0; b < 8; b++) {
+			digitalWrite(&GPIOPins[Aux2Sel], (ch & 1) != 0);
+			Delay1uS(d);
+			ch = ch >> 1;
+		}
+		digitalWrite(&GPIOPins[Aux2Sel], 1);
+		Delay1uS(d);
 	}
-	digitalWrite(&GPIOPins[Aux2Sel], 1);
-	Delay1uS(d);
-
 } // SoftTxChar
 

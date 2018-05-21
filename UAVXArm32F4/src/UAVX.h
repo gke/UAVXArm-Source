@@ -54,8 +54,6 @@
 
 #define VOLT_MEASUREMENT_ONBOARD
 
-#define HAVE_CURRENT_SENSOR
-
 //__________________
 
 

@@ -22,10 +22,6 @@
 #ifndef _serial_h
 #define _serial_h
 
-extern uint8 GPSRxSerial, GPSTxSerial, RCSerial, TelemetrySerial;
-
-extern boolean RxUsingSerial;
-
 #define SERIAL_BUFFER_SIZE    1024
 
 extern volatile uint8 TxQ[][SERIAL_BUFFER_SIZE];

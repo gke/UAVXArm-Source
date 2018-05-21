@@ -302,8 +302,6 @@ void MadgwickMARGUpdate(real32 gx, real32 gy, real32 gz, real32 ax, real32 ay,
 	// default KpAccBase is 0.2 paper says 0.041
 	Beta = State == InFlight ? BetaBase * AccConfidence : BetaBase * 2.5f;
 
-	GetMagnetometer();
-
 	if (F.NewMagValues) {
 		F.NewMagValues = false;
 
@@ -463,8 +461,6 @@ void MadgwickUpdate(boolean AHRS, real32 gx, real32 gy, real32 gz, real32 ax,
 
 	if (AHRS) {
 
-		GetMagnetometer();
-
 		if (F.NewMagValues) { // no compensation for latency
 			F.NewMagValues = false;
 
@@ -539,24 +535,22 @@ void UpdateInertial(void) {
 	if (F.Emulation && ((State == InFlight) || (State == Launching)))
 		DoEmulation(); // produces ROC, Altitude etc.
 	else {
-		Probe(1);
 		if (!UseGyroOS)
 			ReadFilteredGyroAndAcc();
 		ScaleRateAndAcc();
-		Probe(0);
 	}
-
-
 
 	if (CurrStateEst == MadgwickMARG) {
+		GetMagnetometer();
 		MadgwickMARGUpdate(Rate[Roll], Rate[Pitch], Rate[Yaw], Acc[BF],
 				Acc[LR], Acc[UD], Mag[X], Mag[Y], Mag[Z]);
-	}
-	else {
-		// IMU = 41uS
-		MadgwickUpdate(CurrStateEst == MadgwickAHRS, Rate[Roll], Rate[Pitch],
-				Rate[Yaw], Acc[BF], Acc[LR], Acc[UD], Mag[X], Mag[Y], Mag[Z]);
-	}
+	} else if (CurrStateEst == MadgwickAHRS) {
+		GetMagnetometer();
+		MadgwickUpdate(true, Rate[Roll], Rate[Pitch], Rate[Yaw], Acc[BF],
+				Acc[LR], Acc[UD], Mag[X], Mag[Y], Mag[Z]);
+	} else
+		MadgwickUpdate(false, Rate[Roll], Rate[Pitch], Rate[Yaw], Acc[BF],
+				Acc[LR], Acc[UD], Mag[X], Mag[Y], Mag[Z]);
 
 	DoControl();
 

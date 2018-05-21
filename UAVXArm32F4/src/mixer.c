@@ -312,7 +312,7 @@ boolean RescaleMix(real32 CurrThrottlePW) {
 	AvailableSwing
 			= Min(OUT_MAXIMUM - CurrThrottlePW, CurrThrottlePW - THR_START_PW);
 
-	F.Saturation = DemandSwing > AvailableSwing;
+	F.Saturation = Armed() && (DemandSwing > AvailableSwing);
 
 	if (F.Saturation) {
 
@@ -366,7 +366,6 @@ void DoMulticopterMix(void) {
 
 void MixAndLimitCam(void) {
 
-#if defined(UAVXF4V3) || defined(UAVXF4V4)
 	real32 NewCamPitch, NewCamRoll;
 
 	if (!UsingDCMotors && (currGimbalType == servoGimbal)) {
@@ -390,7 +389,7 @@ void MixAndLimitCam(void) {
 			PW[CamPitchC] = NewCamPitch;
 		}
 	}
-#endif
+
 } // MixAndLimitCam
 
 void InitServoSense(void) {

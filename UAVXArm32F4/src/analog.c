@@ -22,11 +22,11 @@
 
 #include "UAVX.h"
 
-volatile uint16 ADCValues[ANALOG_CHANNELS]  __attribute__((aligned(4)));
+volatile uint16 ADCValues[MAX_ANALOG_CHANNELS]  __attribute__((aligned(4)));
 
 real32 analogRead(uint8 c) {
 
-	if (c < ANALOG_CHANNELS)
+	if (AnalogPins[c].Used)
 		return ((real32)ADCValues[c] * ADC_SCALE);
 	else
 		return (0);
@@ -36,7 +36,7 @@ real32 analogRead(uint8 c) {
 void InitAnalog(void) {
 	int32 a;
 
-	for ( a = 0; a < ANALOG_CHANNELS; a++)
+	for ( a = 0; a < MAX_ANALOG_CHANNELS; a++)
 		ADCValues[a] = 0;
 
 } // InitAnalog

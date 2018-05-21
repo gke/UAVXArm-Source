@@ -1185,6 +1185,7 @@ void UseUAVXTelemetry(uint8 s) {
 			SendCalibrationPacket(s);
 	}
 	SendFlight = !SendFlight;
+
 } // UseUAVXTelemetry
 
 void CheckTelemetry(uint8 s) {
@@ -1205,7 +1206,7 @@ void CheckTelemetry(uint8 s) {
 		SetTelemetryBaudRate(s, 115200);
 		if (NowmS >= mS[TelemetryUpdate]) {
 			mSTimer(NowmS, TelemetryUpdate, UAVX_TEL_INTERVAL_MS);
-			UseUAVXTelemetry(s);
+            UseUAVXTelemetry(s);
 		}
 	} else
 		switch (CurrTelType) {

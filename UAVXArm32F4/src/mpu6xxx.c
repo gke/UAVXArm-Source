@@ -65,7 +65,7 @@ void ComputeMPU6XXXTemperature(int16 T) {
 } // ComputeMPU6XXXTemperature
 
 
-void ReadFilteredGyro(void) { // Roll Right +, Pitch Up +, Yaw ACW +
+void ReadGyro(void) { // Roll Right +, Pitch Up +, Yaw ACW +
 	static uint32 LastUpdateuS = 0;
 	real32 GyrodT;
 	uint32 NowuS;
@@ -73,7 +73,9 @@ void ReadFilteredGyro(void) { // Roll Right +, Pitch Up +, Yaw ACW +
 	static int16 BP[3] = { 0, };
 	idx a;
 
+	Probe(1);
 	sioReadBlocki16vataddr(SIOIMU, MPU_ID, MPU_RA_GYRO_XOUT_H, 3, B, true);
+	Probe(0);
 
 	NowuS = uSClock();
 	GyrodT = (NowuS - LastUpdateuS) * 0.000001f;
@@ -98,83 +100,43 @@ void ReadFilteredGyro(void) { // Roll Right +, Pitch Up +, Yaw ACW +
 		RawGyro[a] = OSF(&OSGyroF[a], (real32) B[a], GyrodT);
 	}
 
-} // ReadFilteredGyro
+} // ReadGyro
 
 
-void ReadFilteredAcc(void) { // Roll Right +, Pitch Up +, Yaw ACW +
-	static uint32 LastUpdateuS = 0;
-	real32 AccdT;
-	uint32 NowuS;
+void ReadAcc(void) { // Roll Right +, Pitch Up +, Yaw ACW +
 	int16 B[4];
 	idx a;
 
 	sioReadBlocki16vataddr(SIOIMU, MPU_ID, MPU_RA_ACC_XOUT_H, 4, B, true);
 
-	NowuS = uSClock();
-	AccdT = (NowuS - LastUpdateuS) * 0.000001f;
-	LastUpdateuS = NowuS;
-
-	for (a = 0; a < 4; a++)
+	for (a = X; a <= Z; a++) {
 		ShadowRawIMU[a] = B[a];
-
+		RawAcc[a] = (real32) B[a];
+	}
 
 	ComputeMPU6XXXTemperature(B[3]);
 
-} // ReadRawAcc
+} // ReadAcc
 
 void ReadFilteredGyroAndAcc(void) {
+	static uint32 LastUpdateuS = 0;
+	uint32_t NowuS;
+	real32 dT;
 	uint8 a;
 
-	ReadFilteredGyro();
-	ReadFilteredAcc();
+	NowuS = uSClock();
+	dT = (NowuS - LastUpdateuS) * 0.000001f;
+	LastUpdateuS = NowuS;
+
+	ReadGyro();
+	ReadAcc();
+
+	for (a = X; a <= Z; a++) {
+		RawGyro[a] = LPFn(&GyroF[a], RawGyro[a], dT);
+		RawAcc[a] = LPFn(&AccF[a], RawAcc[a], dT);
+	}
 
 } //ReadFilteredGyroAndAcc
-
-
-void ReadAccAndGyro(void) { // Roll Right +, Pitch Up +, Yaw ACW +
-	int16 B[7];
-	idx a;
-	static int16 BP[7] = { 0, 0, 0, 0, 0, 0, 0 };
-
-	sioReadBlocki16vataddr(SIOIMU, MPU_ID, MPU_RA_ACC_XOUT_H, 7, B, true);
-
-	mpu6xxxLastUpdateuS = uSClock();
-	mpuReads++;
-
-	for (a = 0; a < 7; a++)
-		ShadowRawIMU[a] = B[a];
-
-	if ((CurrAttSensorType == InfraRedAngle) && !IsMulticopter) {
-
-		// scale reading for angle arcsin(adc)
-
-		// z axis computed from x,y?
-
-	} else {
-		RawAcc[0] = (real32) B[0];
-		RawAcc[1] = (real32) B[1];
-		RawAcc[2] = (real32) B[2];
-	}
-
-	ComputeMPU6XXXTemperature(B[3]);
-
-	switch (CurrAttSensorType) {
-	case InfraRedAngle:
-	case UAVXArm32IMU:
-	case FreeIMU:
-		RawGyro[X] = (real32) B[4];
-		RawGyro[Y] = (real32) B[5];
-		RawGyro[Z] = (real32) B[6];
-		break;
-	default: // MLX90609Gyro, ADXRS150Gyro, LY530Gyro, ADXRS300Gyro,
-		RawGyro[Pitch] = analogRead(PitchAnalogSel);
-		RawGyro[Roll] = analogRead(RollAnalogSel);
-		RawGyro[Yaw] = analogRead(YawAnalogSel);
-	}
-
-	//	CurrAttSensorType == InfraRed
-
-} // ReadAccAndGyro
 
 
 void CalibrateAccAndGyro(uint8 s) {
@@ -202,10 +164,10 @@ void CalibrateAccAndGyro(uint8 s) {
 	ts = 0;
 	ThresholdT = -100.0f;
 	do {
-		ReadAccAndGyro();
+		ReadFilteredGyroAndAcc();
 		if (MPU6XXXTemperature > ThresholdT) {
 			for (i = 0; i < Samples; i++) {
-				ReadAccAndGyro();
+				ReadFilteredGyroAndAcc();
 				t[ts] += MPU6XXXTemperature;
 				RawAcc[Z] -= MPU_1G;
 				for (c = X; c <= Z; c++) {
@@ -310,7 +272,6 @@ void InitMPU6XXX(void) {
 		sioWriteataddr(SIOIMU, MPU_ID, MPU_RA_ACC_CONFIG2,
 				(DisableAccDLPF << 3) & MPUDLPFMask[CurrAccLPFSel]);
 	} else {
-
 		// Enable I2C master mode
 		uint8 v = sioReadataddr(SIOIMU, MPU_ID, MPU_RA_USER_CTRL);
 		bitClear(v, MPU_RA_USERCTRL_I2C_MST_EN_BIT);
@@ -320,7 +281,6 @@ void InitMPU6XXX(void) {
 		v = sioReadataddr(SIOIMU, MPU_ID, MPU_RA_INT_PIN_CFG);
 		bitSet(v, MPU_RA_INTCFG_I2C_BYPASS_EN_BIT);
 		sioWrite(SIOIMU, MPU_ID, MPU_RA_INT_PIN_CFG, v);
-
 	}
 
 	Delay1mS(100);

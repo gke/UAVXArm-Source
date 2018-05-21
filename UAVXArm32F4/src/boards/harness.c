@@ -21,34 +21,89 @@
 
 #include "UAVX.h"
 
-__attribute__((always_inline))                   inline boolean digitalRead(PinDef * d) {
-	return GPIO_ReadInputDataBit(d->Port, d->Pin);
+I2CPortDef I2CPorts[MAX_I2C_PORTS] = { //
+		{ false, I2C1, 1, GPIOB, GPIO_Pin_6, GPIO_PinSource6, GPIOB,
+				GPIO_Pin_7, GPIO_PinSource7, GPIO_AF_I2C1 },//
+				{ false, I2C2, 2, GPIOB, GPIO_Pin_10, GPIO_PinSource10, GPIOB,
+						GPIO_Pin_11, GPIO_PinSource11, GPIO_AF_I2C2 } };
+
+SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
+		{ false, SPI1, GPIOA, { { GPIO_Pin_5, GPIO_PinSource5 }, { GPIO_Pin_6,
+				GPIO_PinSource6 }, { GPIO_Pin_7, GPIO_PinSource7 } } }, //
+				{ false, SPI2, GPIOB, { { GPIO_Pin_13, GPIO_PinSource13 }, {
+						GPIO_Pin_14, GPIO_PinSource14 }, { GPIO_Pin_15,
+						GPIO_PinSource15 } } }, //
+				{ false, SPI3, GPIOC, { { GPIO_Pin_10, GPIO_PinSource10 }, {
+						GPIO_Pin_11, GPIO_PinSource11 }, { GPIO_Pin_12,
+						GPIO_PinSource12 } } } };
+
+SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
+		{ true, USART1, GPIO_AF_USART1, GPIOA, GPIO_Pin_9, GPIO_PinSource9,
+				GPIO_Pin_10, GPIO_PinSource10, true, USART1_IRQn, false,
+				DMA_Channel_4, DMA2_Stream7, DMA2_Stream7_IRQn, DMA2_Stream5,
+				115200 }, //
+				{ true, USART2, GPIO_AF_USART2, GPIOA, GPIO_Pin_2,
+						GPIO_PinSource2, GPIO_Pin_3, GPIO_PinSource3, true,
+						USART2_IRQn, false, DMA_Channel_4, DMA1_Stream6,
+						DMA1_Stream6_IRQn, DMA1_Stream5, 9600 }, //
+#if defined(DISCOVERYF4)
+				{	true, USART3, GPIO_AF_USART3, GPIOD, GPIO_Pin_8,
+					GPIO_PinSource8, GPIO_Pin_9, GPIO_PinSource9, true,
+					USART3_IRQn, false, DMA_Channel_4, DMA1_Stream3,
+					DMA1_Stream3_IRQn, DMA1_Stream1, 115200}, //
+
+#else
+				{ true, USART3, GPIO_AF_USART3, GPIOB, GPIO_Pin_10,
+						GPIO_PinSource10, GPIO_Pin_11, GPIO_PinSource11, true,
+						USART3_IRQn, false, DMA_Channel_4, DMA1_Stream3,
+						DMA1_Stream3_IRQn, DMA1_Stream1, 115200 }, //
+#endif
+				{ true, UART4, GPIO_AF_UART4, GPIOC, GPIO_Pin_10,
+						GPIO_PinSource10, GPIO_Pin_11, GPIO_PinSource11, true,
+						UART4_IRQn, false, DMA_Channel_4, DMA1_Stream4,
+						DMA1_Stream4_IRQn, DMA1_Stream2, 115200 } //
+		};
+
+uint8 CurrNoOfRCPins;
+
+#include "./targets/targets.h"
+
+__attribute__((always_inline))                          inline boolean digitalRead(PinDef * d) {
+	if (d->Used)
+		return GPIO_ReadInputDataBit(d->Port, d->Pin);
+	else
+		return (0);
 } // digitalRead
 
 __attribute__((always_inline)) inline void digitalWrite(PinDef * d, uint8 m) {
 
+	//zzz	if (d->Used) {
 	if (m)
 		d->Port->BSRRL = d->Pin;
 	else
 		d->Port->BSRRH = d->Pin;
+	//	}
 
 } // digitalWrite
 
 __attribute__((always_inline)) inline void digitalToggle(PinDef * d) {
-	d->Port->ODR ^= d->Pin;
+	if (d->Used)
+		d->Port->ODR ^= d->Pin;
 } // digitalToggle
 
 
 void pinInit(PinDef * d) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 
-	GPIO_StructInit(&GPIO_InitStructure);
-	GPIO_InitStructure.GPIO_Pin = d->Pin;
-	GPIO_InitStructure.GPIO_Mode = d->Mode;
-	GPIO_InitStructure.GPIO_OType = d->OType;
-	GPIO_InitStructure.GPIO_PuPd = d->PuPd;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(d->Port, &GPIO_InitStructure);
+	if (d->Used) {
+		GPIO_StructInit(&GPIO_InitStructure);
+		GPIO_InitStructure.GPIO_Pin = d->Pin;
+		GPIO_InitStructure.GPIO_Mode = d->Mode;
+		GPIO_InitStructure.GPIO_OType = d->OType;
+		GPIO_InitStructure.GPIO_PuPd = d->PuPd;
+		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+		GPIO_Init(d->Port, &GPIO_InitStructure);
+	}
 } // pinInit
 
 
@@ -58,29 +113,32 @@ void pinInitMode(PinDef * d, boolean IsInput) {
 	GPIO_StructInit(&GPIO_InitStructure);
 	GPIO_InitStructure.GPIO_Pin = d->Pin;
 
-	if (IsInput)
-		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-	else
-		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+	if (d->Used) {
+		if (IsInput)
+			GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+		else
+			GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
 
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-	GPIO_Init(d->Port, &GPIO_InitStructure);
-
+		GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+		GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+		GPIO_Init(d->Port, &GPIO_InitStructure);
+	}
 } // pinInitMode
 
 
 void pinInitOutput(PinDef * d) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 
-	GPIO_StructInit(&GPIO_InitStructure);
-	GPIO_InitStructure.GPIO_Pin = d->Pin;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-	GPIO_InitStructure.GPIO_OType = d->OType;
-	GPIO_InitStructure.GPIO_PuPd = d->PuPd;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(d->Port, &GPIO_InitStructure);
+	if (d->Used) {
+		GPIO_StructInit(&GPIO_InitStructure);
+		GPIO_InitStructure.GPIO_Pin = d->Pin;
+		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+		GPIO_InitStructure.GPIO_OType = d->OType;
+		GPIO_InitStructure.GPIO_PuPd = d->PuPd;
+		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+		GPIO_Init(d->Port, &GPIO_InitStructure);
+	}
 } // pinInitOutput
 
 void NVICDisable(IRQn_Type ISR) {
@@ -104,10 +162,11 @@ void InitRCPins(uint8 PPMInputs) {
 	uint8 i;
 	PinDef * u;
 
-	for (i = 0; i < PPMInputs; i++) {
-		TIM_CtrlPWMOutputs(RCPins[i].Timer.Tim, DISABLE);
-		TIM_DeInit(RCPins[i].Timer.Tim);
-	}
+	for (i = 0; i < MAX_RC_INPUTS; i++)
+		if (RCPins[i].Used) {
+			TIM_CtrlPWMOutputs(RCPins[i].Timer.Tim, DISABLE);
+			TIM_DeInit(RCPins[i].Timer.Tim);
+		}
 
 	TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
 	TIM_OCStructInit(&TIM_OCInitStructure);
@@ -123,29 +182,31 @@ void InitRCPins(uint8 PPMInputs) {
 	TIM_TimeBaseStructure.TIM_Prescaler = (TIMER_PS >> 1) - 1;
 
 	// Pin specific
-	for (i = 0; i < PPMInputs; i++) {
-		u = &RCPins[i];
-
-		pinInit(u);
-
-		GPIO_PinAFConfig(u->Port, u->PinSource, u->Timer.TimAF);
-
-		NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-		NVIC_InitStructure.NVIC_IRQChannel = u->PinISR;
-		NVIC_Init(&NVIC_InitStructure);
-
-		TIM_TimeBaseInit(u->Timer.Tim, &TIM_TimeBaseStructure);
-
-		TIM_ICStructInit(&TIM_ICInitStructure);
-		TIM_ICInitStructure.TIM_Channel = u->Timer.Channel;
-		TIM_ICInit(u->Timer.Tim, &TIM_ICInitStructure);
-
-		//u->Timer.Tim->DIER |= u->Timer.CC; // TIM_ITConfig ENABLE Channel
-		TIM_ITConfig(u->Timer.Tim, u->Timer.CC, ENABLE);
-
-	}
 	for (i = 0; i < PPMInputs; i++)
-		TIM_Cmd(RCPins[i].Timer.Tim, ENABLE);
+		if (RCPins[i].Used) {
+			u = &RCPins[i];
+
+			pinInit(u);
+
+			GPIO_PinAFConfig(u->Port, u->PinSource, u->Timer.TimAF);
+
+			NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+			NVIC_InitStructure.NVIC_IRQChannel = u->PinISR;
+			NVIC_Init(&NVIC_InitStructure);
+
+			TIM_TimeBaseInit(u->Timer.Tim, &TIM_TimeBaseStructure);
+
+			TIM_ICStructInit(&TIM_ICInitStructure);
+			TIM_ICInitStructure.TIM_Channel = u->Timer.Channel;
+			TIM_ICInit(u->Timer.Tim, &TIM_ICInitStructure);
+
+			//u->Timer.Tim->DIER |= u->Timer.CC; // TIM_ITConfig ENABLE Channel
+			TIM_ITConfig(u->Timer.Tim, u->Timer.CC, ENABLE);
+
+		}
+	for (i = 0; i < PPMInputs; i++)
+		if (RCPins[i].Used)
+			TIM_Cmd(RCPins[i].Timer.Tim, ENABLE);
 
 } // InitRCPins
 
@@ -670,7 +731,7 @@ void InitAnalogPorts(void) {
 	DMA_InitTypeDef DMA_InitStructure;
 	AnalogPinDef * u, *ux;
 
-	if (ANALOG_CHANNELS > 0) {
+	if (MAX_ANALOG_CHANNELS > 0) {
 		// all pins already configured as AIN
 
 		ux = &AnalogPins[0];
@@ -681,7 +742,7 @@ void InitAnalogPorts(void) {
 
 		DMA_StructInit(&DMA_InitStructure);
 		DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32) &ux->ADCx->DR;
-		DMA_InitStructure.DMA_BufferSize = ANALOG_CHANNELS;
+		DMA_InitStructure.DMA_BufferSize = MAX_ANALOG_CHANNELS;
 		DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
 		DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
 		DMA_InitStructure.DMA_PeripheralDataSize
@@ -702,15 +763,16 @@ void InitAnalogPorts(void) {
 		ADC_StructInit(&ADC_InitStructure);
 		ADC_InitStructure.ADC_ContinuousConvMode = ENABLE;
 		ADC_InitStructure.ADC_ScanConvMode = ENABLE;
-		ADC_InitStructure.ADC_NbrOfConversion = ANALOG_CHANNELS;
+		ADC_InitStructure.ADC_NbrOfConversion = MAX_ANALOG_CHANNELS;
 		ADC_Init(ux->ADCx, &ADC_InitStructure);
 
-		for (a = 0; a < ANALOG_CHANNELS; a++) {
-			u = &AnalogPins[a];
+		for (a = 0; a < MAX_ANALOG_CHANNELS; a++)
+			if (AnalogPins[a].Used) {
+				u = &AnalogPins[a];
 
-			ADC_RegularChannelConfig(u->ADCx, u->ADCChannel, u->Rank,
-					ADC_SampleTime_28Cycles);
-		}
+				ADC_RegularChannelConfig(u->ADCx, u->ADCChannel, u->Rank,
+						ADC_SampleTime_28Cycles);
+			}
 
 		ADC_DMARequestAfterLastTransferCmd(ux->ADCx, ENABLE);
 
@@ -772,148 +834,16 @@ void usbEnableInterrupt(void) {
 } // usbEnableInterrupt
 
 
-void InitComboPorts(void) {
-	uint8 CurrNoOfRCPins;
-
-	CurrNoOfRCPins = 0;
-
-#if defined(UAVXF4V3)
-
-	uint8 i;
-
-	//for (i = 0; i < MAX_SERIAL_PORTS; i++)
-	//	USART_DeInit(SerialPorts[i].USART);
-
-	switch (CurrComboPort1Config) {
-		case CPPM_GPS_M7to10:
-		CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 10;
-		CurrNoOfRCPins = 1;
-		GPSTxSerial = GPSRxSerial = Serial1;
-		InitSerialPort(GPSRxSerial, false, false);
-		RxUsingSerial = false;
-		break;
-		case ParallelPPM:
-		CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 6;
-		CurrNoOfRCPins = MAX_RC_INPS; //P(RCChannels);
-		RxUsingSerial = false;
-		GPSRxSerial = Serial0;
-		GPSTxSerial = SoftSerialTx;
-		break;
-		default:
-		CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 10;
-		CurrNoOfRCPins = 0;
-		RxUsingSerial = true;
-		GPSRxSerial = TelemetrySerial;
-		GPSTxSerial = SoftSerialTx;
-		RCSerial = Serial1;
-		InitSerialPort(RCSerial, false, CurrComboPort1Config
-				== FutabaSBus_M7to10);
-		break;
-	} // switch
-
-#elif defined(UAVXF4V4)
-	uint8 i;
-
-	if (CurrComboPort2Config != RF_GPS_V4) {
-		I2CPorts[i2cMap[baroSel] - 1].Used |= (CurrComboPort2Config
-				== RF_Baro_V4) || (CurrComboPort2Config == RF_Baro_Mag_V4);
-		I2CPorts[i2cMap[magSel] - 1].Used
-		|= (CurrComboPort2Config == RF_Mag_V4) || (CurrComboPort2Config
-				== RF_Baro_Mag_V4);
-
-		spiDevUsed[baroSel] = (CurrComboPort2Config != RF_Baro_V4)
-		&& (CurrComboPort2Config != RF_Baro_Mag_V4);
-		spiDevUsed[magSel] = (CurrComboPort2Config != RF_Mag_V4)
-		&& (CurrComboPort2Config != RF_Baro_Mag_V4);
-
-		//spiDevUsed[ms56xxSel] = false;
-		//I2CPorts[1].Used = true;
-
-		for (i = 0; i < MAX_I2C_PORTS; i++)
-		i2cInit(i);
-	}
-
-	switch (CurrComboPort1Config) {
-		case CPPM_GPS_M7to10:
-		CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 10;
-		CurrNoOfRCPins = 1;
-		InitRCPins(CurrNoOfRCPins);
-		GPSTxSerial = GPSRxSerial = Serial1;
-		InitSerialPort(GPSRxSerial, false, false);
-		RxUsingSerial = false;
-		break;
-		case ParallelPPM:
-		CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 6;
-		CurrNoOfRCPins = MAX_RC_INPS; //P(RCChannels);
-		InitRCPins(CurrNoOfRCPins);
-		RxUsingSerial = false;
-
-		if (CurrComboPort2Config == RF_GPS_V4) {
-			GPSRxSerial = GPSTxSerial = Serial2;
-			InitSerialPort(GPSRxSerial, false, CurrComboPort1Config
-					== FutabaSBus_M7to10); // zzz
-		} else {
-			GPSRxSerial = Serial0;
-			GPSTxSerial = SoftSerialTx;
-		}
-
-		break;
-		default:
-		CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 10;
-		CurrNoOfRCPins = 0;
-		RxUsingSerial = true;
-
-		if (CurrComboPort2Config == RF_GPS_V4) {
-			GPSRxSerial = GPSTxSerial = Serial2;
-			InitSerialPort(GPSRxSerial, false, CurrComboPort1Config
-					== FutabaSBus_M7to10); // zzz
-		} else {
-			GPSRxSerial = TelemetrySerial;
-			GPSTxSerial = SoftSerialTx;
-		}
-		RCSerial = Serial1;
-		InitSerialPort(RCSerial, false, CurrComboPort1Config
-				== FutabaSBus_M7to10);
-		break;
-	} // switch
-
-	if (CurrwsNoOfLeds > 0) // temporary KLUDGE - need to remap gimbal function
-	CurrMaxPWMOutputs = 4;
-
-#elif defined(OMNIBUSF4V1)
-
-	RxUsingSerial = !((CurrComboPort1Config == CPPM_GPS_M7to10)
-			|| (CurrComboPort1Config == FutabaSBus_M7to10));
-
-	RCSerial = Serial0;
-	InitSerialPort(Serial0, false, CurrComboPort1Config
-			== FutabaSBus_M7to10);
-
-	TelemetrySerial = USBSerial;
-
-	if (SerialPorts[Serial2].Used) {
-		GPSRxSerial = GPSTxSerial = Serial2;
-		InitSerialPort(GPSRxSerial, false, false);
-	}
-
-	CurrMaxPWMOutputs = 4;
-
-#else
-
-#endif
-
-} // InitComboPorts
-
 void InitHarness(void) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 	uint8 i;
 
-	// Using all ports - could be generalised but .... later
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
+	//	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
 
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE); // for interrupts zzz
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);
 	//RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1, ENABLE);
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM8, ENABLE);
@@ -923,24 +853,13 @@ void InitHarness(void) {
 
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C2, ENABLE);
-	//gke? RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA1, ENABLE);
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2, ENABLE);
-
-	USART_DeInit(USART1);
-#if (MAX_SERIAL_PORTS >1)
-	USART_DeInit(USART2);
-#endif
-#if (MAX_SERIAL_PORTS >2)
-	USART_DeInit(USART3);
-#endif
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA1, ENABLE);
+	//	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2, ENABLE);
 
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
-#if (MAX_SERIAL_PORTS >1)
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
-#endif
-#if (MAX_SERIAL_PORTS >2)
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3, ENABLE);
-#endif
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART4, ENABLE);
 
 	RCC_ClearFlag();
 
@@ -954,12 +873,23 @@ void InitHarness(void) {
 
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
 
-	for (i = 0; i < MAX_PWM_OUTPUTS; i++) { // switch off all (potential) motor output pins
+	InitTarget();
+
+	InitRCPins(CurrNoOfRCPins);
+
+	for (i = 0; i < CurrMaxPWMOutputs; i++) { // switch off all (potential) motor output pins
 		pinInitOutput(&PWMPins[i]);
 		digitalWrite(&PWMPins[i], 0);
 	}
 
-	for (i = 0; i < MAX_LEDS; i++) {
+	if ((CurrESCType != ESCUnknown) && (UAVXAirframe != AFUnknown))
+		InitDrives();
+	else
+		DrivesInitialised = false;
+
+	InitRC();
+
+	for (i = 0; i < MAX_LED_PINS; i++) {
 		pinInit(&LEDPins[i]);
 		digitalWrite(&LEDPins[i], 1);
 	}
@@ -968,25 +898,29 @@ void InitHarness(void) {
 		pinInit(&GPIOPins[i]);
 	BeeperOff();
 
+	for (i = 0; i < maxDevSel; i++)
+		I2CPorts[spiMap[i] - 1].Used = SPIPorts[spiMap[i] - 1].Used = false;
+
+	for (i = 0; i < maxDevSel; i++)
+		if (spiDevUsed[i])
+			SPIPorts[spiMap[i] - 1].Used = true;
+		else
+			I2CPorts[i2cMap[i] - 1].Used = true;
+
 	for (i = 0; i < MAX_I2C_PORTS; i++)
 		i2cInit(i);
-
-	Delay1mS(10);
-
-	InitSerialPort(Serial0, true, false); // Must have telemetry initially!
-
-	if (Aux2Sel < MAX_GPIO_PINS)
-		digitalWrite(&GPIOPins[Aux2Sel], 1); // soft USART Tx
 
 	for (i = 0; i < MAX_SPI_DEVICES; i++) { // deselect all
 		pinInit(&SPISelectPins[i]);
 		digitalWrite(&SPISelectPins[i], 1);
 	}
-
 	for (i = 0; i < MAX_SPI_PORTS; i++)
 		spiInit(i);
 
 	InitAnalogPorts();
+
+	Delay1mS(10);
+	digitalWrite(&GPIOPins[Aux2Sel], 1); // soft USART Tx
 
 } // InitHarness
 

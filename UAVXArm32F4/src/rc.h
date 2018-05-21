@@ -135,7 +135,6 @@ void SBusLoopBack(void);
 
 // General
 void InitRC(void);
-void InitRCPins(uint8 PPMInputs);
 void EnableRC(void);
 void CheckRC(void);
 void CheckRCLoopback(void);

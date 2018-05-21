@@ -54,11 +54,7 @@ enum ESCTypes {
 };
 
 enum PWMCamTags {
-#if defined(UAVXF4V3) || defined(UAVXF4V4)
 CamRollC = 8, CamPitchC = 9
-#else
-	CamRollC = 5, CamPitchC = 5	
-#endif
 };
 
 enum PWMTagsQuad {
@@ -104,16 +100,9 @@ enum PWMTagsAileron {
 	RightAileronC,
 	LeftAileronC,
 	ElevatorC,
-#if defined(UAVXF4V3) || defined(UAVXF4V4)
 	LeftSpoilerC = 7, // only available for non-parallel Rx
 	RudderC = 8,
 	RightSpoilerC = 9
-#else
-	LeftSpoilerC = 5, // only available for non-parallel Rx
-		RudderC = 5,
-		RightSpoilerC = 5
-
-#endif
 };
 enum PWMTagsElevon {
 	RightElevonC = 1, LeftElevonC = 2

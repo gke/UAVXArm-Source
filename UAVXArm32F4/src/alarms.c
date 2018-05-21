@@ -25,7 +25,7 @@ boolean PreflightFail = false;
 uint8 ArmingMethod;
 
 void Probe(uint8 p) {
-	if (ProbeSel < MAX_GPIO_PINS) digitalWrite(&GPIOPins[ProbeSel], p);
+	digitalWrite(&GPIOPins[ProbeSel], p);
 } // Probe
 
 void Marker(void) {
@@ -42,7 +42,7 @@ void CheckLandingSwitch(void) {
 		F.AccZBump = F.LandingSwitch = Altitude < 0.1f;
 	else {
 
-		Switch = (LandingSel < MAX_GPIO_PINS) ? !digitalRead(&GPIOPins[LandingSel]) : false; // active to ground
+		Switch = digitalRead(&GPIOPins[LandingSel]); // active to ground
 
 		if (Switch != SwitchP)
 			if (Count == 0) {

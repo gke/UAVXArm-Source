@@ -91,11 +91,13 @@ void spiSelect(uint8 devSel, boolean Sel) {
 void spiClearSelects(void) {
 	idx i;
 
-	if (spiDevUsed[imuSel]) {
-		for (i = 0; i < MAX_SPI_DEVICES; i++)
-			spiSelect(i, false); // TODO do it again but why is this being changed?
-		Delay1mS(100);
-	}
+	if (spiDevUsed[imuSel])
+		for (i = 0; i < maxDevSel; i++) {
+			if (spiDevUsed[i])
+				spiSelect(i, false); // TODO do it again but why is this being changed?
+			Delay1mS(100);
+		}
+
 } // spiClearSelects
 
 

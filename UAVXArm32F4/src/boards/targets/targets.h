@@ -21,16 +21,14 @@
 
 #include "UAVX.h"
 
-#if defined(UAVXF4V4)
-#include "pinsf4v4.h"
-#elif defined(UAVXF4V3)
-#include "pinsf4v3.h"
-#elif defined(UAVXF4V2)
-#include "pinsf4v2.h"
-#elif defined(UAVXF1V2)
-#include "pinsf1v2.h"
+#if defined(UAVXF4V3)
+#include "uavxf4v3.h"
+#elif defined(UAVXF4V4)
+#include "uavxf4v4.h"
 #elif defined(OMNIBUSF4V1)
-#include "pinsomnibusf4v1.h"
+#include "omnibusf4v1.h"
+#elif defined(DISCOVERYF4)
+#include "discoveryf4.h"
 #else
 // mbed
 #endif

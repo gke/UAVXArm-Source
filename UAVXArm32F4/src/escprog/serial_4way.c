@@ -117,12 +117,13 @@ int esc4wayInit(void) {
 
 	StopPwmAllMotors();
 
+	/* zzz
 	for (i = 0; i < NoOfDrives; i++)
 		if (i < MAX_PWM_OUTPUTS) {// switch off all (potential) motor output pins
 			pinInitMode(&PWMPins[i], true); // TODO: original code uses 2MHz pin clock?
 			setEscHi(i);
 		}
-
+*/
 	escCount = NoOfDrives; // escIdx;
 	return escCount;
 }

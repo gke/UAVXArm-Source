@@ -114,8 +114,10 @@ void InitBattery(void) {
 	BatteryCapacitymAH = (P(BatteryCapacity) * 100.0f);
 	BatteryVolts = BatteryVoltsLimit;
 	BatteryCurrent = BatteryChargeUsedmAH = 0.0f;
-
+#if defined(HAVE_CURRENT_SENSOR)
 	BatteryCurrentADCZero = analogRead(BattCurrentAnalogSel);
+#endif
+
 
 } // InitBattery
 

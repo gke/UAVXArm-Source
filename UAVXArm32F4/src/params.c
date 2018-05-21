@@ -99,11 +99,6 @@ void DoConfigBits(void) {
 
 	UseGyroOS = ((P(Config2Bits) & UseGyroOSMask) != 0) && !F.Emulation;
 
-#if defined(UAVXF4V3)
-	UseGyroOS = false; // 1KHz limited by i2c so probably not worth it
-	//SetP(Config2Bits, P(Config2Bits) & ~UseGyroOSMask);
-#endif
-
 	F.UsingTurnToWP = (P(Config2Bits) & UseTurnToWPMask) != 0;
 
 	//... currentl unused
@@ -652,13 +647,7 @@ void InitParameters(void) {
 	CurrGyroLPFHz = MPUGyroLPFHz[CurrGyroLPFSel];
 
 	if (CurrComboPort1Config != ComboPort1ConfigUnknown) {
-		InitComboPorts();
-		InitRC();
-
-		if ((CurrESCType != ESCUnknown) && (UAVXAirframe != AFUnknown))
-			InitDrives();
-		else
-			DrivesInitialised = false;
+		InitHarness();
 	}
 
 	F.UsingAnalogGyros = (CurrAttSensorType != UAVXArm32IMU)

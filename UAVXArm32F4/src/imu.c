@@ -54,9 +54,6 @@ uint32 RateEnergySamples;
 void ScaleRateAndAcc(void) {
 	idx a;
 
-	for (a = X; a <= Z; a++)
-		RawGyro[a] = LPFn(&GyroF[a], RawGyro[a], dT);
-
 	Rate[Pitch] = (RawGyro[X] - GyroBias[X]) * GyroScale[CurrAttSensorType];
 	Rate[Roll] = (RawGyro[Y] - GyroBias[Y]) * GyroScale[CurrAttSensorType];
 	Rate[Yaw] = -(RawGyro[Z] - GyroBias[Z]) * GyroScale[CurrAttSensorType];
@@ -85,7 +82,7 @@ void ErectGyros(int32 TS) {
 
 	LEDOn(ledRedSel);
 
-	ReadFilteredGyro();
+	ReadFilteredGyroAndAcc();
 
 	for (g = X; g <= Z; g++)
 		MaxRawGyro[g] = MinRawGyro[g] = Av[g] = RawGyro[g];
@@ -93,7 +90,7 @@ void ErectGyros(int32 TS) {
 	for (i = 1; i < s; i++) {
 		Delay1mS(IntervalmS);
 
-		ReadFilteredGyro();
+		ReadFilteredGyroAndAcc();
 
 		for (g = X; g <= Z; g++) {
 
@@ -146,7 +143,7 @@ void InitIMU(void) {
 	InitMPU6XXX();
 
 	if (F.UsingAnalogGyros) {
-		ReadFilteredGyro();
+		ReadGyro();
 		for (a = X; a <= Z; a++)
 			GyroBias[a] = RawGyro[a]; //  until erect gyros
 	} else if (CurrAttSensorType == InfraRedAngle) {

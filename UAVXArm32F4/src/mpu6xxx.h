@@ -46,8 +46,7 @@ void CalibrateAccAndGyro(uint8 s);
 void InitMPU6XXX(void);
 void CheckMPU6XXXActive(void);
 void ReadFilteredGyroAndAcc(void);
-void ReadFilteredAcc(void);
-void ReadFilteredGyro(void);
+void ReadGyro(void);
 void UpdateGyroTempComp(void);
 boolean MPU6XXXReady(void);
 

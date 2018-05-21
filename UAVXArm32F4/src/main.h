@@ -22,11 +22,7 @@
 #ifndef _main_h
 #define _main_h
 
-#if defined(UAVXF4V3) || defined(UAVXF4V4)
 #define ArmingSwitch (digitalRead(&GPIOPins[ArmedSel]))
-#else
-#define ArmingSwitch (false)
-#endif
 
 //________________________________________________________________________________________
 

@@ -347,7 +347,7 @@ void CalibrateAccSixPointSphere(uint8 s) {
 
 	do {
 
-		ReadFilteredAcc();
+		ReadFilteredGyroAndAcc();
 		dp = getCurrDir(RawAcc);
 
 		if (dp >= 0) {
@@ -364,7 +364,7 @@ void CalibrateAccSixPointSphere(uint8 s) {
 				do {
 					Delay1mS(2);
 
-					ReadFilteredAcc();
+					ReadFilteredGyroAndAcc();
 					dp = getCurrDir(RawAcc);
 
 					if (Currdp == dp) {
@@ -400,7 +400,7 @@ void CalibrateAccSixPointSphere(uint8 s) {
 			&SphereRadius);
 
 	for (a = X; a <= Z; a++) {
-		NV.AccCal.Scale[a] = SphereRadius * GRAVITY_MPS_S / (real32) MPU_1G;
+		NV.AccCal.Scale[a] = SphereRadius * DEF_ACC_SCALE;
 		NV.AccCal.Bias[a] = SphereOrigin[a];
 	}
 
@@ -443,7 +443,7 @@ void CalibrateAccSixPoint(uint8 s) {
 
 	do {
 
-		ReadFilteredAcc();
+		ReadFilteredGyroAndAcc();
 		dp = getCurrDir(RawAcc);
 
 		if (dp >= 0) {
@@ -460,7 +460,7 @@ void CalibrateAccSixPoint(uint8 s) {
 				do {
 					Delay1mS(2);
 
-					ReadFilteredAcc();
+					ReadFilteredGyroAndAcc();
 					dp = getCurrDir(RawAcc);
 
 					if (Currdp == dp) {
@@ -506,7 +506,7 @@ void CalibrateAccSixPoint(uint8 s) {
 	solveScale(&calState, NV.AccCal.Scale);
 
 	for (a = X; a <= Z; a++)
-		NV.AccCal.Scale[a] *= (GRAVITY_MPS_S / (real32) MPU_1G);
+		NV.AccCal.Scale[a] *= DEF_ACC_SCALE;
 
 	NV.AccCal.DynamicAccBias[Z] = 0.0f;
 

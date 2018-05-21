@@ -153,23 +153,32 @@ void DMA1_Stream6_IRQHandler(void) {
 
 } // DMA1_Channel6_IRQHandler
 
-#if defined(UAVXF4V4) || defined(UAVXF4V3)
 
 void DMA1_Stream3_IRQHandler(void) {
 
 	DMA_ClearITPendingBit(DMA1_Stream3, DMA_IT_TCIF3);
 	DMA_Cmd(DMA1_Stream3, DISABLE);
-
-	if (CurrComboPort2Config == RF_GPS_V4) {
+#if defined(UAVXF4V3)
+	if (CurrComboPort2Config == RF_GPS_V4)
+#endif
+	{
 		TxQHead[2] = TxQNewHead[2];
 		if (TxQHead[2] != TxQTail[2])
-		serialTxDMA(2);
+			serialTxDMA(2);
 	}
 
 } // DMA1_Stream3_IRQHandler
 
-#endif
+void DMA1_Stream4_IRQHandler(void) {
 
+	DMA_ClearITPendingBit(DMA1_Stream4, DMA_IT_TCIF4);
+	DMA_Cmd(DMA1_Stream4, DISABLE);
+
+	TxQHead[3] = TxQNewHead[3];
+	if (TxQHead[3] != TxQTail[3])
+		serialTxDMA(3);
+
+} // DMA1_Stream4_IRQHandler
 
 //______________________________________________________________________________________________
 
@@ -179,25 +188,25 @@ void USART1_IRQHandler(void) {
 	serialISR(0);
 } // USART1_IRQHandler
 
-#if (MAX_SERIAL_PORTS > 1)
+
 void USART2_IRQHandler(void) {
 	serialISR(1);
 } // USART2_IRQHandler
-#endif
 
-#if defined(UAVXF4V4) || defined (UAVXF4V3)
-#if (MAX_SERIAL_PORTS > 2)
+
 void USART3_IRQHandler(void) {
 	if (CurrComboPort2Config == RF_GPS_V4)
-	serialISR(2);
+		serialISR(2);
 } // USART2_IRQHandler
-#endif
-#endif
+
+void UART4_IRQHandler(void) {
+	serialISR(3);
+} // UART4_IRQHandler
+
 
 //______________________________________________________________________________________________
 
 // I2C
-
 
 void I2C1_ER_IRQHandler(void) {
 	i2c_er_handler(0);

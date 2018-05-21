@@ -66,8 +66,10 @@ __ALIGN_BEGIN USB_OTG_CORE_HANDLE USB_OTG_dev __ALIGN_END;
 
  */
 void USBGenerateDisconnectPulse(void) {
-#if defined(INCLUDE_USB)
-#if defined(USB_DETECT_PIN)
+
+#define USB_DISCONNECT_GPIO    GPIOA
+#define USB_DISCONNECT_PIN     GPIO_Pin_12
+
 	GPIO_InitTypeDef GPIO_InitStructure;
 
 	GPIO_InitStructure.GPIO_Pin = USB_DISCONNECT_PIN;
@@ -81,8 +83,7 @@ void USBGenerateDisconnectPulse(void) {
 	GPIO_ResetBits(USB_DISCONNECT_GPIO, USB_DISCONNECT_PIN);
 	Delay1mS(200);
 	GPIO_SetBits(USB_DISCONNECT_GPIO, USB_DISCONNECT_PIN);
-#endif
-#endif
+
 } // USBGenerateDisconnectPulse
 
 
@@ -189,8 +190,9 @@ void USBActive(boolean forceCheck) {
 
 
 void USBConnect(void) {
-#if defined(INCLUDE_USB)
 
+
+	Delay1mS(1000);
 	USBD_Init(&USB_OTG_dev, USB_OTG_FS_CORE_ID, &USR_desc, &USBD_CDC_cb,
 			&USR_cb);
 
@@ -200,5 +202,5 @@ void USBConnect(void) {
 	}
 
 	Delay1mS(1000);
-#endif
+
 } // USBConnect

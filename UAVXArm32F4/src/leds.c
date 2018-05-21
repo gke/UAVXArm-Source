@@ -24,6 +24,13 @@
 
 #include "UAVX.h"
 
+#if defined(LED_ON_HIGH)
+#define LEDON 1
+#define LEDOFF 0
+#else
+#define LEDON 0
+#define LEDOFF 1
+#endif
 //_________________________________________________________________
 
 // WS2812 (hard coded to Aux1)
@@ -178,7 +185,7 @@ enum Colours { // RGB order
 
 uint8 CurrwsNoOfLeds = 0;
 
-#if (defined(USE_WS2812) || defined(USE_WS2812B)) && (defined(UAVXF4V3) || defined(UAVXF4V4))
+#if defined(USE_WS2812) || defined(USE_WS2812B)
 
 // Y/O, R, B, G
 const wsLEDStruct wsLEDColours[] = { { 0xff, 0x45, 0 }, { 0xff, 0, 0 }, { 0, 0,
@@ -243,7 +250,7 @@ void wsInit(void) { // hard coded to PORTC Pin 6 Aux1
 	if (CurrwsNoOfLeds > 0) {
 
 		wsNoOfLeds = Limit(CurrwsNoOfLeds, 4, MAX_WS2812_LEDS);
-		wsGroupSize = wsNoOfLeds / MAX_LEDS;
+		wsGroupSize = wsNoOfLeds / MAX_LED_PINS;
 		wsBufferSize = wsNoOfLeds * 24;
 
 		wsInitBuffers();
@@ -370,14 +377,14 @@ void wsLEDColour(int i, const wsLEDStruct w) {
 void wsLED(uint8 l) {
 	uint8 ll;
 
-	for (ll = 0; ll < MAX_LEDS; ll++)
+	for (ll = 0; MAX_LED_PINS; ll++)
 		wsLEDColour(ll, wsLEDColours[l]);
 } // wsLEDColour
 
 void wsLEDOn(uint8 l) { // run in pairs
 	uint8 ll;
 
-	if (CurrwsNoOfLeds >= MAX_LEDS)
+	if (CurrwsNoOfLeds >= MAX_LED_PINS)
 		for (ll = 0; ll < wsGroupSize; ll++)
 			wsLEDColour(l * wsGroupSize + ll, wsLEDColours[l]);
 
@@ -386,7 +393,7 @@ void wsLEDOn(uint8 l) { // run in pairs
 void wsLEDOff(uint8 l) {
 	uint8 ll;
 
-	if (CurrwsNoOfLeds >= MAX_LEDS)
+	if (CurrwsNoOfLeds >= MAX_LED_PINS)
 		for (ll = 0; ll < wsGroupSize; ll++)
 			wsSetColours(l * wsGroupSize + ll, 0, 0, 0);
 
@@ -394,7 +401,7 @@ void wsLEDOff(uint8 l) {
 
 boolean wsLEDIsOn(uint8 l) {
 
-	if (CurrwsNoOfLeds >= MAX_LEDS)
+	if (CurrwsNoOfLeds >= MAX_LED_PINS)
 		return ((wsLEDs[l].r != 0) || (wsLEDs[l].g != 0) || (wsLEDs[l].b != 0));
 	else
 		return false;
@@ -403,7 +410,7 @@ boolean wsLEDIsOn(uint8 l) {
 
 void wsLEDToggle(uint8 l) {
 
-	if (CurrwsNoOfLeds >= MAX_LEDS) {
+	if (CurrwsNoOfLeds >= MAX_LED_PINS) {
 		if (wsLEDIsOn(l))
 			wsLEDOff(l);
 		else
@@ -443,13 +450,13 @@ void UpdatewsLed(void) {
 					wsLED(ledGreenSel);
 				break;
 			case Shutdown:
-				wsLED(MAX_LEDS);
+				wsLED(MAX_LED_PINS);
 				break;
 			case IREmulate:
 				wsLED(ledGreenSel);
 				break;
 			default:
-				wsLED(MAX_LEDS);
+				wsLED(MAX_LED_PINS);
 				break;
 			}
 		}
@@ -488,7 +495,6 @@ uint8 LEDPattern = 0;
 boolean UsingExtLEDs = false;
 
 void BeeperOff(void) {
-	if (BeeperSel < MAX_GPIO_PINS)
 #if defined(UAVXF4V1)
 		digitalWrite(&GPIOPins[BeeperSel], 1);
 #else
@@ -497,7 +503,6 @@ void BeeperOff(void) {
 } // BeeperOff
 
 void BeeperOn(void) {
-	if (BeeperSel < MAX_GPIO_PINS)
 #if defined(UAVXF4V1)
 		digitalWrite(&GPIOPins[BeeperSel], 0);
 #else
@@ -506,19 +511,17 @@ void BeeperOn(void) {
 } // BeeperOn
 
 void BeeperToggle(void) {
-	if (BeeperSel < MAX_GPIO_PINS)
 		digitalToggle(&GPIOPins[BeeperSel]);
 } // BeeperToggle
 
 boolean BeeperIsOn(void) {
-	if (BeeperSel < MAX_GPIO_PINS)
+
 #if defined(UAVXF4V1)
 		return (digitalRead(&GPIOPins[BeeperSel]) == 0);
 #else
 		return (digitalRead(&GPIOPins[BeeperSel]) != 0);
 #endif
-	else
-		return false;
+
 } // BeeperIsOn
 
 void LEDOn(uint8 l) {
@@ -528,60 +531,58 @@ void LEDOn(uint8 l) {
 	LEDsOff();
 	else
 #endif
-	if (l < MAX_LEDS) {
-		digitalWrite(&LEDPins[l], 0);
+		digitalWrite(&LEDPins[l], LEDON);
 		wsLEDOn(l);
-	}
 
 } // LEDOn
 
 void LEDOff(uint8 l) {
-
-	if (l < MAX_LEDS) {
-		digitalWrite(&LEDPins[l], 1);
+		digitalWrite(&LEDPins[l], LEDOFF);
 		wsLEDOff(l);
-	}
 } // LEDOff
 
 void LEDToggle(uint8 l) {
-	if (l < MAX_LEDS) {
+
 		digitalToggle(&LEDPins[l]);
 		wsLEDToggle(l);
-	}
+
 } // LEDToggle
 
 boolean LEDIsOn(uint8 l) {
-	if (l < MAX_LEDS)
+
+#if defined(LED_ON_HIGH)
+		return (digitalRead(&LEDPins[l]));
+#else
 		return (!digitalRead(&LEDPins[l]));
-	else
-		return (false);
+#endif
+
 } // LEDIsOn
 
 void LEDsOn(void) {
 	uint8 l;
 
-	for (l = 0; l < MAX_LEDS; l++)
+	for (l = 0;l < MAX_LED_PINS; l++)
 		LEDOn(l);
 } // LEDsOn
 
 void LEDsOff(void) {
 	uint8 l;
 
-	for (l = 0; l < MAX_LEDS; l++)
+	for (l = 0;l < MAX_LED_PINS; l++)
 		LEDOff(l);
 } // LEDsOff
 
 void SaveLEDs(void) { // one level only
 	uint8 l;
 
-	for (l = 0; l < MAX_LEDS; l++)
+	for (l = 0;l < MAX_LED_PINS; l++)
 		LEDsSaved[l] = LEDIsOn(l);
 } // SaveLEDs
 
 void RestoreLEDs(void) {
 	uint8 l;
 
-	for (l = 0; l < MAX_LEDS; l++)
+	for (l = 0;l < MAX_LED_PINS; l++)
 		LEDOn(LEDsSaved[l]);
 } // RestoreLEDs
 
@@ -592,9 +593,9 @@ void LEDChaser(void) {
 	if (NowmS > mS[LEDChaserUpdate]) {
 		if (F.AltControlEnabled && F.HoldingAlt) {
 			LEDOff(LEDChase[LEDPattern]);
-			if (LEDPattern < MAX_LEDS)
-				LEDPattern++;
-			else
+			if (LEDPattern < MAX_LED_PINS) {
+				if (LEDPins[LEDPattern].Used)LEDPattern++;
+			} else
 				LEDPattern = 0;
 			LEDOn(LEDChase[LEDPattern]);
 		} else
