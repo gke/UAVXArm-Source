@@ -32,8 +32,8 @@ uint16 SphereFit(real32 d[][3], uint16 N, uint16 MaxIterations,
 
 int8 getCurrDir(real32 s[3]);
 
-void CalibrateAccSixPoint(uint8 s);
-void CalibrateAccSixPointSphere(uint8 s);
+void CalibrateAccSixPoint(uint8 s, uint8 imuSel);
+void CalibrateAccSixPointSphere(uint8 s, uint8 imuSel);
 
 #endif
 

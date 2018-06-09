@@ -100,8 +100,8 @@ boolean FailPreflight(void) {
 			|| F.ThrottleOpen //
 			|| !F.IMUActive //
 			|| !F.IMUCalibrated
-			|| ((currBaroType != noBaro)&&!F.BaroActive) //
-			|| ((currMagType != noMag) && !(F.MagnetometerActive && F.MagnetometerCalibrated))//
+			|| ((busDev[baroSel].Type != noBaro)&&!F.BaroActive) //
+			|| ((busDev[magSel].Type != noMag) && !(F.MagnetometerActive && F.MagnetometerCalibrated))//
 			|| F.LowBatt //
 			|| F.spiFatal //
 			|| F.i2cFatal //

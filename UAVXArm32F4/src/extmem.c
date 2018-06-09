@@ -26,7 +26,7 @@
 boolean WriteBlockExtMem(uint32 a, uint16 l, int8 *v) {
 
 	if (F.HaveExtMem)
-	flashReadModifyWrite(SIOMem, a, l, v);
+		flashReadModifyWrite(memSel, a, l, v);
 
 	return (F.HaveExtMem);
 } // WriteBlockMem
@@ -90,10 +90,10 @@ void ReadBlockExtMem(uint32 a, uint16 l, int8 * v) {
 	uint16 i;
 
 	if (F.HaveExtMem)
-	flashReadPage(SIOMem, a, l, v);
+		flashReadPage(memSel, a, l, v);
 	else
-	for (i = 0; i< l; i++)
-	v[i] = 0xff;
+		for (i = 0; i < l; i++)
+			v[i] = 0xff;
 
 } // ReadBlockMem
 
@@ -121,9 +121,9 @@ boolean WriteBlockExtMem(uint32 a, uint16 l, int8 *v) {
 			b[i + 2] = u.u8;
 		}
 
-		r &= sioWriteBlock(SIOMem, EEPROM_ID | bank, 0xff, 2 + l, b);
+		r &= i2cWriteBlock(busDev[memSel].BusNo, EEPROM_ID | bank, 0xff, 2 + l, b);
 	} else
-		r = false;
+	r = false;
 	uSTimer(uSClock(), MemReady, 5000);
 
 	return (r);
@@ -153,7 +153,7 @@ boolean EraseExtMem(void) {
 			}
 		}
 	} else
-		r = false;
+	r = false;
 
 	RestoreLEDs();
 
@@ -174,11 +174,11 @@ void ReadBlockExtMem(uint32 a, uint16 l, int8 * v) {
 		bank = 0; // only one chip (a & 0x00070000) >> 15;
 		b[0] = (a >> 8) & 0xff;
 		b[1] = a & 0xff; // messy - sio routines use 8 bit register#
-		sioWriteBlock(SIOMem, EEPROM_ID | bank, 0xff, 2, b);
-		sioReadBlock(SIOMem, EEPROM_ID | bank, 0xff, l, (uint8*) v);
+		i2cWriteBlock(busDev[memSel].BusNo, EEPROM_ID | bank, 0xff, 2, b);
+		i2cReadBlock(busDev[memSel].BusNo, EEPROM_ID | bank, 0xff, l, (uint8*) v);
 	} else
-		for (i = 0; i < l; i++)
-			v[i] = 0xff;
+	for (i = 0; i < l; i++)
+	v[i] = 0xff;
 
 } // ReadBlockEE
 
@@ -254,27 +254,27 @@ void InitExtMem(void) {
 
 	uS[MemReady] = uSClock();
 
-#if defined(UAVXF4V3)
 	int8 v, SaveVal;
 
-	F.HaveExtMem = true;
-	SaveVal = ReadExtMem(MEM_SIZE - 1);
-	v = 0b01010101;
-	WriteBlockExtMem(MEM_SIZE - 1, 1, &v);
-	v = 0;
-	v = ReadExtMem(MEM_SIZE - 1);
-	F.HaveExtMem = v == 0b01010101;
-	WriteBlockExtMem(MEM_SIZE - 1, 1, &SaveVal);
-#else
-	F.HaveExtMem = flashInit();
-#endif
+	if (busDev[memSel].Type == i2cEEPROMMem) {
+		F.HaveExtMem = true;
+		SaveVal = ReadExtMem(MEM_SIZE - 1);
+		v = 0b01010101;
+		WriteBlockExtMem(MEM_SIZE - 1, 1, &v);
+		v = 0;
+		v = ReadExtMem(MEM_SIZE - 1);
+		F.HaveExtMem = v == 0b01010101;
+		WriteBlockExtMem(MEM_SIZE - 1, 1, &SaveVal);
+	} else if (busDev[memSel].Type == spiFlashMem)
+		F.HaveExtMem = flashInit();
+	else
+		F.HaveExtMem = false;
 
 } // InitMem
 
 void ShowStatusExtMem(uint8 s) {
-#if !defined(UAVXF4V3)
-	flashShowStatus(s);
-#endif
+	if (busDev[memSel].Type == spiFlashMem)
+		flashShowStatus(s);
 
 } // ShowStatusMem
 

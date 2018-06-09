@@ -86,22 +86,22 @@ void TIM8_BRK_TIM12_IRQHandler(void) {
 
 void TIM2_IRQHandler(void) {
 
-	if (CurrComboPort1Config == CPPM_GPS_M7to10) {
+	if (CurrRxType == CPPMRx) {
 		if (TIM_GetITStatus(TIM2, TIM_IT_CC1) == SET)
 			RCSerialISR(TIM_GetCapture1(TIM2));
 		TIM_ClearITPendingBit(TIM2, TIM_IT_CC1);
-	} else if (CurrComboPort1Config == ParallelPPM)
+	} else if (CurrRxType == ParallelPPMRx)
 		RCParallelISR(TIM2);
 
 } // TIM2_IRQHandler
 
 void TIM3_IRQHandler(void) {
 
-	if (CurrComboPort1Config == CPPM_GPS_M7to10) {
+	if (CurrRxType == CPPMRx) {
 		if (TIM_GetITStatus(TIM3, TIM_IT_CC1) == SET)
 			RCSerialISR(TIM_GetCapture1(TIM3));
 		TIM_ClearITPendingBit(TIM3, TIM_IT_CC1);
-	} else if (CurrComboPort1Config == ParallelPPM)
+	} else if (CurrRxType == ParallelPPMRx)
 		RCParallelISR(TIM3);
 
 } // TIM3_IRQHandler
@@ -114,7 +114,7 @@ void TIM3_IRQHandler(void) {
 
 void DMA2_Stream2_IRQHandler(void) {
 
-#if (defined(USE_WS2812) || defined(USE_WS2812B)) && (defined(UAVXF4V4) || defined(UAVXF4V3))
+#if (defined(USE_WS2812) || defined(USE_WS2812B))
 	// Half-Transfer completed
 	if (DMA_GetITStatus(DMA2_Stream2, DMA_IT_HTIF2)) {
 		DMA_ClearITPendingBit(DMA2_Stream2, DMA_IT_HTIF2);
@@ -136,9 +136,9 @@ void DMA2_Stream7_IRQHandler(void) {
 	DMA_ClearITPendingBit(DMA2_Stream7, DMA_IT_TCIF7);
 	DMA_Cmd(DMA2_Stream7, DISABLE);
 
-	TxQHead[0] = TxQNewHead[0];
-	if (TxQHead[0] != TxQTail[0])
-		serialTxDMA(0);
+	TxQHead[1] = TxQNewHead[1];
+	if (TxQHead[1] != TxQTail[1])
+		serialTxDMA(1);
 
 } // DMA2_Channel7_IRQHandler
 
@@ -147,9 +147,9 @@ void DMA1_Stream6_IRQHandler(void) {
 	DMA_ClearITPendingBit(DMA1_Stream6, DMA_IT_TCIF6);
 	DMA_Cmd(DMA1_Stream6, DISABLE);
 
-	TxQHead[1] = TxQNewHead[1];
-	if (TxQHead[1] != TxQTail[1])
-		serialTxDMA(1);
+	TxQHead[2] = TxQNewHead[1];
+	if (TxQHead[2] != TxQTail[2])
+		serialTxDMA(2);
 
 } // DMA1_Channel6_IRQHandler
 
@@ -158,14 +158,9 @@ void DMA1_Stream3_IRQHandler(void) {
 
 	DMA_ClearITPendingBit(DMA1_Stream3, DMA_IT_TCIF3);
 	DMA_Cmd(DMA1_Stream3, DISABLE);
-#if defined(UAVXF4V3)
-	if (CurrComboPort2Config == RF_GPS_V4)
-#endif
-	{
-		TxQHead[2] = TxQNewHead[2];
-		if (TxQHead[2] != TxQTail[2])
-			serialTxDMA(2);
-	}
+	TxQHead[3] = TxQNewHead[3];
+	if (TxQHead[3] != TxQTail[3])
+		serialTxDMA(3);
 
 } // DMA1_Stream3_IRQHandler
 
@@ -174,9 +169,9 @@ void DMA1_Stream4_IRQHandler(void) {
 	DMA_ClearITPendingBit(DMA1_Stream4, DMA_IT_TCIF4);
 	DMA_Cmd(DMA1_Stream4, DISABLE);
 
-	TxQHead[3] = TxQNewHead[3];
-	if (TxQHead[3] != TxQTail[3])
-		serialTxDMA(3);
+	TxQHead[4] = TxQNewHead[4];
+	if (TxQHead[4] != TxQTail[4])
+		serialTxDMA(4);
 
 } // DMA1_Stream4_IRQHandler
 
@@ -185,22 +180,24 @@ void DMA1_Stream4_IRQHandler(void) {
 // Serial
 
 void USART1_IRQHandler(void) {
-	serialISR(0);
+	serialISR(1);
 } // USART1_IRQHandler
 
 
 void USART2_IRQHandler(void) {
-	serialISR(1);
+	serialISR(2);
 } // USART2_IRQHandler
 
 
 void USART3_IRQHandler(void) {
+#if defined (UAXF4V4)
 	if (CurrComboPort2Config == RF_GPS_V4)
-		serialISR(2);
+#endif
+	serialISR(3);
 } // USART2_IRQHandler
 
 void UART4_IRQHandler(void) {
-	serialISR(3);
+	serialISR(4);
 } // UART4_IRQHandler
 
 
@@ -209,18 +206,18 @@ void UART4_IRQHandler(void) {
 // I2C
 
 void I2C1_ER_IRQHandler(void) {
-	i2c_er_handler(0);
-}
-
-void I2C1_EV_IRQHandler(void) {
-	i2c_ev_handler(0);
-}
-
-void I2C2_ER_IRQHandler(void) {
 	i2c_er_handler(1);
 }
 
-void I2C2_EV_IRQHandler(void) {
+void I2C1_EV_IRQHandler(void) {
 	i2c_ev_handler(1);
+}
+
+void I2C2_ER_IRQHandler(void) {
+	i2c_er_handler(2);
+}
+
+void I2C2_EV_IRQHandler(void) {
+	i2c_ev_handler(2);
 }
 

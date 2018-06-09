@@ -270,8 +270,7 @@ uint8_t usbIsConfigured(void) {
  * Output         : None.
  * Return         : True if connected.
  *******************************************************************************/
-uint8_t usbIsConnected(void)
-{
+uint8_t usbIsConnected(void) {
     return (bDeviceState != UNCONNECTED);
 }
 

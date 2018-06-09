@@ -63,7 +63,7 @@ void InitBarometer(void);
 #define SRFSONAR_ID 0xe0
 
 enum RangeFinders {
-	MaxSonarcm, SRFI2Ccm, MaxSonarI2Ccm, SharpIRGP2Y0A02YK, SharpIRGP2Y0A710K, UnknownRF
+	MaxSonarcm, SRFI2Ccm, MaxSonarI2Ccm, SharpIRGP2Y0A02YK, SharpIRGP2Y0A710K, noRF
 };
 
 extern const char * TelemetryName[];

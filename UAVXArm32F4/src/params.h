@@ -53,25 +53,15 @@ enum ArmingModes {
 	YawStickArming, SwitchArming, RollStickArming, TxSwitchArming
 };
 
-enum ComboPort1Types {
-	CPPM_GPS_M7to10,
-	FutabaSBus_M7to10,
-	ParallelPPM,
-	Deltang1024_M7to10,
-	Spektrum1024_M7to10,
-	Spektrum2048_M7to10,
-	FrSkyFBus_M7to10,
-	ComboPort1ConfigUnknown
-};
-
-enum ComboPort2Types {
-	RF_BatV_I2C_V3,
-	RF_V4,
-	RF_Baro_V4,
-	RF_Mag_V4,
-	RF_Baro_Mag_V4,
-	RF_GPS_V4,
-	ComboPort2Unused
+enum RxTypes {
+	CPPMRx,
+	FutabaSBusRx,
+	ParallelPPMRx,
+	Deltang1024Rx,
+	Spektrum1024Rx,
+	Spektrum2048Rx,
+	FrSkyFBusRx,
+	UnknownRx
 };
 
 enum AFs {
@@ -115,9 +105,9 @@ enum Params { // MAX 128
 
 	YawRateKp, // 11
 	RollRateKd, // 12
-	StateEst, // 13
+	IMUOption, // 13
 	AltVelKd, // 14
-	ComboPort1Config, // 15
+	RxType, // 15
 	Config1Bits, // 16
 	RxThrottleCh, // 17
 	LowVoltThres, // 18
@@ -184,7 +174,7 @@ enum Params { // MAX 128
 	MaxROC, // 73,
 	Config2Bits, // 74
 	MaxPitchAngle, // 75
-	ComboPort2Config, // 76
+	Unused76, // 76
 	MaxRollAngle, // 77
 	YawLPFHz, // 78
 	NavHeadingTurnout, // 79

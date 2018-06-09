@@ -42,17 +42,17 @@ extern uint8 MPU6XXXDHPF;
 extern uint8 MPU6XXXAccDLPF;
 extern real32 MPU6XXXTemperature;
 
-void CalibrateAccAndGyro(uint8 s);
-void InitMPU6XXX(void);
-void CheckMPU6XXXActive(void);
-void ReadFilteredGyroAndAcc(void);
-void ReadGyro(void);
-void UpdateGyroTempComp(void);
-boolean MPU6XXXReady(void);
+void CalibrateAccAndGyro(uint8 s, uint8 imuSel);
+void InitMPU6XXX(uint8 imuSel);
+void CheckMPU6XXXActive(uint8 imuSel);
+void ReadFilteredGyroAndAcc(uint8 imuSel);
+void ReadGyro(uint8 imuSel);
+void UpdateGyroTempComp(uint8 imuSel);
+boolean MPU6XXXReady(uint8 imuSel);
 
-void ComputeMPU6XXXTemperature(int16 T);
+void ComputeMPU6XXXTemperature(uint8 imuSel, int16 T);
 
-extern uint8 MPU_ID;
+extern uint8 MPU0_ID, MPU1_ID;
 extern uint32 mpu6xxxLastUpdateuS;
 extern real32 RawAcc[], RawGyro[];
 extern uint32 gyroGlitches;

@@ -173,7 +173,7 @@ extern uint32 NextNavSwUpdatemS;
 
 extern boolean RxLoopbackEnabled;
 
-extern uint8 CurrComboPort1Config, CurrComboPort2Config;
+extern uint8 CurrRxType;
 extern uint16 LostFrameCount;
 extern uint8 RSSI;
 

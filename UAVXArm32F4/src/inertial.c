@@ -30,7 +30,7 @@ real32 AccZ;
 real32 MagConfidence;
 real32 EstMagHeading = 0.0f;
 
-uint8 CurrStateEst = EstUnknown;
+uint8 CurrIMUOption = unknownIMUOption;
 
 real32 CalculateAccConfidence(real32 AccMag) {
 	// Gaussian decay in accelerometer value belief
@@ -195,8 +195,8 @@ void VersanoCompensation(void) {
 
 void InitMadgwick(void) {
 
-	ReadFilteredGyroAndAcc();
-	ScaleRateAndAcc();
+	ReadFilteredGyroAndAcc(imuSel);
+	ScaleRateAndAcc(imuSel);
 
 	real32 normR = 1.0f / sqrtf(Sqr(Acc[BF]) + Sqr(Acc[LR]) + Sqr(Acc[UD]));
 
@@ -218,11 +218,6 @@ void UpdateHeading(void) {
 		Heading = Make2Pi(MagHeading + MagVariation);
 	} else {
 
-		if (CurrStateEst == MadgwickIMU) {
-			GetMagnetometer();
-			if (F.NewMagValues)
-				CalculateMagneticHeading();
-		} else
 			MagHeading = A[Yaw].Angle;
 
 		MagLockE = MakePi(MagHeading - A[Yaw].Angle);
@@ -239,182 +234,12 @@ void UpdateHeading(void) {
 
 } // UpdateHeading
 
-
-// Implementation of Madgwick's IMU and AHRS algorithms.
-// See: http://www.x-io.co.uk/node/8#open_source_ahrs_and_imu_algorithms
-//
-// 19/02/2012	SOH Madgwick Magnetometer measurement is normalised << THIS VERSION
-// corrected by J. van de Mortel 2014
-// modified by Prof. G.K. Egan 2017
-
-#define gyroMeasError DegreesToRadians(0.5f) // gyroscope measurement error in rad/s (shown as 5 deg/s)
-#define gyroMeasDrift DegreesToRadians(0.02f) // gyroscope measurement error in rad/s/s (shown as 0.2f deg/s/s)
-#define beta 0.2f
-#define beta1 (sqrt(0.75f) * gyroMeasError) // compute beta
-#define zeta (sqrt(0.75f) * gyroMeasDrift) // compute zeta
-// paper suggest Beta=0.041 for MARG
-//#define betaDef 0.1f // 2 * proportional gain
-//real32 beta = betaDef; // 2 * proportional gain (Kp)
-real32 BetaBase;
-
-void MadgwickMARGUpdate(real32 gx, real32 gy, real32 gz, real32 ax, real32 ay,
-		real32 az, real32 mx, real32 my, real32 mz) {
-	real32 Beta;
-	real32 AccMag, normR;
-	real32 s0, s1, s2, s3;
-
-	real32 hx, hy;
-	real32 wq0, wq1, wq2, wq3;
-	real32 _2q0mx, _2q0my, _2q0mz, _2q1mx, _2bx, _2bz, _4bx, _4bz, _8bx, _8bz,
-			_2q0, _2q1, _2q2, _2q3, _4q0, _4q1, _4q2, _8q1, _8q2;
-
-	q0q0 = q0 * q0;
-	q0q1 = q0 * q1;
-	q0q2 = q0 * q2;
-	q0q3 = q0 * q3;
-	q1q1 = q1 * q1;
-	q1q2 = q1 * q2;
-	q1q3 = q1 * q3;
-	q2q2 = q2 * q2;
-	q2q3 = q2 * q3;
-	q3q3 = q3 * q3;
-
-	_2q0 = 2.0f * q0;
-	_2q1 = 2.0f * q1;
-	_2q2 = 2.0f * q2;
-	_2q3 = 2.0f * q3;
-
-	// Rate of change of quaternion from gyroscope
-	wq0 = 0.5f * (-q1 * gx - q2 * gy - q3 * gz);
-	wq1 = 0.5f * (q0 * gx + q2 * gz - q3 * gy);
-	wq2 = 0.5f * (q0 * gy - q1 * gz + q3 * gx);
-	wq3 = 0.5f * (q0 * gz + q1 * gy - q2 * gx);
-
-	AccMag = sqrtf(Sqr(ax) + Sqr(ay) + Sqr(az));
-	AccConfidence = CalculateAccConfidence(AccMag);
-
-	// Normalise accelerometer measurement
-	normR = invSqrt(AccMag);
-	ax *= normR;
-	ay *= normR;
-	az *= normR;
-
-	// default KpAccBase is 0.2 paper says 0.041
-	Beta = State == InFlight ? BetaBase * AccConfidence : BetaBase * 2.5f;
-
-	if (F.NewMagValues) {
-		F.NewMagValues = false;
-
-		// Normalise magnetometer measurement
-		normR = invSqrt(Sqr(mx) + Sqr(my) + Sqr(mz));
-		mx *= normR;
-		my *= normR;
-		mz *= normR;
-
-		// Auxiliary variables to avoid repeated arithmetic
-		_2q0mx = 2.0f * q0 * mx;
-		_2q0my = 2.0f * q0 * my;
-		_2q0mz = 2.0f * q0 * mz;
-		_2q1mx = 2.0f * q1 * mx;
-
-		// Reference direction of Earth's magnetic field
-		hx = mx * q0q0 - _2q0my * q3 + _2q0mz * q2 + mx * q1q1 + _2q1 * my * q2
-				+ _2q1 * mz * q3 - mx * q2q2 - mx * q3q3;
-		hy = _2q0mx * q3 + my * q0q0 - _2q0mz * q1 + _2q1mx * q2 - my * q1q1
-				+ my * q2q2 + _2q2 * mz * q3 - my * q3q3;
-		_2bx = sqrt(hx * hx + hy * hy);
-		_2bz = -_2q0mx * q2 + _2q0my * q1 + mz * q0q0 + _2q1mx * q3 - mz * q1q1
-				+ _2q2 * my * q3 - mz * q2q2 + mz * q3q3;
-		_4bx = 2.0f * _2bx;
-		_4bz = 2.0f * _2bz;
-		_8bx = 2.0f * _4bx;
-		_8bz = 2.0f * _4bz;
-
-		// Gradient descent algorithm corrective step
-		s0 = -_2q2 * (2.0f * (q1q3 - q0q2) - ax) + _2q1 * (2.0f * (q0q1 + q2q3)
-				- ay) + -_4bz * q2 * (_4bx * (0.5 - q2q2 - q3q3) + _4bz * (q1q3
-				- q0q2) - mx) + (-_4bx * q3 + _4bz * q1) * (_4bx
-				* (q1q2 - q0q3) + _4bz * (q0q1 + q2q3) - my) + _4bx * q2
-				* (_4bx * (q0q2 + q1q3) + _4bz * (0.5 - q1q1 - q2q2) - mz);
-		s1 = _2q3 * (2.0f * (q1q3 - q0q2) - ax) + _2q0 * (2.0f * (q0q1 + q2q3)
-				- ay) + -4.0f * q1 * (2.0f * (0.5 - q1q1 - q2q2) - az) + _4bz
-				* q3 * (_4bx * (0.5 - q2q2 - q3q3) + _4bz * (q1q3 - q0q2) - mx)
-				+ (_4bx * q2 + _4bz * q0) * (_4bx * (q1q2 - q0q3) + _4bz
-						* (q0q1 + q2q3) - my) + (_4bx * q3 - _8bz * q1) * (_4bx
-				* (q0q2 + q1q3) + _4bz * (0.5 - q1q1 - q2q2) - mz);
-		s2 = -_2q0 * (2.0f * (q1q3 - q0q2) - ax) + _2q3 * (2.0f * (q0q1 + q2q3)
-				- ay) + (-4.0f * q2) * (2.0f * (0.5 - q1q1 - q2q2) - az)
-				+ (-_8bx * q2 - _4bz * q0) * (_4bx * (0.5 - q2q2 - q3q3) + _4bz
-						* (q1q3 - q0q2) - mx) + (_4bx * q1 + _4bz * q3) * (_4bx
-				* (q1q2 - q0q3) + _4bz * (q0q1 + q2q3) - my) + (_4bx * q0
-				- _8bz * q2) * (_4bx * (q0q2 + q1q3) + _4bz * (0.5 - q1q1
-				- q2q2) - mz);
-		s3 = _2q1 * (2.0f * (q1q3 - q0q2) - ax) + _2q2 * (2.0f * (q0q1 + q2q3)
-				- ay) + (-_8bx * q3 + _4bz * q1) * (_4bx * (0.5 - q2q2 - q3q3)
-				+ _4bz * (q1q3 - q0q2) - mx) + (-_4bx * q0 + _4bz * q2) * (_4bx
-				* (q1q2 - q0q3) + _4bz * (q0q1 + q2q3) - my) + (_4bx * q1)
-				* (_4bx * (q0q2 + q1q3) + _4bz * (0.5 - q1q1 - q2q2) - mz);
-	} else {
-
-		_4q0 = 4.0f * q0;
-		_4q1 = 4.0f * q1;
-		_4q2 = 4.0f * q2;
-		_8q1 = 8.0f * q1;
-		_8q2 = 8.0f * q2;
-
-		// Gradient descent algorithm corrective step
-		s0 = _4q0 * q2q2 + _2q2 * ax + _4q0 * q1q1 - _2q1 * ay;
-		s1 = _4q1 * q3q3 - _2q3 * ax + 4.0f * q0q0 * q1 - _2q0 * ay - _4q1
-				+ _8q1 * q1q1 + _8q1 * q2q2 + _4q1 * az;
-		s2 = 4.0f * q0q0 * q2 + _2q0 * ax + _4q2 * q3q3 - _2q3 * ay - _4q2
-				+ _8q2 * q1q1 + _8q2 * q2q2 + _4q2 * az;
-		s3 = 4.0f * q1q1 * q3 - _2q1 * ax + 4.0f * q2q2 * q3 - _2q2 * ay;
-	}
-
-	// normalise step magnitude
-	normR = invSqrt(Sqr(s0) + Sqr(s1) + Sqr(s2) + Sqr(s3));
-	s0 *= normR;
-	s1 *= normR;
-	s2 *= normR;
-	s3 *= normR;
-
-	// Apply feedback step
-	wq0 -= Beta * s0;
-	wq1 -= Beta * s1;
-	wq2 -= Beta * s2;
-	wq3 -= Beta * s3;
-
-	// Integrate rate of change of quaternion to yield quaternion
-	q0 += wq0 * dT;
-	q1 += wq1 * dT;
-	q2 += wq2 * dT;
-	q3 += wq3 * dT;
-
-	// Normalise quaternion
-	normR = invSqrt(Sqr(q0) + Sqr(q1) + Sqr(q2) + Sqr(q3));
-	q0 *= normR;
-	q1 *= normR;
-	q2 *= normR;
-	q3 *= normR;
-
-	ConvertQuaternionToEuler();
-
-	A[Yaw].Angle = -A[Yaw].Angle;
-	A[Pitch].Angle = -A[Pitch].Angle;
-	if (A[Roll].Angle < 0)
-		A[Roll].Angle += PI;
-	else
-		A[Roll].Angle -= PI;
-
-} // MadgwickMARGUpdate
-
-
 //___________________________________________________________________________
 
 // Madgwick Quaternion version of Mahony et al.  Discrete Cosine Transform code
 // rewritten by Prof G.K. Egan
 
-void MadgwickUpdate(boolean AHRS, real32 gx, real32 gy, real32 gz, real32 ax,
+void MadgwickUpdate(real32 gx, real32 gy, real32 gz, real32 ax,
 		real32 ay, real32 az, real32 mx, real32 my, real32 mz) {
 
 	real32 normR;
@@ -459,8 +284,6 @@ void MadgwickUpdate(boolean AHRS, real32 gx, real32 gy, real32 gz, real32 ax,
 	gy += (vz * ax - vx * az) * KpAcc;
 	gz += (vx * ay - vy * ax) * KpAcc;
 
-	if (AHRS) {
-
 		if (F.NewMagValues) { // no compensation for latency
 			F.NewMagValues = false;
 
@@ -491,7 +314,6 @@ void MadgwickUpdate(boolean AHRS, real32 gx, real32 gy, real32 gz, real32 ax,
 			gy += (mz * wx - mx * wz) * KpMag;
 			gz += (mx * wy - my * wx) * KpMag;
 		}
-	}
 
 	// integrate quaternion rate
 	q0i = (-q1 * gx - q2 * gy - q3 * gz) * dTOn2;
@@ -536,20 +358,12 @@ void UpdateInertial(void) {
 		DoEmulation(); // produces ROC, Altitude etc.
 	else {
 		if (!UseGyroOS)
-			ReadFilteredGyroAndAcc();
-		ScaleRateAndAcc();
+			ReadFilteredGyroAndAcc(imuSel);
+		ScaleRateAndAcc(imuSel);
 	}
 
-	if (CurrStateEst == MadgwickMARG) {
 		GetMagnetometer();
-		MadgwickMARGUpdate(Rate[Roll], Rate[Pitch], Rate[Yaw], Acc[BF],
-				Acc[LR], Acc[UD], Mag[X], Mag[Y], Mag[Z]);
-	} else if (CurrStateEst == MadgwickAHRS) {
-		GetMagnetometer();
-		MadgwickUpdate(true, Rate[Roll], Rate[Pitch], Rate[Yaw], Acc[BF],
-				Acc[LR], Acc[UD], Mag[X], Mag[Y], Mag[Z]);
-	} else
-		MadgwickUpdate(false, Rate[Roll], Rate[Pitch], Rate[Yaw], Acc[BF],
+		MadgwickUpdate(Rate[Roll], Rate[Pitch], Rate[Yaw], Acc[BF],
 				Acc[LR], Acc[UD], Mag[X], Mag[Y], Mag[Z]);
 
 	DoControl();

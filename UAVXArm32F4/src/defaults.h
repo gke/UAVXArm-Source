@@ -65,8 +65,7 @@ const ParamStruct_t DefaultParams[] = { //
 				{ VRSDescentRate, 0, 255, { 30, 30, 30, 30} }, // 104
 				{ AltLPF, 0, 255, { 50, 50, 50, 50 } }, //  *0.1 58
 
-				{ RFSensorType, 0, 255, { UnknownRF, UnknownRF, UnknownRF,
-						UnknownRF } }, // 09
+				{ RFSensorType, 0, 255, { noRF,  } }, // 09
 
 				// Camera (Legacy)
 				{ RollCamKp, 0, 255, { 10, 10, 0, 0 } }, //  19c
@@ -74,8 +73,8 @@ const ParamStruct_t DefaultParams[] = { //
 				{ PitchCamKp, 0, 255, { 10, 10, 0, 0 } }, //  26c
 
 				// Estimator
-				{ StateEst, 0, 255, { MadgwickAHRS, MadgwickAHRS, MadgwickAHRS,
-						MadgwickAHRS } }, // IMU 13
+				{ IMUOption, 0, 255, { useIMU0, useIMU0, useIMU0,
+						useIMU0 } }, // IMU 13
 				{ MadgwickKpMag, 0, 255, { 50, 50, 50, 50 } }, //  32
 				{ MadgwickKpAcc, 0, 255, { 20, 20, 20, 20 } }, //  39c
 				{ AccConfSD, 0, 255, { 6, 6, 6, 6 } }, //  53c
@@ -125,8 +124,8 @@ const ParamStruct_t DefaultParams[] = { //
 				{ DescentDelayS, 0, 255, { 15, 15, 15, 15 } }, //  47
 
 				{ NavMagVar, 0, 255, { 13, 13, 13, 13 } }, //  34c 13 Melbourne
-				{ ASSensorType, 0, 255, { NoASSensor, NoASSensor, NoASSensor,
-						NoASSensor } }, //  72
+				{ ASSensorType, 0, 255, { noAS, noAS, noAS,
+						noAS } }, //  72
 
 				{ MinhAcc, 0, 255, { GPS_MIN_HACC * 10, GPS_MIN_HACC * 10,
 						GPS_MIN_HACC * 10, GPS_MIN_HACC * 10 } }, // 81,
@@ -180,15 +179,8 @@ const ParamStruct_t DefaultParams[] = { //
 						UseGyroOSMask | UseFastStartMask,
 						UseGyroOSMask | UseFastStartMask } }, //  74
 #endif
-				{ ComboPort1Config, 0, 255, { CPPM_GPS_M7to10, CPPM_GPS_M7to10,
-						CPPM_GPS_M7to10, CPPM_GPS_M7to10 } }, //  15
-#if defined(UAVXF4V3)
-				{ ComboPort2Config, 0, 255, { RF_BatV_I2C_V3, RF_BatV_I2C_V3,
-						RF_BatV_I2C_V3, RF_BatV_I2C_V3 } }, // 76,
-#else
-				{	ComboPort2Config, 0, 255, {RF_V4, RF_V4, RF_V4,
-						RF_V4}}, // 76,
-#endif
+				{ RxType, 0, 255, { CPPMRx, CPPMRx,
+						CPPMRx, CPPMRx } }, //  15
 				{ AFType, 0, 255, { QuadXAF, QuadXAF, AileronSpoilerFlapsAF,
 						ElevonAF } }, // ,44c
 #if defined(UAVXF4V3)
@@ -209,6 +201,8 @@ const ParamStruct_t DefaultParams[] = { //
 				{ VoltScale, 0, 255, { 100, 100, 100, 100 } }, // x0.01 86,
 
 				// Unused
+
+				{ Unused76, 0, 255, { 0, } }, // 76
 
 				{ Unused107, 0, 255, { 0, } }, // 107
 				{ Unused108, 0, 255, { 0, } }, // 108

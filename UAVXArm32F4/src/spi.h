@@ -38,9 +38,9 @@ extern void spiSetDivisor(SPI_TypeDef *SPIx, uint16 d);
 
 extern uint8 spiSend(SPI_TypeDef *SPIx, uint8 d);
 
-extern boolean spiReadBlock(uint8 devSel, uint8 id, uint8 reg, uint8 len,
+extern boolean spiReadBlock(uint8 devSel, uint8 reg, uint8 len,
 		uint8 * data);
-extern boolean spiWriteBlock(uint8 devSel, uint8 id, uint8 reg, uint8 len,
+extern boolean spiWriteBlock(uint8 devSel, uint8 reg, uint8 len,
 		uint8 * data);
 
 extern uint32 spiErrors;

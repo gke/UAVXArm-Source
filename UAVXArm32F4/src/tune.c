@@ -86,7 +86,7 @@ static pidAutotuneData_t tuneSaved[3];
 static uint32 lastGainsUpdateTime;
 
 void autotuneUpdateGains(pidAutotuneData_t * data) {
-	for (int a = Pitch; a <= Yaw; a++) {
+	for (idx a = Pitch; a <= Yaw; a++) {
 		A[a].R.Kp = lrintf(data[a].R.Kp);
 		A[a].R.Ki = lrintf(data[a].R.Ki);
 		A[a].R.Kd = lrintf(data[a].R.Kd);
@@ -106,7 +106,7 @@ void autotuneCheckUpdateGains(void) {
 }
 
 void autotuneStart(void) {
-	for (int a = Pitch; a <= Yaw; a++) {
+	for (idx a = Pitch; a <= Yaw; a++) {
 		tuneCurrent[a].R.Kp = A[a].R.Kp;
 		tuneCurrent[a].R.Ki = A[a].R.Ki;
 		tuneCurrent[a].R.Kd = A[a].R.Kd;

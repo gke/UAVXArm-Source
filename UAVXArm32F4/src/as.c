@@ -22,7 +22,6 @@
 
 #include "UAVX.h"
 
-#define MS4525_ID 0x28
 #define MS5525DSO_ID 0x77
 
 real32 Airspeed;
@@ -52,16 +51,16 @@ void ReadASDiffPressureI2C(void) {
 
 	switch (p) {
 	case 0:
-		sioReadBlock(SIOAS, MS4525_ID, 0, 2, B);
+		sioReadBlock(asSel, 0, 2, B);
 		RawASPressure = (B[1] & 0x3f) << 8 | B[0];
 		break;
 	case 1:
-		sioReadBlock(SIOAS, MS4525_ID, 0, 3, B);
+		sioReadBlock(asSel, 0, 3, B);
 		RawASPressure = (B[1] & 0x3f) << 8 | B[0];
 		RawASTemperature = B[2] << 3;
 		break;
 	case 2:
-		sioReadBlock(SIOAS, MS4525_ID, 0, 4, B);
+		sioReadBlock(asSel, 0, 4, B);
 		RawASPressure = (B[1] & 0x3f) << 8 | B[0];
 		RawASTemperatureHR = B[2] << 3 | (B[3] & 0b0111);
 		break;
@@ -100,7 +99,7 @@ void ReadASDiffPressureI2C(void) {
 
 	}
 
-	// does it freerun after init? sioWrite(SIOAS, MS4525_ID, 0, 0); // restart
+	// does it freerun after init? sioWrite(asSel, 0, 0); // restart
 
 } // ReadAirspeedI2C
 
@@ -108,7 +107,7 @@ uint32 NextASUpdatemS = 0;
 
 void InitASDiffPressureI2C(void) {
 
-	sioWrite(SIOAS, MS4525_ID, 0, 0); // 8.4mS to first data
+	sioWrite(asSel, 0, 0); // 8.4mS to first data
 
 	NextASUpdatemS = mSClock() + 9;
 

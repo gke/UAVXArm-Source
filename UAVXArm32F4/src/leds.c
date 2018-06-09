@@ -24,13 +24,6 @@
 
 #include "UAVX.h"
 
-#if defined(LED_ON_HIGH)
-#define LEDON 1
-#define LEDOFF 0
-#else
-#define LEDON 0
-#define LEDOFF 1
-#endif
 //_________________________________________________________________
 
 // WS2812 (hard coded to Aux1)
@@ -202,31 +195,6 @@ boolean incomplete = false;
 // Currently the timings are 0 = 350ns high/800ns and 1 = 700ns high/650ns low.
 // Betaflight timings are 0 = 350ns high/800ns and 1 = 700ns high/650ns low.
 
-static void wsStartDMA1(uint16 BuffSize) {
-	static DMA_InitTypeDef dma_init = { .DMA_BufferSize = MAX_WS2812_LEDS * 24,
-			.DMA_Channel = DMA_Channel_0,
-			.DMA_DIR = DMA_DIR_MemoryToPeripheral, .DMA_FIFOMode =
-					DMA_FIFOMode_Disable, .DMA_FIFOThreshold =
-					DMA_FIFOThreshold_HalfFull, .DMA_Memory0BaseAddr =
-					(uint32) wsPWMBuffer, .DMA_MemoryBurst =
-					DMA_MemoryBurst_Single, .DMA_MemoryDataSize =
-					DMA_MemoryDataSize_HalfWord, .DMA_MemoryInc =
-					DMA_MemoryInc_Enable, .DMA_Mode = DMA_Mode_Circular,
-			.DMA_PeripheralBaseAddr = (uint32) &TIM8->CCR1,
-			.DMA_PeripheralBurst = DMA_PeripheralBurst_Single,
-			.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord,
-			.DMA_PeripheralInc = DMA_PeripheralInc_Disable, .DMA_Priority =
-					DMA_Priority_High }; // Medium
-
-	dma_init.DMA_BufferSize = BuffSize;
-
-	DMA_Init(DMA2_Stream2, &dma_init);
-	DMA_Cmd(DMA2_Stream2, ENABLE);
-	TIM_DMACmd(TIM8, TIM_DMA_CC1, ENABLE);
-
-} // wsStartDMA1
-
-
 static void wsInitBuffers(void) {
 	int16 i;
 
@@ -241,11 +209,7 @@ static void wsInitBuffers(void) {
 } // wsInitBuffers
 
 
-void wsInit(void) { // hard coded to PORTC Pin 6 Aux1
-	GPIO_InitTypeDef GPIO_InitStructure;
-	TIM_TimeBaseInitTypeDef TIM_TimeBase_InitStructure;
-	TIM_OCInitTypeDef TIM_OC_InitStructure;
-	NVIC_InitTypeDef nvic_init;
+void wsInit(void) {
 
 	if (CurrwsNoOfLeds > 0) {
 
@@ -254,53 +218,7 @@ void wsInit(void) { // hard coded to PORTC Pin 6 Aux1
 		wsBufferSize = wsNoOfLeds * 24;
 
 		wsInitBuffers();
-
-		RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
-
-		RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM8, ENABLE);
-
-		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-		GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6;
-		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-		GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-		GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-		GPIO_Init(GPIOC, &GPIO_InitStructure);
-
-		GPIO_PinAFConfig(GPIOC, GPIO_PinSource6, GPIO_AF_TIM8);
-
-		TIM_TimeBase_InitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
-		TIM_TimeBase_InitStructure.TIM_CounterMode = TIM_CounterMode_Up;
-		TIM_TimeBase_InitStructure.TIM_Period = 41; //210;
-		TIM_TimeBase_InitStructure.TIM_Prescaler = 4; // 0 TODO:
-		TIM_TimeBaseInit(TIM8, &TIM_TimeBase_InitStructure);
-
-		TIM_OCStructInit(&TIM_OC_InitStructure);
-		TIM_OC_InitStructure.TIM_OCMode = TIM_OCMode_PWM1;
-		TIM_OC_InitStructure.TIM_OCNIdleState = TIM_OCNIdleState_Set;
-		TIM_OC_InitStructure.TIM_OutputState = TIM_OutputState_Enable;
-
-		TIM_OC1Init(TIM8, &TIM_OC_InitStructure);
-
-		TIM_CtrlPWMOutputs(TIM8, ENABLE);
-
-		TIM_OC1PreloadConfig(TIM8, TIM_OCPreload_Enable);
-		TIM_ARRPreloadConfig(TIM8, ENABLE);
-
-		TIM_CCxCmd(TIM8, TIM_Channel_1, TIM_CCx_Enable);
-		TIM_Cmd(TIM8, ENABLE);
-
-		RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2, ENABLE);
-		TIM_DMACmd(TIM8, TIM_DMA_CC1, ENABLE);
-		DMA_ITConfig(DMA2_Stream2, DMA_IT_HT, ENABLE);
-		DMA_ITConfig(DMA2_Stream2, DMA_IT_TC, ENABLE);
-
-		wsStartDMA1(wsBufferSize);
-
-		nvic_init.NVIC_IRQChannel = DMA2_Stream2_IRQn;
-		nvic_init.NVIC_IRQChannelPreemptionPriority = 4;
-		nvic_init.NVIC_IRQChannelSubPriority = 0;
-		nvic_init.NVIC_IRQChannelCmd = ENABLE;
-		NVIC_Init(&nvic_init);
+		InitWSPin(wsBufferSize);
 	}
 
 } // wsInit
@@ -492,7 +410,6 @@ void UpdatewsLed(void) {
 uint8 LEDChase[] = { ledBlueSel, ledGreenSel, ledRedSel, ledYellowSel };
 boolean LEDsSaved[4] = { false };
 uint8 LEDPattern = 0;
-boolean UsingExtLEDs = false;
 
 void BeeperOff(void) {
 #if defined(UAVXF4V1)
@@ -531,13 +448,13 @@ void LEDOn(uint8 l) {
 	LEDsOff();
 	else
 #endif
-		digitalWrite(&LEDPins[l], LEDON);
+		digitalWrite(&LEDPins[l], ledsLowOn);
 		wsLEDOn(l);
 
 } // LEDOn
 
 void LEDOff(uint8 l) {
-		digitalWrite(&LEDPins[l], LEDOFF);
+		digitalWrite(&LEDPins[l], !ledsLowOn);
 		wsLEDOff(l);
 } // LEDOff
 
@@ -550,11 +467,10 @@ void LEDToggle(uint8 l) {
 
 boolean LEDIsOn(uint8 l) {
 
-#if defined(LED_ON_HIGH)
+if (ledsLowOn)
 		return (digitalRead(&LEDPins[l]));
-#else
+else
 		return (!digitalRead(&LEDPins[l]));
-#endif
 
 } // LEDIsOn
 

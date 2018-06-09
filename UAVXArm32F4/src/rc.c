@@ -71,12 +71,11 @@ uint32 NextNavSwUpdatemS = 0;
 
 boolean RxLoopbackEnabled = false;
 
-uint8 CurrComboPort1Config = ComboPort1ConfigUnknown;
-uint8 CurrComboPort2Config = ComboPort2Unused;
+uint8 CurrRxType = UnknownRx;
 
 void EnableRC(void) {
 
-	if (CurrComboPort1Config != ParallelPPM)
+	if (CurrRxType != ParallelPPMRx)
 		RxEnabled[RCSerial] = true;
 
 } // EnableRC
@@ -135,7 +134,7 @@ void RCParallelISR(TIM_TypeDef *tim) {
 	uint32 TimerVal = 0;
 	int32 Width;
 	RCInpDefStruct_t * RCPtr;
-	TIMChannelDef * u;
+	const TIMChannelDef * u;
 	uint32 NowuS;
 
 	// scan ALL RC inputs as the channel pulses arrive
@@ -244,7 +243,7 @@ void DoSBus(void) {
 	RCInp[16].Raw = RCFrame.u.b[22] & 0b0001 ? 2000 : 1000;
 	RCInp[17].Raw = RCFrame.u.b[22] & 0b0010 ? 2000 : 1000;
 
-	if (CurrComboPort1Config == FrSkyFBus_M7to10)
+	if (CurrRxType == FrSkyFBusRx)
 		FrSkyDLinkuS = RCLastFrameuS;
 
 	F.RCNewValues = true;
@@ -284,8 +283,8 @@ void RCUSARTISR(uint8 v) { // based on MultiWii
 	Interval = NowuS - RCFrame.lastByteReceived; // uS clock wraps every 71 minutes - ignore
 	RCFrame.lastByteReceived = NowuS;
 
-	switch (CurrComboPort1Config) {
-	case FrSkyFBus_M7to10:
+	switch (CurrRxType) {
+	case FrSkyFBusRx:
 		RxFrSkySPort(v);
 		if (FrSkyPacketReceived) {
 			if (FrSkyPacketTag == 0) {
@@ -305,7 +304,7 @@ void RCUSARTISR(uint8 v) { // based on MultiWii
 			}
 		}
 		break;
-	case FutabaSBus_M7to10:
+	case FutabaSBusRx:
 
 		if (Interval > SBUS_MIN_SYNC_PAUSE_US) {
 			RCSyncWidthuS = Interval;
@@ -335,9 +334,9 @@ void RCUSARTISR(uint8 v) { // based on MultiWii
 			break;
 		}
 		break;
-	case Deltang1024_M7to10:
-	case Spektrum1024_M7to10:
-	case Spektrum2048_M7to10:
+	case Deltang1024Rx:
+	case Spektrum1024Rx:
+	case Spektrum2048Rx:
 		if (Interval > (uint32) MIN_SPEK_SYNC_PAUSE_US) {
 			RCSyncWidthuS = Interval;
 			RCFrame.index = 0;
@@ -362,7 +361,7 @@ boolean CheckDeltang(void) {
 	uint8 CheckSum;
 	boolean OK = true;
 
-	if (CurrComboPort1Config == Deltang1024_M7to10) {
+	if (CurrRxType == Deltang1024Rx) {
 		CheckSum = 0;
 		for (i = 1; i < 16; i++)
 			CheckSum += RCFrame.u.b[i];
@@ -380,14 +379,14 @@ void CheckSerialRC(void) {
 
 	if (F.RCFrameReceived) {
 		F.RCFrameReceived = false;
-		switch (CurrComboPort1Config) {
-		case FrSkyFBus_M7to10:
-		case FutabaSBus_M7to10:
+		switch (CurrRxType) {
+		case FrSkyFBusRx:
+		case FutabaSBusRx:
 			DoSBus();
 			break;
-		case Deltang1024_M7to10:
-		case Spektrum1024_M7to10:
-		case Spektrum2048_M7to10:
+		case Deltang1024Rx:
+		case Spektrum1024Rx:
+		case Spektrum2048Rx:
 
 			for (i = 2; i < SPEK_FRAME_SIZE; i += 2)
 				if ((RCFrame.u.b[i] & RCFrame.u.b[i + 1]) != 0xff) {
@@ -402,7 +401,7 @@ void CheckSerialRC(void) {
 					RCInp[Channel].Raw = (v - SpekOffset) * SpekScale + 1500;
 				}
 
-			if (CurrComboPort1Config == Deltang1024_M7to10)
+			if (CurrRxType == Deltang1024Rx)
 				RSSI = RCFrame.u.b[1] & 0x1f;
 			else
 				LostFrameCount = ((uint16) RCFrame.u.b[0] << 8) //TODO:???
@@ -476,7 +475,7 @@ void doSpektrumBinding(void) {
 void DoSpektrumBind(void) {
 	idx i;
 	PinDef p;
-
+/*
 	p.Port = SerialPorts[RCSerial].Port;
 	p.Pin = SerialPorts[RCSerial].RxPin;
 	p.Mode = GPIO_Mode_OUT;
@@ -500,7 +499,7 @@ void DoSpektrumBind(void) {
 
 	while (!F.RCFrameReceived)
 		CheckSerialRx();
-
+*/
 } // DoSpektrumBind
 
 
@@ -545,31 +544,31 @@ void InitRC(void) {
 
 	memset((void *) &RCFrame, 0, sizeof(RCFrame));
 
-	switch (CurrComboPort1Config) {
-	case ParallelPPM:
+	switch (CurrRxType) {
+	case ParallelPPMRx:
 		DiscoveredRCChannels = 7; //P(RCChannels);
 		RxEnabled[RCSerial] = false;
 		break;
-	case FutabaSBus_M7to10:
+	case FutabaSBusRx:
 		DiscoveredRCChannels = SBUS_CHANNELS;
 		RxEnabled[RCSerial] = true;
 		break;
-	case Deltang1024_M7to10:
-	case Spektrum1024_M7to10:
+	case Deltang1024Rx:
+	case Spektrum1024Rx:
 		SpekChanShift = 2;
 		SpekChanMask = 0x03;
 		SpekScale = 1.2f;
 		SpekOffset = 1500 - 988;
 		RxEnabled[RCSerial] = true;
 		break;
-	case Spektrum2048_M7to10:
+	case Spektrum2048Rx:
 		SpekChanShift = 3;
 		SpekChanMask = 0x07;
 		SpekScale = 0.6f;
 		SpekOffset = (1500 - 988) * 2;
 		RxEnabled[RCSerial] = true;
 		break;
-	case FrSkyFBus_M7to10:
+	case FrSkyFBusRx:
 		DiscoveredRCChannels = SBUS_CHANNELS;
 		RxCTS[RCSerial] = false;
 		serialBaudRate(RCSerial, 115200);
@@ -640,17 +639,17 @@ void MapRCNewBROKEN(void) { // re-maps captured PPM to Rx channel sequence
 
 void CheckRC(void) {
 
-	switch (CurrComboPort1Config) {
-	case CPPM_GPS_M7to10:
+	switch (CurrRxType) {
+	case CPPMRx:
 		break;
-	case ParallelPPM:
+	case ParallelPPMRx:
 		// nothing to do
 		break;
-	case Deltang1024_M7to10:
-	case Spektrum1024_M7to10:
-	case Spektrum2048_M7to10:
-	case FrSkyFBus_M7to10:
-	case FutabaSBus_M7to10:
+	case Deltang1024Rx:
+	case Spektrum1024Rx:
+	case Spektrum2048Rx:
+	case FrSkyFBusRx:
+	case FutabaSBusRx:
 		CheckSerialRC();
 		break;
 	default:
@@ -793,17 +792,17 @@ void SpekLoopback(boolean HiRes) {
 void CheckRCLoopback(void) {
 
 	if (RxLoopbackEnabled)
-		switch (CurrComboPort1Config) {
-		case CPPM_GPS_M7to10:
+		switch (CurrRxType) {
+		case CPPMRx:
 			break;
-		case ParallelPPM:
+		case ParallelPPMRx:
 			break;
-		case Deltang1024_M7to10:
-		case Spektrum1024_M7to10:
-		case Spektrum2048_M7to10:
-			SpekLoopback(CurrComboPort1Config == Spektrum2048_M7to10);
+		case Deltang1024Rx:
+		case Spektrum1024Rx:
+		case Spektrum2048Rx:
+			SpekLoopback(CurrRxType == Spektrum2048Rx);
 			break;
-		case FutabaSBus_M7to10:
+		case FutabaSBusRx:
 			SBusLoopback();
 			break;
 		default:

@@ -26,214 +26,6 @@
 #define MAX_RC_INPUTS 8
 #define MAX_PWM_OUTPUTS 10
 
-enum GPIOSelectors {
-	BeeperSel, ArmedSel, LandingSel,
-	Aux1Sel, Aux2Sel, ProbeSel, InverterSel,
-	MPU6XXXIntSel, HMC5XXXRdySel, MAX_GPIO_PINS
-};
-
-
-enum ADCSelectors {
-	RangefinderAnalogSel,
-	BattCurrentAnalogSel,
-	BattVoltsAnalogSel,
-	// Unused
-	RollAnalogSel,
-	PitchAnalogSel,
-	YawAnalogSel,
-	MAX_ANALOG_CHANNELS
-};
-
-enum {
-	imuSel, baroSel, magSel, memSel, gpsSel, rfSel, escSel, flowSel, assel, maxDevSel
-};
-
-enum {mpu6000IMU, mpu6050IMU, noIMU};
-enum {ms5611Baro, ms5607Baro, bmp085Baro, noBaro};
-enum {hmc5xxxMag, noMag};
-enum {servoGimbal, noGimbal};
-
-enum GPIOSelectorsBF {
-	BaroXCLRSel = 2, BaroEOCSel = 3
-};
-
-
-enum LEDSelectors {
-	ledYellowSel, ledRedSel, ledBlueSel, ledGreenSel,MAX_LED_PINS
-};
-
-typedef struct {
-	TIM_TypeDef *Tim;
-	uint16 Channel;
-	uint16 CC;
-	volatile uint32 * CCR;
-	uint8 TimAF;
-} TIMChannelDef;
-
-extern TIM_ICInitTypeDef TIM_ICInitStructure;
-
-typedef struct {
-	boolean Used;
-	GPIO_TypeDef* Port;
-	uint16 Pin;
-	uint16 PinSource;
-	GPIOMode_TypeDef Mode;
-	GPIOOType_TypeDef OType;
-	GPIOPuPd_TypeDef PuPd;
-	boolean TimerUsed;
-	TIMChannelDef Timer;
-
-	IRQn_Type PinISR;
-
-} PinDef;
-
-typedef struct {
-	boolean Used;
-	ADC_TypeDef* ADCx;
-	GPIO_TypeDef* Port;
-	uint16 Pin;
-	uint32 ADCChannel;
-	uint32 DMAChannel;
-#ifdef STM32F1
-	DMA_Channel_TypeDef * DMAStream;
-#else
-	DMA_Stream_TypeDef* DMAStream;
-#endif
-	uint8 Rank;
-} AnalogPinDef;
-
-typedef struct {
-	boolean Used;
-	USART_TypeDef* USART;
-	uint8 USART_AF;
-	GPIO_TypeDef* Port;
-	const uint16 TxPin;
-	const uint16 TxPinSource;
-	const uint16 RxPin;
-	const uint16 RxPinSource;
-
-	boolean InterruptsUsed;
-	IRQn_Type ISR;
-
-	boolean DMAUsed;
-	uint32 DMAChannel;
-	DMA_Stream_TypeDef * TxDMAStream;
-	IRQn_Type TxDMAISR;
-	DMA_Stream_TypeDef * RxDMAStream;
-	uint32 Baud;
-
-} SerialPortDef;
-
-typedef struct {
-	boolean Used;
-	I2C_TypeDef* I2C;
-	const uint8 I2CNo;
-	GPIO_TypeDef* SCLPort;
-	const uint16 SCLPin;
-	const uint8 SCLPinSource;
-	GPIO_TypeDef* SDAPort;
-	const uint16 SDAPin;
-	const uint8 SDAPinSource;
-	const uint8 I2C_AF;
-} I2CPortDef;
-
-typedef struct {
-	boolean Used;
-	SPI_TypeDef* SPIx;
-	GPIO_TypeDef* Port;
-	const struct {
-		int16 Pin;
-		int16 PinSource;
-	} P[3];
-} SPIPortDef;
-
-extern SPIPortDef SPIPorts[];
-extern PinDef SPISelectPins[];
-
-extern boolean spiDevUsed[];
-
-extern uint8 CurrNoOfRCPins;
-
-extern const uint8 currIMUType;
-extern const uint8 currBaroType;
-extern const uint8 currMagType;
-extern const uint8 currGimbalType;
-
-
-extern uint8 GPSRxSerial, GPSTxSerial, RCSerial, TelemetrySerial;
-extern boolean RxUsingSerial;
-
-//extern void pinMode(PinDef * d, GPIOMode_TypeDef m, GPIOPuPd_TypeDef PuPd);
-//extern void pinInit(PinDef * d);
-
-extern void systemReset(boolean toBootloader);
-
-extern void InitHarnessPorts(void);
-extern void InitHarness(void);
-extern void pinInit(PinDef * d);
-extern void pinInitOutput(PinDef * d);
-extern void pinInitMode(PinDef * d, boolean IsInput);
-extern void serialBaudRate(uint8 s, uint32 BaudRate);
-//zzzextern void serialInitSBus(uint8 s, boolean Enable);
-extern void InitSerialPort(uint8 s, boolean Enable, boolean SBusConfig);
-extern void InitPWMPin(PinDef * u, uint16 pwmprescaler, uint32 pwmperiod, uint32 pwmwidth, boolean usingpwm);
-
-extern void InitComboPorts(void);
-
-extern void i2cInit(uint8 I2CCurr);
-extern void i2cUnstick(uint8 I2CCurr);
-
-extern void spiInitGPIOPins(uint8 spiPort, boolean highClock);
-
-extern void InitClocks(void);
-
-extern boolean digitalRead(PinDef * d);
-extern void digitalWrite(PinDef * d, uint8 m);
-extern void digitalToggle(PinDef * d);
-
-extern PinDef RCPins[];
-extern I2CPortDef I2CPorts[];
-extern AnalogPinDef AnalogPins[];
-extern PinDef LEDPins[];
-extern PinDef GPIOPins[];
-extern PinDef PWMPins[];
-extern PinDef SPISelectPins[];
-extern SerialPortDef SerialPorts[];
-extern boolean usartUsed[];
-
-const uint8 currIMUType;
-const uint8 currBaroType;
-const uint8 currMagType;
-const uint8 currGimbalType;
-
-//________________________________________________________________________________________________
-
-#define spi_21 			SPI_BaudRatePrescaler_2
-#define spi_10_5 		SPI_BaudRatePrescaler_4
-#define spi_5_250 		SPI_BaudRatePrescaler_8
-#define spi_2_625 		SPI_BaudRatePrescaler_16
-#define spi_1_3125 		SPI_BaudRatePrescaler_32
-#define spi_0_65625 	SPI_BaudRatePrescaler_64
-#define spi_0_3128125 	SPI_BaudRatePrescaler_128
-#define spi_0_15640625 	SPI_BaudRatePrescaler_256
-
-extern const uint8 spiMap[];
-extern const uint16 spiDevBaudRate[];
-extern const uint8 i2cMap[];
-
-#define SIOIMU		imuSel
-#define SIOBaro		baroSel
-#define SIOMag		magSel
-#define SIOMem 		memSel
-#define SIORF		rfSel  // not SPI
-#define SIOESC		escSel // i2c ESCs
-#define SIOFlow		flowSel
-#define SIOAS		assel // i2c
-#define MAX_SPI_PORTS 3
-#define MAX_I2C_PORTS 2
-
-enum {Usart1, Usart2, Usart3, Uart4, SoftSerialTx, USBSerial };
-
 // Drives
 
 #define PWM_PS 					TIMER_PS	// 1MHz
@@ -241,7 +33,6 @@ enum {Usart1, Usart2, Usart3, Uart4, SoftSerialTx, USBSerial };
 #define PWM_MIN					PWM_WIDTH
 #define PWM_MAX					(2000) // must preserve a synchronisation gap for ESCs
 #define PWM_PERIOD    			(1000000L/450) // could go to 490Hz?
-
 #define PWM_PS_SYNC 			TIMER_PS
 #define PWM_WIDTH_SYNC			PWM_WIDTH // 1ms pulse width
 #define PWM_MIN_SYNC			PWM_WIDTH_SYNC
@@ -277,8 +68,230 @@ enum {Usart1, Usart2, Usart3, Uart4, SoftSerialTx, USBSerial };
 #define PWM_NEUTRAL		(1500)
 #define PWM_MAX_SERVO	(2200)
 
-#define MAX_SERIAL_PORTS 4
+enum GPIOSelectors {
+	BeeperSel,
+	ArmedSel,
+	LandingSel,
+	Aux1Sel,
+	Aux2Sel,
+	ProbeSel,
+	InverterSel,
+	MPU6XXXIntSel,
+	HMC5XXXRdySel,
+	MAX_GPIO_PINS
+};
 
+enum ADCSelectors {
+	RangefinderAnalogSel, BattCurrentAnalogSel, BattVoltsAnalogSel,
+	// Unused
+	RollAnalogSel,
+	PitchAnalogSel,
+	YawAnalogSel,
+	MAX_ANALOG_CHANNELS
+};
+
+enum BusDevSelectors {
+	imu0Sel,
+	imu1Sel,
+	baroSel,
+	magSel,
+	memSel,
+	gpsSel,
+	rfSel,
+	asSel,
+	flowSel,
+	escSel,
+	maxDevSel
+};
+
+enum {
+	mpu6000IMU, mpu6050IMU, icm20689IMU, noIMU
+};
+enum {
+	ms5611Baro, ms5607Baro, bmp085Baro, noBaro
+};
+enum {
+	hmc5xxxMag, noMag
+};
+enum {
+	servoGimbal, noGimbal
+};
+
+enum {
+	i2cEEPROMMem, spiFlashMem, noMem
+};
+
+enum GPIOSelectorsBF {
+	BaroXCLRSel = 2, BaroEOCSel = 3
+};
+
+enum BusSelectors {
+	useI2C, useSPI
+};
+
+enum LEDSelectors {
+	ledYellowSel, ledRedSel, ledBlueSel, ledGreenSel, MAX_LED_PINS
+};
+
+enum SerialPortSelectors {
+	usbSerial, Usart1, Usart2, Usart3, Uart4, SoftSerialTx, MAX_SERIAL_PORTS
+};
+
+typedef const struct {
+	boolean Used;
+	TIM_TypeDef *Tim;
+	uint16 Channel;
+	uint16 CC;
+	volatile uint32 * CCR;
+	uint8 TimAF;
+} TIMChannelDef;
+
+typedef const struct {
+	boolean Used;
+	uint32 Channel;
+	DMA_Stream_TypeDef * Stream;
+} DMAChannelDef;
+
+extern TIM_ICInitTypeDef TIM_ICInitStructure;
+
+typedef const struct {
+	boolean Used;
+	GPIO_TypeDef* Port;
+	uint16 Pin;
+	uint16 PinSource;
+	GPIOMode_TypeDef Mode;
+	GPIOOType_TypeDef OType;
+	GPIOPuPd_TypeDef PuPd;
+	TIMChannelDef Timer;
+	DMAChannelDef DMA;
+	IRQn_Type PinISR;
+
+} PinDef;
+
+typedef const struct {
+	boolean Used;
+	ADC_TypeDef* ADCx;
+	GPIO_TypeDef* Port;
+	uint16 Pin;
+	uint32 ADCChannel;
+	DMAChannelDef DMA;
+	uint8 Rank;
+} AnalogPinDef;
+
+typedef const struct {
+	boolean Used;
+	USART_TypeDef* USART;
+	uint8 USART_AF;
+	GPIO_TypeDef* Port;
+	uint16 TxPin;
+	uint16 TxPinSource;
+	uint16 RxPin;
+	uint16 RxPinSource;
+	boolean InterruptsUsed;
+	IRQn_Type ISR;
+	boolean DMAUsed;
+	uint32 DMAChannel;
+	DMA_Stream_TypeDef * TxStream;
+	IRQn_Type TxDMAISR;
+	DMA_Stream_TypeDef * RxStream;
+
+	uint32 Baud;
+
+} SerialPortDef;
+
+typedef const struct {
+	I2C_TypeDef* I2C;
+	GPIO_TypeDef* SCLPort;
+	uint16 SCLPin;
+	uint8 SCLPinSource;
+	GPIO_TypeDef* SDAPort;
+	uint16 SDAPin;
+	uint8 SDAPinSource;
+	uint8 I2C_AF;
+} I2CPortDef;
+
+typedef const struct {
+	SPI_TypeDef* SPIx;
+	GPIO_TypeDef* Port;
+	struct {
+		int16 Pin;
+		int16 PinSource;
+	} P[3];
+} SPIPortDef;
+
+typedef struct { // C2 Port GUI changeable UAVX
+	boolean Used;
+	uint8 Type;
+	uint8 BusUsed;
+	uint8 BusNo;
+	uint8 i2cId;
+} DevDef;
+
+//________________________________________________________________________________________________
+
+#define spi_21 			SPI_BaudRatePrescaler_2
+#define spi_10_5 		SPI_BaudRatePrescaler_4
+#define spi_5_250 		SPI_BaudRatePrescaler_8
+#define spi_2_625 		SPI_BaudRatePrescaler_16
+#define spi_1_3125 		SPI_BaudRatePrescaler_32
+#define spi_0_65625 	SPI_BaudRatePrescaler_64
+#define spi_0_3128125 	SPI_BaudRatePrescaler_128
+#define spi_0_15640625 	SPI_BaudRatePrescaler_256
+
+#define MAX_SPI_PORTS 4
+#define MAX_I2C_PORTS 3
+
+#define MAX_SPI_DEVICES 8
+
+//______________________________________________________________________
+
+extern PinDef GPIOPins[];
+extern PinDef LEDPins[];
+extern AnalogPinDef AnalogPins[];
+extern PinDef SPISelectPins[];
+extern PinDef USBDisconnectPin;
+extern I2CPortDef I2CPorts[];
+extern SPIPortDef SPIPorts[];
+extern SerialPortDef SerialPorts[];
+extern PinDef WSPin;
+
+extern PinDef RCPins[];
+extern PinDef PWMPins[];
+
+extern boolean usartUsed[];
+extern uint8 CurrNoOfRCPins;
+extern idx CurrMaxPWMOutputs;
+extern idx GPSRxSerial, GPSTxSerial, RCSerial, TelemetrySerial;
+extern boolean RxUsingSerial;
+extern const uint8 currGimbalType;
+extern const DevDef busDev[];
+extern const boolean ledsLowOn;
+
+//_______________________________________________________________
+
+void systemReset(boolean toBootloader);
+void InitClocks(void);
+
+void InitHarness(void);
 void InitTarget(void);
+
+void pinInit(PinDef * d);
+void pinInitOutput(PinDef * d);
+void pinInitMode(PinDef * d, boolean IsInput);
+
+void InitSerialPort(uint8 s, boolean Enable, boolean SBusConfig);
+void serialBaudRate(uint8 s, uint32 BaudRate);
+
+void InitPWMPin(PinDef * u, uint16 pwmprescaler, uint32 pwmperiod,
+		uint32 pwmwidth, boolean usingpwm);
+void InitWSPin(uint16 wsBufferSize);
+
+void i2cInit(uint8 I2CCurr);
+void i2cUnstick(uint8 I2CCurr);
+void spiInitGPIOPins(uint8 spiPort, boolean highClock);
+
+boolean digitalRead(PinDef * d);
+void digitalWrite(PinDef * d, uint8 m);
+void digitalToggle(PinDef * d);
 
 #endif

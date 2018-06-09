@@ -22,21 +22,26 @@
 
 uint32 spiErrors = 0;
 
-// mpu60xxSel, ms56xxSel, hmc5xxxSel, memSel, gpsSel, rfSel, escSel, flowSel, asSel
-// 20 20 8 20 20 unused MBaud
+// imu0Sel,imu1Sel,baroSel,magSel,memSel,gpsSel,rfSel,asSel,flowSel,escSel
+// 20 20 20 8 20 20 unused MBaud
 
 const spiDefStruct spiDef[] = {
-#if defined(GO_FAST) && defined(SPI_MPU)
-		{	false, spi_21, spi_0_65625},
-		{	false, spi_10_5, spi_10_5},
-		{	true, spi_10_5, spi_10_5},
+#if defined(USE_21MHZ_SPI)
+		{	false, spi_21, spi_0_65625}, // imu0sel
+		{	false, spi_21, spi_0_65625}, // imu1sel
+		{	false, spi_10_5, spi_10_5}, // baroSel
+		{	true, spi_10_5, spi_10_5}, // magSel
 #else
-		{ false, spi_10_5, spi_0_65625 }, { false, spi_10_5, spi_10_5 }, {
-				true, spi_5_250, spi_5_250 },
+		{ false, spi_10_5, spi_0_65625 }, // imu0sel
+		{ false, spi_10_5, spi_0_65625 }, // imu1sel
+		{ false, spi_10_5, spi_10_5 }, // baroSel
+		{ true, spi_5_250, spi_5_250 }, // magSel
 #endif
-		{ false, spi_10_5, spi_10_5 }, { false, spi_10_5, spi_10_5 }, { false,
-				spi_10_5, spi_10_5 }, { false, spi_10_5, spi_10_5 }, { false,
-				spi_10_5, spi_10_5 } };
+		{ false, spi_10_5, spi_10_5 }, //
+		{ false, spi_10_5, spi_10_5 }, //
+		{ false, spi_10_5, spi_10_5 }, //
+		{ false, spi_10_5, spi_10_5 }, //
+		{ false, spi_10_5, spi_10_5 } };
 
 SPI_TypeDef * spiSetBaudRate(uint8 devSel, boolean R) {
 	// It would be good if there was some consistency with SPI protocols!!!
@@ -46,7 +51,7 @@ SPI_TypeDef * spiSetBaudRate(uint8 devSel, boolean R) {
 	uint16 devRate;
 	SPI_TypeDef * SPIx;
 
-	SPIx = SPIPorts[spiMap[devSel] - 1].SPIx;
+	SPIx = SPIPorts[busDev[devSel].BusNo].SPIx;
 
 	SPI_Cmd(SPIx, DISABLE);
 
@@ -91,10 +96,9 @@ void spiSelect(uint8 devSel, boolean Sel) {
 void spiClearSelects(void) {
 	idx i;
 
-	if (spiDevUsed[imuSel])
-		for (i = 0; i < maxDevSel; i++) {
-			if (spiDevUsed[i])
-				spiSelect(i, false); // TODO do it again but why is this being changed?
+	for (i = 0; i < maxDevSel; i++)
+		if (SPISelectPins[imuSel].Used) {
+			spiSelect(i, false); // TODO do it again but why is this being changed?
 			Delay1mS(100);
 		}
 
@@ -149,7 +153,7 @@ uint8 spiSendzzz(SPI_TypeDef * SPIx, uint8 d) {
 
 } // spiSend
 
-boolean spiReadBlock(uint8 devSel, uint8 id, uint8 d, uint8 len, uint8* data) {
+boolean spiReadBlock(uint8 devSel, uint8 d, uint8 len, uint8* data) {
 	idx i;
 	SPI_TypeDef * s;
 	uint32 r;
@@ -184,7 +188,7 @@ boolean spiReadBlock(uint8 devSel, uint8 id, uint8 d, uint8 len, uint8* data) {
 } // spiReadBlock
 
 
-boolean spiWriteBlock(uint8 devSel, uint8 id, uint8 d, uint8 len, uint8 *data) {
+boolean spiWriteBlock(uint8 devSel, uint8 d, uint8 len, uint8 *data) {
 	idx i;
 	SPI_TypeDef * s;
 	uint32 r;

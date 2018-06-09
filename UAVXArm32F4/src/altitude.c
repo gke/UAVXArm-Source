@@ -110,7 +110,7 @@ void ReadBaroCalibration(void) {
 	// clumsy but device does not have address auto increment
 
 	for (i = 0; i < 8; i++) {
-		sioReadBlock(SIOBaro, MS56XX_ID, MS56XX_PROM + i * 2, 2, B);
+		sioReadBlock(baroSel, MS56XX_PROM + i * 2, 2, B);
 		ms56xx_c[i] = ((uint16) B[0] << 8) | B[1];
 	}
 
@@ -229,10 +229,10 @@ void StartBaro(boolean ReadPressure) {
 	uint8 d = 0;
 
 	if (ReadPressure)
-		sioWriteBlock(SIOBaro, MS56XX_ID, (MS56XX_PRESS | MS56XX_OSR_XXXX), 0,
+		sioWriteBlock(baroSel, (MS56XX_PRESS | MS56XX_OSR_XXXX), 0,
 				&d);
 	else
-		sioWriteBlock(SIOBaro, MS56XX_ID, (MS56XX_TEMP | MS56XX_OSR_XXXX), 0,
+		sioWriteBlock(baroSel, (MS56XX_TEMP | MS56XX_OSR_XXXX), 0,
 				&d);
 
 } // StartBaro
@@ -247,7 +247,7 @@ void GetBaro(void) {
 	if (F.BaroActive) {
 		if (uSClock() > NextBaroUpdateuS) {
 
-			sioReadBlock(SIOBaro, MS56XX_ID, 0, 3, B);
+			sioReadBlock(baroSel, 0, 3, B);
 			BaroVal = ((uint32) B[0] << 16) | ((uint32) B[1] << 8) | B[2];
 
 			if (AcquiringPressure) {
@@ -324,16 +324,16 @@ void CheckBaroActive(void) {
 	uint8 B[2] = { 0, 0 };
 	uint8 i = 0;
 
-	if (currBaroType == ms5611Baro) {
-		if (spiDevUsed[baroSel]) {
-			sioWriteBlock(SIOBaro, MS56XX_ID, MS56XX_RESET, 0, &i);
+	if (busDev[baroSel].Used) {
+		if (busDev[baroSel].Type == ms5611Baro) {
+			sioWriteBlock(baroSel, MS56XX_RESET, 0, &i);
 
-			Delay1mS(3);
+			Delay1mS(30); // was 3
 
-			sioReadBlock(SIOBaro, MS56XX_ID, MS56XX_PROM, 2, B);
+			sioReadBlock(baroSel, MS56XX_PROM, 2, B);
 			ms56xx_ManufacturersData = ((uint16) B[0] << 8) | B[1];
 
-			F.BaroActive = ms56xx_ManufacturersData != 0;
+			F.BaroActive = true; // startup delay problem zzz ms56xx_ManufacturersData != 0;
 		} else
 			F.BaroActive = true; // TODO: risky?
 	} else
@@ -393,18 +393,18 @@ real32 MaxSonarAltitude;
 void ReadMaxSonarI2C(void) {
 	uint8 B[2];
 
-	sioReadBlock(SIORF, MAXSONAR_ID, 0, 2, B); // 0
+	sioReadBlock(rfSel, 0, 2, B); // 0
 	RangefinderAltitude = (real32) (((int32) B[0] << 8) + B[1]) * 0.01f;
-	sioWrite(SIORF, MAXSONAR_ID, 81, 1); // start read cm
+	sioWrite(rfSel, 81, 1); // start read cm
 
 } // ReadMaxSonarI2C
 
 void ReadSRFI2C(void) {
 	uint8 B[2];
 
-	sioReadBlock(SIORF, SRFSONAR_ID, 2, 2, B); // 2 and 3
+	sioReadBlock(rfSel, 2, 2, B); // 2 and 3
 	RangefinderAltitude = (real32) (((int32) B[0] << 8) + B[1]) * 0.01f;
-	sioWrite(SIORF, SRFSONAR_ID, 81, 1); // start read cm
+	sioWrite(rfSel, 81, 1); // start read cm
 
 } // ReadSRFI2C
 
@@ -522,16 +522,16 @@ void InitRangefinder(void) {
 			F.RangefinderActive = true; // analogRead(RangefinderAnalogSel) > 0.5f; // open circuit?
 			break;
 		case SRFI2Ccm:
-			sioWrite(SIORF, MAXSONAR_ID, 81, 1);
+			sioWrite(rfSel, 81, 1);
 			break;
 		case MaxSonarI2Ccm:
-			sioWrite(SIORF, SRFSONAR_ID, 81, 1);
+			sioWrite(rfSel, 81, 1);
 			break;
 		case SharpIRGP2Y0A02YK:
 			break;
 		case SharpIRGP2Y0A710K:
 			break;
-		case UnknownRF:
+		case noRF:
 		default:
 			F.RangefinderActive = false;
 			break;

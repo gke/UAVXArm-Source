@@ -22,10 +22,10 @@
 #ifndef _inertial_h
 #define _inertial_h
 
-extern uint8 CurrStateEst;
+extern uint8 CurrIMUOption;
 
-enum StateEstimators {
-	MadgwickIMU, MadgwickAHRS, MadgwickMARG, EstUnknown
+enum IMUOptions {
+	useIMU0, useIMU1, useBothIMUs, unknownIMUOption
 };
 
 void InitMadgwick(void);
@@ -44,7 +44,7 @@ void UpdateWhere(void);
 extern const char * IMUName[];
 
 extern real32 AccConfidenceSDevR, AccConfidence;
-extern real32 KpAccBase, KpMagBase, BetaBase;
+extern real32 KpAccBase, KpMagBase;
 
 extern HistStruct AccZF;
 extern real32 AccZ;

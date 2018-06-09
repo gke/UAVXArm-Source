@@ -30,7 +30,7 @@ volatile i2cStateDef i2cState[MAX_I2C_PORTS] = { { 0 } };
 void i2c_er_handler(uint8 i2cCurr) {
 	// Original source unknown but modified from those on baseflight by TimeCop
 	volatile uint32 SR1Register, SR2Register;
-	I2CPortDef * d;
+	const I2CPortDef * d;
 
 	d = &I2CPorts[i2cCurr];
 
@@ -65,7 +65,7 @@ void i2c_ev_handler(uint8 i2cCurr) {
 	// Original source unknown but based on those in baseflight by TimeCop
 	static int8 i; //index is signed -1==send the sub-address
 	uint8 SReg_1; //read the status register here
-	I2CPortDef * d;
+	const I2CPortDef * d;
 
 	d = &I2CPorts[i2cCurr];
 
@@ -180,13 +180,13 @@ void i2c_ev_handler(uint8 i2cCurr) {
 } // i2c_ev_handler
 
 
-boolean i2cReadBlock(uint8 i2cSel, uint8 id, uint8 reg, uint8 len, uint8* buf) {
+boolean i2cReadBlock(uint8 i2cx, uint8 id, uint8 reg, uint8 len, uint8* buf) {
 	// Original source unknown but based on those in baseflight by TimeCop
 	uint32 timeout = I2C_DEFAULT_TIMEOUT;
 	idx i2cCurr;
-	I2CPortDef * d;
+	const I2CPortDef * d;
 
-	i2cCurr = i2cMap[i2cSel] - 1;
+	i2cCurr = i2cx;
 	d = &I2CPorts[i2cCurr];
 
 	i2cState[i2cCurr].addr = id;
@@ -221,18 +221,18 @@ boolean i2cReadBlock(uint8 i2cSel, uint8 id, uint8 reg, uint8 len, uint8* buf) {
 	return (true);
 } // i2cReadBlock
 
-boolean i2cWriteBlock(uint8 i2cSel, uint8 id, uint8 reg, uint8 len_,
+boolean i2cWriteBlock(uint8 i2cx, uint8 id, uint8 reg, uint8 len_,
 		uint8 *data) {
 	// Original source unknown but based on those in baseflight by TimeCop
 	idx i, i2cCurr;
 	uint8 my_data[128]; // TODO: magic number
 	uint32 timeout = I2C_DEFAULT_TIMEOUT;
-	I2CPortDef * d;
+	const I2CPortDef * d;
 
 	if (len_ > 127)
 		return (false);
 
-	i2cCurr = i2cMap[i2cSel] - 1;
+	i2cCurr = i2cx;
 	d = &I2CPorts[i2cCurr];
 
 	i2cState[i2cCurr].addr = id;

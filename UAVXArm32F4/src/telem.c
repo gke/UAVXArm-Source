@@ -239,7 +239,7 @@ void SendAckPacket(uint8 s, uint8 Tag, uint8 Reason) {
 void ShowDrives(uint8 s) {
 	real32 AvSum;
 	real32 PWSamplesR;
-	uint8 b;
+	idx b;
 
 	PWSamplesR = 1.0 / PWSamples;
 
@@ -1067,14 +1067,14 @@ void ProcessRxPacket(uint8 s) {
 		case UAVXMiscPacketTag:
 			switch (UAVXPacket[3]) {
 			case miscCalIMU:
-				CalibrateAccAndGyro(s);
+				CalibrateAccAndGyro(s, imuSel);
 				SendCalibrationPacket(s);
 				break;
 			case miscCalAcc:
 #if defined(CLASSIC_6_POINT_ACC_CAL)
-				CalibrateAccSixPoint(s);
+				CalibrateAccSixPoint(s, imuSel);
 #else
-				CalibrateAccSixPointSphere(s);
+				CalibrateAccSixPointSphere(s, imuSel);
 #endif
 				SendCalibrationPacket(s);
 				break;
@@ -1084,8 +1084,8 @@ void ProcessRxPacket(uint8 s) {
 				SendCalibrationPacket(s);
 				break;
 			case miscLB:
-				if ((CurrComboPort1Config != CPPM_GPS_M7to10)
-						&& (CurrComboPort1Config != ParallelPPM))
+				if ((CurrRxType != CPPMRx)
+						&& (CurrRxType != ParallelPPMRx))
 					RxLoopbackEnabled = !RxLoopbackEnabled;
 				SendAckPacket(s, miscLB, RxLoopbackEnabled);
 				break;

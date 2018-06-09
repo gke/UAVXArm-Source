@@ -52,9 +52,9 @@ void WriteVerifyMag(uint8 a, uint8 v) {
 
 	do {
 		Delay1mS(10);
-		sioWrite(SIOMag, HMC5XXX_ID, a, v);
+		sioWrite(magSel, a, v);
 		Delay1mS(10);
-		r = sioRead(SIOMag, HMC5XXX_ID, a);
+		r = sioRead(magSel, a);
 	} while (r != v);
 
 } // WriteVerifyMag
@@ -63,10 +63,10 @@ boolean ReadMagnetometer(void) {
 	//int16 RawTemp = 0;
 	boolean r;
 
-	sioReadBlocki16vataddr(SIOMag, HMC5XXX_ID, HMC5XXX_DATA, 3, RawMag, true);
+	sioReadBlocki16vataddr(magSel, HMC5XXX_DATA, 3, RawMag, true);
 
-	//if (spiDevUsed[SIOMag])
-	//	sioReadBlocki16vataddr(SIOMag, HMC5XXX_ID, HMC5XXX_TEMP, 1, &RawTemp,
+	//if (spiDevUsed[magSel])
+	//	sioReadBlocki16vataddr(magSel, HMC5XXX_TEMP, 1, &RawTemp,
 	//true);
 
 	//MagTemperature = (real32) RawTemp * 0.0078125 + 25.0f;
@@ -178,7 +178,7 @@ void InitMagnetometer(void) {
 
 		F.MagnetometerActive = true;
 
-		sioWriteBlockataddr(SIOMag, HMC5XXX_ID, HMC5XXX_CONFIG_A, 3,
+		sioWriteBlockataddr(magSel, HMC5XXX_CONFIG_A, 3,
 				HMC5XXXSetReset);
 
 		Delay1mS(50);
@@ -187,7 +187,7 @@ void InitMagnetometer(void) {
 		for (s = 0; s < Samples; s++) {
 			LEDToggle(ledRedSel);
 
-			sioWrite(SIOMag, HMC5XXX_ID, HMC5XXX_MODE, 0x01); // Perform single conversion
+			sioWrite(magSel, HMC5XXX_MODE, 0x01); // Perform single conversion
 			Delay1mS(50);
 
 			ReadMagnetometer();
@@ -204,11 +204,11 @@ void InitMagnetometer(void) {
 
 		Delay1mS(50);
 
-		if (spiDevUsed[SIOMag])
-			sioWriteBlockataddr(SIOMag, HMC5XXX_ID, HMC5XXX_CONFIG_A, 4,
+		if (busDev[magSel].BusUsed == useSPI)
+			sioWriteBlockataddr(magSel, HMC5XXX_CONFIG_A, 4,
 					HMC5983Config);
 		else
-			sioWriteBlockataddr(SIOMag, HMC5XXX_ID, HMC5XXX_CONFIG_A, 4,
+			sioWriteBlockataddr(magSel, HMC5XXX_CONFIG_A, 4,
 					HMC5883LConfig);
 
 		mSTimer(mSClock(), MagnetometerUpdate, MAG_TIME_MS);
@@ -328,9 +328,9 @@ void CalibrateHMC5XXX(uint8 s) {
 
 boolean MagnetometerIsActive(void) {
 
-	if (currMagType == hmc5xxxMag) {
+	if (busDev[magSel].Type == hmc5xxxMag) {
 		uint8 v = 0;
-		sioReadBlock(SIOMag, HMC5XXX_ID, HMC5XXX_TAG, 1, &v);
+		sioReadBlock(magSel, HMC5XXX_TAG, 1, &v);
 
 		return (v == 'H');
 	} else

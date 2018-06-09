@@ -10,7 +10,8 @@ INSTALL_DIR = "C:/Flight/gitHub/UAVXArm.git/UAVXArm/firmware"
 #-------------------------------------------------------------
 
 #BOARD= OMNIBUSF4V1
-BOARD= DISCOVERYF4
+BOARD= OMNIBUSF4NXT
+#BOARD= DISCOVERYF4
 #BOARD= UAVXF4V4
 #BOARD= UAVXF4V3
 
@@ -24,9 +25,9 @@ LINK_SCRIPT=stm32f4_eeprom16k.ld
 # System configuration - UNCOMMENT AS DESIRED
 
 TCHAIN="C:\gcc\bin\"
-#OPT = -O3
-#OPT = -Os
 OPT = -O3
+#OPT = -Os
+
 CC = $(TCHAIN)arm-none-eabi-gcc
 OBJCOPY = $(TCHAIN)arm-none-eabi-objcopy
 
@@ -42,60 +43,25 @@ RM = rm -rf
 OBJECT_DIR = obj
 BIN_DIR = $(OBJECT_DIR)
 
+
+INCLUDES= -Isrc \
+	-Isrc\stm \
+	-Ilib\CMSIS\inc\ \
+	-Ilib\Device\ST\STM32F4xx\Include\ \
+	-Ilib\Std\inc \
+	-Isrc\vcp \
+	-Isrc\vcp\vcpf4 \
+	-Isrc\vcp\drivers 
+
 # Assembler, Compiler and Linker flags and linker script settings
 LINKER_FLAGS= -lm $(FPFLAGS) -Wl,--gc-sections -T$(LINK_SCRIPT) -static \
 	-Wl,-cref "-Wl,-Map=$(BIN_DIR)/$(TARGET).map" -Wl,--defsym=malloc_getpagesize_P=0x1000
 	
-ASSEMBLER_FLAGS=-c -g $(OPT) $(FPFLAGS) -x assembler-with-cpp  \
-	-Isrc \
-	-Isrc\stm \
-	-Ilib\STM32F4xx_StdPeriph_Driver\inc \
-	-Ilib\STM32F4\Drivers\CMSIS\Device\ST\STM32F4xx\Include \
-	-Isrc \
-	-Isrc\stm \
-	-Ilib\CMSIS\Include \
-	-Ilib\STM32F4\Drivers\CMSIS\Device\ST\STM32F4xx\Include \
-	-Ilib\Device\STM32F4xx\Include \
-	-Ilib\CMSIS\Include \
-	-Ilib\DSP_Lib\Include \
-	-Ilib\STM32F4xx_StdPeriph_Driver\inc \
-	-Ilib\STM32_USB_OTG_Driver\inc \
-	-Ilib\STM32_USB_Device_Library\Class\cdc\inc \
-	-Ilib\STM32_USB_Device_Library\Class\hid\inc \
-	-Ilib\STM32_USB_Device_Library\Class\hid_cdc_wrapper\inc \
-	-Ilib\STM32_USB_Device_Library\Class\msc\inc \
-	-Ilib\STM32_USB_Device_Library\Core\inc \
-	-Ilib\STM32_USB-FS-Device_Driver\inc \
-	-Ilib\Std\inc \
-	-Isrc\vcp \
-	-Isrc\vcp\vcpf4 \
-	-Isrc\vcp\vcp_hal \
-	-Isrc\vcp\drivers 
+ASSEMBLER_FLAGS=-c -g $(OPT) $(FPFLAGS) -x assembler-with-cpp  $(INCLUDES)
 
 #-Wall 
 COMPILER_FLAGS=-c -g  $(OPT) $(FPFLAGS) $(CONFIG) -D$(BOARD) -ffunction-sections -fdata-sections \
-	-D"STM32F405xx" -D"USE_STDPERIPH_DRIVER"  \
-	-Isrc \
-	-Isrc\stm \
-	-Ilib\CMSIS\Include \
-	-Ilib\STM32F4\Drivers\CMSIS\Device\ST\STM32F4xx\Include \
-	-Ilib\Device\STM32F4xx\Include \
-	-Ilib\CMSIS\Include \
-	-Ilib\DSP_Lib\Include \
-	-Ilib\STM32F4xx_StdPeriph_Driver\inc \
-	-Ilib\STM32_USB_OTG_Driver\inc \
-	-Ilib\STM32_USB_Device_Library\Class\cdc\inc \
-	-Ilib\STM32_USB_Device_Library\Class\hid\inc \
-	-Ilib\STM32_USB_Device_Library\Class\hid_cdc_wrapper\inc \
-	-Ilib\STM32_USB_Device_Library\Class\msc\inc \
-	-Ilib\STM32_USB_Device_Library\Core\inc \
-	-Ilib\STM32_USB-FS-Device_Driver\inc \
-	-Ilib\Std\inc \
-	-Isrc\escprog \
-	-Isrc\vcp \
-	-Isrc\vcp\vcpf4 \
-	-Isrc\vcp\vcp_hal \
-	-Isrc\vcp\drivers 
+	-D"STM32F407xx" -D"USE_STDPERIPH_DRIVER" $(INCLUDES)
 
 # Define sources and objects
 SRC := $(wildcard */*/*/*/*/*/*/*.c) \
@@ -129,8 +95,13 @@ ASM_SRC := $(wildcard */*/*/startup_stm32f4xx.s) \
 OBJS := $(SRC:%.c=$(OBJECT_DIR)/%.o) $(ASM_SRC:%.s=$(OBJECT_DIR)/%.o)
 OBJS := $(OBJS:%.S=$(OBJECT_DIR)/%.o) 
 
-STD_PERIPHERAL_OBJS := $(wildcard obj/lib/Peripherals/src/*.o)
-CMSIS_OBJS := $(wildcard obj/lib/CMSIS/src/*.o)
+STMLIB_OBJS := $(wildcard obj/lib/*/*/*/*/*/*/*.o) \
+	$(wildcard obj/lib/*/*/*/*/*/*.o) \
+	$(wildcard obj/lib/*/*/*/*/*.o) \
+	$(wildcard obj/lib/*/*/*/*.o) \
+	$(wildcard obj/lib/*/*/*.o) \
+	$(wildcard obj/lib/*/*.o) \
+	$(wildcard obj/lib/*.o)
 
 MAIN_OBJS := $(wildcard obj/src/*/*/*/*/*/*/*.o) \
 	$(wildcard obj/src/*/*/*/*/*/*.o) \
@@ -138,36 +109,28 @@ MAIN_OBJS := $(wildcard obj/src/*/*/*/*/*/*/*.o) \
 	$(wildcard obj/src/*/*/*/*.o) \
 	$(wildcard obj/src/*/*/*.o) \
 	$(wildcard obj/src/*/*.o) \
-	$(wildcard obj/src/*.o) \
-	$(wildcard lib/peripherals/*/*/*/*/*/*/*.o) \
-	$(wildcard lib/peripherals/*/*/*/*/*/*.o) \
-	$(wildcard lib/peripherals/*/*/*/*/*.o) \
-	$(wildcard lib/peripherals/*/*/*/*.o) \
-	$(wildcard lib/peripherals/*/*/*.o) \
-	$(wildcard lib/peripherals/*/*.o) \
-	$(wildcard lib/peripherals/*.o)
+	$(wildcard obj/src/*.o)
+
 	
 all: uavxarm
 	$(OBJCOPY) -O ihex "$(BIN_DIR)/$(TARGET).elf" "$(BIN_DIR)/$(TARGET).hex"
-	$(RM) $(OBJS) "$(BIN_DIR)/$(TARGET).elf" "$(BIN_DIR)/$(TARGET).map" "$(BIN_DIR)/src" "$(BIN_DIR)/lib"
+	$(RM) $(OBJS) "$(BIN_DIR)/$(TARGET).elf" "$(BIN_DIR)/$(TARGET).map" \
+	"$(BIN_DIR)/src" "$(BIN_DIR)/lib"
 #	cp "$(BIN_DIR)/$(TARGET).hex" "$(INSTALL_DIR)/$(TARGET).hex"
 	
 svn: src/UAVXRevisionSVN.h
 	SubWCRev . src/UAVXRevisionSVN.h src/UAVXRevision.h
 
-uavxarm: svn $(OBJS) 
+uavxarm: svn  $(OBJS) 
 	$(CC) -o "$(BIN_DIR)/$(TARGET).elf" $(OBJS)  $(LINKER_FLAGS) 
 
 clean:
 #	$(RM) $(OBJS) "$(BIN_DIR)/*.*"
 	$(RM) $(OBJS) "$(BIN_DIR)/*.elf" "$(BIN_DIR)/$(TARGET).map" "$(BIN_DIR)/src" "$(BIN_DIR)/lib"
 	
-peripheral_libs:
-	ar  rcs obj/lib/libperipherals.a  $(STD_PERIPHERAL_OBJS)
+stm_libs:
+	ar obj/lib/stmlib.a  $(STMLIB_OBJS)
 	
-cmsis_libs:
-	ar  rcs obj/lib/libcmsis.a  $(CMSIS_OBJS)
-
 $(OBJECT_DIR)/%.o: %.c
 	@mkdir $(subst /,\,$(dir $@)) 2> NUL || echo off
 	$(CC) $(COMPILER_FLAGS) $< -o $@

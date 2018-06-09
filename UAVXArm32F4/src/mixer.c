@@ -194,7 +194,7 @@ void DoMix(void) {
 
 void UpdateMulticopterMix(real32 CurrThrottlePW) {
 	real32 R, P, Y;
-	uint8 m;
+	idx m;
 
 	if ((CurrThrottlePW < IdleThrottlePW) || !F.DrivesArmed) {
 		for (m = 0; m < NoOfDrives; m++)
@@ -300,7 +300,7 @@ void UpdateMulticopterMix(real32 CurrThrottlePW) {
 boolean MotorDemandRescale;
 
 boolean RescaleMix(real32 CurrThrottlePW) {
-	uint8 m;
+	idx m;
 	real32 Scale, MaxMotor, DemandSwing, AvailableSwing;
 
 	MaxMotor = PW[0];
@@ -332,7 +332,7 @@ boolean RescaleMix(real32 CurrThrottlePW) {
 
 void DoMulticopterMix(void) {
 	real32 CurrThrottlePW;
-	uint8 m;
+	idx m;
 
 	RotateOrientation(&Rl, &Pl, Rl, Pl);
 
@@ -365,7 +365,6 @@ void DoMulticopterMix(void) {
 } // DoMulticopterMix
 
 void MixAndLimitCam(void) {
-
 	real32 NewCamPitch, NewCamRoll;
 
 	if (!UsingDCMotors && (currGimbalType == servoGimbal)) {
@@ -393,7 +392,7 @@ void MixAndLimitCam(void) {
 } // MixAndLimitCam
 
 void InitServoSense(void) {
-	uint8 b, m;
+	idx b, m;
 
 	for (m = 0; m < CurrMaxPWMOutputs; m++)
 		PWSense[m] = 1.0f;

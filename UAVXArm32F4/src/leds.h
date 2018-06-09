@@ -42,8 +42,6 @@ void BeeperOn(void);
 void BeeperToggle(void);
 boolean BeeperIsOn(void);
 
-extern boolean UsingExtLEDs;
-
 #define MAX_WS2812_LEDS 12 // 240
 // circular PWM waveform buffer
 #define MAX_PWM_BUFFER_SIZE (MAX_WS2812_LEDS*24) // PWM waveform samples

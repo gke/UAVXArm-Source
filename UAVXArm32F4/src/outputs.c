@@ -41,7 +41,7 @@ const uint8 PWMOutputsUsed[AFUnknown + 1] = { 5, 8, 6, 6, 6, 10, 10, 8, 8, 10,
 		3, 6, 7, 5, 6, 3, //
 		4, 2, 0, 0, 4 };
 
-const uint8 DM[10] = { 0, 1, 2, 3, // TIM4
+const idx DM[10] = { 0, 1, 2, 3, // TIM4
 		6, 7, 8, 9, // TIM3
 		4, 5 }; // TIM1 V4 TIM8  camera servo channels always last
 
@@ -62,14 +62,14 @@ int8 PWDiagnostic[MAX_PWM_OUTPUTS];
 uint32 PWSamples;
 real32 PW[MAX_PWM_OUTPUTS];
 real32 PWp[MAX_PWM_OUTPUTS];
-uint8 NoOfDrives = 4;
+idx NoOfDrives = 4;
 real32 NoOfDrivesR;
 uint32 ESCI2CFail[256] = { 0 };
 SPIESCChannelStruct_t SPIESCFrame[MAX_PWM_OUTPUTS];
 
 real32 Rl, Pl, Yl, Sl;
 real32 I2CESCMax;
-uint8 CurrMaxPWMOutputs = 6;
+idx CurrMaxPWMOutputs = 6;
 
 CamStruct Cam;
 
@@ -100,7 +100,7 @@ void servoWrite(idx channel, real32 v) {
 } // driveWrite
 
 void driveSyncWrite(idx channel, real32 v) {
-	PinDef * u;
+	const PinDef * u;
 
 	if (DM[channel] < CurrMaxPWMOutputs) {
 		u = &PWMPins[DM[channel]];
@@ -113,7 +113,7 @@ void driveSyncWrite(idx channel, real32 v) {
 } // driveSyncWrite
 
 void driveSyncDiv8Write(idx channel, real32 v) {
-	PinDef * u;
+	const PinDef * u;
 
 	if (DM[channel] < CurrMaxPWMOutputs) {
 		u = &PWMPins[DM[channel]];
@@ -137,12 +137,12 @@ void driveSyncStart(uint8 drives) {
 
 
 void driveI2CWrite(idx channel, real32 v) {
-
+/*
 	if (channel < CurrMaxPWMOutputs)
 		//ESCI2CFail[channel] =
 		sioWrite(SIOESC, 0x52 + channel * 2, 0, Limit(
 				(uint16)(v * 225.0f),0, 225));
-
+*/
 } // driveI2CWrite
 
 void driveSPIWrite(idx channel, real32 v) {
@@ -195,8 +195,7 @@ const struct {
 		};
 
 void UpdateDrives(void) {
-
-	static uint8 m;
+	static idx m;
 
 	if (DrivesInitialised) {
 		if (UAVXAirframe == IREmulation) {
@@ -279,7 +278,7 @@ void StopDrives(void) {
 
 
 void InitDrives(void) {
-	uint8 m, nd;
+	idx m, nd;
 
 	F.DrivesArmed = false;
 

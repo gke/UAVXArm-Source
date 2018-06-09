@@ -714,7 +714,7 @@ void ReceiverTest(uint8 s) {
 		TxString(s, "\r\nSignal FAIL\r\n");
 
 	if (RxUsingSerial) {
-		if (CurrComboPort1Config == Deltang) {
+		if (currRxType == Deltang) {
 			TxString(s, "\r\nRSSI: ");
 			TxVal32(s, RSSI, 0, ' ');
 		} else {
@@ -729,8 +729,8 @@ void ReceiverTest(uint8 s) {
 		//TxString(s, ": ");
 		TxChar(s, RxChMnem[RMap[c]]);
 		TxString(s, ": \t");
-		if ((CurrComboPort1Config == Spektrum1024_M7to10) || (CurrComboPort1Config == Spektrum2048_M7to10)
-				|| (CurrComboPort1Config == Deltang1024_M7to10) )
+		if ((currRxType == Spektrum1024_M7to10) || (currRxType == Spektrum2048_M7to10)
+				|| (currRxType == Deltang1024_M7to10) )
 			TxVal32(s, RCInp[c].SpekRaw, 3, ' ');
 		TxVal32(s, RCInp[c].Raw, 3, ' ');
 		TxString(s, " \t");
@@ -742,7 +742,7 @@ void ReceiverTest(uint8 s) {
 	TxVal32(s, RCGlitches, 0, 0);
 	TxNextLine(s);
 
-	if (CurrComboPort1Config == CPPM_GPS_M7to10) {
+	if (currRxType == rxCPPM) {
 		TxString(s, "Sync Period: \t");
 		TxVal32(s, RCSyncWidthuS, 3, 0);
 		TxString(s, "mS\r\n");

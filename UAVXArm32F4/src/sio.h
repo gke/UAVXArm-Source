@@ -22,27 +22,27 @@
 #ifndef _sio_h
 #define _sio_h
 
-extern boolean sioReadBlock(uint8 sioDev, uint8 id, uint8 reg, uint8 len,
+extern boolean sioReadBlock(uint8 sioDev, uint8 reg, uint8 len,
 		uint8 * data);
-extern boolean sioWriteBlock(uint8 sioDev, uint8 id, uint8 reg, uint8 len,
+extern boolean sioWriteBlock(uint8 sioDev, uint8 reg, uint8 len,
 		uint8 * data);
 
-extern uint8 sioRead(uint8 sioDev, uint8 id, uint8 reg);
-extern uint8 sioReadataddr(uint8 sioDev, uint8 id, uint8 reg);
-extern boolean sioReadBlockataddr(uint8 sioDev, uint8 id, uint8 reg, uint8 len,
+extern uint8 sioRead(uint8 sioDev, uint8 reg);
+extern uint8 sioReadataddr(uint8 sioDev, uint8 reg);
+extern boolean sioReadBlockataddr(uint8 sioDev, uint8 reg, uint8 len,
 		uint8 * data);
-extern boolean sioReadBlocki16v(uint8 sioDev, uint8 id, uint8 len,
+extern boolean sioReadBlocki16v(uint8 sioDev, uint8 len,
 		int16 * data, boolean h);
-extern boolean sioReadBlocki16vataddr(uint8 sioDev, uint8 id, uint8 reg,
+extern boolean sioReadBlocki16vataddr(uint8 sioDev, uint8 reg,
 		uint8 len, int16 * data, boolean h);
 
-extern boolean sioWrite(uint8 sioDev, uint8 id, uint8 reg, uint8 data);
+extern boolean sioWrite(uint8 sioDev, uint8 reg, uint8 data);
 //extern boolean sioWritebyte(uint8 sioDev, uint8 id, uint8 v);
-extern boolean sioWriteataddr(uint8 sioDev, uint8 id, uint8 a, uint8 v);
-extern boolean sioWriteBlockataddr(uint8 sioDev, uint8 id, uint8 reg,
+extern boolean sioWriteataddr(uint8 sioDev, uint8 a, uint8 v);
+extern boolean sioWriteBlockataddr(uint8 sioDev, uint8 reg,
 		uint8 len, uint8 * data);
 
-extern boolean sioResponse(uint8 sioDev, uint8 id);
+extern boolean sioResponse(uint8 sioDev);
 
 #endif
 

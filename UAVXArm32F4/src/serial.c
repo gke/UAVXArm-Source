@@ -25,18 +25,18 @@
 // Rewritten from AQ original Copyright © 2011 Bill Nesbitt
 
 volatile uint8 TxQ[MAX_SERIAL_PORTS][SERIAL_BUFFER_SIZE] __attribute__((aligned(4)));
-volatile int16 TxQTail[MAX_SERIAL_PORTS];
-volatile int16 TxQHead[MAX_SERIAL_PORTS];
-volatile int16 TxQNewHead[MAX_SERIAL_PORTS];
+volatile int16 TxQTail[MAX_SERIAL_PORTS]= {0,};
+volatile int16 TxQHead[MAX_SERIAL_PORTS]= {0,};
+volatile int16 TxQNewHead[MAX_SERIAL_PORTS]= {0,};
 
 volatile uint8 RxQ[MAX_SERIAL_PORTS][SERIAL_BUFFER_SIZE] __attribute__((aligned(4)));
-volatile int16 RxQTail[MAX_SERIAL_PORTS];
-volatile int16 RxQHead[MAX_SERIAL_PORTS];
-volatile int16 RxQNewHead[MAX_SERIAL_PORTS];
-volatile boolean RxEnabled[MAX_SERIAL_PORTS];
-volatile boolean RxCTS[MAX_SERIAL_PORTS];
+volatile int16 RxQTail[MAX_SERIAL_PORTS] = {0,};
+volatile int16 RxQHead[MAX_SERIAL_PORTS] = {0,};
+volatile int16 RxQNewHead[MAX_SERIAL_PORTS] = {0,};
+volatile boolean RxEnabled[MAX_SERIAL_PORTS] = {false, };
+volatile boolean RxCTS[MAX_SERIAL_PORTS] = {false, };
 
-volatile uint32 RxDMAPos[MAX_SERIAL_PORTS];
+volatile uint32 RxDMAPos[MAX_SERIAL_PORTS] = {0, };
 
 uint8 TxCheckSum[MAX_SERIAL_PORTS];
 uint32 SoftUSARTBaudRate = 115200;
@@ -44,18 +44,18 @@ boolean RxUsingSerial = false;
 
 void serialTxDMA(uint8 s) {
 
-	SerialPorts[s].TxDMAStream->M0AR = (uint32) &TxQ[s][TxQHead[s]];
+	SerialPorts[s].TxStream->M0AR = (uint32) &TxQ[s][TxQHead[s]];
 
 	if (TxQTail[s] > TxQHead[s]) { // Tail not wrapped around yet
-		DMA_SetCurrDataCounter(SerialPorts[s].TxDMAStream, TxQTail[s]
+		DMA_SetCurrDataCounter(SerialPorts[s].TxStream, TxQTail[s]
 				- TxQHead[s]);
 		TxQNewHead[s] = TxQTail[s];
 	} else {// Tail has wrapped do balance from Head to end of Buffer
-		DMA_SetCurrDataCounter(SerialPorts[s].TxDMAStream, SERIAL_BUFFER_SIZE
+		DMA_SetCurrDataCounter(SerialPorts[s].TxStream, SERIAL_BUFFER_SIZE
 				- TxQHead[s]);
 		TxQNewHead[s] = 0;
 	}
-	DMA_Cmd(SerialPorts[s].TxDMAStream, ENABLE);
+	DMA_Cmd(SerialPorts[s].TxStream, ENABLE);
 
 } // serialTxDMA
 
@@ -64,7 +64,7 @@ boolean serialAvailable(uint8 s) {
 	//uint8 ch;
 
 	switch (s) {
-	case USBSerial:
+	case usbSerial:
 		r = usbAvailable();
 		break;
 	case SoftSerialTx:
@@ -73,7 +73,7 @@ boolean serialAvailable(uint8 s) {
 	default:
 		if (SerialPorts[s].DMAUsed) {
 			RxQTail[s] = SERIAL_BUFFER_SIZE - DMA_GetCurrDataCounter(
-					SerialPorts[s].RxDMAStream);
+					SerialPorts[s].RxStream);
 			r = RxQHead[s] != RxQTail[s];
 		} else if (SerialPorts[s].InterruptsUsed)
 			r = RxQTail[s] != RxQHead[s];
@@ -93,8 +93,8 @@ uint8 RxChar(uint8 s) {
 	switch (s) {
 	case SoftSerialTx:
 		break;
-	case USBSerial:
-		ch = USBRxChar();
+	case usbSerial:
+		ch = usbRxChar();
 		break;
 	default:
 		if (SerialPorts[s].DMAUsed || SerialPorts[s].InterruptsUsed) {
@@ -115,11 +115,11 @@ uint8 PollRxChar(uint8 s) {
 	case SoftSerialTx:
 		return (ASCII_NUL);
 		break;
-	case USBSerial:
+	case usbSerial:
 		if (serialAvailable(s)) {
-			ch = USBRxChar();
+			ch = usbRxChar();
 			if (!Armed())
-				USBTxChar(ch); // echo for UAVPSet
+				usbTxChar(ch); // echo for UAVPSet
 			return (ch);
 		} else
 			return (ASCII_NUL);
@@ -146,8 +146,8 @@ void TxChar(uint8 s, uint8 ch) {
 		BlackBox(ch);
 
 	switch (s) {
-	case USBSerial:
-		USBTxChar(ch);
+	case usbSerial:
+		usbTxChar(ch);
 		break;
 	case SoftSerialTx:
 		SoftTxChar(ch); // blocking???
@@ -162,12 +162,7 @@ void TxChar(uint8 s, uint8 ch) {
 			TxQTail[s] = NewTail;
 
 			if (SerialPorts[s].DMAUsed) {
-#if defined(STM32F1)
-				if (!(SerialPorts[s].TxDMAStream->CCR & DMA_CCR1_EN))
-				//if (DMA_GetCmdStatus(SerialPorts[s].TxDMAStream) == DISABLE)
-#else
-				if (DMA_GetCmdStatus(SerialPorts[s].TxDMAStream) == DISABLE)
-#endif
+				if (DMA_GetCmdStatus(SerialPorts[s].TxStream) == DISABLE)
 					serialTxDMA(s);
 			} else {
 				// if TXE then interrupt will be pending

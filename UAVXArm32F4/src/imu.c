@@ -22,12 +22,6 @@
 
 #include "UAVX.h"
 
-const char * GyroName[] = { "MLX90609", "ADXRS613/150", "ST-AY530",
-		"ADXRS610/300", "UAVXArm32IMU", "FreeIMU", "GyroUnknown" };
-
-void ShowGyroType(uint8 s, uint8 G) {
-	TxString(s, GyroName[G]);
-} // ShowGyroType
 
 // ITG3200  1.214142088
 const real32 GyroScale[] = { //
@@ -41,17 +35,20 @@ const real32 GyroScale[] = { //
 
 uint8 CurrAttSensorType = UAVXArm32IMU;
 
+uint8 imuSel = imu0Sel;
 real32 GyroBias[3];
 real32 Acc[3], Rate[3];
 real32 RateEnergySum;
 uint32 RateEnergySamples;
+
+boolean CaptureIMUBias = false;
 
 // NED
 // P,R,Y
 // BF, LR, UD
 
 
-void ScaleRateAndAcc(void) {
+void ScaleRateAndAcc(uint8 imuSel) {
 	idx a;
 
 	Rate[Pitch] = (RawGyro[X] - GyroBias[X]) * GyroScale[CurrAttSensorType];
@@ -72,7 +69,7 @@ void ScaleRateAndAcc(void) {
 
 } // ScaleRateAndAcc
 
-void ErectGyros(int32 TS) {
+void ErectGyros(uint8 imuSel, int32 TS) {
 	const int32 IntervalmS = 2;
 	idx g;
 	int32 i;
@@ -82,7 +79,7 @@ void ErectGyros(int32 TS) {
 
 	LEDOn(ledRedSel);
 
-	ReadFilteredGyroAndAcc();
+	ReadFilteredGyroAndAcc(imuSel);
 
 	for (g = X; g <= Z; g++)
 		MaxRawGyro[g] = MinRawGyro[g] = Av[g] = RawGyro[g];
@@ -90,7 +87,7 @@ void ErectGyros(int32 TS) {
 	for (i = 1; i < s; i++) {
 		Delay1mS(IntervalmS);
 
-		ReadFilteredGyroAndAcc();
+		ReadFilteredGyroAndAcc(imuSel);
 
 		for (g = X; g <= Z; g++) {
 
@@ -135,15 +132,14 @@ void ErectGyros(int32 TS) {
 } // ErectGyros
 
 
-
-void InitIMU(void) {
+void InitIMU(uint8 imuSel) {
 	idx a;
 	boolean r;
 
-	InitMPU6XXX();
+	InitMPU6XXX(imuSel);
 
 	if (F.UsingAnalogGyros) {
-		ReadGyro();
+		ReadGyro(imuSel);
 		for (a = X; a <= Z; a++)
 			GyroBias[a] = RawGyro[a]; //  until erect gyros
 	} else if (CurrAttSensorType == InfraRedAngle) {
@@ -157,8 +153,8 @@ void InitIMU(void) {
 	for (a = 0; a < 8; a++)
 		Noise[a] = 0;
 
-	ReadFilteredGyroAndAcc();
-	ScaleRateAndAcc();
+	ReadFilteredGyroAndAcc(imuSel);
+	ScaleRateAndAcc(imuSel);
 
 	r = true;
 	for (a = X; a <= Z; a++)

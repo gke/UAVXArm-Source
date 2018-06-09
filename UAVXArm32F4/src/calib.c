@@ -174,7 +174,7 @@ int16 calCycles;
 boolean axisCalibrated[6];
 
 void resetState(sensorStateStruct * state) {
-	int i, j;
+	idx i, j;
 
 	for (i = 0; i < 4; i++) {
 		for (j = 0; j < 4; j++)
@@ -216,7 +216,7 @@ void pushForBiasCalc(sensorStateStruct * state, real32 s[3]) {
 
 void pushForScaleCalc(sensorStateStruct * state, int a, real32 s[3],
 		real32 target) {
-	int i;
+	idx i;
 
 	for (i = 0; i < 3; i++) {
 		real32 ss2 = Sqr(s[i] / target);
@@ -231,7 +231,7 @@ void pushForScaleCalc(sensorStateStruct * state, int a, real32 s[3],
 
 
 static void gaussLR(real32 m[4][4]) {
-	int i, j, k;
+	idx i, j, k;
 
 	for (i = 0; i < 4; i++) {
 		// Determine R
@@ -250,7 +250,7 @@ static void gaussLR(real32 m[4][4]) {
 
 
 void FWSubst(real32 LR[4][4], real32 y[4], real32 b[4]) {
-	int i, k;
+	idx i, k;
 
 	for (i = 0; i < 4; ++i) {
 		y[i] = b[i];
@@ -262,7 +262,7 @@ void FWSubst(real32 LR[4][4], real32 y[4], real32 b[4]) {
 } // FWSubst
 
 void BWSubst(real32 LR[4][4], real32 x[4], real32 y[4]) {
-	int i, k;
+	idx i, k;
 
 	for (i = 3; i >= 0; --i) {
 		x[i] = y[i];
@@ -277,7 +277,7 @@ void BWSubst(real32 LR[4][4], real32 x[4], real32 y[4]) {
 // solve linear equation
 // https://en.wikipedia.org/wiki/Gaussian_elimination
 static void solveLGS(real32 A[4][4], real32 x[4], real32 b[4]) {
-	int a;
+	idx a;
 	real32 y[4];
 
 	gaussLR(A);
@@ -325,7 +325,7 @@ int8 getCurrDir(real32 s[3]) {
 
 real32 sp[ACC_CAL_SPHERE_CYCLES * 6][3];
 
-void CalibrateAccSixPointSphere(uint8 s) {
+void CalibrateAccSixPointSphere(uint8 s, uint8 imuSel) {
 	int16 calDirCnt = 0;
 	idx a;
 	int8 Currdp, dp;
@@ -347,7 +347,7 @@ void CalibrateAccSixPointSphere(uint8 s) {
 
 	do {
 
-		ReadFilteredGyroAndAcc();
+		ReadFilteredGyroAndAcc(imuSel);
 		dp = getCurrDir(RawAcc);
 
 		if (dp >= 0) {
@@ -364,7 +364,7 @@ void CalibrateAccSixPointSphere(uint8 s) {
 				do {
 					Delay1mS(2);
 
-					ReadFilteredGyroAndAcc();
+					ReadFilteredGyroAndAcc(imuSel);
 					dp = getCurrDir(RawAcc);
 
 					if (Currdp == dp) {
@@ -418,7 +418,7 @@ void CalibrateAccSixPointSphere(uint8 s) {
 
 } // CalibrateAccSixPointSphere
 
-void CalibrateAccSixPoint(uint8 s) {
+void CalibrateAccSixPoint(uint8 s, uint8 imuSel) {
 	int16 calDirCnt = 0;
 	uint8 d, a;
 	int8 Currdp, dp;
@@ -443,7 +443,7 @@ void CalibrateAccSixPoint(uint8 s) {
 
 	do {
 
-		ReadFilteredGyroAndAcc();
+		ReadFilteredGyroAndAcc(imuSel);
 		dp = getCurrDir(RawAcc);
 
 		if (dp >= 0) {
@@ -460,7 +460,7 @@ void CalibrateAccSixPoint(uint8 s) {
 				do {
 					Delay1mS(2);
 
-					ReadFilteredGyroAndAcc();
+					ReadFilteredGyroAndAcc(imuSel);
 					dp = getCurrDir(RawAcc);
 
 					if (Currdp == dp) {

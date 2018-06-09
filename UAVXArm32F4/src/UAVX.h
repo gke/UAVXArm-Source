@@ -22,12 +22,7 @@
 #ifndef _uavx_h
 #define _uavx_h
 
-#define USE_GYRO_OS
-
-// CleanFlight etc. Black Box stuff
 //#define BLACKBOX
-#define STATIC_UNIT_TESTED
-#define timeUs_t int
 
 //#define USE_THERMALS
 
@@ -43,7 +38,7 @@
 
 // Options
 
-#define USE_WS2812
+//#define USE_WS2812
 //#define USE_WS2812B
 
 //#define INC_DFT

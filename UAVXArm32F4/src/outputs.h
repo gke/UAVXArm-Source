@@ -131,15 +131,15 @@ CamStruct Cam;
 
 extern real32 LPF1DriveK, LPF1ServoK;
 extern uint8 const DrivesUsed[];
-extern uint8 NoOfDrives;
-extern const uint8 DM[];
+extern idx NoOfDrives;
+extern const idx DM[];
 extern real32 PWSum[];
 extern int8 PWDiagnostic[];
 extern uint32 PWSamples;
 extern real32 PW[], PWp[];
 extern real32 PWSense[];
 extern const uint8 PWMOutputsUsed[];
-extern uint8 CurrMaxPWMOutputs;
+extern idx CurrMaxPWMOutputs;
 
 extern real32 DFT[];
 extern real32 CGOffset;

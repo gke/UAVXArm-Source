@@ -37,21 +37,14 @@ enum GyroTypes {
 
 void InertialTest(uint8 s);
 
-void GetGyros(void);
-void CalculateGyroRates(void);
-void InitRatesAndAngles(void);
-void ErectGyros(int32 d);
+void ErectGyros(uint8 imuSel, int32 d);
 
 #define ACC_TRIM_STEP 5 // was 20 - too coarse
 
-void ShowAccType(uint8 s);
-void ShowGyroType(uint8 s, uint8 g);
-void CaptureAccTrimOffsets(void);
-void GetAccelerations(void);
-void CalibrateAccsAndGyros(uint8 s);
-void CalculateAccelerations(void);
-void InitIMU(void);
-void ScaleRateAndAcc(void);
+void InitIMU(uint8 imuSel);
+void ScaleRateAndAcc(uint8 imuSel);
+
+extern uint8 imuSel;
 
 extern const uint8 MPUMap[];
 extern const real32 MPUSign[];
@@ -62,6 +55,7 @@ extern uint8 CurrAttSensorType;
 extern real32 Acc[], Rate[];
 extern real32 RateEnergySum;
 extern uint32 RateEnergySamples;
+extern boolean CaptureIMUBias;
 
 #endif
 

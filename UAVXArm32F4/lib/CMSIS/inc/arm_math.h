@@ -256,6 +256,10 @@
 #ifndef _ARM_MATH_H
 #define _ARM_MATH_H
 
+#include <stdint.h>
+
+#define __FPU_PRESENT 1
+
 #define __CMSIS_GENERIC         /* disable NVIC and Systick functions */
 
 #if defined (ARM_MATH_CM4)

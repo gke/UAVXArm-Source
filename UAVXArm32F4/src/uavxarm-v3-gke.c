@@ -84,11 +84,16 @@ void ResetMainTimeouts(void) {
 void DoTesting(void) {
 
 	//#define COMMISSIONING_TEST
-	//#define USB_TESTING
+//#define USB_TESTING
 	//#define KF_TESTING
 	//#define BARO_TESTING
 
+
 #if defined(USB_TESTING)
+
+	USBConnect();
+
+	LEDOn(ledGreenSel);
 
 	USBTxString("starting USB Test (! to force restart)\n");
 
@@ -97,9 +102,9 @@ void DoTesting(void) {
 			LEDToggle(ledYellowSel);
 			uint8 ch = RxChar(USBSerial);
 			if (ch == '!')
-			NVIC_SystemReset();
+				NVIC_SystemReset();
 			else
-			TxChar(USBSerial, ch);
+				TxChar(USBSerial, ch);
 		}
 	}
 #elif defined(COMMISSIONING_TEST)
@@ -236,33 +241,35 @@ void DoTesting(void) {
 
 
 int main() {
+	idx i, j;
 	uint32 NowuS;
 	static uint32 LastUpdateuS = 0;
 
 	InitClocks();
 	Delay1mS(1000);
-	USBGenerateDisconnectPulse();
 
 	InitMisc();
+
 	CheckParametersInitialised();
 	InitParameters();
 	InitHarness();
 
-	InitAnalog();
 	InitLEDs();
 
 	InitExtMem();
 	InitPollRxPacket();
-
 	spiClearSelects();
 
 	//CheckBLHeli();
 
-	InitIMU();
+	InitIMU(imuSel);
 	InitMagnetometer();
 	InitMadgwick();
 	InitBarometer();
 	InitTemperature();
+
+
+
 
 	InitEmulation();
 
@@ -302,24 +309,19 @@ int main() {
 		if (UseGyroOS) {
 			FirstIMU = true;
 			do {
-				if (MPU6XXXReady()) {
-				//	Probe(1);
+				if (MPU6XXXReady(imuSel)) {
+					//	Probe(1);
 					if (FirstIMU)
-						ReadFilteredGyroAndAcc();
+						ReadFilteredGyroAndAcc(imuSel);
 					else
-						ReadGyro();
+						ReadGyro(imuSel);
 					FirstIMU = false;
-				//	Probe(0);
+					//	Probe(0);
 				}
-
-				DoHouseKeeping();
-
 				NowuS = uSClock();
 			} while (NowuS < uS[NextCycleUpdate]);
-		} else {
-			DoHouseKeeping();
+		} else
 			NowuS = uSClock();
-		}
 
 		if (UseGyroOS || (NowuS >= uS[NextCycleUpdate])) {
 
@@ -337,8 +339,7 @@ int main() {
 			uSTimer(NowuS, LastCycleTime, -LastUpdateuS);
 			LastUpdateuS = NowuS;
 
-			// Housekeeping here
-
+			DoHouseKeeping();
 
 			switch (State) {
 			case Preflight:
@@ -390,7 +391,7 @@ int main() {
 				InitNavigation();
 
 				if (F.UsingAnalogGyros || !UsingFastStart)
-					ErectGyros(5);
+					ErectGyros(imuSel, 5);
 
 				ZeroStats();
 				F.IsArmed = true;
@@ -401,10 +402,8 @@ int main() {
 				break;
 			case Warmup:
 
-#if defined(HAVE_CURRENT_SENSOR)
 				BatteryCurrentADCZero = LPF1(BatteryCurrentADCZero, analogRead(
 								BattCurrentAnalogSel), 0.5f);
-#endif
 
 				if (mSClock() > mS[WarmupTimeout]) {
 					UbxSaveConfig(GPSTxSerial); //does this save ephemeris stuff?
@@ -453,8 +452,9 @@ int main() {
 							if (F.GPSToLaunchRequired && !F.OriginValid)
 								CaptureHomePosition();
 
-							if ((StickThrottle >= IdleThrottle)) {
-								//	&& (F.OriginValid || !F.GPSToLaunchRequired)) {
+							if ((StickThrottle >= IdleThrottle)
+									&& ((CurrGPSType == NoGPS) || F.OriginValid
+											|| !F.GPSToLaunchRequired)) {
 
 								ResetMainTimeouts();
 								setStat(RCGlitchesS, 0);

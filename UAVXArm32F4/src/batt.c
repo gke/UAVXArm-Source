@@ -32,8 +32,9 @@
 #define POWER_SCALE (3.3f)
 
 real32 BatteryVolts, BatterySagR, StartupVolts, BatteryCurrent, BatteryVoltsLimit, BatteryChargeUsedmAH;
-real32 VoltScaleTrim, CurrentScaleTrim;
-real32 BatteryCurrentADCZero;
+real32 VoltScaleTrim = 1.0f;
+real32 CurrentScaleTrim = 1.0f;
+real32 BatteryCurrentADCZero = 0.0f;
 
 real32 BatteryCapacitymAH;
 uint8 BatteryCellCount = 3;
@@ -77,9 +78,7 @@ void CheckBatteries(void) {
 					//* CURRENT_SENSOR_MAX;
 			BatteryCurrent = LPF1(BatteryCurrent, Temp, 0.1f);
 #endif
-
-			BatteryVolts
-					= LPF1(BatteryVolts, analogRead(BattVoltsAnalogSel) * VOLTS_SCALE * VoltScaleTrim, 0.25f);
+			BatteryVolts = 	LPF1(BatteryVolts, analogRead(BattVoltsAnalogSel) * VOLTS_SCALE * VoltScaleTrim, 0.25f); // * VoltScaleTrim
 		}
 
 		dTmS = NowmS - mS[LastBattery];
@@ -97,8 +96,8 @@ void CheckBatteries(void) {
 
 void InitBattery(void) {
 
-	CurrentScaleTrim = P(CurrentScale) * 0.01f;
-	VoltScaleTrim = P(VoltScale) * 0.01f;
+	CurrentScaleTrim = (real32)P(CurrentScale) * 0.01f;
+	VoltScaleTrim = (real32)P(VoltScale) * 0.01f;
 
 	if (F.Emulation) {
 		BatteryCellCount = 3.0;

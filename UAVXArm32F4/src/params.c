@@ -215,7 +215,8 @@ void SetPIDPeriod(void) {
 	if (CurrESCType == ESCSyncPWM)
 		CurrPIDCycleuS = PID_SYNCPWM_CYCLE_2050US;
 	else
-		CurrPIDCycleuS = spiDevUsed[imuSel] ? PID_CYCLE_2000US >> 1: PID_CYCLE_2000US;
+		CurrPIDCycleuS = busDev[imuSel].Used ? PID_CYCLE_2000US >> 1
+				: PID_CYCLE_2000US;
 
 	CurrPIDCycleS = CurrPIDCycleuS * 1.0e-6;
 
@@ -236,11 +237,10 @@ void UpdateParameters(void) {
 		// Change to physical configuration or attached devices  - NEEDS POWER CYCLE
 
 		if ((State == Preflight) || (State == Ready)) { // NOT IN FLIGHT
-			if ((CurrStateEst != P(StateEst))
-					|| (ArmingMethod != P(ArmingMode)) //
+			if ((CurrIMUOption != P(IMUOption)) || (ArmingMethod != P(
+					ArmingMode)) //
 					|| (CurrAttSensorType != P(SensorHint)) //
-					|| (CurrComboPort1Config != P(ComboPort1Config)) //
-					|| (CurrComboPort2Config != P(ComboPort2Config)) //
+					|| (CurrRxType != P(RxType)) //
 					|| (CurrConfig1 != P(Config1Bits)) //
 					|| (CurrConfig2 != P(Config2Bits)) //
 					|| (CurrESCType != P(ESCType)) //
@@ -251,14 +251,9 @@ void UpdateParameters(void) {
 					|| (CurrAccLPFSel != P(AccLPFSel)) //
 					|| (CurrGPSType != P(GPSProtocol)) //
 					|| (CurrMotorStopSel != P(MotorStopSel)) //
-					|| (CurrwsNoOfLeds != P(WS2812Leds))) {
-			//	TODO: always attempt restart if ((P(Config2Bits) & UseConfigRebootMask) != 0)
-			//NVIC_SystemReset();
-			InitHarness();
-			InitParameters();
-			//	else
-			//		Catastrophe();
-			}
+					|| (CurrwsNoOfLeds != P(WS2812Leds)))
+				NVIC_SystemReset();
+
 
 			memset(&A, 0, sizeof(A[3]));
 			memset(&Alt, 0, sizeof(Alt));
@@ -295,7 +290,6 @@ void UpdateParameters(void) {
 		StickDeadZone = FromPercent(LimitP(StickHysteresis, 1, 5));
 
 		KpAccBase = P(MadgwickKpAcc) * 0.1f;
-		BetaBase = KpAccBase * 0.2f;
 		KpMagBase = P(MadgwickKpMag) * 0.1f;
 
 		AccConfidenceSDevR = 1.0f / FromPercent(LimitP(AccConfSD, 1, 100));
@@ -351,7 +345,7 @@ void UpdateParameters(void) {
 #else
 		SetP(OSLPFHz, Limit(P(OSLPFHz), 2, 40)); // 8KHz
 #endif
-		CurrOSLPKFQ = CurrOSLPFHz = (real32)P(OSLPFHz) * 100.0f;
+		CurrOSLPKFQ = CurrOSLPFHz = (real32) P(OSLPFHz) * 100.0f;
 
 		CurrOSLPFType = P(OSLPFType);
 
@@ -529,7 +523,7 @@ void DoStickProgramming(void) {
 					AccTrimStickAdjust(BFTrim, LRTrim);
 					// updated in Landing or disarm UpdateNV();
 
-					UpdateGyroTempComp();
+					UpdateGyroTempComp(imuSel);
 					DoBeep(1, 0);
 					SticksState = SticksChanging;
 					NowmS = mSClock();
@@ -599,16 +593,12 @@ void InitParameters(void) {
 	ClassifyAFType();
 
 	// must have these
-	CurrStateEst = P(StateEst);
-	if ((F.IsFixedWing || (currMagType == noMag)) && CurrStateEst != MadgwickIMU) {
-		SetP(StateEst, MadgwickIMU);
-		CurrStateEst = MadgwickIMU;
-	}
+
+	CurrIMUOption = P(IMUOption);
 
 	ArmingMethod = P(ArmingMode);
 	CurrAttSensorType = P(SensorHint);
-	CurrComboPort1Config = P(ComboPort1Config);
-	CurrComboPort2Config = P(ComboPort2Config);
+	CurrRxType = P(RxType);
 	CurrConfig1 = P(Config1Bits);
 	CurrConfig2 = P(Config2Bits);
 	UAVXAirframe = LimitP(AFType, 0, AFUnknown);
@@ -627,28 +617,14 @@ void InitParameters(void) {
 
 	DoConfigBits();
 
-#if defined(UAVXF4V4) // give ComboPort1 priority for GPS
-	if ((CurrComboPort1Config == CPPM_GPS_M7to10) && (CurrComboPort2Config
-					== RF_GPS_V4)) {
-		CurrComboPort2Config = RF_V4;
-		SetP(ComboPort2Config, CurrComboPort2Config);
-	}
-#else
-	if (CurrComboPort2Config == RF_GPS_V4) {
-		CurrComboPort2Config = ComboPort2Unused;
-		SetP(ComboPort2Config, CurrComboPort2Config);
-	}
-#endif
-
 	CurrAccLPFSel = LimitP(AccLPFSel, 3, 5);
 	CurrAccLPFHz = MPUAccLPFHz[CurrAccLPFSel];
 
 	CurrGyroLPFSel = LimitP(GyroLPFSel, 1, 4);
 	CurrGyroLPFHz = MPUGyroLPFHz[CurrGyroLPFSel];
 
-	if (CurrComboPort1Config != ComboPort1ConfigUnknown) {
+	if (CurrRxType != UnknownRx)
 		InitHarness();
-	}
 
 	F.UsingAnalogGyros = (CurrAttSensorType != UAVXArm32IMU)
 			&& (CurrAttSensorType != FreeIMU);
