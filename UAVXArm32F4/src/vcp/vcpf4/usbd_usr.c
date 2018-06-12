@@ -70,7 +70,7 @@ void USBD_USR_DeviceReset(uint8_t speed )
 }
 
 
-extern volatile uint8_t usbDeviceConfigured;
+extern volatile uint8_t USBDeviceConfigured;
 
 /**
 * @brief  USBD_USR_DeviceConfigured
@@ -79,7 +79,7 @@ extern volatile uint8_t usbDeviceConfigured;
 * @retval Staus
 */
 void USBD_USR_DeviceConfigured (void) {
-    usbDeviceConfigured = true;
+    USBDeviceConfigured = true;
 }
 
 
@@ -91,7 +91,7 @@ void USBD_USR_DeviceConfigured (void) {
 */
 void USBD_USR_DeviceConnected (void)
 {
-    usbDeviceConfigured = false;
+    USBDeviceConfigured = false;
 }
 
 

@@ -49,20 +49,20 @@ typedef struct {
 	uint8 r :8;
 	uint8 g :8;
 	uint8 b :8;
-} wsLEDStruct;
+} WSLEDStruct;
 
-extern void wsInit(void);
-void wsUpdateBuffer(uint16_t* buffer);
-void wsSetColours(int i, uint8 R, uint8 G, uint8 B);
-void wsLEDColour(int i, const wsLEDStruct w);
-void wsLED(uint8 l);
-void UpdatewsLed(void);
+extern void InitWSLEDs(void);
+void UpdateWSLEDBuffer(uint16_t* buffer);
+void SetWSLEDColours(int i, uint8 R, uint8 G, uint8 B);
+void WSLEDColour(int i, const WSLEDStruct w);
+void WSLED(uint8 l);
+void UpdateWSLEDs(void);
 
-extern const wsLEDStruct wsLEDColours[];
+extern const WSLEDStruct WSLEDColours[];
 
-extern uint16 wsPWMBuffer[];
-extern uint16 wsBufferSize;
-extern uint8 CurrwsNoOfLeds, wsNoOfLeds, wsGroupSize;
+extern uint16 WSLEDPWMBuffer[];
+extern uint16 WSLEDBufferSize;
+extern uint8 CurrNoOfWSLEDs, NoOfWSLEDs, WSLEDGroupSize;
 
 
 

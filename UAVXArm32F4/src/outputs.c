@@ -140,7 +140,7 @@ void driveI2CWrite(idx channel, real32 v) {
 /*
 	if (channel < CurrMaxPWMOutputs)
 		//ESCI2CFail[channel] =
-		sioWrite(SIOESC, 0x52 + channel * 2, 0, Limit(
+		SIOWrite(SIOESC, 0x52 + channel * 2, 0, Limit(
 				(uint16)(v * 225.0f),0, 225));
 */
 } // driveI2CWrite
@@ -157,7 +157,7 @@ void driveSPIWrite(idx channel, real32 v) {
 
 void driveSPISyncStart(uint8 drives) {
 
-	//sioWrite(SIOESC, 0x52 + channel * 2, 0, Limit(
+	//SIOWrite(SIOESC, 0x52 + channel * 2, 0, Limit(
 	//		(uint16)(v * 225.0f),0, 225));
 
 } // driveSPISync

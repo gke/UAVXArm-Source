@@ -899,7 +899,7 @@ void SetTelemetryBaudRate(uint8 s, uint32 b) {
 	static uint32 CurrTelemetryBaudRate = 42;
 
 	if (b != CurrTelemetryBaudRate) {
-		serialBaudRate(s, b);
+		SetBaudRate(s, b);
 		CurrTelemetryBaudRate = b;
 	}
 
@@ -970,11 +970,11 @@ void ProcessOriginPacket(uint8 s) {
 void ProcessGPSBypass(void) {
 
 	while (true) {
-		if (serialAvailable(GPSRxSerial)) {
+		if (SerialAvailable(GPSRxSerial)) {
 			LEDToggle(ledBlueSel);
 			TxChar(TelemetrySerial, RxChar(GPSRxSerial));
 		}
-		if (serialAvailable(TelemetrySerial)) {
+		if (SerialAvailable(TelemetrySerial)) {
 			TxChar(GPSTxSerial, RxChar(TelemetrySerial));
 			LEDToggle(ledRedSel);
 		}
@@ -1079,7 +1079,7 @@ void ProcessRxPacket(uint8 s) {
 				SendCalibrationPacket(s);
 				break;
 			case miscCalMag:
-				if (MagnetometerIsActive())
+				if (F.MagnetometerActive)
 					CalibrateHMC5XXX(s);
 				SendCalibrationPacket(s);
 				break;
@@ -1158,7 +1158,7 @@ void UAVXPollRx(uint8 s) {
 	uint8 ch;
 
 	if (F.UsingUplink) {
-		if (serialAvailable(s)) {
+		if (SerialAvailable(s)) {
 			ch = RxChar(s);
 			ParseRxPacket(ch);
 		}

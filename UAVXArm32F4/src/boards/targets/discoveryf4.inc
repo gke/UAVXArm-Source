@@ -108,7 +108,7 @@ const AnalogPinDef AnalogPins[MAX_ANALOG_CHANNELS] = {
 
 const SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
 		//
-				{ false, }, // notional Usart0 but mapped to usbSerial
+				{ false, }, // notional Usart0 but mapped to USBSerial
 				{ true, USART1, GPIO_AF_USART1, GPIOA, GPIO_Pin_9,
 						GPIO_PinSource9, GPIO_Pin_10,
 						GPIO_PinSource10, //
@@ -140,18 +140,6 @@ const SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
 				{ false, 0 } // softSerial
 		};
 
-const PinDef SPISelectPins[MAX_SPI_DEVICES] = {
-//
-		{ false, }, //
-		{ false, }, //
-		{ false, }, //
-		{ false, }, //
-		{ false, }, //
-		{ false, }, //
-		{ false, }, //
-		{ false, } //	
-};
-
 const PinDef USBDisconnectPin = { true, GPIOD, GPIO_Pin_11, GPIO_PinSource11,
 		GPIO_Mode_OUT, GPIO_OType_OD, GPIO_PuPd_NOPULL, false, { 0, }, 0, };
 
@@ -177,7 +165,7 @@ void InitTarget(void) {
 
 	imuSel = imu0Sel;
 
-	TelemetrySerial = usbSerial; // Uart4; //
+	TelemetrySerial = USBSerial; // Uart4; //
 	InitSerialPort(TelemetrySerial, true, false);
 	while(true) { Delay1mS(200); TxChar(TelemetrySerial, '?'); }
 

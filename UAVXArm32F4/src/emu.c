@@ -200,7 +200,7 @@ void DoEmulation(void) {
 void GPSEmulation(void) {
 	uint32 NowmS;
 
-	while (serialAvailable(GPSRxSerial))
+	while (SerialAvailable(GPSRxSerial))
 		RxChar(GPSRxSerial); // flush
 
 	NowmS = mSClock();

@@ -25,7 +25,7 @@ boolean PreflightFail = false;
 uint8 ArmingMethod;
 
 void Probe(uint8 p) {
-	digitalWrite(&GPIOPins[ProbeSel], p);
+	DigitalWrite(&GPIOPins[ProbeSel].P, p);
 } // Probe
 
 void Marker(void) {
@@ -42,7 +42,7 @@ void CheckLandingSwitch(void) {
 		F.AccZBump = F.LandingSwitch = Altitude < 0.1f;
 	else {
 
-		Switch = digitalRead(&GPIOPins[LandingSel]); // active to ground
+		Switch = DigitalRead(&GPIOPins[LandingSel].P); // active to ground
 
 		if (Switch != SwitchP)
 			if (Count == 0) {
@@ -100,8 +100,8 @@ boolean FailPreflight(void) {
 			|| F.ThrottleOpen //
 			|| !F.IMUActive //
 			|| !F.IMUCalibrated
-			|| ((busDev[baroSel].Type != noBaro)&&!F.BaroActive) //
-			|| ((busDev[magSel].Type != noMag) && !(F.MagnetometerActive && F.MagnetometerCalibrated))//
+			|| ((busDev[baroSel].type != noBaro)&&!F.BaroActive) //
+			|| ((busDev[magSel].type != noMag) && !(F.MagnetometerActive && F.MagnetometerCalibrated))//
 			|| F.LowBatt //
 			|| F.spiFatal //
 			|| F.i2cFatal //

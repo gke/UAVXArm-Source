@@ -22,7 +22,7 @@
 #ifndef _main_h
 #define _main_h
 
-#define ArmingSwitch (digitalRead(&GPIOPins[ArmedSel]))
+#define ArmingSwitch (DigitalRead(&GPIOPins[ArmedSel].P))
 
 //________________________________________________________________________________________
 
@@ -133,7 +133,7 @@ typedef union {
 				Bypass :1,
 				UsingAngleControl :1,
 				Emulation :1,
-				MagnetometerLocked :1,
+				BadBusDevConfig :1,
 				DrivesArmed :1,
 				AccZBump :1,
 				UseManualAltHold :1,

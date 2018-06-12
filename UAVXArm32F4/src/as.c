@@ -51,16 +51,16 @@ void ReadASDiffPressureI2C(void) {
 
 	switch (p) {
 	case 0:
-		sioReadBlock(asSel, 0, 2, B);
+		SIOReadBlock(asSel, 0, 2, B);
 		RawASPressure = (B[1] & 0x3f) << 8 | B[0];
 		break;
 	case 1:
-		sioReadBlock(asSel, 0, 3, B);
+		SIOReadBlock(asSel, 0, 3, B);
 		RawASPressure = (B[1] & 0x3f) << 8 | B[0];
 		RawASTemperature = B[2] << 3;
 		break;
 	case 2:
-		sioReadBlock(asSel, 0, 4, B);
+		SIOReadBlock(asSel, 0, 4, B);
 		RawASPressure = (B[1] & 0x3f) << 8 | B[0];
 		RawASTemperatureHR = B[2] << 3 | (B[3] & 0b0111);
 		break;
@@ -99,7 +99,7 @@ void ReadASDiffPressureI2C(void) {
 
 	}
 
-	// does it freerun after init? sioWrite(asSel, 0, 0); // restart
+	// does it freerun after init? SIOWrite(asSel, 0, 0); // restart
 
 } // ReadAirspeedI2C
 
@@ -107,7 +107,7 @@ uint32 NextASUpdatemS = 0;
 
 void InitASDiffPressureI2C(void) {
 
-	sioWrite(asSel, 0, 0); // 8.4mS to first data
+	SIOWrite(asSel, 0, 0); // 8.4mS to first data
 
 	NextASUpdatemS = mSClock() + 9;
 

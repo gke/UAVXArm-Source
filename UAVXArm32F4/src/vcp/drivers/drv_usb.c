@@ -3,18 +3,18 @@
 
 #include "UAVX.h"
 
-#include "usbd_cdc_core.h"
-#include "usb_core.h"
-#include "usbd_desc.h"
-#include "usbd_usr.h"
+#include "USBd_cdc_core.h"
+#include "USB_core.h"
+#include "USBd_desc.h"
+#include "USBd_usr.h"
 
-#include "drv_usb.h"
+#include "drv_USB.h"
 
 #include <stdarg.h>
 
-volatile bool usbDeviceConfigured = false;
+volatile bool USBDeviceConfigured = false;
 
-bool previoususbDeviceConfigured = false;
+bool previousUSBDeviceConfigured = false;
 
 __ALIGN_BEGIN USB_OTG_CORE_HANDLE USB_OTG_dev __ALIGN_END;
 
@@ -65,7 +65,7 @@ __ALIGN_BEGIN USB_OTG_CORE_HANDLE USB_OTG_dev __ALIGN_END;
  } // USBCableIsInserted
 
  */
-void usbGenerateDisconnectPulse(void) {
+void USBGenerateDisconnectPulse(void) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 
 	GPIO_InitStructure.GPIO_Pin = GPIO_PinSource12;
@@ -80,12 +80,12 @@ void usbGenerateDisconnectPulse(void) {
 	Delay1mS(200);
 	GPIO_SetBits(GPIOA, GPIO_PinSource12);
 
-} // usbGenerateDisconnectPulse
+} // USBGenerateDisconnectPulse
 
 
-uint8_t usbRxChar(void) {
+uint8_t USBRxChar(void) {
 	uint8_t data;
-	if (usbDeviceConfigured) {
+	if (USBDeviceConfigured) {
 		CDC_Receive_DATA(&data);
 		return data;
 	} else
@@ -93,20 +93,20 @@ uint8_t usbRxChar(void) {
 } // USBRxChar
 
 
-void usbTxChar(char ch) {
-	if (usbDeviceConfigured)
+void USBTxChar(char ch) {
+	if (USBDeviceConfigured)
 		CDC_Send_DATA((uint8 *)&ch, 1);
-} // usbTxChar
+} // USBTxChar
 
 
-void usbTxString(char* str) {
-	if (usbDeviceConfigured)
+void USBTxString(char* str) {
+	if (USBDeviceConfigured)
 		CDC_Send_DATA((uint8_t *) str, strlen(str));
 } // USBTxString
 
 
 /*
-void usbPrintF(const char * fmt, ...) {
+void USBPrintF(const char * fmt, ...) {
 	char buf[512];
 
 	va_list vlist;
@@ -115,10 +115,10 @@ void usbPrintF(const char * fmt, ...) {
 	vsnprintf(buf, sizeof(buf), fmt, vlist);
 	USBPrint(buf);
 	va_end(vlist);
-} // usbPrintF
+} // USBPrintF
 
 
-void usbPrintBinary(const uint8_t *buf, uint16_t length) {
+void USBPrintBinary(const uint8_t *buf, uint16_t length) {
 	int i;
 	char *ptr = (char *) buf;
 	if (USBDeviceConfigured)
@@ -126,10 +126,10 @@ void usbPrintBinary(const uint8_t *buf, uint16_t length) {
 			CDC_Send_DATA(*ptr, 1);
 			ptr++;
 		}
-} // usbPrintBinary
+} // USBPrintBinary
 */
 
-void usbActive(boolean forceCheck) {
+void USBActive(boolean forceCheck) {
 
 	//  if ((USBDeviceConfigured != previousUSBDeviceConfigured)  || forceCheck)
 	//      if (USBDeviceConfigured)
@@ -156,8 +156,8 @@ void usbActive(boolean forceCheck) {
 	//
 	//  previousUSBDeviceConfigured = USBDeviceConfigured;
 
-	if ((usbDeviceConfigured != previoususbDeviceConfigured) || forceCheck)
-		if (usbDeviceConfigured) {
+	if ((USBDeviceConfigured != previousUSBDeviceConfigured) || forceCheck)
+		if (USBDeviceConfigured) {
 			//            cliPortAvailable = &USBAvailable;
 			//            cliPortPrint = &USBPrint;
 			//            cliPortPrintF = &USBPrintF;
@@ -181,13 +181,13 @@ void usbActive(boolean forceCheck) {
 			//            mavlinkPortRead        = &uart3Read;
 		}
 
-	previoususbDeviceConfigured = usbDeviceConfigured;
-} // usbActive
+	previousUSBDeviceConfigured = USBDeviceConfigured;
+} // USBActive
 
 
-void usbConnect(void) {
+void USBConnect(void) {
 
-	usbGenerateDisconnectPulse();
+	USBGenerateDisconnectPulse();
 
 	Delay1mS(200);
 
@@ -195,8 +195,8 @@ void usbConnect(void) {
 			&USR_cb);
 
 	Delay1mS(200);
-	usbActive(true);
-	if (!usbDeviceConfigured) {
+	USBActive(true);
+	if (!USBDeviceConfigured) {
 	}
 
-} // usbConnect
+} // USBConnect

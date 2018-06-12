@@ -97,7 +97,7 @@ const AnalogPinDef AnalogPins[MAX_ANALOG_CHANNELS] = {
 };
 
 SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
-	{false, }, // mapped to usbSerial
+	{false, }, // mapped to USBSerial
 	{true, USART1, //  
 		GPIO_AF_USART1, GPIOB, GPIO_Pin_6, GPIO_PinSource6, GPIO_Pin_7, GPIO_PinSource7, 
 		true, USART1_IRQn,

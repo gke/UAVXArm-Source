@@ -40,11 +40,11 @@ extern uint8 TxCheckSum[];
 
 extern volatile uint32 RxDMAPos[];
 
-extern void serialSetBaudRate(uint8 s, uint32 BaudRate);
-extern void serialISR(uint8 s);
+extern void SetBaudRate(uint8 s, uint32 BaudRate);
+extern void SerialISR(uint8 s);
 
 extern void TxChar(uint8 s, uint8 ch);
-extern boolean serialAvailable(uint8 s);
+extern boolean SerialAvailable(uint8 s);
 extern uint8 PollRxChar(uint8 s);
 extern uint8 RxChar(uint8 s);
 extern void SoftTxChar(uint8 ch);
@@ -52,7 +52,7 @@ extern void UpdateBlackBox(void);
 extern void FindLastBlackBox(void);
 extern void EnableSerialPorts(void);
 
-extern void serialTxDMA(uint8 s);
+extern void SerialTxDMA(uint8 s);
 
 extern uint32 LogAddrEE;
 extern uint32 SoftUSARTBaudRate;

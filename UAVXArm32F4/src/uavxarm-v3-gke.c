@@ -58,7 +58,7 @@ inline void DoHouseKeeping(void) {
 	DoCalibrationAlarm();
 
 	CheckTelemetry(TelemetrySerial);
-	UpdatewsLed();
+	UpdateWSLEDs();
 
 } // DoHousekeeping
 
@@ -98,7 +98,7 @@ void DoTesting(void) {
 	USBTxString("starting USB Test (! to force restart)\n");
 
 	while (true) {
-		if (serialAvailable(USBSerial)) {
+		if (SerialAvailable(USBSerial)) {
 			LEDToggle(ledYellowSel);
 			uint8 ch = RxChar(USBSerial);
 			if (ch == '!')
@@ -241,7 +241,6 @@ void DoTesting(void) {
 
 
 int main() {
-	idx i, j;
 	uint32 NowuS;
 	static uint32 LastUpdateuS = 0;
 
@@ -258,7 +257,7 @@ int main() {
 
 	InitExtMem();
 	InitPollRxPacket();
-	spiClearSelects();
+	SPIClearSelects();
 
 	//CheckBLHeli();
 
@@ -267,9 +266,6 @@ int main() {
 	InitMadgwick();
 	InitBarometer();
 	InitTemperature();
-
-
-
 
 	InitEmulation();
 

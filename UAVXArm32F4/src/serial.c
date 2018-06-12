@@ -42,7 +42,7 @@ uint8 TxCheckSum[MAX_SERIAL_PORTS];
 uint32 SoftUSARTBaudRate = 115200;
 boolean RxUsingSerial = false;
 
-void serialTxDMA(uint8 s) {
+void SerialTxDMA(uint8 s) {
 
 	SerialPorts[s].TxStream->M0AR = (uint32) &TxQ[s][TxQHead[s]];
 
@@ -57,14 +57,14 @@ void serialTxDMA(uint8 s) {
 	}
 	DMA_Cmd(SerialPorts[s].TxStream, ENABLE);
 
-} // serialTxDMA
+} // SerialTxDMA
 
-boolean serialAvailable(uint8 s) {
+boolean SerialAvailable(uint8 s) {
 	boolean r;
 	//uint8 ch;
 
 	switch (s) {
-	case usbSerial:
+	case USBSerial:
 		r = usbAvailable();
 		break;
 	case SoftSerialTx:
@@ -84,7 +84,7 @@ boolean serialAvailable(uint8 s) {
 	} // switch
 
 	return (r);
-} // serialAvailable
+} // SerialAvailable
 
 uint8 RxChar(uint8 s) {
 	uint8 ch;
@@ -93,8 +93,8 @@ uint8 RxChar(uint8 s) {
 	switch (s) {
 	case SoftSerialTx:
 		break;
-	case usbSerial:
-		ch = usbRxChar();
+	case USBSerial:
+		ch = USBRxChar();
 		break;
 	default:
 		if (SerialPorts[s].DMAUsed || SerialPorts[s].InterruptsUsed) {
@@ -115,17 +115,17 @@ uint8 PollRxChar(uint8 s) {
 	case SoftSerialTx:
 		return (ASCII_NUL);
 		break;
-	case usbSerial:
-		if (serialAvailable(s)) {
-			ch = usbRxChar();
+	case USBSerial:
+		if (SerialAvailable(s)) {
+			ch = USBRxChar();
 			if (!Armed())
-				usbTxChar(ch); // echo for UAVPSet
+				USBTxChar(ch); // echo for UAVPSet
 			return (ch);
 		} else
 			return (ASCII_NUL);
 		break;
 	default:
-		if (serialAvailable(s)) {
+		if (SerialAvailable(s)) {
 			ch = RxChar(s);
 			if (!Armed())
 				TxChar(s, ch); // echo for UAVPSet
@@ -146,8 +146,8 @@ void TxChar(uint8 s, uint8 ch) {
 		BlackBox(ch);
 
 	switch (s) {
-	case usbSerial:
-		usbTxChar(ch);
+	case USBSerial:
+		USBTxChar(ch);
 		break;
 	case SoftSerialTx:
 		SoftTxChar(ch); // blocking???
@@ -163,7 +163,7 @@ void TxChar(uint8 s, uint8 ch) {
 
 			if (SerialPorts[s].DMAUsed) {
 				if (DMA_GetCmdStatus(SerialPorts[s].TxStream) == DISABLE)
-					serialTxDMA(s);
+					SerialTxDMA(s);
 			} else {
 				// if TXE then interrupt will be pending
 				USART_ITConfig(SerialPorts[s].USART, USART_IT_TXE, ENABLE);
@@ -179,7 +179,7 @@ void TxChar(uint8 s, uint8 ch) {
 
 } // TxChar
 
-void serialISR(uint8 s) {
+void SerialISR(uint8 s) {
 	uint8 ch;
 
 	if (USART_GetITStatus(SerialPorts[s].USART, USART_IT_RXNE) == SET) {
@@ -208,7 +208,7 @@ void serialISR(uint8 s) {
 		if (TxQHead[s] == TxQTail[s])
 			USART_ITConfig(SerialPorts[s].USART, USART_IT_TXE, DISABLE);
 	}
-} // serialISR
+} // SerialISR
 
 void SoftTxChar(uint8 ch) {
 	uint8 b;
@@ -217,14 +217,14 @@ void SoftTxChar(uint8 ch) {
 	if (!Armed()) { // MUST NOT BE USED IN FLIGHT
 		d = (uint16) (1000000.0f / SoftUSARTBaudRate + 0.5f); // expensive!
 
-		digitalWrite(&GPIOPins[Aux2Sel], 0);
+		DigitalWrite(&GPIOPins[Aux2Sel].P, 0);
 		Delay1uS(d);
 		for (b = 0; b < 8; b++) {
-			digitalWrite(&GPIOPins[Aux2Sel], (ch & 1) != 0);
+			DigitalWrite(&GPIOPins[Aux2Sel].P, (ch & 1) != 0);
 			Delay1uS(d);
 			ch = ch >> 1;
 		}
-		digitalWrite(&GPIOPins[Aux2Sel], 1);
+		DigitalWrite(&GPIOPins[Aux2Sel].P, 1);
 		Delay1uS(d);
 	}
 } // SoftTxChar

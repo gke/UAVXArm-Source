@@ -19,31 +19,31 @@
 //    If not, see http://www.gnu.org/licenses/
 
 
-#ifndef _spi_h
-#define _spi_h
+#ifndef _SPI_h
+#define _SPI_h
 
 typedef struct {
 	boolean ClockHigh;
 	uint32 ReadRate;
 	uint32 WriteRate;
-} spiDefStruct;
+} SPIDefStruct;
 
 
-extern const spiDefStruct spiDef[];
+extern const SPIDefStruct SPIDef[];
 
-extern void spiSelect(uint8 devSel, boolean Sel);
-extern void spiClearSelects(void);
-extern SPI_TypeDef * spiSetBaudRate(uint8 devSelS, boolean R);
-extern void spiSetDivisor(SPI_TypeDef *SPIx, uint16 d);
+extern void SPISelect(uint8 devSel, boolean Sel);
+extern void SPIClearSelects(void);
+extern SPI_TypeDef * SPISetBaudRate(uint8 devSelS, boolean R);
+extern void SPISetDivisor(SPI_TypeDef *SPIx, uint16 d);
 
-extern uint8 spiSend(SPI_TypeDef *SPIx, uint8 d);
+extern uint8 SPISend(SPI_TypeDef *SPIx, uint8 d);
 
-extern boolean spiReadBlock(uint8 devSel, uint8 reg, uint8 len,
+extern boolean SPIReadBlock(uint8 devSel, uint8 reg, uint8 len,
 		uint8 * data);
-extern boolean spiWriteBlock(uint8 devSel, uint8 reg, uint8 len,
+extern boolean SPIWriteBlock(uint8 devSel, uint8 reg, uint8 len,
 		uint8 * data);
 
-extern uint32 spiErrors;
+extern uint32 SPIErrors;
 
 #endif
 

@@ -25,119 +25,81 @@
 #include "UAVX.h"
 
 PinDef RCPins[MAX_RC_INPUTS] = {
-	{true, GPIOA, GPIO_Pin_0, GPIO_PinSource0, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP, 
-		{true, TIM2, TIM_Channel_1, TIM_IT_CC1, 0, GPIO_AF_TIM2 }, 
-		{false,}, TIM2_IRQn },//
-		
+	{true, PA0, PWMPinConfig, PWMIn_2_1},
 	// Archaic
-	{true, GPIOA, GPIO_Pin_1, GPIO_PinSource1, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP, 
-		{true, TIM2, TIM_Channel_2, TIM_IT_CC2, 0, GPIO_AF_TIM2 }, {false,}, TIM2_IRQn }, //
-	{true, GPIOA, GPIO_Pin_2, GPIO_PinSource2, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP, 
-		{true, TIM2, TIM_Channel_3, TIM_IT_CC3, 0, GPIO_AF_TIM2 }, {false,}, TIM2_IRQn }, //
-	{true, GPIOA, GPIO_Pin_3, GPIO_PinSource3, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP, 
-		{true, TIM2, TIM_Channel_4, TIM_IT_CC4, 0, GPIO_AF_TIM2 }, {false,}, TIM2_IRQn }, //
-	{true, GPIOA, GPIO_Pin_6, GPIO_PinSource6, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP, 
-		{true, TIM3, TIM_Channel_1, TIM_IT_CC1, 0, GPIO_AF_TIM3 }, {false,}, TIM3_IRQn },//
-	{true, GPIOA, GPIO_Pin_7, GPIO_PinSource7, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP, 
-		{true, TIM3, TIM_Channel_2, TIM_IT_CC2, 0, GPIO_AF_TIM3 }, {false,}, TIM3_IRQn }, //
-	{true, GPIOB, GPIO_Pin_0, GPIO_PinSource0, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP, 
-		{true, TIM3, TIM_Channel_3, TIM_IT_CC3, 0, GPIO_AF_TIM3 }, {false,}, TIM3_IRQn },//
-	{true, GPIOB, GPIO_Pin_1, GPIO_PinSource1, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP, 
-		{true, TIM3, TIM_Channel_4, TIM_IT_CC4, 0, GPIO_AF_TIM3 }, {false,}, TIM3_IRQn } };
+	{true, PA1, PWMPinConfig, PWMIn_2_2},
+	{true, PA2, PWMPinConfig, PWMIn_2_3},
+	{true, PA3, PWMPinConfig, PWMIn_2_4},
+	{true, PA6, PWMPinConfig, PWMIn_3_1},
+	{true, PA7, PWMPinConfig, PWMIn_3_2},
+	{true, PB0, PWMPinConfig, PWMIn_3_3},
+	{true, PB1, PWMPinConfig, PWMIn_3_4}  
+};
 
 PinDef PWMPins[MAX_PWM_OUTPUTS] = {
 	// Drives 1-4
-	{true, GPIOB, GPIO_Pin_9, GPIO_PinSource9, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP, 
-		{true, TIM4, TIM_Channel_4, 0, &(TIM4->CCR4), GPIO_AF_TIM4 },}, 
-	{true, GPIOB, GPIO_Pin_8, GPIO_PinSource8, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP, 
-		{true, TIM4, TIM_Channel_3, 0, &(TIM4->CCR3), GPIO_AF_TIM4 },},
-	{true, GPIOB, GPIO_Pin_7, GPIO_PinSource7, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP, 
-		{true, TIM4, TIM_Channel_2, 0, &(TIM4->CCR2), GPIO_AF_TIM4 },},
-	{true, GPIOB, GPIO_Pin_6, GPIO_PinSource6, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP, 
-		{true, TIM4, TIM_Channel_1, 0, &(TIM4->CCR1), GPIO_AF_TIM4 },},
-	
-	{true, GPIOA, GPIO_Pin_11, GPIO_PinSource11, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP,
-		{true, TIM1, TIM_Channel_4, 0, &(TIM1->CCR4), GPIO_AF_TIM1},},
-	{true, GPIOA, GPIO_Pin_8, GPIO_PinSource8, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP,
-		{true, TIM1, TIM_Channel_1, 0, &(TIM1->CCR1), GPIO_AF_TIM1},},
+	{true, PB9, PWMPinConfig, PWMOut_4_4},
+	{true, PB8, PWMPinConfig, PWMOut_4_3},
+	{true, PB7, PWMPinConfig, PWMOut_4_2},
+	{true, PB6, PWMPinConfig, PWMOut_4_1},		
+	{true, PA11, PWMPinConfig, PWMOut_1_4},
+	{true, PA8, PWMPinConfig, PWMOut_1_1},
 
 	// Drives 4-8 for brushless
-	{true, GPIOA, GPIO_Pin_6, GPIO_PinSource6, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP, 
-		{true, TIM3, TIM_Channel_1, 0, &(TIM3->CCR1), GPIO_AF_TIM3 },},
-	{true, GPIOA, GPIO_Pin_7, GPIO_PinSource7, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP, 
-		{true, TIM3, TIM_Channel_2, 0, &(TIM3->CCR2), GPIO_AF_TIM3 },}, 
-	{true, GPIOB, GPIO_Pin_0, GPIO_PinSource0, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP, 
-		{true, TIM3, TIM_Channel_3, 0, &(TIM3->CCR3), GPIO_AF_TIM3 },}, //
-	{true, GPIOB, GPIO_Pin_1, GPIO_PinSource1, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP, 
-		{true, TIM3, TIM_Channel_4, 0, &(TIM3->CCR4), GPIO_AF_TIM3 }, }
+	{true, PA6, PWMPinConfig, PWMOut_3_1},
+	{true, PA7, PWMPinConfig, PWMOut_3_2}, 
+	{true, PB0, PWMPinConfig, PWMOut_3_3},
+	{true, PB1, PWMPinConfig, PWMOut_3_4}
 };
 
-PinDef GPIOPins[MAX_GPIO_PINS] = { 		
-	{true, GPIOA, GPIO_Pin_12, GPIO_PinSource12, GPIO_Mode_OUT, GPIO_OType_PP, GPIO_PuPd_UP,},// Beeper
-	{true, GPIOC, GPIO_Pin_10, GPIO_PinSource10, GPIO_Mode_IN, GPIO_OType_PP, GPIO_PuPd_UP,},// Armed
-	{true, GPIOC, GPIO_Pin_9, GPIO_PinSource9,  GPIO_Mode_IN, GPIO_OType_PP, GPIO_PuPd_UP,}, // Landing
-	{true, GPIOC, GPIO_Pin_6, GPIO_PinSource6, GPIO_Mode_OUT, GPIO_OType_PP, GPIO_PuPd_UP,},// Aux1/WS2812 (WS2812 hard coded)
-	{true, GPIOC, GPIO_Pin_7, GPIO_PinSource7, GPIO_Mode_OUT, GPIO_OType_PP, GPIO_PuPd_UP,},// Aux2/SoftUSARTTx
-	{true, GPIOC, GPIO_Pin_8, GPIO_PinSource8, GPIO_Mode_OUT, GPIO_OType_PP, GPIO_PuPd_UP, },// Probe (Aux3)
-	{false, },
-	{false, }
+PinDef GPIOPins[MAX_GPIO_PINS] = { 	
+	{true, PA12, OutPinConfig,}, // Beeper
+	{true, PC10, InpPinConfig,}, // Armed
+	{true, PC9, InpPinConfig,}, // Landing
+#if (defined(USE_WS2812) || defined(USE_WS2812B))
+	{false, PC6, OutPinConfig,}, // WSLEDs
+#else
+	{true, PC6, OutPinConfig,}, // Aux1
+#endif	   
+	{true, PC7, OutPinConfig,}, // Aux2
+	{true, PC8, OutPinConfig,}, // Probe (Aux3)
+	{false, }, // MPU6XXXIntSel 
+	{false, } // HMC5XXXRdySel
 };
 
 SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
-	{false, }, // mapped to usbSerial
-	{true, USART1, GPIO_AF_USART1, GPIOA, GPIO_Pin_9, GPIO_PinSource9, GPIO_Pin_10, GPIO_PinSource10, //  Connector 5 Telemetry 
-		true, USART1_IRQn, false, DMA_Channel_4, DMA2_Stream7, DMA2_Stream7_IRQn, DMA2_Stream5, 115200 }, //
-	{true, USART2, GPIO_AF_USART2, GPIOA, GPIO_Pin_2, GPIO_PinSource2, GPIO_Pin_3, GPIO_PinSource3, // Connector 1 Serial Rx
-		true, USART2_IRQn, false, DMA_Channel_4, DMA1_Stream6, DMA1_Stream6_IRQn, DMA1_Stream5, 9600 }, //
-	{true, USART3,GPIO_AF_USART3, GPIOB, GPIO_Pin_10, GPIO_PinSource10, GPIO_Pin_11, GPIO_PinSource11,  // Connector 2 GPS shared with I2C2
-		true, USART3_IRQn, false, DMA_Channel_4, DMA1_Stream3, DMA1_Stream3_IRQn, DMA1_Stream1, 115200 }, //
-	{false, UART4, 0 }, //
+	{false, }, // mapped to USBSerial
+	{true, USART1, PA9, PA10, 115200, USART1Config,},
+	{true, USART2, PA2, PA3, 9600, USART2Config,},
+	{false, USART3, PB10, PB11, 115200, USART3Config,},
+	{false, UART4, PC10, PC11, 115200, UART4Config,},
 	{false, 0 } // SoftSerial
 };
 
 AnalogPinDef AnalogPins[MAX_ANALOG_CHANNELS] = {
-	{true, ADC1, GPIOC, GPIO_Pin_0, ADC_Channel_10, {true, DMA_Channel_0, DMA2_Stream0}, 1 }, // RF
-	{true, ADC1, GPIOC, GPIO_Pin_1, ADC_Channel_11, {true, DMA_Channel_0, DMA2_Stream0}, 2 }, // Amps
-	{true, ADC1, GPIOC, GPIO_Pin_2, ADC_Channel_12, {true, DMA_Channel_0, DMA2_Stream0}, 3 }, // Volts
-	{true, ADC1, GPIOC, GPIO_Pin_3, ADC_Channel_13, {true, DMA_Channel_0, DMA2_Stream0}, 4 }, // Roll
-	{true, ADC1, GPIOC, GPIO_Pin_4, ADC_Channel_14, {true, DMA_Channel_0, DMA2_Stream0}, 5 }, // Pitch
-	{true, ADC1, GPIOC, GPIO_Pin_5, ADC_Channel_15, {true, DMA_Channel_0, DMA2_Stream0}, 6 }, // Yaw
-};
-
-PinDef SPISelectPins[MAX_SPI_DEVICES] = {
-	{false, }, //
-	{false, }, //		
-	{false, }, //	
-	{false, }, //
-	{false, }, //		
-	{false, }, //	
-	{false, }, //
-	{false, } //		
+	{true, ADC1, PC0, ADC_Channel_10, DMA2_0_0_noIRQn, 1}, // RF
+	{true, ADC1, PC1, ADC_Channel_11, DMA2_0_0_noIRQn, 2}, // Current
+	{true, ADC1, PC2, ADC_Channel_12, DMA2_0_0_noIRQn, 3}, // Volts
+		
+	{true, ADC1, PC3, ADC_Channel_13, DMA2_0_0_noIRQn, 4}, // Roll
+	{true, ADC1, PC4, ADC_Channel_14, DMA2_0_0_noIRQn, 5}, // Pitch
+	{true, ADC1, PC5, ADC_Channel_15, DMA2_0_0_noIRQn, 6}, // Yaw
 };
 
 PinDef WSPin = // Aux1 Pin for UAVXF4V3
-	{true, GPIOC, GPIO_Pin_6, GPIO_PinSource6, 
-		GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_NOPULL, 
-		{true, TIM8, TIM_Channel_1, TIM_DMA_CC1, &(TIM8->CCR1), GPIO_AF_TIM8 },
-		{true, DMA_Channel_0, DMA2_Stream2}, DMA2_Stream2_IRQn };
+	{true, PC6, PWMPinConfig, PWMOut_8_1CC, DMA2_0_2_IRQn};
 
-PinDef LEDPins[MAX_LED_PINS] = { //
-	{true, GPIOB, GPIO_Pin_3, GPIO_PinSource3, 
-		GPIO_Mode_OUT, GPIO_OType_PP, GPIO_PuPd_NOPULL, 
-		{false,}, 
-		{false,},0}, // Yellow
-	{true, GPIOB, GPIO_Pin_4, GPIO_PinSource4, 
-		GPIO_Mode_OUT, GPIO_OType_PP, GPIO_PuPd_NOPULL, 
-		{false,}, 
-		{false,},0}, // Red
-	{true, GPIOC, GPIO_Pin_11, GPIO_PinSource11, 
-		GPIO_Mode_OUT, GPIO_OType_PP, GPIO_PuPd_NOPULL, 
-		{false,}, 
-		{false,},0}, // Blue
-	{true, GPIOC, GPIO_Pin_12, GPIO_PinSource12, 
-		GPIO_Mode_OUT, GPIO_OType_PP, GPIO_PuPd_NOPULL, 
-		{false,}, 
-		{false,},0}// Green
+//PinDef WSPin = // Aux1 Pin for UAVXF4V3
+//	{true, PC6, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_NOPULL, 
+//		{true, TIM8, TIM_Channel_1, TIM_DMA_CC1, &(TIM8->CCR1), GPIO_AF_TIM8 },
+//		{true, DMA_Channel_0, DMA2_Stream2}, DMA2_Stream2_IRQn };
+
+		
+PinDef LEDPins[MAX_LED_PINS] = { 
+	{true, PB3, LEDPinConfig,}, // Yellow
+	{true, PB4, LEDPinConfig,}, // Red
+	{true, PC11, LEDPinConfig,}, // Blue
+	{true, PC12, LEDPinConfig,},// Green
 };
 
 PinDef USBDisconnectPin = {false, 0, };
@@ -145,23 +107,22 @@ PinDef USBDisconnectPin = {false, 0, };
 const uint8 currGimbalType = noGimbal;
 const boolean ledsLowOn = false;
 
-// imu0Sel, imu1Sel, baroSel, magSel, memSel, gpsSel, rfSel, asSel, flowSel, escSel, 
-const DevDef busDev[] = {
-	{true, mpu6050IMU, useI2C, 2, MPU_0x68_ID },// imu0Sel
-	{false, },// imu1Sel 
-	{true, ms5611Baro, useI2C, 2, MS56XX_ID },// baroSel
-	{true, hmc5xxxMag, useI2C, 2, HMC5XXX_ID },// magSel 
-	{true, i2cEEPROMMem, useI2C, 2, EEPROM_ID },// memSel 
-	{false, },// gpsSel
-	{false, },// rfSel
-	{false, }, // asSel,
-	{false, }, // flowSel
-	{false, }, // escSel
+DevDef busDev[maxDevSel] = {
+	{true, imu0Sel, mpu6000IMU, false, 2, MPU_0x68_ID,},  
+	{false, imu1Sel, },  
+	{true, baroSel, ms5611Baro, false, 2, MS56XX_ID,},
+	{true, magSel, hmc5xxxMag, false, 2, HMC5XXX_ID,},
+	{true, memSel, i2cEEPROMMem, false, 2, EEPROM_ID,},
+	{false, gpsSel, },
+	{false, rfSel, },
+	{false, asSel, },
+	{false, flowSel, },
+	{false, escSel, },
 };
 
-void InitTarget(void) {
+const uint8 imuSel = imu0Sel;
 
-	imuSel = imu0Sel;
+void InitTarget(void) {
 
 	TelemetrySerial = Usart1;
 	InitSerialPort(TelemetrySerial, true, false);

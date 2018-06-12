@@ -251,7 +251,7 @@ void UpdateParameters(void) {
 					|| (CurrAccLPFSel != P(AccLPFSel)) //
 					|| (CurrGPSType != P(GPSProtocol)) //
 					|| (CurrMotorStopSel != P(MotorStopSel)) //
-					|| (CurrwsNoOfLeds != P(WS2812Leds)))
+					|| (CurrNoOfWSLEDs != P(WS2812Leds)))
 				NVIC_SystemReset();
 
 
@@ -629,8 +629,8 @@ void InitParameters(void) {
 	F.UsingAnalogGyros = (CurrAttSensorType != UAVXArm32IMU)
 			&& (CurrAttSensorType != FreeIMU);
 
-	CurrwsNoOfLeds = LimitP(WS2812Leds, 0, MAX_WS2812_LEDS);
-	wsInit();
+	CurrNoOfWSLEDs = LimitP(WS2812Leds, 0, MAX_WS2812_LEDS);
+	InitWSLEDs();
 
 	InitMAVLink();
 

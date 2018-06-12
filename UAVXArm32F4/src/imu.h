@@ -44,8 +44,6 @@ void ErectGyros(uint8 imuSel, int32 d);
 void InitIMU(uint8 imuSel);
 void ScaleRateAndAcc(uint8 imuSel);
 
-extern uint8 imuSel;
-
 extern const uint8 MPUMap[];
 extern const real32 MPUSign[];
 

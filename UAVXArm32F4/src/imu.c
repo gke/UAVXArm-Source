@@ -35,7 +35,6 @@ const real32 GyroScale[] = { //
 
 uint8 CurrAttSensorType = UAVXArm32IMU;
 
-uint8 imuSel = imu0Sel;
 real32 GyroBias[3];
 real32 Acc[3], Rate[3];
 real32 RateEnergySum;

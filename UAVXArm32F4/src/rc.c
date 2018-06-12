@@ -444,22 +444,22 @@ void doSpektrumBinding(void) {
 	uint8 pulse;
 
 	pinMode(7, INPUT); // THR pin as input
-	digitalWrite(7, HIGH); // turn on pullup resistors
+	DigitalWrite(7, HIGH); // turn on pullup resistors
 
-	if (!digitalRead(7)) {
+	if (!DigitalRead(7)) {
 
 		pinMode(0, OUTPUT); // Tx pin for satellite
-		digitalWrite(0, HIGH);
+		DigitalWrite(0, HIGH);
 
 		pinMode(0, OUTPUT);
 
-		digitalWrite(0, HIGH);
+		DigitalWrite(0, HIGH);
 		delayMicroseconds(116);
 
 		for (pulse = 0; pulse < SPEK_BIND_PULSES; pulse++) {
-			digitalWrite(0, LOW);
+			DigitalWrite(0, LOW);
 			delayMicroseconds(116);
-			digitalWrite(0, HIGH);
+			DigitalWrite(0, HIGH);
 			delayMicroseconds(116);
 		}
 
@@ -482,16 +482,16 @@ void DoSpektrumBind(void) {
 	p.OType = GPIO_OType_PP;
 	p.PuPd = GPIO_PuPd_UP;
 
-	pinInit(&p);
+	InitPin(&p);
 	// need to power the Rx off one of the pins so power up can be controlled.
-	digitalWrite(&p, 1);
+	DigitalWrite(&p, 1);
 
 	Delay1mS(61); // let satellites settle after power up
 
 	for (i = 0; i < MASTER_RX_PULSES; i++) {
-		digitalWrite(&p, 0);
+		DigitalWrite(&p, 0);
 		Delay1uS(120);
-		digitalWrite(&p, 1);
+		DigitalWrite(&p, 1);
 		Delay1uS(120);
 	}
 
@@ -571,7 +571,7 @@ void InitRC(void) {
 	case FrSkyFBusRx:
 		DiscoveredRCChannels = SBUS_CHANNELS;
 		RxCTS[RCSerial] = false;
-		serialBaudRate(RCSerial, 115200);
+		SetBaudRate(RCSerial, 115200);
 		RxEnabled[RCSerial] = true;
 		break;
 	default:

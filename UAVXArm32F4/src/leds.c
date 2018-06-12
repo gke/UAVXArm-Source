@@ -176,55 +176,55 @@ enum Colours { // RGB order
 // LEDYellowSel, LEDRedSel, LEDBlueSel, LEDGreenSel, LEDNone
 
 
-uint8 CurrwsNoOfLeds = 0;
+uint8 CurrNoOfWSLEDs = 0;
 
 #if defined(USE_WS2812) || defined(USE_WS2812B)
 
 // Y/O, R, B, G
-const wsLEDStruct wsLEDColours[] = { { 0xff, 0x45, 0 }, { 0xff, 0, 0 }, { 0, 0,
+const WSLEDStruct WSLEDColours[] = { { 0xff, 0x45, 0 }, { 0xff, 0, 0 }, { 0, 0,
 		0xff }, { 0, 0x80, 0 }, { 0, 0, 0 } }; // RGB
 
-uint16 wsPWMBuffer[MAX_PWM_BUFFER_SIZE];
-wsLEDStruct wsLEDs[MAX_WS2812_LEDS];
-uint8 wsNoOfLeds, wsGroupSize;
-uint16 wsBufferSize;
-uint32 wsCurrLED = 0;
+uint16 WSLEDPWMBuffer[MAX_PWM_BUFFER_SIZE];
+WSLEDStruct WSLEDs[MAX_WS2812_LEDS];
+uint8 NoOfWSLEDs, WSLEDGroupSize;
+uint16 WSLEDBufferSize;
+uint32 CurrWSLED = 0;
 boolean incomplete = false;
 
 // Recommendation post 2013 from WorldSemi are now: 0 = 400ns high/850ns low, and 1 = 850ns high, 400ns low"
 // Currently the timings are 0 = 350ns high/800ns and 1 = 700ns high/650ns low.
 // Betaflight timings are 0 = 350ns high/800ns and 1 = 700ns high/650ns low.
 
-static void wsInitBuffers(void) {
+static void InitWSLEDBuffers(void) {
 	int16 i;
 
-	for (i = 0; i < wsBufferSize; i++)
-		wsPWMBuffer[i] = 0;
+	for (i = 0; i < WSLEDBufferSize; i++)
+		WSLEDPWMBuffer[i] = 0;
 
-	for (i = 0; i < wsNoOfLeds; i++) {
-		wsLEDs[i].r = 0;
-		wsLEDs[i].g = 0;
-		wsLEDs[i].b = 0;
+	for (i = 0; i < NoOfWSLEDs; i++) {
+		WSLEDs[i].r = 0;
+		WSLEDs[i].g = 0;
+		WSLEDs[i].b = 0;
 	}
-} // wsInitBuffers
+} // InitWSLEDSBuffers
 
 
-void wsInit(void) {
+void InitWSLEDs(void) {
 
-	if (CurrwsNoOfLeds > 0) {
+	if (CurrNoOfWSLEDs > 0) {
 
-		wsNoOfLeds = Limit(CurrwsNoOfLeds, 4, MAX_WS2812_LEDS);
-		wsGroupSize = wsNoOfLeds / MAX_LED_PINS;
-		wsBufferSize = wsNoOfLeds * 24;
+		NoOfWSLEDs = Limit(CurrNoOfWSLEDs, 4, MAX_WS2812_LEDS);
+		WSLEDGroupSize = NoOfWSLEDs / MAX_LED_PINS;
+		WSLEDBufferSize = NoOfWSLEDs * 24;
 
-		wsInitBuffers();
-		InitWSPin(wsBufferSize);
+		InitWSLEDBuffers();
+		InitWSPin(WSLEDBufferSize);
 	}
 
-} // wsInit
+} // InitWSLEDs
 
 #define ss 33 // 168.0f
-static void wsGenPWM(uint16 ** const dest, const uint8 color) {
+static void GenWSLEDPWM(uint16 ** const dest, const uint8 color) {
 	// generates the PWM patterns for each colour byte
 
 #if defined(USE_WS2812)
@@ -243,164 +243,164 @@ static void wsGenPWM(uint16 ** const dest, const uint8 color) {
 		mask >>= 1;
 	} while (mask != 0);
 
-} // wsGenPWM
+} // GenWSLEDPWM
 
 
-void wsUpdateBuffer(uint16* B) { // computationally expensive ~6%
-	wsLEDStruct *wsLEDptr;
+void UpdateWSLEDBuffer(uint16* B) { // computationally expensive ~6%
+	WSLEDStruct *WSLEDptr;
 	uint32 i, j;
 	uint16 * wsPWMptr;
 
-	if (CurrwsNoOfLeds > 0) {
+	if (CurrNoOfWSLEDs > 0) {
 
-		for (i = 0; i < (wsBufferSize >> 1); i += 24) {
+		for (i = 0; i < (WSLEDBufferSize >> 1); i += 24) {
 			if (incomplete) {
 				incomplete = false;
 				for (j = 0; j < 24; j++)
 					B[i + j] = 0;
 
 			} else {
-				if (wsCurrLED == wsNoOfLeds) {
+				if (CurrWSLED == NoOfWSLEDs) {
 					incomplete = true;
-					wsCurrLED = 0;
+					CurrWSLED = 0;
 
 					for (j = 0; j < 24; j++)
 						B[i + j] = 0;
 				} else {
-					wsLEDptr = &wsLEDs[wsCurrLED++];
+					WSLEDptr = &WSLEDs[CurrWSLED++];
 					wsPWMptr = B + i;
 
 					// WS2812 order is G R B
-					wsGenPWM(&wsPWMptr, wsLEDptr->g);
-					wsGenPWM(&wsPWMptr, wsLEDptr->r);
-					wsGenPWM(&wsPWMptr, wsLEDptr->b);
+					GenWSLEDPWM(&wsPWMptr, WSLEDptr->g);
+					GenWSLEDPWM(&wsPWMptr, WSLEDptr->r);
+					GenWSLEDPWM(&wsPWMptr, WSLEDptr->b);
 				}
 			}
 		}
 	}
-} // wsUpdateBuffer
+} // UpdateWSLEDBuffer
 
 
-void wsSetColours(int i, uint8 R, uint8 G, uint8 B) {
-	wsLEDs[i].g = G;
-	wsLEDs[i].r = R;
-	wsLEDs[i].b = B;
+void SetWSLEDColours(int i, uint8 R, uint8 G, uint8 B) {
+	WSLEDs[i].g = G;
+	WSLEDs[i].r = R;
+	WSLEDs[i].b = B;
 } // wsSetColours
 
-void wsLEDColour(int i, const wsLEDStruct w) {
+void WSLEDColour(int i, const WSLEDStruct w) {
 
-	wsSetColours(i, w.r, w.g, w.b);
-} // wsLEDColour
+	SetWSLEDColours(i, w.r, w.g, w.b);
+} // WSLEDColour
 
-void wsLED(uint8 l) {
+void WSLED(uint8 l) {
 	uint8 ll;
 
 	for (ll = 0; MAX_LED_PINS; ll++)
-		wsLEDColour(ll, wsLEDColours[l]);
-} // wsLEDColour
+		WSLEDColour(ll, WSLEDColours[l]);
+} // WSLEDColour
 
-void wsLEDOn(uint8 l) { // run in pairs
+void WSLEDOn(uint8 l) { // run in pairs
 	uint8 ll;
 
-	if (CurrwsNoOfLeds >= MAX_LED_PINS)
-		for (ll = 0; ll < wsGroupSize; ll++)
-			wsLEDColour(l * wsGroupSize + ll, wsLEDColours[l]);
+	if (CurrNoOfWSLEDs >= MAX_LED_PINS)
+		for (ll = 0; ll < WSLEDGroupSize; ll++)
+			WSLEDColour(l * WSLEDGroupSize + ll, WSLEDColours[l]);
 
-} // wsLEDOn
+} // WSLEDOn
 
-void wsLEDOff(uint8 l) {
+void WSLEDOff(uint8 l) {
 	uint8 ll;
 
-	if (CurrwsNoOfLeds >= MAX_LED_PINS)
-		for (ll = 0; ll < wsGroupSize; ll++)
-			wsSetColours(l * wsGroupSize + ll, 0, 0, 0);
+	if (CurrNoOfWSLEDs >= MAX_LED_PINS)
+		for (ll = 0; ll < WSLEDGroupSize; ll++)
+			SetWSLEDColours(l * WSLEDGroupSize + ll, 0, 0, 0);
 
-} // wsLEDOff;
+} // WSLEDOff;
 
-boolean wsLEDIsOn(uint8 l) {
+boolean WSLEDIsOn(uint8 l) {
 
-	if (CurrwsNoOfLeds >= MAX_LED_PINS)
-		return ((wsLEDs[l].r != 0) || (wsLEDs[l].g != 0) || (wsLEDs[l].b != 0));
+	if (CurrNoOfWSLEDs >= MAX_LED_PINS)
+		return ((WSLEDs[l].r != 0) || (WSLEDs[l].g != 0) || (WSLEDs[l].b != 0));
 	else
 		return false;
 
-} // wsLEDIsOn
+} // WSLEDIsOn
 
-void wsLEDToggle(uint8 l) {
+void WSLEDToggle(uint8 l) {
 
-	if (CurrwsNoOfLeds >= MAX_LED_PINS) {
-		if (wsLEDIsOn(l))
-			wsLEDOff(l);
+	if (CurrNoOfWSLEDs >= MAX_LED_PINS) {
+		if (WSLEDIsOn(l))
+			WSLEDOff(l);
 		else
-			wsLEDOn(l);
+			WSLEDOn(l);
 	}
 
-} // wsLEDToggle
+} // WSLEDToggle
 
-void UpdatewsLed(void) {
+void UpdateWSLEDs(void) {
 	static uint8 PrevState = 255;
 	static boolean PrevOriginValid = false;
 
-	if (CurrwsNoOfLeds == 1) {
+	if (CurrNoOfWSLEDs == 1) {
 		if ((State != PrevState) || (F.OriginValid != PrevOriginValid)) {
 			PrevState = State;
 			PrevOriginValid = F.OriginValid;
 
 			switch (State) {
 			case Preflight:
-				wsLED(ledRedSel);
+				WSLED(ledRedSel);
 				break;
 			case Ready:
-				wsLED(ledYellowSel);
+				WSLED(ledYellowSel);
 				break;
 			case Starting:
-				wsLED(ledYellowSel);
+				WSLED(ledYellowSel);
 				break;
 			case Warmup:
-				wsLED(ledYellowSel);
+				WSLED(ledYellowSel);
 				break;
 			case Landing:
 			case Landed:
 			case InFlight:
 				if (F.OriginValid)
-					wsLED(ledBlueSel);
+					WSLED(ledBlueSel);
 				else
-					wsLED(ledGreenSel);
+					WSLED(ledGreenSel);
 				break;
 			case Shutdown:
-				wsLED(MAX_LED_PINS);
+				WSLED(MAX_LED_PINS);
 				break;
 			case IREmulate:
-				wsLED(ledGreenSel);
+				WSLED(ledGreenSel);
 				break;
 			default:
-				wsLED(MAX_LED_PINS);
+				WSLED(MAX_LED_PINS);
 				break;
 			}
 		}
 	}
-} // UpdatewsLed
+} // UpdateWSLEDs
 
 #else
 
-void wsInit(void) {
-} // wsInit
+void InitWSLEDs(void) {
+} // InitWSLEDS
 
-void wsLEDOn(uint8 l) {
-} // wsLEDOn
+void WSLEDOn(uint8 l) {
+} // WSLEDOn
 
-void wsLEDOff(uint8 l) {
-} // wsLEDOff;
+void WSLEDOff(uint8 l) {
+} // WSLEDOff;
 
-boolean wsLEDIsOn(uint8 l) {
+boolean WSLEDIsOn(uint8 l) {
 
 	return (false);
-} // wsLEDIsOn
+} // WSLEDIsOn
 
-void wsLEDToggle(uint8 l) {
-} // wsLEDToggle
+void WSLEDToggle(uint8 l) {
+} // WSLEDToggle
 
-void UpdatewsLed(void) {
+void UpdateWSLEDs(void) {
 } // UpdatewsLed
 
 #endif
@@ -413,30 +413,30 @@ uint8 LEDPattern = 0;
 
 void BeeperOff(void) {
 #if defined(UAVXF4V1)
-		digitalWrite(&GPIOPins[BeeperSel], 1);
+		DigitalWrite(&GPIOPins[BeeperSel].P, 1);
 #else
-		digitalWrite(&GPIOPins[BeeperSel], 0);
+		DigitalWrite(&GPIOPins[BeeperSel].P, 0);
 #endif
 } // BeeperOff
 
 void BeeperOn(void) {
 #if defined(UAVXF4V1)
-		digitalWrite(&GPIOPins[BeeperSel], 0);
+		DigitalWrite(&GPIOPins[BeeperSel].P, 0);
 #else
-		digitalWrite(&GPIOPins[BeeperSel], 1);
+		DigitalWrite(&GPIOPins[BeeperSel].P, 1);
 #endif
 } // BeeperOn
 
 void BeeperToggle(void) {
-		digitalToggle(&GPIOPins[BeeperSel]);
+		DigitalToggle(&GPIOPins[BeeperSel].P);
 } // BeeperToggle
 
 boolean BeeperIsOn(void) {
 
 #if defined(UAVXF4V1)
-		return (digitalRead(&GPIOPins[BeeperSel]) == 0);
+		return (DigitalRead(&GPIOPins[BeeperSel].P) == 0);
 #else
-		return (digitalRead(&GPIOPins[BeeperSel]) != 0);
+		return (DigitalRead(&GPIOPins[BeeperSel].P) != 0);
 #endif
 
 } // BeeperIsOn
@@ -448,29 +448,29 @@ void LEDOn(uint8 l) {
 	LEDsOff();
 	else
 #endif
-		digitalWrite(&LEDPins[l], ledsLowOn);
-		wsLEDOn(l);
+		DigitalWrite(&LEDPins[l].P, ledsLowOn);
+		WSLEDOn(l);
 
 } // LEDOn
 
 void LEDOff(uint8 l) {
-		digitalWrite(&LEDPins[l], !ledsLowOn);
-		wsLEDOff(l);
+		DigitalWrite(&LEDPins[l].P, !ledsLowOn);
+		WSLEDOff(l);
 } // LEDOff
 
 void LEDToggle(uint8 l) {
 
-		digitalToggle(&LEDPins[l]);
-		wsLEDToggle(l);
+		DigitalToggle(&LEDPins[l].P);
+		WSLEDToggle(l);
 
 } // LEDToggle
 
 boolean LEDIsOn(uint8 l) {
 
 if (ledsLowOn)
-		return (digitalRead(&LEDPins[l]));
+		return (DigitalRead(&LEDPins[l].P));
 else
-		return (!digitalRead(&LEDPins[l]));
+		return (!DigitalRead(&LEDPins[l].P));
 
 } // LEDIsOn
 
@@ -527,7 +527,7 @@ void PowerOutput(uint8 d) {
 	uint8 s;
 
 	LEDOff(d);
-	for (s = 0; s < 10; s++) { // 10 flashes (count MUST be even!)
+	for (s = 0; s < 10; s++) { // 10 FLASHes (count MUST be even!)
 		LEDToggle(d);
 		Delay1mS(50);
 	}

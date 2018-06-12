@@ -803,7 +803,7 @@ void RxUbxCheckSum(uint8 c) {
 void RxUbxPacket(void) {
 	uint8 c;
 
-	while (serialAvailable(GPSRxSerial) && !F.GPSPacketReceived) {
+	while (SerialAvailable(GPSRxSerial) && !F.GPSPacketReceived) {
 		c = RxChar(GPSRxSerial);
 		switch (RxState) {
 		case WaitSentinel:
@@ -901,14 +901,14 @@ void InitUbxGPS(uint8 s) {
 
 		SaveLEDs();
 		for (i = 0; i < DEFAULT_BAUD_RATES; i++) {
-			serialBaudRate(s, DefaultBaud[i]);
+			SetBaudRate(s, DefaultBaud[i]);
 			UbxInitPort(s); // yell at it twice!
 			UbxInitPort(s);
 			LEDToggle(ledRedSel);
 		}
 		RestoreLEDs();
 
-		serialBaudRate(s, UBXGPSBaud);
+		SetBaudRate(s, UBXGPSBaud);
 
 		Delay1mS(1000); // 1000
 
@@ -952,7 +952,7 @@ void InitUbxGPS(uint8 s) {
 		F.GPSPacketReceived = false;
 
 	} else
-		serialBaudRate(s, UBXGPSBaud);
+		SetBaudRate(s, UBXGPSBaud);
 
 	GPS.lag = 0.5f;
 
@@ -1041,7 +1041,7 @@ void RxMTKPacket(void) {
 	static int16 cc = 0;
 	uint8 c;
 
-	while (serialAvailable(GPSRxSerial) && !F.GPSPacketReceived) {
+	while (SerialAvailable(GPSRxSerial) && !F.GPSPacketReceived) {
 		c = RxChar(GPSRxSerial);
 		switch (RxState) {
 		case WaitSentinel:
@@ -1089,7 +1089,7 @@ void InitMTKGPS(uint8 s, boolean UseNMEA) {
 	uint8 cs;
 
 	for (i = 0; i < DEFAULT_BAUD_RATES; i++) {
-		serialBaudRate(s, DefaultBaud[i]);
+		SetBaudRate(s, DefaultBaud[i]);
 		TxChar(s, '$');
 		TxCheckSum[s] = 0;
 		TxGPSString(s, "PMTK251,");
@@ -1101,7 +1101,7 @@ void InitMTKGPS(uint8 s, boolean UseNMEA) {
 		Delay1mS(20);
 	}
 
-	serialBaudRate(s, GPSBaud);
+	SetBaudRate(s, GPSBaud);
 
 	TxGPSString(s, MTK_NAVTHRES_OFF);
 	Delay1mS(80);
@@ -1363,7 +1363,7 @@ void ProcessGPSSentence(void) {
 void RxNMEAPacket(void) {
 	uint8 c;
 
-	while (serialAvailable(GPSRxSerial) && !F.GPSPacketReceived) {
+	while (SerialAvailable(GPSRxSerial) && !F.GPSPacketReceived) {
 		c = RxChar(GPSRxSerial);
 		switch (RxState) {
 		case WaitSentinel:
@@ -1529,7 +1529,7 @@ void InitGPS(void) {
 			InitMTKGPS(GPSTxSerial, true);
 			break;
 		case NMEAGPS:
-			serialBaudRate(GPSRxSerial, GPSBaud);
+			SetBaudRate(GPSRxSerial, GPSBaud);
 		case NoGPS:
 			// Hmmmmm!
 			break;

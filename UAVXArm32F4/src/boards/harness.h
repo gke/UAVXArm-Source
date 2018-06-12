@@ -23,6 +23,150 @@
 #ifndef _harness_h
 #define _harness_h
 
+// Ugly but OK
+#define PA0 {GPIOA,GPIO_Pin_0,GPIO_PinSource0}
+#define PA1 {GPIOA,GPIO_Pin_1,GPIO_PinSource1}
+#define PA2 {GPIOA,GPIO_Pin_2,GPIO_PinSource2}
+#define PA3 {GPIOA,GPIO_Pin_3,GPIO_PinSource3}
+#define PA4 {GPIOA,GPIO_Pin_4,GPIO_PinSource4}
+#define PA5 {GPIOA,GPIO_Pin_5,GPIO_PinSource5}
+#define PA6 {GPIOA,GPIO_Pin_6,GPIO_PinSource6}
+#define PA7 {GPIOA,GPIO_Pin_7,GPIO_PinSource7}
+#define PA8 {GPIOA,GPIO_Pin_8,GPIO_PinSource8}
+#define PA9 {GPIOA,GPIO_Pin_9,GPIO_PinSource9}
+#define PA10 {GPIOA,GPIO_Pin_10,GPIO_PinSource10}
+#define PA11 {GPIOA,GPIO_Pin_11,GPIO_PinSource11}
+#define PA12 {GPIOA,GPIO_Pin_12,GPIO_PinSource12}
+#define PA13 {GPIOA,GPIO_Pin_13,GPIO_PinSource13}
+#define PA14 {GPIOA,GPIO_Pin_14,GPIO_PinSource14}
+#define PA15 {GPIOA,GPIO_Pin_15,GPIO_PinSource15}
+
+#define PB0 {GPIOB,GPIO_Pin_0,GPIO_PinSource0}
+#define PB1 {GPIOB,GPIO_Pin_1,GPIO_PinSource1}
+#define PB2 {GPIOB,GPIO_Pin_2,GPIO_PinSource2}
+#define PB3 {GPIOB,GPIO_Pin_3,GPIO_PinSource3}
+#define PB4 {GPIOB,GPIO_Pin_4,GPIO_PinSource4}
+#define PB5 {GPIOB,GPIO_Pin_5,GPIO_PinSource5}
+#define PB6 {GPIOB,GPIO_Pin_6,GPIO_PinSource6}
+#define PB7 {GPIOB,GPIO_Pin_7,GPIO_PinSource7}
+#define PB8 {GPIOB,GPIO_Pin_8,GPIO_PinSource8}
+#define PB9 {GPIOB,GPIO_Pin_9,GPIO_PinSource9}
+#define PB10 {GPIOB,GPIO_Pin_10,GPIO_PinSource10}
+#define PB11 {GPIOB,GPIO_Pin_11,GPIO_PinSource11}
+#define PB12 {GPIOB,GPIO_Pin_12,GPIO_PinSource12}
+#define PB13 {GPIOB,GPIO_Pin_13,GPIO_PinSource13}
+#define PB14 {GPIOB,GPIO_Pin_14,GPIO_PinSource14}
+#define PB15 {GPIOB,GPIO_Pin_15,GPIO_PinSource15}
+
+#define PC0 {GPIOC,GPIO_Pin_0,GPIO_PinSource0}
+#define PC1 {GPIOC,GPIO_Pin_1,GPIO_PinSource1}
+#define PC2 {GPIOC,GPIO_Pin_2,GPIO_PinSource2}
+#define PC3 {GPIOC,GPIO_Pin_3,GPIO_PinSource3}
+#define PC4 {GPIOC,GPIO_Pin_4,GPIO_PinSource4}
+#define PC5 {GPIOC,GPIO_Pin_5,GPIO_PinSource5}
+#define PC6 {GPIOC,GPIO_Pin_6,GPIO_PinSource6}
+#define PC7 {GPIOC,GPIO_Pin_7,GPIO_PinSource7}
+#define PC8 {GPIOC,GPIO_Pin_8,GPIO_PinSource8}
+#define PC9 {GPIOC,GPIO_Pin_9,GPIO_PinSource9}
+#define PC10 {GPIOC,GPIO_Pin_10,GPIO_PinSource10}
+#define PC11 {GPIOC,GPIO_Pin_11,GPIO_PinSource11}
+#define PC12 {GPIOC,GPIO_Pin_12,GPIO_PinSource12}
+#define PC13 {GPIOC,GPIO_Pin_13,GPIO_PinSource13}
+#define PC14 {GPIOC,GPIO_Pin_14,GPIO_PinSource14}
+#define PC15 {GPIOC,GPIO_Pin_15,GPIO_PinSource15}
+
+#define PD0 {GPIOD,GPIO_Pin_0,GPIO_PinSource0}
+#define PD1 {GPIOD,GPIO_Pin_1,GPIO_PinSource1}
+#define PD2 {GPIOD,GPIO_Pin_2,GPIO_PinSource2}
+#define PD3 {GPIOD,GPIO_Pin_3,GPIO_PinSource3}
+#define PD4 {GPIOD,GPIO_Pin_4,GPIO_PinSource4}
+#define PD5 {GPIOD,GPIO_Pin_5,GPIO_PinSource5}
+#define PD6 {GPIOD,GPIO_Pin_6,GPIO_PinSource6}
+#define PD7 {GPIOD,GPIO_Pin_7,GPIO_PinSource7}
+#define PD8 {GPIOD,GPIO_Pin_8,GPIO_PinSource8}
+#define PD9 {GPIOD,GPIO_Pin_9,GPIO_PinSource9}
+#define PD10 {GPIOD,GPIO_Pin_10,GPIO_PinSource10}
+#define PD11 {GPIOD,GPIO_Pin_11,GPIO_PinSource11}
+#define PD12 {GPIOD,GPIO_Pin_12,GPIO_PinSource12}
+#define PD13 {GPIOD,GPIO_Pin_13,GPIO_PinSource13}
+#define PD14 {GPIOD,GPIO_Pin_14,GPIO_PinSource14}
+#define PD15 {GPIOD,GPIO_Pin_15,GPIO_PinSource15}
+
+#define PWMIn_2_1 {true,TIM2,TIM_Channel_1,TIM_IT_CC1,0,GPIO_AF_TIM2},{false,},TIM2_IRQn
+#define PWMIn_2_2 {true,TIM2,TIM_Channel_2,TIM_IT_CC2,0,GPIO_AF_TIM2},{false,},TIM2_IRQn
+#define PWMIn_2_3 {true,TIM2,TIM_Channel_3,TIM_IT_CC3,0,GPIO_AF_TIM2},{false,},TIM2_IRQn
+#define PWMIn_2_4 {true,TIM2,TIM_Channel_4,TIM_IT_CC4,0,GPIO_AF_TIM2},{false,},TIM2_IRQn
+
+#define PWMIn_3_1 {true,TIM3,TIM_Channel_1,TIM_IT_CC1,0,GPIO_AF_TIM3},{false,},TIM3_IRQn
+#define PWMIn_3_2 {true,TIM3,TIM_Channel_2,TIM_IT_CC2,0,GPIO_AF_TIM3},{false,},TIM3_IRQn
+#define PWMIn_3_3 {true,TIM3,TIM_Channel_3,TIM_IT_CC3,0,GPIO_AF_TIM3},{false,},TIM3_IRQn
+#define PWMIn_3_4 {true,TIM3,TIM_Channel_4,TIM_IT_CC4,0,GPIO_AF_TIM3},{false,},TIM3_IRQn
+
+#define PWMOut_1_1 {true,TIM1,TIM_Channel_1,0,&(TIM1->CCR1),GPIO_AF_TIM1}
+#define PWMOut_1_2 {true,TIM1,TIM_Channel_2,0,&(TIM1->CCR2),GPIO_AF_TIM1}
+#define PWMOut_1_3 {true,TIM1,TIM_Channel_3,0,&(TIM1->CCR3),GPIO_AF_TIM1}
+#define PWMOut_1_4 {true,TIM1,TIM_Channel_4,0,&(TIM1->CCR4),GPIO_AF_TIM1}
+
+#define PWMOut_2_1 {true,TIM2,TIM_Channel_1,0,&(TIM2->CCR1),GPIO_AF_TIM2}
+#define PWMOut_2_2 {true,TIM2,TIM_Channel_2,0,&(TIM2->CCR2),GPIO_AF_TIM2}
+#define PWMOut_2_3 {true,TIM2,TIM_Channel_2,0,&(TIM2->CCR3),GPIO_AF_TIM2}
+#define PWMOut_2_4 {true,TIM2,TIM_Channel_4,0,&(TIM2->CCR4),GPIO_AF_TIM2}
+
+#define PWMOut_3_1 {true,TIM3,TIM_Channel_1,0,&(TIM3->CCR1),GPIO_AF_TIM3}
+#define PWMOut_3_2 {true,TIM3,TIM_Channel_2,0,&(TIM3->CCR2),GPIO_AF_TIM3}
+#define PWMOut_3_3 {true,TIM3,TIM_Channel_3,0,&(TIM3->CCR3),GPIO_AF_TIM3}
+#define PWMOut_3_4 {true,TIM3,TIM_Channel_4,0,&(TIM3->CCR4),GPIO_AF_TIM3}
+
+#define PWMOut_4_1 {true,TIM4,TIM_Channel_1,0,&(TIM4->CCR1),GPIO_AF_TIM4}
+#define PWMOut_4_2 {true,TIM4,TIM_Channel_2,0,&(TIM4->CCR2),GPIO_AF_TIM4}
+#define PWMOut_4_3 {true,TIM4,TIM_Channel_3,0,&(TIM4->CCR3),GPIO_AF_TIM4}
+#define PWMOut_4_4 {true,TIM4,TIM_Channel_4,0,&(TIM4->CCR4),GPIO_AF_TIM4}
+
+#define PWMOut_5_1 {true,TIM5,TIM_Channel_1,0,&(TIM5->CCR1),GPIO_AF_TIM5}
+#define PWMOut_5_2 {true,TIM5,TIM_Channel_2,0,&(TIM5->CCR2),GPIO_AF_TIM5}
+#define PWMOut_5_3 {true,TIM5,TIM_Channel_3,0,&(TIM5->CCR3),GPIO_AF_TIM5}
+#define PWMOut_5_5 {true,TIM5,TIM_Channel_5,0,&(TIM5->CCR4),GPIO_AF_TIM5}
+
+#define PWMOut_8_1 {true,TIM8,TIM_Channel_1,0,&(TIM8->CCR1),GPIO_AF_TIM8}
+#define PWMOut_8_2 {true,TIM8,TIM_Channel_2,0,&(TIM8->CCR2),GPIO_AF_TIM8}
+#define PWMOut_8_3 {true,TIM8,TIM_Channel_3,0,&(TIM8->CCR3),GPIO_AF_TIM8}
+#define PWMOut_8_4 {true,TIM8,TIM_Channel_4,0,&(TIM8->CCR4),GPIO_AF_TIM8}
+
+#define PWMOut_9_1 {true,TIM9,TIM_Channel_1,0,&(TIM9->CCR1),GPIO_AF_TIM9}
+#define PWMOut_9_2 {true,TIM9,TIM_Channel_2,0,&(TIM9->CCR2),GPIO_AF_TIM9}
+#define PWMOut_9_3 {true,TIM9,TIM_Channel_3,0,&(TIM9->CCR3),GPIO_AF_TIM9}
+#define PWMOut_9_4 {true,TIM9,TIM_Channel_4,0,&(TIM9->CCR4),GPIO_AF_TIM9}
+
+#define PWMOut_8_1CC {true,TIM8,TIM_Channel_1,TIM_DMA_CC1,&(TIM8->CCR1),GPIO_AF_TIM8}
+
+#define PWMPinConfig GPIO_Mode_AF,GPIO_OType_PP,GPIO_PuPd_UP
+#define LEDPinConfig GPIO_Mode_OUT,GPIO_OType_PP,GPIO_PuPd_NOPULL
+#define OutPinConfig GPIO_Mode_OUT,GPIO_OType_PP,GPIO_PuPd_UP // ???
+#define InpPinConfig GPIO_Mode_IN,GPIO_OType_PP,GPIO_PuPd_UP
+
+#define USART1Config GPIO_AF_USART1,true,USART1_IRQn
+#define USART2Config GPIO_AF_USART3,true,USART2_IRQn
+#define USART3Config GPIO_AF_USART3,true,USART3_IRQn
+#define UART4Config GPIO_AF_USART3,true,UART4_IRQn
+
+// More thought needed!
+#define DMA2_0_0_noIRQn {true,DMA_Channel_0,DMA2_Stream0}
+
+#define DMA1_4_3_IRQn DMA_Channel_4,DMA1_Stream3,DMA1_Stream3_IRQn
+
+#define DMA2_0_2_IRQn {true,DMA_Channel_0,DMA2_Stream2},DMA2_Stream2_IRQn
+
+
+//Leftovers
+/*
+	{true, USART1, PA9, PA10, 115200, USART1Config,
+		false, DMA_Channel_4, DMA2_Stream7, DMA2_Stream7_IRQn, DMA2_Stream5},
+	{true, USART2, PA2, PA3, 9600, GPIO_AF_USART2, true, USART2_IRQn,
+		false, DMA_Channel_4, DMA1_Stream6, DMA1_Stream6_IRQn, DMA1_Stream5},
+	{true, USART3, PB10, PB11, 115200, GPIO_AF_USART3, true, USART3_IRQn,
+		false, DMA1_4_3_IRQn, DMA1_Stream1},
+*/
+
 #define MAX_RC_INPUTS 8
 #define MAX_PWM_OUTPUTS 10
 
@@ -134,8 +278,14 @@ enum LEDSelectors {
 };
 
 enum SerialPortSelectors {
-	usbSerial, Usart1, Usart2, Usart3, Uart4, SoftSerialTx, MAX_SERIAL_PORTS
+	USBSerial, Usart1, Usart2, Usart3, Uart4, SoftSerialTx, MAX_SERIAL_PORTS
 };
+
+typedef const struct {
+	GPIO_TypeDef* Port;
+	uint16 Pin;
+	uint16 PinSource;
+} ConnectDef;
 
 typedef const struct {
 	boolean Used;
@@ -156,23 +306,19 @@ extern TIM_ICInitTypeDef TIM_ICInitStructure;
 
 typedef const struct {
 	boolean Used;
-	GPIO_TypeDef* Port;
-	uint16 Pin;
-	uint16 PinSource;
+	ConnectDef P;
 	GPIOMode_TypeDef Mode;
 	GPIOOType_TypeDef OType;
 	GPIOPuPd_TypeDef PuPd;
 	TIMChannelDef Timer;
 	DMAChannelDef DMA;
 	IRQn_Type PinISR;
-
 } PinDef;
 
 typedef const struct {
 	boolean Used;
 	ADC_TypeDef* ADCx;
-	GPIO_TypeDef* Port;
-	uint16 Pin;
+	ConnectDef A;
 	uint32 ADCChannel;
 	DMAChannelDef DMA;
 	uint8 Rank;
@@ -181,12 +327,9 @@ typedef const struct {
 typedef const struct {
 	boolean Used;
 	USART_TypeDef* USART;
+	ConnectDef Tx, Rx;
+	uint32 Baud;
 	uint8 USART_AF;
-	GPIO_TypeDef* Port;
-	uint16 TxPin;
-	uint16 TxPinSource;
-	uint16 RxPin;
-	uint16 RxPinSource;
 	boolean InterruptsUsed;
 	IRQn_Type ISR;
 	boolean DMAUsed;
@@ -194,37 +337,27 @@ typedef const struct {
 	DMA_Stream_TypeDef * TxStream;
 	IRQn_Type TxDMAISR;
 	DMA_Stream_TypeDef * RxStream;
-
-	uint32 Baud;
-
 } SerialPortDef;
 
 typedef const struct {
 	I2C_TypeDef* I2C;
-	GPIO_TypeDef* SCLPort;
-	uint16 SCLPin;
-	uint8 SCLPinSource;
-	GPIO_TypeDef* SDAPort;
-	uint16 SDAPin;
-	uint8 SDAPinSource;
+	ConnectDef SCL, SDA;
 	uint8 I2C_AF;
 } I2CPortDef;
 
 typedef const struct {
 	SPI_TypeDef* SPIx;
-	GPIO_TypeDef* Port;
-	struct {
-		int16 Pin;
-		int16 PinSource;
-	} P[3];
+	ConnectDef P[3];
 } SPIPortDef;
 
-typedef struct { // C2 Port GUI changeable UAVX
+typedef const struct { // C2 Port GUI changeable UAVX
 	boolean Used;
-	uint8 Type;
-	uint8 BusUsed;
-	uint8 BusNo;
+	uint8 tag;
+	uint8 type;
+	uint8 useSPI;
+	uint8 busNo;
 	uint8 i2cId;
+	PinDef selP;
 } DevDef;
 
 //________________________________________________________________________________________________
@@ -241,14 +374,11 @@ typedef struct { // C2 Port GUI changeable UAVX
 #define MAX_SPI_PORTS 4
 #define MAX_I2C_PORTS 3
 
-#define MAX_SPI_DEVICES 8
-
 //______________________________________________________________________
 
 extern PinDef GPIOPins[];
 extern PinDef LEDPins[];
 extern AnalogPinDef AnalogPins[];
-extern PinDef SPISelectPins[];
 extern PinDef USBDisconnectPin;
 extern I2CPortDef I2CPorts[];
 extern SPIPortDef SPIPorts[];
@@ -267,6 +397,8 @@ extern const uint8 currGimbalType;
 extern const DevDef busDev[];
 extern const boolean ledsLowOn;
 
+extern const uint8 imuSel;
+
 //_______________________________________________________________
 
 void systemReset(boolean toBootloader);
@@ -275,23 +407,23 @@ void InitClocks(void);
 void InitHarness(void);
 void InitTarget(void);
 
-void pinInit(PinDef * d);
-void pinInitOutput(PinDef * d);
-void pinInitMode(PinDef * d, boolean IsInput);
+void InitPin(PinDef * d);
+void InitOutputPin(PinDef * d);
+void InitPinMode(PinDef * d, boolean IsInput);
 
 void InitSerialPort(uint8 s, boolean Enable, boolean SBusConfig);
-void serialBaudRate(uint8 s, uint32 BaudRate);
+void SetBaudRate(uint8 s, uint32 BaudRate);
 
 void InitPWMPin(PinDef * u, uint16 pwmprescaler, uint32 pwmperiod,
 		uint32 pwmwidth, boolean usingpwm);
 void InitWSPin(uint16 wsBufferSize);
 
-void i2cInit(uint8 I2CCurr);
-void i2cUnstick(uint8 I2CCurr);
-void spiInitGPIOPins(uint8 spiPort, boolean highClock);
+void InitI2C(uint8 I2CCurr);
+void UnstickI2C(uint8 I2CCurr);
+void InitSPIGPIOPins(uint8 spiPort, boolean highClock);
 
-boolean digitalRead(PinDef * d);
-void digitalWrite(PinDef * d, uint8 m);
-void digitalToggle(PinDef * d);
+boolean DigitalRead(ConnectDef * d);
+void DigitalWrite(ConnectDef * d, uint8 m);
+void DigitalToggle(ConnectDef * d);
 
 #endif

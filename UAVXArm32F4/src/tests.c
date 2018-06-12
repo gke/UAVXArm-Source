@@ -45,7 +45,7 @@ void CommissioningTest(uint8 s) {
 
 #if defined(UAVXF4V4)
 	for (i = 0; i < 4; i++)
-	spiSelect(i, false); // do it again but why is this being changed?
+	SPISelect(i, false); // do it again but why is this being changed?
 #endif
 
 	LEDOn(ledRedSel);
@@ -71,13 +71,13 @@ void CommissioningTest(uint8 s) {
 	InitMagnetometer();
 
 	OK(s, F.MagnetometerActive);
-	sioReadBlock(SIOMag, HMC5XXX_ID, 0, 3, info);
+	SIOReadBlock(SIOMag, HMC5XXX_ID, 0, 3, info);
 	for (k = 0; k < 3; k++) {
 		TxString(s, " 0x");
 		TxValH(s, info[k]);
 	}
 	Delay1mS(50);
-	sioReadBlock(SIOMag, HMC5XXX_ID, HMC5XXX_TAG, 3, info);
+	SIOReadBlock(SIOMag, HMC5XXX_ID, HMC5XXX_TAG, 3, info);
 	TxString(s, " Id = ");
 	for (k = 0; k < 3; k++)
 	TxChar(s, info[k]);
@@ -182,7 +182,7 @@ void CommissioningTest(uint8 s) {
 			TxChar(s, ' ');
 
 			/*
-			 sioReadBlock(SIOMag, HMC5XXX_ID, HMC5XXX_TAG, 3, info);
+			 SIOReadBlock(SIOMag, HMC5XXX_ID, HMC5XXX_TAG, 3, info);
 			 TxString(s, " Id = ");
 			 for (k = 0; k < 3; k++)
 			 TxChar(s, info[k]);
@@ -425,7 +425,7 @@ uint8 ScanSIOBus(uint8 s) {
 	nd = 0;
 
 	for (d = 0x10; d <= 0xf6; d += 2) {
-		if (sioResponse(1, d)) {
+		if (SIOResponse(1, d)) {
 			nd++;
 			TxString(s, "\t0x");
 			TxValH(s, d);
@@ -451,7 +451,7 @@ void MagnetometerTest(uint8 s) {
 	if (!F.MagnetometerCalibrated)
 		TxString(s, " NOT CALIBRATED");
 
-	sioReadBlock(SIOMag, HMC5XXX_ID, HMC5XXX_TAG, 3, info);
+	SIOReadBlock(SIOMag, HMC5XXX_ID, HMC5XXX_TAG, 3, info);
 	TxString(s, "\r\nID: ");
 	for (k = 0; k < 3; k++)
 		TxChar(s, info[k]);
@@ -576,7 +576,7 @@ void LEDsAndBuzzer(uint8 s) {
 	TxString(s, "\r\nLED/Beeper test\r\n");
 	for (m = 0; m < MAX_LEDS; m++) {
 		LEDOff(m);
-		for (f = 0; f < 10; f++) { // 10 flashes (count MUST be even!)
+		for (f = 0; f < 10; f++) { // 10 FLASHes (count MUST be even!)
 			LEDToggle(m);
 			Delay1mS(100);
 		}

@@ -118,13 +118,13 @@ void DMA2_Stream2_IRQHandler(void) {
 	// Half-Transfer completed
 	if (DMA_GetITStatus(DMA2_Stream2, DMA_IT_HTIF2)) {
 		DMA_ClearITPendingBit(DMA2_Stream2, DMA_IT_HTIF2);
-		wsUpdateBuffer(wsPWMBuffer);
+		UpdateWSLEDBuffer(WSLEDPWMBuffer);
 	}
 
 	// Transfer completed
 	if (DMA_GetITStatus(DMA2_Stream2, DMA_IT_TCIF2)) {
 		DMA_ClearITPendingBit(DMA2_Stream2, DMA_IT_TCIF2);
-		wsUpdateBuffer(wsPWMBuffer + (wsBufferSize >> 1));
+		UpdateWSLEDBuffer(WSLEDPWMBuffer + (WSLEDBufferSize >> 1));
 	}
 #endif
 
@@ -138,7 +138,7 @@ void DMA2_Stream7_IRQHandler(void) {
 
 	TxQHead[1] = TxQNewHead[1];
 	if (TxQHead[1] != TxQTail[1])
-		serialTxDMA(1);
+		SerialTxDMA(1);
 
 } // DMA2_Channel7_IRQHandler
 
@@ -149,7 +149,7 @@ void DMA1_Stream6_IRQHandler(void) {
 
 	TxQHead[2] = TxQNewHead[1];
 	if (TxQHead[2] != TxQTail[2])
-		serialTxDMA(2);
+		SerialTxDMA(2);
 
 } // DMA1_Channel6_IRQHandler
 
@@ -160,7 +160,7 @@ void DMA1_Stream3_IRQHandler(void) {
 	DMA_Cmd(DMA1_Stream3, DISABLE);
 	TxQHead[3] = TxQNewHead[3];
 	if (TxQHead[3] != TxQTail[3])
-		serialTxDMA(3);
+		SerialTxDMA(3);
 
 } // DMA1_Stream3_IRQHandler
 
@@ -171,7 +171,7 @@ void DMA1_Stream4_IRQHandler(void) {
 
 	TxQHead[4] = TxQNewHead[4];
 	if (TxQHead[4] != TxQTail[4])
-		serialTxDMA(4);
+		SerialTxDMA(4);
 
 } // DMA1_Stream4_IRQHandler
 
@@ -180,12 +180,12 @@ void DMA1_Stream4_IRQHandler(void) {
 // Serial
 
 void USART1_IRQHandler(void) {
-	serialISR(1);
+	SerialISR(1);
 } // USART1_IRQHandler
 
 
 void USART2_IRQHandler(void) {
-	serialISR(2);
+	SerialISR(2);
 } // USART2_IRQHandler
 
 
@@ -193,11 +193,11 @@ void USART3_IRQHandler(void) {
 #if defined (UAXF4V4)
 	if (CurrComboPort2Config == RF_GPS_V4)
 #endif
-	serialISR(3);
+	SerialISR(3);
 } // USART2_IRQHandler
 
 void UART4_IRQHandler(void) {
-	serialISR(4);
+	SerialISR(4);
 } // UART4_IRQHandler
 
 

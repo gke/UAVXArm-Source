@@ -37,21 +37,21 @@ typedef struct { // TODO: possibly combine with Port def
 	uint16 bytes;
 	uint8* write_p;
 	uint8* read_p;
-} i2cStateDef;
+} I2CStateDef;
 
-boolean i2cReadBlock(uint8 devSel, uint8 id, uint8 reg, uint8 l,
+boolean I2CReadBlock(uint8 devSel, uint8 id, uint8 reg, uint8 l,
 		uint8 *data);
-boolean i2cWriteBlock(uint8 devSel, uint8 id, uint8 reg, uint8 len,
+boolean I2CWriteBlock(uint8 devSel, uint8 id, uint8 reg, uint8 len,
 		uint8 *data);
 
-boolean i2cResponse(uint8 devSel, uint8 d);
+boolean I2CResponse(uint8 devSel, uint8 d);
 
 void i2c_er_handler(uint8 i2cCurr);
 void i2c_ev_handler(uint8 i2cCurr);
 
-void i2cInit(uint8 I2CCurr);
+void InitI2C(uint8 I2CCurr);
 
-extern volatile i2cStateDef i2cState[];
+extern volatile I2CStateDef I2CState[];
 
 
 #endif

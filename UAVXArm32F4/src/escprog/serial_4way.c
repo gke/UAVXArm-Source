@@ -76,27 +76,27 @@ static void setDisconnected(void) {
 }
 
 __attribute__((always_inline))                                     inline boolean isEscHi(uint8_t selEsc) {
-	return digitalRead(&PWMPins[selEsc]);
+	return DigitalRead(&PWMPins[selEsc].P);
 }
 
 __attribute__((always_inline))                                     inline boolean isEscLo(uint8_t selEsc) {
-	return !digitalRead(&PWMPins[selEsc]);
+	return !DigitalRead(&PWMPins[selEsc].P);
 }
 
 __attribute__((always_inline)) inline void setEscHi(uint8_t selEsc) {
-	digitalWrite(&PWMPins[selEsc], 1);
+	DigitalWrite(&PWMPins[selEsc].P, 1);
 }
 
 __attribute__((always_inline)) inline void setEscLo(uint8_t selEsc) {
-	digitalWrite(&PWMPins[selEsc], 0);
+	DigitalWrite(&PWMPins[selEsc].P, 0);
 }
 
 void setEscInput(uint8_t selEsc) {
-	pinInitMode(&PWMPins[selEsc], true);
+	InitPinMode(&PWMPins[selEsc], true);
 }
 
 void setEscOutput(uint8_t selEsc) {
-	pinInitMode(&PWMPins[selEsc], false);
+	InitPinMode(&PWMPins[selEsc], false);
 	//pinInitOutput(&PWMPins[selEsc]);
 }
 
@@ -120,7 +120,7 @@ int esc4wayInit(void) {
 	/* zzz
 	for (i = 0; i < NoOfDrives; i++)
 		if (i < MAX_PWM_OUTPUTS) {// switch off all (potential) motor output pins
-			pinInitMode(&PWMPins[i], true); // TODO: original code uses 2MHz pin clock?
+			InitPinMode(&PWMPins[i], true); // TODO: original code uses 2MHz pin clock?
 			setEscHi(i);
 		}
 */
@@ -262,7 +262,7 @@ static uint16_t crcIn, crcOut;
 
 uint8_t readByte(void) {
 	// need timeout?
-	while (!serialAvailable(port))
+	while (!SerialAvailable(port))
 		;
 	return RxChar(port);
 }
@@ -305,7 +305,7 @@ void esc4wayProcess(uint8 s) {
 	esc4wayExitRequested = false;
 	while (!esc4wayExitRequested) {
 
-		if (serialAvailable(s)) {
+		if (SerialAvailable(s)) {
 
 			crcIn = 0;
 			esc = readByteCrc();
@@ -571,7 +571,7 @@ boolean GetMSPPacket(uint8_t s) {
 	uint8_t offset = 0;
 	uint8_t c;
 
-	if (serialAvailable(s)) {
+	if (SerialAvailable(s)) {
 		c = RxChar(s);
 		mspCSum ^= c;
 		switch (mspRxState) {
@@ -820,7 +820,7 @@ void DoBLHeliSuite(uint8_t s) {
 
 	LEDOn(ledYellowSel);
 
-	while ((mSClock() < Timeout) && !serialAvailable(s)) {
+	while ((mSClock() < Timeout) && !SerialAvailable(s)) {
 	};
 
 	if (mSClock() < Timeout) {

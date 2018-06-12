@@ -52,9 +52,9 @@ void WriteVerifyMag(uint8 a, uint8 v) {
 
 	do {
 		Delay1mS(10);
-		sioWrite(magSel, a, v);
+		SIOWrite(magSel, a, v);
 		Delay1mS(10);
-		r = sioRead(magSel, a);
+		r = SIORead(magSel, a);
 	} while (r != v);
 
 } // WriteVerifyMag
@@ -63,10 +63,10 @@ boolean ReadMagnetometer(void) {
 	//int16 RawTemp = 0;
 	boolean r;
 
-	sioReadBlocki16vataddr(magSel, HMC5XXX_DATA, 3, RawMag, true);
+	SIOReadBlocki16vataddr(magSel, HMC5XXX_DATA, 3, RawMag, true);
 
 	//if (spiDevUsed[magSel])
-	//	sioReadBlocki16vataddr(magSel, HMC5XXX_TEMP, 1, &RawTemp,
+	//	SIOReadBlocki16vataddr(magSel, HMC5XXX_TEMP, 1, &RawTemp,
 	//true);
 
 	//MagTemperature = (real32) RawTemp * 0.0078125 + 25.0f;
@@ -122,6 +122,8 @@ void GetMagnetometer(void) {
 } // GetMagnetometer
 
 
+/*
+ *
 void CalculateMagneticHeading(void) {
 	real32 xh, yh;
 	real32 cR, sR, cP, sP;
@@ -142,6 +144,7 @@ void CalculateMagneticHeading(void) {
 
 } // CalculateMagneticHeading
 
+*/
 
 #define HMC58X3_R_CONFA 0
 #define HMC58X3_R_CONFB 1
@@ -174,11 +177,11 @@ void InitMagnetometer(void) {
 
 	MagScale[BF] = MagScale[LR] = MagScale[UD] = 0.0f;
 
-	if (MagnetometerIsActive() && !F.IsFixedWing) {
+	if (MagnetometerIsActive()) {
 
 		F.MagnetometerActive = true;
 
-		sioWriteBlockataddr(magSel, HMC5XXX_CONFIG_A, 3,
+		SIOWriteBlockataddr(magSel, HMC5XXX_CONFIG_A, 3,
 				HMC5XXXSetReset);
 
 		Delay1mS(50);
@@ -187,7 +190,7 @@ void InitMagnetometer(void) {
 		for (s = 0; s < Samples; s++) {
 			LEDToggle(ledRedSel);
 
-			sioWrite(magSel, HMC5XXX_MODE, 0x01); // Perform single conversion
+			SIOWrite(magSel, HMC5XXX_MODE, 0x01); // Perform single conversion
 			Delay1mS(50);
 
 			ReadMagnetometer();
@@ -204,11 +207,11 @@ void InitMagnetometer(void) {
 
 		Delay1mS(50);
 
-		if (busDev[magSel].BusUsed == useSPI)
-			sioWriteBlockataddr(magSel, HMC5XXX_CONFIG_A, 4,
+		if (busDev[magSel].useSPI)
+			SIOWriteBlockataddr(magSel, HMC5XXX_CONFIG_A, 4,
 					HMC5983Config);
 		else
-			sioWriteBlockataddr(magSel, HMC5XXX_CONFIG_A, 4,
+			SIOWriteBlockataddr(magSel, HMC5XXX_CONFIG_A, 4,
 					HMC5883LConfig);
 
 		mSTimer(mSClock(), MagnetometerUpdate, MAG_TIME_MS);
@@ -218,7 +221,8 @@ void InitMagnetometer(void) {
 		do {
 			GetMagnetometer();
 		} while (!F.NewMagValues);
-		CalculateMagneticHeading();
+
+	//	CalculateMagneticHeading();
 
 		CheckMagnetometerIsCalibrated();
 
@@ -270,7 +274,7 @@ void CalibrateHMC5XXX(uint8 s) {
 
 	LEDOn(ledBlueSel);
 
-	if (F.MagnetometerActive && !F.IsFixedWing) {
+	if (F.MagnetometerActive) {
 
 		InitMagnetometerBias();
 
@@ -328,9 +332,9 @@ void CalibrateHMC5XXX(uint8 s) {
 
 boolean MagnetometerIsActive(void) {
 
-	if (busDev[magSel].Type == hmc5xxxMag) {
+	if (busDev[magSel].Used && (busDev[magSel].type == hmc5xxxMag)) {
 		uint8 v = 0;
-		sioReadBlock(magSel, HMC5XXX_TAG, 1, &v);
+		SIOReadBlock(magSel, HMC5XXX_TAG, 1, &v);
 
 		return (v == 'H');
 	} else

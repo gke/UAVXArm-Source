@@ -300,7 +300,7 @@ void mavlinkPollRx(uint8 s) {
 	static mavlink_status_t rxstatus;
 	mavlink_mission_request_list_t mission_request_list;
 
-	while (serialAvailable(s)) {
+	while (SerialAvailable(s)) {
 		ch = RxChar(s);
 
 		if (mavlink_parse_char(s, ch, &rxmsg, &rxstatus)) {
@@ -355,7 +355,7 @@ void mavlinkUpdate(uint8 s) {
 	// 5hz for radio input
 
 	if (F.UsingUplink)
-		while (serialAvailable(s))
+		while (SerialAvailable(s))
 			RxChar(s);
 	//mavlinkPollRx(s);
 

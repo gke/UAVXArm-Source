@@ -48,8 +48,8 @@ void GetTemperature(void)
 
 void InitTemperature(void)
 {
-  i2cWriteataddr(I2CTemp, TMP100_WR, TMP100_CMD, TMP100_CFG);
-  i2cWritebyte(I2CTemp, TMP100_WR, TMP100_TMP);  // Select temperature
+  I2CWriteataddr(I2CTemp, TMP100_WR, TMP100_CMD, TMP100_CFG);
+  I2CWritebyte(I2CTemp, TMP100_WR, TMP100_TMP);  // Select temperature
 
   GetTemperature();
 

@@ -40,17 +40,17 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-extern volatile bool usbDeviceConfigured;
+extern volatile bool USBDeviceConfigured;
 
-void usbGenerateDisconnectPulse(void);
-void usbConnect(void);
+void USBGenerateDisconnectPulse(void);
+void USBConnect(void);
 
-boolean usbAvailable(void);
-uint8_t usbRxChar(void);
-void usbTxChar(char ch);
-void usbTxString(char* str);
-void usbPrintF(const char * fmt, ...);
+boolean USBAvailable(void);
+uint8_t USBRxChar(void);
+void USBTxChar(char ch);
+void USBTxString(char* str);
+void USBPrintF(const char * fmt, ...);
 //void USBPrintBinary(const uint8_t *buf, uint16_t length);
-void usbActive(boolean forceCheck);
+void USBActive(boolean forceCheck);
 
 #endif

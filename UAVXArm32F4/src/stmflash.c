@@ -21,7 +21,7 @@
 
 #include "UAVX.h"
 
-__attribute__((__section__(".scratchflash")))   const int8 FlashNV[NV_FLASH_SIZE];
+__attribute__((__section__(".scratchFLASH")))   const int8 FlashNV[NV_FLASH_SIZE];
 #define FLASH_SCRATCH_ADDR (0x8000000+NV_FLASH_SIZE)
 #define FLASH_SCRATCH_SECTOR	FLASH_Sector_1 // 11
 

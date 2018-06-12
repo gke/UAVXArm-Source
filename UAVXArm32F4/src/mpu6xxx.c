@@ -58,7 +58,7 @@ uint16 SlewHistScale = 8;
 
 void ComputeMPU6XXXTemperature(uint8 imuSel, int16 T) {
 
-	switch (busDev[imuSel].Type) {
+	switch (busDev[imuSel].type) {
 	case mpu6050IMU:
 		MPU6XXXTemperature = ((real32) T + 12456.0f) * 0.002941f;
 		break;
@@ -82,7 +82,7 @@ void ReadGyro(uint8 imuSel) { // Roll Right +, Pitch Up +, Yaw ACW +
 	static int16 BP[3] = { 0, };
 	idx a;
 
-	sioReadBlocki16vataddr(imuSel, MPU_RA_GYRO_XOUT_H, 3, B, true);
+	SIOReadBlocki16vataddr(imuSel, MPU_RA_GYRO_XOUT_H, 3, B, true);
 
 	NowuS = uSClock();
 	GyrodT = (NowuS - LastUpdateuS) * 0.000001f;
@@ -114,7 +114,7 @@ void ReadAcc(uint8 imuSel) { // Roll Right +, Pitch Up +, Yaw ACW +
 	int16 B[4];
 	idx a;
 
-	sioReadBlocki16vataddr(imuSel, MPU_RA_ACC_XOUT_H, 4, B, true);
+	SIOReadBlocki16vataddr(imuSel, MPU_RA_ACC_XOUT_H, 4, B, true);
 
 	for (a = X; a <= Z; a++) {
 		ShadowRawIMU[a] = B[a];
@@ -214,7 +214,6 @@ void CalibrateAccAndGyro(uint8 s, uint8 imuSel) {
 
 	F.IMUCalibrated = Abs(TempDiff) < (RangeT * 2.0f); // check if too fast!!!
 	if (F.IMUCalibrated) {
-
 		NVChanged = true;
 		UpdateNV();
 		UpdateGyroTempComp(imuSel);
@@ -222,8 +221,8 @@ void CalibrateAccAndGyro(uint8 s, uint8 imuSel) {
 		LEDOff(ledBlueSel);
 		SendAckPacket(s, UAVXMiscPacketTag, 1);
 	} else {
-		Catastrophe();
 		SendAckPacket(s, UAVXMiscPacketTag, 255);
+		Catastrophe();
 	}
 
 } // CalibrateAccAndGyro
@@ -252,54 +251,54 @@ void InitMPU6XXX(uint8 imuSel) {
 	CheckMPU6XXXActive(imuSel);
 	Delay1mS(100); // was 5
 
-	sioWrite(imuSel, MPU_RA_PWR_MGMT_1, 1 << MPU_RA_PWR1_DEVICE_RESET_BIT);
+	SIOWrite(imuSel, MPU_RA_PWR_MGMT_1, 1 << MPU_RA_PWR1_DEVICE_RESET_BIT);
 	Delay1mS(100);
 
-	if (busDev[imuSel].Type == mpu6000IMU) {
-		sioWrite(imuSel, MPU_RA_SIGNAL_PATH_RESET, 7); // reset gyro, acc, temp
+	if (busDev[imuSel].type == mpu6000IMU) {
+		SIOWrite(imuSel, MPU_RA_SIGNAL_PATH_RESET, 7); // reset gyro, acc, temp
 		Delay1mS(100);
 	}
 
-	sioWrite(imuSel, MPU_RA_FIFO_EN, 0); // DISABLE FIFOs
+	SIOWrite(imuSel, MPU_RA_FIFO_EN, 0); // DISABLE FIFOs
 
-	sioWrite(imuSel, MPU_RA_SMPLRT_DIV, 0); // NO sampling rate division - full speed
-	sioWrite(imuSel, MPU_RA_PWR_MGMT_1, MPU_RA_CLOCK_PLL_XGYRO);
+	SIOWrite(imuSel, MPU_RA_SMPLRT_DIV, 0); // NO sampling rate division - full speed
+	SIOWrite(imuSel, MPU_RA_PWR_MGMT_1, MPU_RA_CLOCK_PLL_XGYRO);
 
-	MPU6XXXRev = sioRead(imuSel, MPU_RA_PRODUCT_ID);
+	MPU6XXXRev = SIORead(imuSel, MPU_RA_PRODUCT_ID);
 
-	sioWrite(imuSel, MPU_RA_GYRO_CONFIG, (MPU_RA_GYRO_FS_2000 << 3));
+	SIOWrite(imuSel, MPU_RA_GYRO_CONFIG, (MPU_RA_GYRO_FS_2000 << 3));
 
 	uint8 MPUAccFS = MPU_RA_ACC_FS_4; // +/-4g
-	sioWriteataddr(imuSel, MPU_RA_ACC_CONFIG, (MPUAccFS << 3)
+	SIOWriteataddr(imuSel, MPU_RA_ACC_CONFIG, (MPUAccFS << 3)
 			| MPU_RA_DHPF_1P25);
 
-	if (busDev[imuSel].Type == mpu6000IMU) {
+	if (busDev[imuSel].type == mpu6000IMU) {
 		uint8 DisableAccDLPF = 1;
-		sioWriteataddr(imuSel, MPU_RA_ACC_CONFIG2, (DisableAccDLPF << 3)
+		SIOWriteataddr(imuSel, MPU_RA_ACC_CONFIG2, (DisableAccDLPF << 3)
 				& MPUDLPFMask[CurrAccLPFSel]);
 	} else {
 		// Enable I2C master mode
-		uint8 v = sioReadataddr(imuSel, MPU_RA_USER_CTRL);
+		uint8 v = SIOReadataddr(imuSel, MPU_RA_USER_CTRL);
 		bitClear(v, MPU_RA_USERCTRL_I2C_MST_EN_BIT);
-		sioWrite(imuSel, MPU_RA_USER_CTRL, v);
+		SIOWrite(imuSel, MPU_RA_USER_CTRL, v);
 
 		// Allow bypass access to slave I2C devices (Magnetometer)
-		v = sioReadataddr(imuSel, MPU_RA_INT_PIN_CFG);
+		v = SIOReadataddr(imuSel, MPU_RA_INT_PIN_CFG);
 		bitSet(v, MPU_RA_INTCFG_I2C_BYPASS_EN_BIT);
-		sioWrite(imuSel, MPU_RA_INT_PIN_CFG, v);
+		SIOWrite(imuSel, MPU_RA_INT_PIN_CFG, v);
 	}
 
 	Delay1mS(100);
 
-	sioWriteataddr(imuSel, MPU_RA_CONFIG, (DisableGyroDLPF << 3)
+	SIOWriteataddr(imuSel, MPU_RA_CONFIG, (DisableGyroDLPF << 3)
 			& MPUDLPFMask[CurrGyroLPFSel]);
 
 	Delay1mS(100);
 
-	MPU6XXXDLPF = sioReadataddr(imuSel, MPU_RA_CONFIG) & 0x07;
-	MPU6XXXDHPF = sioReadataddr(imuSel, MPU_RA_ACC_CONFIG) & 0x07;
-	if (busDev[imuSel].Type == mpu6000IMU)
-		MPU6000DLPF = sioReadataddr(imuSel, MPU_RA_ACC_CONFIG2) & 0x07;
+	MPU6XXXDLPF = SIOReadataddr(imuSel, MPU_RA_CONFIG) & 0x07;
+	MPU6XXXDHPF = SIOReadataddr(imuSel, MPU_RA_ACC_CONFIG) & 0x07;
+	if (busDev[imuSel].type == mpu6000IMU)
+		MPU6000DLPF = SIOReadataddr(imuSel, MPU_RA_ACC_CONFIG2) & 0x07;
 
 	Delay1mS(100); // added to prevent apparent SPI hang
 
@@ -307,7 +306,7 @@ void InitMPU6XXX(uint8 imuSel) {
 
 boolean MPU6XXXReady(uint8 imuSel) {
 
-	return (sioRead(imuSel, MPU_RA_INT_STATUS) && 1) != 0;
+	return (SIORead(imuSel, MPU_RA_INT_STATUS) && 1) != 0;
 } // MPU6XXXReady
 
 
@@ -315,7 +314,7 @@ void CheckMPU6XXXActive(uint8 imuSel) {
 	boolean r;
 
 	Delay1mS(35);
-	MPU6XXXId = sioRead(imuSel, MPU_RA_WHO_AM_I);
+	MPU6XXXId = SIORead(imuSel, MPU_RA_WHO_AM_I);
 	r = MPU6XXXId == ((busDev[imuSel].i2cId >> 1) & 0xfe);
 
 	F.IMUActive = r;

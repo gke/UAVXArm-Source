@@ -218,11 +218,7 @@ void UpdateHeading(void) {
 		Heading = Make2Pi(MagHeading + MagVariation);
 	} else {
 
-			MagHeading = A[Yaw].Angle;
-
-		MagLockE = MakePi(MagHeading - A[Yaw].Angle);
-		F.MagnetometerLocked = Abs(RadiansToDegrees(MagLockE)) < 5.0f;
-
+		MagHeading = A[Yaw].Angle;
 		Heading = Make2Pi(MagHeading + MagVariation);
 
 		// override for FW aircraft
@@ -231,7 +227,6 @@ void UpdateHeading(void) {
 			MagHeading = Make2Pi(Heading - MagVariation); // fake for compass reading
 		}
 	}
-
 } // UpdateHeading
 
 //___________________________________________________________________________
@@ -242,6 +237,7 @@ void UpdateHeading(void) {
 void MadgwickUpdate(real32 gx, real32 gy, real32 gz, real32 ax,
 		real32 ay, real32 az, real32 mx, real32 my, real32 mz) {
 
+	real32 AccMag;
 	real32 normR;
 
 	real32 q0i, q1i, q2i, q3i;
@@ -269,7 +265,7 @@ void MadgwickUpdate(real32 gx, real32 gy, real32 gz, real32 ax,
 	// error is sum of cross product between reference direction
 	// of fields and direction measured by sensors
 
-	real32 AccMag = sqrtf(Sqr(ax) + Sqr(ay) + Sqr(az));
+	AccMag = sqrtf(Sqr(ax) + Sqr(ay) + Sqr(az));
 	AccConfidence = CalculateAccConfidence(AccMag);
 
 	// renormalise to attempt to remove a little acc vibration noise
@@ -284,36 +280,36 @@ void MadgwickUpdate(real32 gx, real32 gy, real32 gz, real32 ax,
 	gy += (vz * ax - vx * az) * KpAcc;
 	gz += (vx * ay - vy * ax) * KpAcc;
 
-		if (F.NewMagValues) { // no compensation for latency
-			F.NewMagValues = false;
+	if (F.NewMagValues) { // no compensation for latency
+		F.NewMagValues = false;
 
-			KpMag = CalculateMagConfidence();
+		KpMag = CalculateMagConfidence();
 
-			normR = invSqrt(Sqr(mx) + Sqr(my) + Sqr(mz));
-			mx *= normR;
-			my *= normR;
-			mz *= normR;
+		normR = invSqrt(Sqr(mx) + Sqr(my) + Sqr(mz));
+		mx *= normR;
+		my *= normR;
+		mz *= normR;
 
-			// reference direction of flux
-			hx = 2.0f * (mx * (0.5f - q2q2 - q3q3) + my * (q1q2 - q0q3) + mz
-					* (q1q3 + q0q2));
-			hy = 2.0f * (mx * (q1q2 + q0q3) + my * (0.5f - q1q1 - q3q3) + mz
-					* (q2q3 - q0q1));
-			hz = 2.0f * (mx * (q1q3 - q0q2) + my * (q2q3 + q0q1) + mz * (0.5f
-					- q1q1 - q2q2));
+		// reference direction of flux
+		hx = 2.0f * (mx * (0.5f - q2q2 - q3q3) + my * (q1q2 - q0q3) + mz
+				* (q1q3 + q0q2));
+		hy = 2.0f * (mx * (q1q2 + q0q3) + my * (0.5f - q1q1 - q3q3) + mz
+				* (q2q3 - q0q1));
+		hz = 2.0f * (mx * (q1q3 - q0q2) + my * (q2q3 + q0q1) + mz * (0.5f
+				- q1q1 - q2q2));
 
-			bx = sqrtf(Sqr(hx) + Sqr(hy));
-			bz = hz;
+		bx = sqrtf(Sqr(hx) + Sqr(hy));
+		bz = hz;
 
-			// estimated direction of flux (w)
-			wx = 2.0f * (bx * (0.5f - q2q2 - q3q3) + bz * (q1q3 - q0q2));
-			wy = 2.0f * (bx * (q1q2 - q0q3) + bz * (q0q1 + q2q3));
-			wz = 2.0f * (bx * (q0q2 + q1q3) + bz * (0.5f - q1q1 - q2q2));
+		// estimated direction of flux (w)
+		wx = 2.0f * (bx * (0.5f - q2q2 - q3q3) + bz * (q1q3 - q0q2));
+		wy = 2.0f * (bx * (q1q2 - q0q3) + bz * (q0q1 + q2q3));
+		wz = 2.0f * (bx * (q0q2 + q1q3) + bz * (0.5f - q1q1 - q2q2));
 
-			gx += (my * wz - mz * wy) * KpMag;
-			gy += (mz * wx - mx * wz) * KpMag;
-			gz += (mx * wy - my * wx) * KpMag;
-		}
+		gx += (my * wz - mz * wy) * KpMag;
+		gy += (mz * wx - mx * wz) * KpMag;
+		gz += (mx * wy - my * wx) * KpMag;
+	}
 
 	// integrate quaternion rate
 	q0i = (-q1 * gx - q2 * gy - q3 * gz) * dTOn2;
@@ -362,9 +358,11 @@ void UpdateInertial(void) {
 		ScaleRateAndAcc(imuSel);
 	}
 
-		GetMagnetometer();
-		MadgwickUpdate(Rate[Roll], Rate[Pitch], Rate[Yaw], Acc[BF],
-				Acc[LR], Acc[UD], Mag[X], Mag[Y], Mag[Z]);
+
+	GetMagnetometer();
+
+	MadgwickUpdate(Rate[Roll], Rate[Pitch], Rate[Yaw], Acc[BF], Acc[LR],
+			Acc[UD], Mag[X], Mag[Y], Mag[Z]);
 
 	DoControl();
 
