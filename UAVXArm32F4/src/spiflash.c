@@ -316,6 +316,8 @@ boolean FLASHErase(uint8 devSel) {
 	SPI_TypeDef * s;
 	uint32 r;
 
+
+
 	while (uSClock() < uS[MemReady]) {
 		// BLOCKING
 	};

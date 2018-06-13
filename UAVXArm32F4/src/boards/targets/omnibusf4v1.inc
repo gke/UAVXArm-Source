@@ -94,11 +94,10 @@ DevDef busDev[maxDevSel] = {
 	{false, imu1Sel, }, 
 	{false, baroSel, ms5611Baro, false, 2, MS56XX_ID,},
 	{false, magSel, hmc5xxxMag, false, 2, HMC5XXX_ID,},
-	{false, memSel, }, 
 	{false, gpsSel, },
 	{false, rfSel, },
 	{false, asSel, },
-	{false, flowSel, }, 
+	{false, flowSel, },
 	{false, escSel, }
 };
 

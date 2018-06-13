@@ -116,13 +116,37 @@ void InitASDiffPressureI2C(void) {
 
 void UpdateAirspeed(void) {
 
-	if (mSClock() > NextASUpdatemS) { // use mS[]
+	if (F.ASActive) {
+		if (mSClock() > NextASUpdatemS) { // use mS[]
 
-		NextASUpdatemS += 500; // make faster with filter and out of bound checks
+			NextASUpdatemS += 500; // make faster with filter and out of bound checks
 
+			switch (CurrASSensorType) {
+			case MS4525D0I2C:
+				//ReadASDiffPressureI2C();
+				break;
+			case MPXV7002DPAnalog:
+				break;
+			case ASThermopileAnalog:
+				break;
+			case ASGPSDerived:
+				break;
+			default:
+				break;
+			} // switch
+		}
+		Airspeed = 0.5f * (AS_MIN_MPS + AS_MAX_MPS);
+	} else
+		Airspeed = 0.0f;
+
+} // UpdateAirspeed
+
+void InitAirspeed(void) {
+
+	if (busDev[asSel].Used) {
 		switch (CurrASSensorType) {
 		case MS4525D0I2C:
-			//ReadASDiffPressureI2C();
+			InitASDiffPressureI2C();
 			break;
 		case MPXV7002DPAnalog:
 			break;
@@ -132,28 +156,10 @@ void UpdateAirspeed(void) {
 			break;
 		default:
 			break;
-		} // switch
-	}
-	Airspeed = 0.5f * (AS_MIN_MPS + AS_MAX_MPS);
 
-} // UpdateAirspeed
-
-void InitAirspeed(void) {
-
-	switch (CurrASSensorType) {
-	case MS4525D0I2C:
-		InitASDiffPressureI2C();
-		break;
-	case MPXV7002DPAnalog:
-		break;
-	case ASThermopileAnalog:
-		break;
-	case ASGPSDerived:
-		break;
-	default:
-		break;
-
-	}
+		}
+	} else
+		F.ASActive = false;
 
 } // InitAirspeed
 

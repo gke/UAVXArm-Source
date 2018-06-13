@@ -166,7 +166,7 @@ typedef union {
 				ValidGPSVel :1,
 				RCFrameReceived :1, // zzz
 				ValidGPSPos :1,
-				Unused6_1 :1,
+				ASActive :1,
 
 				// 7
 				YawActive :1,

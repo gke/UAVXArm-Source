@@ -229,11 +229,9 @@ void StartBaro(boolean ReadPressure) {
 	uint8 d = 0;
 
 	if (ReadPressure)
-		SIOWriteBlock(baroSel, (MS56XX_PRESS | MS56XX_OSR_XXXX), 0,
-				&d);
+		SIOWriteBlock(baroSel, (MS56XX_PRESS | MS56XX_OSR_XXXX), 0, &d);
 	else
-		SIOWriteBlock(baroSel, (MS56XX_TEMP | MS56XX_OSR_XXXX), 0,
-				&d);
+		SIOWriteBlock(baroSel, (MS56XX_TEMP | MS56XX_OSR_XXXX), 0, &d);
 
 } // StartBaro
 
@@ -522,10 +520,16 @@ void InitRangefinder(void) {
 			F.RangefinderActive = true; // analogRead(RangefinderAnalogSel) > 0.5f; // open circuit?
 			break;
 		case SRFI2Ccm:
-			SIOWrite(rfSel, 81, 1);
+			if ((busDev[rfSel].Used) && !busDev[rfSel].useSPI)
+				SIOWrite(rfSel, 81, 1);
+			else
+				F.RangefinderActive = false;
 			break;
 		case MaxSonarI2Ccm:
-			SIOWrite(rfSel, 81, 1);
+			if ((busDev[rfSel].Used) && !busDev[rfSel].useSPI)
+				SIOWrite(rfSel, 81, 1);
+			else
+				F.RangefinderActive = false;
 			break;
 		case SharpIRGP2Y0A02YK:
 			break;

@@ -249,31 +249,33 @@ boolean Write32ExtMem(uint32 a, int32 d) {
 
 void InitExtMem(void) {
 
-	if (sizeof(NV) >= NV_FLASH_SIZE)
-		Catastrophe();
+	if (busDev[memSel].Used) {
 
-	uS[MemReady] = uSClock();
+		uS[MemReady] = uSClock();
 
-	int8 v, SaveVal;
+		int8 v, SaveVal;
 
-	if (busDev[memSel].type == i2cEEPROMMem) {
-		F.HaveExtMem = true;
-		SaveVal = ReadExtMem(MEM_SIZE - 1);
-		v = 0b01010101;
-		WriteBlockExtMem(MEM_SIZE - 1, 1, &v);
-		v = 0;
-		v = ReadExtMem(MEM_SIZE - 1);
-		F.HaveExtMem = v == 0b01010101;
-		WriteBlockExtMem(MEM_SIZE - 1, 1, &SaveVal);
-	} else if (busDev[memSel].type == spiFlashMem)
-		F.HaveExtMem = FLASHInit();
-	else
+		if (busDev[memSel].type == i2cEEPROMMem) {
+			F.HaveExtMem = true;
+			SaveVal = ReadExtMem(MEM_SIZE - 1);
+			v = 0b01010101;
+			WriteBlockExtMem(MEM_SIZE - 1, 1, &v);
+			v = 0;
+			v = ReadExtMem(MEM_SIZE - 1);
+			F.HaveExtMem = v == 0b01010101;
+			WriteBlockExtMem(MEM_SIZE - 1, 1, &SaveVal);
+		} else if (busDev[memSel].type == spiFlashMem)
+			F.HaveExtMem = FLASHInit();
+		else
+			F.HaveExtMem = false;
+
+	} else
 		F.HaveExtMem = false;
 
 } // InitMem
 
 void ShowStatusExtMem(uint8 s) {
-	if (busDev[memSel].type == spiFlashMem)
+	if (busDev[memSel].Used && (busDev[memSel].type == spiFlashMem))
 		FLASHShowStatus(s);
 
 } // ShowStatusMem

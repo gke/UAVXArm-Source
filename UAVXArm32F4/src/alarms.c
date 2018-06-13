@@ -101,7 +101,7 @@ boolean FailPreflight(void) {
 			|| !F.IMUActive //
 			|| !F.IMUCalibrated
 			|| ((busDev[baroSel].type != noBaro)&&!F.BaroActive) //
-			|| ((busDev[magSel].type != noMag) && !(F.MagnetometerActive && F.MagnetometerCalibrated))//
+			|| (F.IsFixedWing || ((busDev[magSel].type != noMag) && !(F.MagnetometerActive && F.MagnetometerCalibrated)))//
 			|| F.LowBatt //
 			|| F.spiFatal //
 			|| F.i2cFatal //
