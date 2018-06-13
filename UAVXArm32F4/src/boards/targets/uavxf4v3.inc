@@ -42,7 +42,7 @@ PinDef PWMPins[MAX_PWM_OUTPUTS] = {
 	{true, PB8, PWMPinConfig, PWMOut_4_3},
 	{true, PB7, PWMPinConfig, PWMOut_4_2},
 	{true, PB6, PWMPinConfig, PWMOut_4_1},		
-	{true, PA11, PWMPinConfig, PWMOut_1_4},
+	{true, PA11, PWMPinConfig, PWMOut_1_4}, // USB
 	{true, PA8, PWMPinConfig, PWMOut_1_1},
 
 	// Drives 4-8 for brushless
@@ -53,7 +53,7 @@ PinDef PWMPins[MAX_PWM_OUTPUTS] = {
 };
 
 PinDef GPIOPins[MAX_GPIO_PINS] = { 	
-	{true, PA12, OutPinConfig,}, // Beeper
+	{true, PA12, OutPinConfig,}, // Beeper // USB
 	{true, PC10, InpPinConfig,}, // Armed
 	{true, PC9, InpPinConfig,}, // Landing
 #if (defined(USE_WS2812) || defined(USE_WS2812B))

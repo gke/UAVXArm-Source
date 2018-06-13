@@ -117,25 +117,11 @@ SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
 	{false, 0 } // Soft Serial
 };
 
-PinDef SPISelectPins[MAX_SPI_DEVICES] = {
-	{ true, GPIOB, GPIO_Pin_12, GPIO_PinSource12, GPIO_Mode_OUT, GPIO_OType_PP, GPIO_PuPd_UP, }, // imu0Sel
-	{ true, GPIOA, GPIO_Pin_8, GPIO_PinSource8, GPIO_Mode_OUT, GPIO_OType_PP, GPIO_PuPd_UP, }, // imu1Sel
-	{ true, GPIOC, GPIO_Pin_5, GPIO_PinSource5, GPIO_Mode_OUT,GPIO_OType_PP, GPIO_PuPd_UP,}, // baroSel
-	{ false, GPIOC, GPIO_Pin_4, GPIO_PinSource4, GPIO_Mode_OUT,GPIO_OType_PP, GPIO_PuPd_UP,}, // magSel
-	{ false, GPIOC, GPIO_Pin_3, GPIO_PinSource3, GPIO_Mode_OUT,GPIO_OType_PP, GPIO_PuPd_UP,}, // memSel
-	{ false, }, //
-	{ false, }, //		
-	{ false, }, //								
-};
 
 PinDef USBDisconnectPin = { false, 0, };
 
-const uint8 currGimbalType = noGimbal;
-const boolean ledsLowOn = true;
-
-// imu0Sel, imu1Sel, baroSel, magSel, memSel, gpsSel, rfSel, asSel, flowSel, escSel, 
 const DevDef busDev[] = {
-	{ true, mpu6000IMU, useSPI, 1,}, // imu0Sel
+	{ true, mpu6000IMU, useSPI, 1, xxx}, // imu0Sel
 	{ false, },// imu1Sel 
 	{ true, ms5611Baro, useSPI, 2, }, // baroSel
 	{ true, hmc5xxxMag, useI2C, 1, HMC5XXX_ID}, // magSel 
@@ -147,10 +133,11 @@ const DevDef busDev[] = {
 	{ false, }, // escSel
 };
 
-void InitTarget(void) {
+const uint8 currGimbalType = noGimbal;
+const boolean ledsLowOn = true;
+const uint8 imuSel = imu0Sel;
 
-	//RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM10, ENABLE);
-	//RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM11, ENABLE);
+void InitTarget(void) {
 			
 	TelemetrySerial = Usart3;
 	InitSerialPort(TelemetrySerial, true, false);

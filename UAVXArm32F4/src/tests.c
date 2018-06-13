@@ -38,7 +38,7 @@ void Calibrated(uint8 s, boolean b) {
 
 
 void CommissioningTest(uint8 s) {
-	uint32 Timeout;
+	timeval Timeout;
 	index k, i;
 	int8 pattern[32];
 	uint8 info[32];
@@ -317,7 +317,7 @@ void SphereFitTest(void) {
 	const real32 y0 = 0.1f;
 	const real32 z0 = 0.2f;
 	real32 radius;
-	uint32 StartTime;
+	timeval StartTime;
 	real32 r, u, v, A, d[1000][3], O[3], R;
 	uint16 Population[2][3];
 	uint16 c, i;

@@ -39,7 +39,7 @@ real32 AltCutoffM = ALT_CUTOFF_M;
 real32 AltMaxM = ALT_MAX_M;
 real32 AltMinM = ALT_MIN_M;
 
-uint32 PrevKFUpdatemS = 0;
+timeval PrevKFUpdatemS = 0;
 
 boolean ThrottleSuppressed = false;
 boolean Thermalling = false;
@@ -158,7 +158,7 @@ void UpdateThermalEstimate(void) {
 
 	//invoked when F.NewNavUpdate
 
-	uint32 NowmS = mSClock();
+	timeval NowmS = mSClock();
 
 	real32 dx = Nav.C[NorthC].Pos - Soar.Th[NorthC].Pos;
 	real32 dy = Nav.C[EastC].Pos - Soar.Th[EastC].Pos;
@@ -266,7 +266,7 @@ void UpdateVario(void) {
 
 	//#define USE_NETTO
 #if defined(USE_NETTO)
-	static uint32 PrevThermalUpdatemS = 0;
+	static timeval PrevThermalUpdatemS = 0;
 	static real32 TEP = 0.0f;
 	static real32 AirspeedFilt = 0.0f;
 

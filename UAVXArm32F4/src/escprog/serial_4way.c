@@ -75,19 +75,19 @@ static void setDisconnected(void) {
 	deviceInfo.signature = 0;
 }
 
-__attribute__((always_inline))                                     inline boolean isEscHi(uint8_t selEsc) {
+boolean isEscHi(uint8_t selEsc) {
 	return DigitalRead(&PWMPins[selEsc].P);
 }
 
-__attribute__((always_inline))                                     inline boolean isEscLo(uint8_t selEsc) {
+boolean isEscLo(uint8_t selEsc) {
 	return !DigitalRead(&PWMPins[selEsc].P);
 }
 
-__attribute__((always_inline)) inline void setEscHi(uint8_t selEsc) {
+void setEscHi(uint8_t selEsc) {
 	DigitalWrite(&PWMPins[selEsc].P, 1);
 }
 
-__attribute__((always_inline)) inline void setEscLo(uint8_t selEsc) {
+void setEscLo(uint8_t selEsc) {
 	DigitalWrite(&PWMPins[selEsc].P, 0);
 }
 

@@ -115,7 +115,7 @@ boolean FailPreflight(void) {
 
 
 void DoCalibrationAlarm(void) {
-	static uint32 TimeoutmS = 0;
+	static timeval TimeoutmS = 0;
 
 	if (!F.IMUCalibrated || !((F.MagnetometerActive && F.MagnetometerCalibrated) || F.IsFixedWing)) {
 		if (mSClock() > TimeoutmS) {
@@ -128,7 +128,7 @@ void DoCalibrationAlarm(void) {
 
 void DoBeep(uint8 t, uint8 d) {
 	int32 i;
-	uint32 Timeout;
+	timeval Timeout;
 
 	BeeperOn();
 	for (i = 0; i < (t * 100); i++) {

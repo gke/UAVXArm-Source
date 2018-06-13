@@ -31,16 +31,16 @@ typedef struct {
 
 extern const SPIDefStruct SPIDef[];
 
-extern void SPISelect(uint8 devSel, boolean Sel);
+extern void SPISelect(uint8 spiDev, boolean Sel);
 extern void SPIClearSelects(void);
-extern SPI_TypeDef * SPISetBaudRate(uint8 devSelS, boolean R);
+extern SPI_TypeDef * SPISetBaudRate(uint8 spiDevS, boolean R);
 extern void SPISetDivisor(SPI_TypeDef *SPIx, uint16 d);
 
 extern uint8 SPISend(SPI_TypeDef *SPIx, uint8 d);
 
-extern boolean SPIReadBlock(uint8 devSel, uint8 reg, uint8 len,
+extern boolean SPIReadBlock(uint8 spiDev, uint8 reg, uint8 len,
 		uint8 * data);
-extern boolean SPIWriteBlock(uint8 devSel, uint8 reg, uint8 len,
+extern boolean SPIWriteBlock(uint8 spiDev, uint8 reg, uint8 len,
 		uint8 * data);
 
 extern uint32 SPIErrors;

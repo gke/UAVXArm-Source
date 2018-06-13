@@ -169,7 +169,7 @@ real32 initFIRF(filterStruct *F, uint8 order, const real32 * C) {
 } // initFIRF
 
 
-__attribute__((always_inline))        inline real32 FIRF(filterStruct *F, real32 v) {
+real32 FIRF(filterStruct *F, real32 v) {
 
 	idx i;
 
@@ -191,7 +191,7 @@ real32 initLPF1Coefficient(real32 CutHz, real32 dT) {
 	return (dT / ((1.0f / (TWO_PI * CutHz)) + dT));
 } // initLPF1Coefficient
 
-__attribute__((always_inline))                 inline real32 LPF1(real32 O, real32 N, const real32 K) {
+real32 LPF1(real32 O, real32 N, const real32 K) {
 
 	return (O + (N - O) * K);
 } // LPF1
@@ -212,7 +212,7 @@ void initLPFn(filterStruct * F, const idx order, const real32 CutHz) {
 
 } // initLPFn
 
-__attribute__((always_inline))        inline real32 LPFn(filterStruct * F, real32 v, real32 dT) {
+real32 LPFn(filterStruct * F, real32 v, real32 dT) {
 	idx n;
 
 	real32 s = dT / (F->tau + dT); // more compute but deals with sampling jitter
@@ -275,7 +275,7 @@ void initKalynFastLPKF(filterStruct *F, real32 Q, real32 R, real32 CutHz) {
 } // initKalynFastLPKF
 
 
-__attribute__((always_inline))        inline real32 KalynFastLPKF(filterStruct *F, real32 v, real32 dT) { // ~0.42uS F4 @ 168MHz
+real32 KalynFastLPKF(filterStruct *F, real32 v, real32 dT) { // ~0.42uS F4 @ 168MHz
 
 	//project the state ahead using acceleration
 	F->x += (F->x - F->xP); // linear extrapolation -  dT and 1/dT cancel
@@ -314,7 +314,7 @@ void initFujinFastLPKF(filterStruct *F, real32 CutHz) {
 
 } // initFujinFastLPKF
 
-__attribute__((always_inline))        inline real32 FujinFastLPKF(filterStruct *F, real32 v, real32 dT) {
+real32 FujinFastLPKF(filterStruct *F, real32 v, real32 dT) {
 
 	F->k = 0.5f * dT / (F->tau + dT);
 
@@ -477,7 +477,7 @@ real32 CurrOSLPKFQ = 500.0f;
 boolean UsingPavelFilter = false;
 
 filterStruct AccF[3], GyroF[3], OSGyroF[3];
-OSLPFPtr OSF;
+OSLPFPtr OSF = NULL;
 
 filterStruct ROCLPF, FROCLPF, BaroLPF;
 

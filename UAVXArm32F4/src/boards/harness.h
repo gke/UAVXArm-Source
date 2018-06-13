@@ -357,7 +357,7 @@ typedef const struct { // C2 Port GUI changeable UAVX
 	uint8 useSPI;
 	uint8 busNo;
 	uint8 i2cId;
-	PinDef selP;
+	ConnectDef P;
 } DevDef;
 
 //________________________________________________________________________________________________

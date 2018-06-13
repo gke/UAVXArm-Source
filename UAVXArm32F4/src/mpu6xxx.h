@@ -53,7 +53,7 @@ boolean MPU6XXXReady(uint8 imuSel);
 void ComputeMPU6XXXTemperature(uint8 imuSel, int16 T);
 
 extern uint8 MPU0_ID, MPU1_ID;
-extern uint32 mpu6xxxLastUpdateuS;
+extern timeval mpu6xxxLastUpdateuS;
 extern real32 RawAcc[], RawGyro[];
 extern uint32 gyroGlitches;
 extern uint32 mpuReads;

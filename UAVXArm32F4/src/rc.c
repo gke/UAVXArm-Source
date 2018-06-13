@@ -49,7 +49,7 @@ uint8 RSSI;
 
 RCInpDefStruct_t RCInp[RC_MAX_CHANNELS];
 
-uint32 RCLastFrameuS = 0;
+timeval RCLastFrameuS = 0;
 uint32 RCSyncWidthuS = 0;
 uint32 RCFrameIntervaluS = 0;
 uint8 Channel = 0;
@@ -67,7 +67,7 @@ real32 DesiredCamPitchTrim;
 real32 ThrLow, ThrHigh, ThrNeutral;
 real32 CurrMaxRollPitchStick;
 int8 RCStart;
-uint32 NextNavSwUpdatemS = 0;
+timeval NextNavSwUpdatemS = 0;
 
 boolean RxLoopbackEnabled = false;
 
@@ -80,9 +80,9 @@ void EnableRC(void) {
 
 } // EnableRC
 
-void RCSerialISR(uint32 TimerVal) {
+void RCSerialISR(timeval TimerVal) {
 	int32 Temp;
-	uint32 NowuS;
+	timeval NowuS;
 	int16 Width;
 
 	NowuS = uSClock();
@@ -135,7 +135,7 @@ void RCParallelISR(TIM_TypeDef *tim) {
 	int32 Width;
 	RCInpDefStruct_t * RCPtr;
 	const TIMChannelDef * u;
-	uint32 NowuS;
+	timeval NowuS;
 
 	// scan ALL RC inputs as the channel pulses arrive
 	// in arbitrary order depending on Rx
@@ -250,7 +250,7 @@ void DoSBus(void) {
 
 } // DoSBus
 
-void CheckSBusFlags(uint32 NowuS) {
+void CheckSBusFlags(timeval NowuS) {
 
 	SBusSignalLost = (RCFrame.u.b[22] & SBUS_SIGNALLOST_MASK) != 0;
 	SBusFailsafe = (RCFrame.u.b[22] & SBUS_FAILSAFE_MASK) != 0;
@@ -277,7 +277,7 @@ void RCUSARTISR(uint8 v) { // based on MultiWii
 		SBusWaitSentinel, SBusWaitData, SBusWaitEnd
 	};
 
-	uint32 Interval, NowuS;
+	timeval Interval, NowuS;
 
 	NowuS = uSClock();
 	Interval = NowuS - RCFrame.lastByteReceived; // uS clock wraps every 71 minutes - ignore
@@ -532,7 +532,7 @@ void UpdateRCMap(void) {
 } // UpdateRCMap
 
 void InitRC(void) {
-	uint32 NowmS;
+	timeval NowmS;
 	uint8 c;
 	RCInpDefStruct_t * R;
 
@@ -676,10 +676,10 @@ void SBusLoopback(void) {
 
 	static RCFrameStruct_t TestFrame;
 
-	static uint32 NextUpdateuS = 0;
+	static timeval NextUpdateuS = 0;
 	static boolean Primed = false;
 	static uint16 Wiggle = 0;
-	static uint32 NextWigglemS = 0;
+	static timeval NextWigglemS = 0;
 	idx i;
 
 	if (!Primed) {
@@ -730,13 +730,13 @@ void SpekLoopback(boolean HiRes) {
 			1500, 1600, 1700 };
 	int8 SpekByte, SpekCh;
 	int16 v;
-	static uint32 NextUpdateuS = 0;
+	static timeval NextUpdateuS = 0;
 	static uint8 LBFrame[56];
 	static boolean Primed = false;
 	//static uint16 LostFrameCount = 0;
 	static boolean TicTac = true;
 	static uint16 Wiggle = 0;
-	static uint32 NextWigglemS = 0;
+	static timeval NextWigglemS = 0;
 	idx i;
 
 	uint8 Channels = HiRes ? 12 : 7;
@@ -760,7 +760,7 @@ void SpekLoopback(boolean HiRes) {
 		Primed = true;
 	}
 
-	uint32 NowuS = uSClock();
+	timeval NowuS = uSClock();
 
 	if (NowuS > NextUpdateuS) {
 		if (TicTac) {
@@ -895,7 +895,7 @@ void UpdateControls(void) {
 } // UpdateControls
 
 void CheckThrottleMoved(void) {
-	uint32 NowmS;
+	timeval NowmS;
 
 	NowmS = mSClock();
 	if (NowmS < mS[ThrottleUpdate])

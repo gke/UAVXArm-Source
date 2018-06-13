@@ -75,7 +75,7 @@ typedef enum {
 
 typedef struct {
 	pidAutotuneState_e state;
-	uint32 stateEnterTime;
+	timeval stateEnterTime;
 	boolean pidSaturated;
 	PIDStruct R;
 } pidAutotuneData_t;
@@ -83,7 +83,7 @@ typedef struct {
 #define AUTOTUNE_SAVE_PERIOD        5000        // Save interval is 5 seconds - when we turn off autotune we'll restore values from previous update at most 5 sec ago
 static pidAutotuneData_t tuneCurrent[3];
 static pidAutotuneData_t tuneSaved[3];
-static uint32 lastGainsUpdateTime;
+static timeval lastGainsUpdateTime;
 
 void autotuneUpdateGains(pidAutotuneData_t * data) {
 	for (idx a = Pitch; a <= Yaw; a++) {
@@ -95,7 +95,7 @@ void autotuneUpdateGains(pidAutotuneData_t * data) {
 }
 
 void autotuneCheckUpdateGains(void) {
-	const uint32 NowmS = mSClock();
+	const timeval NowmS = mSClock();
 
 	if ((NowmS - lastGainsUpdateTime) >= AUTOTUNE_SAVE_PERIOD) {
 		// If pilot will exit autotune we'll restore values we are flying now
@@ -138,7 +138,7 @@ void autotuneUpdateState(void) {
 
 void autotuneUpdate(const idx a, real32 desiredRateDps, real32 reachedRateDps,
 		real32 pidOutput) {
-	const uint32 NowmS = mSClock();
+	const timeval NowmS = mSClock();
 	const real32 absDesiredRateDps = Abs(desiredRateDps);
 	real32 maxDesiredRate = 123; //zzz A[]] * 10.0f;
 	pidAutotuneState_e newState;
@@ -163,7 +163,7 @@ void autotuneUpdate(const idx a, real32 desiredRateDps, real32 reachedRateDps,
 				: DEMAND_UNDERSHOOT;
 
 	if (newState != tuneCurrent[a].state) {
-		const uint32 stateTimeMs = NowmS - tuneCurrent[a].stateEnterTime;
+		const timeval stateTimeMs = NowmS - tuneCurrent[a].stateEnterTime;
 		boolean gainsUpdated = false;
 
 		switch (tuneCurrent[a].state) {

@@ -23,22 +23,14 @@
 
 I2CPortDef I2CPorts[MAX_I2C_PORTS] = {
 	{ 0, }, // notionally I2C0
-	{ I2C1, {GPIOB, GPIO_Pin_6, GPIO_PinSource6},
-		{GPIOB, GPIO_Pin_7, GPIO_PinSource7}, GPIO_AF_I2C1 },//
-	{ I2C2, {GPIOB, GPIO_Pin_10, GPIO_PinSource10},
-		{GPIOB, GPIO_Pin_11, GPIO_PinSource11}, GPIO_AF_I2C2 } };
+	{ I2C1, PB6, PB7, GPIO_AF_I2C1 },//
+	{ I2C2, PB10, PB11, GPIO_AF_I2C2 } };
 
 SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
 	{ 0, }, // notionally SPI0
-	{ SPI1, {{ GPIOA, GPIO_Pin_5, GPIO_PinSource5 },
-		{ GPIOA, GPIO_Pin_6, GPIO_PinSource6 },
-		{ GPIOA, GPIO_Pin_7, GPIO_PinSource7 }}}, //
-	{ SPI2, {{ GPIOB, GPIO_Pin_13, GPIO_PinSource13 },
-		{ GPIOB, GPIO_Pin_14, GPIO_PinSource14 },
-		{ GPIOB, GPIO_Pin_15, GPIO_PinSource15 }}}, //
-	{ SPI3, {{ GPIOC, GPIO_Pin_10, GPIO_PinSource10 },
-		{ GPIOC, GPIO_Pin_11, GPIO_PinSource11 },
-		{ GPIOC, GPIO_Pin_12, GPIO_PinSource12 }}}};
+	{ SPI1, {PA5, PA6, PA7}}, //
+	{ SPI2, {PB13, PB14, PB15}}, //
+	{ SPI3, {PC10, PC11, PC12}}};
 
 idx GPSRxSerial, GPSTxSerial, RCSerial, TelemetrySerial;
 boolean RxUsingSerial;
@@ -46,11 +38,11 @@ uint8 CurrNoOfRCPins;
 
 #include "./targets/targets.inc"
 
-__attribute__((always_inline)) inline boolean DigitalRead(ConnectDef * d) {
+boolean DigitalRead(ConnectDef * d) {
 		return GPIO_ReadInputDataBit(d->Port, d->Pin);
 } // DigitalRead
 
-__attribute__((always_inline)) inline void DigitalWrite(ConnectDef * d,
+void DigitalWrite(ConnectDef * d,
 		uint8 m) {
 
 		if (m)
@@ -61,7 +53,7 @@ __attribute__((always_inline)) inline void DigitalWrite(ConnectDef * d,
 
 } // DigitalWrite
 
-__attribute__((always_inline)) inline void DigitalToggle(ConnectDef * d) {
+void DigitalToggle(ConnectDef * d) {
 		d->Port->ODR ^= d->Pin;
 } // DigitalToggle
 
@@ -395,10 +387,28 @@ void InitSPIGPIOPins(uint8 spiPort, boolean highClock) {
 	if (highClock)
 		GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
 	else
-		GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
+		//GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
+		GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
 	GPIO_Init(p->P[sckPin].Port, &GPIO_InitStructure);
 
 } // InitSPIGPIOPins
+
+
+void InitSPISelectPin(uint8 spiSel) {
+	GPIO_InitTypeDef GPIO_InitStructure;
+
+	GPIO_StructInit(&GPIO_InitStructure);
+	GPIO_InitStructure.GPIO_Pin = busDev[spiSel].P.Pin;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT,
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(busDev[spiSel].P.Port, &GPIO_InitStructure);
+
+	DigitalWrite(&busDev[spiSel].P, 1);
+
+} // InitSPISelectPin
+
 
 void InitSPI(uint8 spiPort) {
 	volatile uint8 dummyread __attribute__((unused));
@@ -417,18 +427,21 @@ void InitSPI(uint8 spiPort) {
 		switch (spiPort) {
 		case 1:
 			RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1, ENABLE);
+			Delay1uS(100);
 			GPIO_PinAFConfig(p->P[sckPin].Port, p->P[sckPin].PinSource, GPIO_AF_SPI1);
 			GPIO_PinAFConfig(p->P[misoPin].Port, p->P[misoPin].PinSource, GPIO_AF_SPI1);
 			GPIO_PinAFConfig(p->P[mosiPin].Port, p->P[mosiPin].PinSource, GPIO_AF_SPI1);
 			break;
 		case 2:
 			RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI2, ENABLE);
+			Delay1uS(100);
 			GPIO_PinAFConfig(p->P[sckPin].Port, p->P[sckPin].PinSource, GPIO_AF_SPI2);
 			GPIO_PinAFConfig(p->P[misoPin].Port, p->P[misoPin].PinSource, GPIO_AF_SPI2);
 			GPIO_PinAFConfig(p->P[mosiPin].Port, p->P[mosiPin].PinSource, GPIO_AF_SPI2);
 			break;
 		case 3:
 			RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI3, ENABLE);
+			Delay1uS(100);
 			GPIO_PinAFConfig(p->P[sckPin].Port, p->P[sckPin].PinSource, GPIO_AF_SPI3);
 			GPIO_PinAFConfig(p->P[misoPin].Port, p->P[misoPin].PinSource, GPIO_AF_SPI3);
 			GPIO_PinAFConfig(p->P[mosiPin].Port, p->P[mosiPin].PinSource, GPIO_AF_SPI3);
@@ -440,8 +453,10 @@ void InitSPI(uint8 spiPort) {
 		SPI_InitStructure.SPI_Mode = SPI_Mode_Master;
 		SPI_InitStructure.SPI_DataSize = SPI_DataSize_8b;
 
-		SPI_InitStructure.SPI_CPOL = SPI_CPOL_Low;
-		SPI_InitStructure.SPI_CPHA = SPI_CPHA_1Edge;
+		//SPI_InitStructure.SPI_CPOL = SPI_CPOL_Low;
+		//SPI_InitStructure.SPI_CPHA = SPI_CPHA_1Edge;
+		SPI_InitStructure.SPI_CPOL = SPI_CPOL_High;
+		SPI_InitStructure.SPI_CPHA = SPI_CPHA_2Edge;
 
 		SPI_InitStructure.SPI_NSS = SPI_NSS_Soft;
 		SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_128; // 42/128 = 328.125 kHz SPI Clock
@@ -794,14 +809,12 @@ void CheckBusDev(void) {
 		SendMinPacket(TelemetrySerial);
 		Catastrophe();
 	}
-
 } // CheckBusDev
 
 
 void InitHarness(void) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 	uint8 i, j;
-
 
 	// Using all ports - could be generalised but .... later
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
@@ -828,10 +841,15 @@ void InitHarness(void) {
 	GPIO_StructInit(&GPIO_InitStructure);
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_All;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN;
-	GPIO_Init(GPIOA, &GPIO_InitStructure);
 	GPIO_Init(GPIOB, &GPIO_InitStructure);
 	GPIO_Init(GPIOC, &GPIO_InitStructure);
 	GPIO_Init(GPIOD, &GPIO_InitStructure); // F407
+
+#if !(defined(UAVXF4V4) || defined(UAVXF4V3))
+    GPIO_InitStructure.GPIO_Pin &= ~(GPIO_Pin_11 | GPIO_Pin_12); // leave USB D+/D- alone
+	GPIO_InitStructure.GPIO_Pin &= ~(GPIO_Pin_13 | GPIO_Pin_14); // leave JTAG pins alone
+#endif
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
 
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
 
@@ -872,8 +890,7 @@ void InitHarness(void) {
 		if (busDev[i].Used)
 			if (busDev[i].useSPI) {
 				InitSPI(busDev[i].busNo);
-				InitPin(&busDev[i].selP);
-				DigitalWrite(&busDev[i].selP.P, 1);
+				InitSPISelectPin(i);
 			} else
 				InitI2C(busDev[i].busNo);
 	Delay1mS(10);

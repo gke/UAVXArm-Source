@@ -22,7 +22,7 @@
 
 // Master Clock
 
-volatile uint32 sysTickUptime = 0;
+volatile timeval sysTickUptime = 0;
 volatile uint32 sysTickCycleCounter = 0;
 
 void SysTick_Handler(void) {

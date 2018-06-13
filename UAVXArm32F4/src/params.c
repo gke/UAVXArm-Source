@@ -38,11 +38,11 @@ boolean CurrUsingUplink;
 
 NVStruct NV;
 
-inline uint8 P(uint8 i) {
+uint8 P(uint8 i) {
 	return (NV.P[NV.CurrPS][i]);
 } // P
 
-inline void SetP(uint8 i, uint8 v) {
+void SetP(uint8 i, uint8 v) {
 	if (P(i) != v) {
 		NV.P[NV.CurrPS][i] = v;
 		NVChanged = true;
@@ -234,7 +234,9 @@ void UpdateParameters(void) {
 
 		UpdateRCMap(); // for channel re-assignment
 
-		// Change to physical configuration or attached devices  - NEEDS POWER CYCLE
+		// The following if statement identifies a change to the physical
+		// configuration or attached devices and forces a reboot to restore
+		// Arm registers to a known state and to initialise new devices.
 
 		if ((State == Preflight) || (State == Ready)) { // NOT IN FLIGHT
 			if ((CurrIMUOption != P(IMUOption)) || (ArmingMethod != P(
@@ -389,7 +391,7 @@ void AccTrimStickAdjust(real32 BFTrim, real32 LRTrim) {
 
 void UpdateSticksState(void) {
 	// pattern scheme from MultiWii
-	uint32 NowmS;
+	timeval NowmS;
 	uint8 pattern = 0;
 	idx i;
 
@@ -437,7 +439,7 @@ void UpdateSticksState(void) {
 
 
 void DoStickProgramming(void) {
-	uint32 NowmS;
+	timeval NowmS;
 	int8 NewCurrPS;
 	real32 BFTrim, LRTrim;
 	boolean Changed;
@@ -541,7 +543,7 @@ void DoStickProgramming(void) {
 
 
 void UseDefaultParameters(uint8 DefaultPS) { // loads a representative set of initial parameters as a base for tuning
-	idx i;
+	uint16 i;
 
 	NV.CurrPS = 0;
 
@@ -560,18 +562,22 @@ void UseDefaultParameters(uint8 DefaultPS) { // loads a representative set of in
 
 void CheckParametersInitialised(void) {
 	uint8 v;
-	idx i;
+	uint16 i;
+	boolean InitialisedNV;
 
 	ReadBlockNV(0, sizeof(NV), (int8 *) (&NV));
 
 	NV.CurrPS = 0;
 
-	v = P(0);
-	NVChanged = true;
-	for (i = 1; i < MAX_PARAMETERS; i++)
-		NVChanged = NVChanged && (v == P(i));
+	InitialisedNV = false;
+	i = 1;
+	do {
+		InitialisedNV = (P(0) != P(i));
+		i++;
+	} while ((i < MAX_PARAMETERS) && !InitialisedNV);
 
-	if (NVChanged) {
+	if (!InitialisedNV) {
+
 		memset(&NV, 0, sizeof(NV));
 		NV.CurrRevisionNo = RevisionNo;
 		UseDefaultParameters(0);

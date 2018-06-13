@@ -23,6 +23,19 @@
 
 #include "UAVX.h"
 
+/*
+#ifdef OMNIBUSF4SD
+// These inverter control pins collide with timer channels on CH5 and CH6 pads.
+// Users of these timers/pads must un-map the inverter assignment explicitly.
+#define INVERTER_PIN_UART6      PC8 // Omnibus F4 V3 and later
+#define INVERTER_PIN_UART3      PC9 // Omnibus F4 Pro Corners
+#elif defined(EXUAVF4PRO)
+#define INVERTER_PIN_UART6      PC8
+#else
+#define INVERTER_PIN_UART1      PC0 // DYS F4 Pro; Omnibus F4 AIO (1st gen) have a FIXED inverter on UART1
+#endif
+*/
+
 PinDef RCPins[MAX_RC_INPUTS] = { };
 
 PinDef PWMPins[MAX_PWM_OUTPUTS] = {
@@ -31,22 +44,27 @@ PinDef PWMPins[MAX_PWM_OUTPUTS] = {
 	{true, PA3, PWMPinConfig, PWMOut_2_4},
 	{true, PA2, PWMPinConfig, PWMOut_2_3},	 
 	{true, PA1, PWMPinConfig, PWMOut_5_2},
+#if defined(IS_PRO)
+    {true, PB6, PWMPinConfig, PWMOut_4_1},
+#else
+    {false, 0 },
+#endif	
 	{true, PA8, PWMPinConfig, PWMOut_1_1},
 };
 
 PinDef GPIOPins[MAX_GPIO_PINS] = { //
-	{true, PC15, OutPinConfig,}, // Beeper
+	{true, PB4, OutPinConfig,}, // Beeper
 	{false, }, // Armed
 	{false,}, // Landing
 	{false, }, // Aux1
-	{true, PA15, OutPinConfig,}, // Aux2/Inverter
+	{true, PC0, OutPinConfig,}, // Aux2/Inverter
 	{true, PB14, OutPinConfig,}, // Probe (Aux3)
-	{true, PC13, InpPinConfig,}, // MPU6XXXIntSel 
+	{true, PC4, InpPinConfig,}, // MPU6XXXIntSel 
 	{false, } // HMC5XXXRdySel					
 };
 
 PinDef LEDPins[MAX_LED_PINS] = { //
-	{true, PB3, LEDPinConfig,}, 
+	{true, PB5, LEDPinConfig,}, 
 };
 
 //PinDef WSPin = 
@@ -57,7 +75,7 @@ PinDef LEDPins[MAX_LED_PINS] = { //
 SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { 
 	{false, }, // mapped to USBSerial
 	{true, USART1, PA9, PA10, 115200, USART1Config,},
-	{true, USART2, PA14, PA15, 9600, USART2Config,},
+	{false, USART2, PA14, PA15, 9600, USART2Config,},
 	{true, USART3, PB10, PB11, 115200, USART3Config,},
 	{false, UART4, PB10, PB11, 115200, UART4Config,},
 	{false, 0 } // SoftSerial
@@ -65,17 +83,17 @@ SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = {
 
 AnalogPinDef AnalogPins[MAX_ANALOG_CHANNELS] = { //
 	{false,  }, 
-	{true, ADC1, PA1, ADC_Channel_11, DMA2_0_0_noIRQn, 3 }, // Current
-	{true, ADC1, PA0, ADC_Channel_12, DMA2_0_0_noIRQn, 2 }, // Volts
+	{true, ADC1, PC1, ADC_Channel_11, DMA2_0_0_noIRQn, 2}, // Current
+	{true, ADC1, PC2, ADC_Channel_12, DMA2_0_0_noIRQn, 3}, // Volts
 };
 
 PinDef USBDisconnectPin = {true, PA12, OutPinConfig,};
- 
+
 DevDef busDev[maxDevSel] = { 	 	
-	{true, imu0Sel, mpu6000IMU, true, 1, 0, {true, PA4, OutPinConfig,}}, 
+	{true, imu0Sel, mpu6000IMU, true, 1, 0, PA4}, 
 	{false, imu1Sel, }, 
-	{false, baroSel, ms5611Baro, false, 2, MS56XX_ID, {}},
-	{false, magSel, hmc5xxxMag, false, 2, HMC5XXX_ID, {}},
+	{false, baroSel, ms5611Baro, false, 2, MS56XX_ID,},
+	{false, magSel, hmc5xxxMag, false, 2, HMC5XXX_ID,},
 	{false, memSel, }, 
 	{false, gpsSel, },
 	{false, rfSel, },
@@ -89,18 +107,18 @@ const boolean ledsLowOn = false;
 const uint8 imuSel = imu0Sel;
 
 void InitTarget(void) {
-	
-	TelemetrySerial = Usart1; //USBSerial;
+
+	TelemetrySerial = USBSerial;
 	InitSerialPort(TelemetrySerial, true, false);
 
 	RxUsingSerial = true;
-	CurrNoOfRCPins = 0; // Always 0
+	CurrNoOfRCPins = 0;
 
-	RCSerial = Usart2;
+	RCSerial = Usart1;
 	InitSerialPort(RCSerial, false, true);
 
-	//GPSRxSerial = GPSTxSerial = Usart3;
-	//InitSerialPort(GPSRxSerial, false, false);
+	GPSRxSerial = GPSTxSerial = Usart3;
+	InitSerialPort(GPSRxSerial, false, false);
 
 	CurrMaxPWMOutputs = 4;
 

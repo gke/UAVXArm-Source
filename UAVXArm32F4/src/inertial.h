@@ -50,7 +50,7 @@ extern HistStruct AccZF;
 extern real32 AccZ;
 extern real32 AltLPFHz;
 
-extern uint32 LastInertialUpdateuS;
+extern timeval LastInertialUpdateuS;
 
 #endif
 

@@ -25,8 +25,8 @@ uint8 State;
 boolean FirstIMU;
 uint32 CurrPIDCycleuS = PID_CYCLE_2000US;
 real32 CurrPIDCycleS;
-volatile uint32 uS[uSLastArrayEntry];
-volatile uint32 mS[mSLastArrayEntry];
+volatile timeval uS[uSLastArrayEntry];
+volatile timeval mS[mSLastArrayEntry];
 
 uint8 ch;
 int8 i, m;
@@ -51,7 +51,7 @@ void InitMisc(void) {
 } // InitMisc
 
 
-inline void DoHouseKeeping(void) {
+void DoHouseKeeping(void) {
 
 	CheckBatteries();
 	CheckAlarms();
@@ -62,7 +62,7 @@ inline void DoHouseKeeping(void) {
 
 } // DoHousekeeping
 
-void CalculatedT(uint32 NowuS) {
+void CalculatedT(timeval NowuS) {
 
 	dT = dTUpdate(NowuS, &LastInertialUpdateuS);
 	dTOn2 = 0.5f * dT;
@@ -72,7 +72,7 @@ void CalculatedT(uint32 NowuS) {
 } // CalculatedT
 
 void ResetMainTimeouts(void) {
-	uint32 NowmS;
+	timeval NowmS;
 
 	NowmS = mSClock();
 	mSTimer(mSClock(), CrashedTimeout, CRASHED_TIMEOUT_MS);
@@ -84,7 +84,7 @@ void ResetMainTimeouts(void) {
 void DoTesting(void) {
 
 	//#define COMMISSIONING_TEST
-//#define USB_TESTING
+	//#define USB_TESTING
 	//#define KF_TESTING
 	//#define BARO_TESTING
 
@@ -120,7 +120,7 @@ void DoTesting(void) {
 #elif defined(BARO_TESTING)
 
 	int16 kkk, cycles;
-	uint32 start = uSClock();
+	timeval start = uSClock();
 
 	for (kkk = 0; kkk < 256; kkk++)
 	LSBBaro[kkk] = 0;
@@ -177,9 +177,9 @@ void DoTesting(void) {
 	real32 Kalyn, Fujin, OSRC, RC, RN;
 
 	NowuS = uSClock();
-	uint32 NextmS = mSClock();
+	timeval NextmS = mSClock();
 
-	uint32 PrevuS = NowuS;
+	timeval PrevuS = NowuS;
 
 	kkk = 0;
 
@@ -241,8 +241,8 @@ void DoTesting(void) {
 
 
 int main() {
-	uint32 NowuS;
-	static uint32 LastUpdateuS = 0;
+	timeval NowuS;
+	static timeval LastUpdateuS = 0;
 
 	InitClocks();
 	Delay1mS(1000);
@@ -289,11 +289,14 @@ int main() {
 	while (true) {
 
 		if ((UAVXAirframe == Instrumentation) || (UAVXAirframe == IREmulation)) {
+
 			F.Signal = true;
 			StickThrottle = 0.0f;
 			RCStart = 0;
 			//F.ThrottleOpen = F.Navigate = F.ReturnHome = false;
+
 		} else {
+
 			CheckRCLoopback();
 			UpdateControls(); // avoid loop sync delay
 
@@ -349,9 +352,7 @@ int main() {
 				if (FailPreflight()) {
 					LEDOn(ledRedSel);
 					LEDOff(ledGreenSel);
-
 				} else {
-
 					LEDOff(ledRedSel);
 					LEDOn(ledGreenSel);
 
@@ -431,16 +432,17 @@ int main() {
 					F.HoldingAlt = false;
 
 					if (UAVXAirframe == Instrumentation) {
+
 						CaptureHomePosition();
 						if (F.OriginValid) { // for now only works with GPS
-
 							LEDsOff();
 							UbxSaveConfig(GPSTxSerial);
 							F.DrivesArmed = false;
-
 							State = InFlight;
 						}
+
 					} else {
+
 						if (mSClock() > mS[ArmedTimeout])
 							InitiateShutdown(ArmingTimeout);
 						else {
@@ -479,19 +481,22 @@ int main() {
 				} else
 					// became disarmed mid state change
 					State = Preflight;
-
 				break;
 			case Landing:
 				if (StickThrottle > IdleThrottle) {
+
 					mS[StartTime] = mSClock();
 					DesiredThrottle = 0.0f;
 					ResetMainTimeouts();
 					F.DrivesArmed = true;
+
 					State = InFlight;
+
 				} else {
 					if (mSClock() < mS[ThrottleIdleTimeout])
 						DesiredThrottle = IdleThrottle;
 					else {
+
 						F.DrivesArmed = CurrESCType == DCMotorsWithIdle;
 						DesiredThrottle = F.DrivesArmed ? IdleThrottle : 0.0f;
 						ZeroThrottleCompensation(); // to catch cycles between Rx updates
@@ -503,12 +508,14 @@ int main() {
 						if (Tuning) {
 							// TODO: save tuning?
 						}
+
 						UpdateNV(); // also captures stick programming
 
 						ResetMainTimeouts();
 						mSTimer(mSClock(), ThrottleIdleTimeout,
 								THR_LOW_DELAY_MS);
 						LEDOn(ledGreenSel);
+
 						State = Landed;
 					}
 				}
@@ -518,54 +525,56 @@ int main() {
 						|| F.Navigate)) {
 					TxSwitchArmed = StickArmed = false;
 					FirstPass = true; // should force fail preprocess with arming switch
+
 					State = Preflight;
+
 				} else
 					LEDsOff();
-
 				break;
 			case Launching:
-
 				LaunchFW();
-
 				if (LaunchState == finishedLaunch)
+
 					State = InFlight;
 
 				break;
 			case InFlight:
-
 				LEDChaser();
-
 				DoNavigation();
-
 				if (UAVXAirframe == Instrumentation) {
+
 					if (F.NavigationEnabled)
 						F.NewNavUpdate = false;
-				} else {
 
-					// no exit for fixed wing when using roll/yaw stick arming
+				} else { // no exit for fixed wing when using roll/yaw stick arming
 
 					if ((StickThrottle < IdleThrottle) && (IsMulticopter
 							|| (((ArmingMethod == SwitchArming)
 									|| (ArmingMethod == TxSwitchArming))
 									&& !Armed()))) {
+
 						ZeroThrottleCompensation();
 						mSTimer(mSClock(), ThrottleIdleTimeout,
 								THR_LOW_DELAY_MS);
+
 						State = Landing;
+
 					} else {
+
 						if (UpsideDownMulticopter()) {
 							InitiateShutdown(UpsideDown);
 						} else {
+
 							RateEnergySum
 									+= Sqr(Abs(Rate[X]) + Abs(Rate[Y]) + Abs(Rate[Z]));
 							RateEnergySamples++;
 							DFT8(RawAcc[X], DFT); // 145uS
+
 							DoAltitudeControl();
 						}
 					}
 				}
 				break;
-
 			case IREmulate:
 				if (!Armed())
 					State = Preflight;
@@ -578,9 +587,11 @@ int main() {
 			//Probe(0);
 
 			if ((CurrTelType == UAVXFastRawIMUTelemetry) && (State == InFlight)) {
+
 				BlackBoxEnabled = true;
 				SendRawIMU(TelemetrySerial);
 				BlackBoxEnabled = false;
+
 			}
 		}
 

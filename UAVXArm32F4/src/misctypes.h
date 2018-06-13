@@ -30,13 +30,14 @@ typedef int int32;
 typedef int64_t int64;
 typedef uint64_t uint64;
 typedef uint32_t uint32;
+typedef uint64_t timeval;
 typedef uint8 boolean;
 typedef float real32;
 typedef double real64;
 typedef void (*voidFuncPtr)(void);
 typedef void (*i16FuncPtr)(int16 * v);
 typedef unsigned char BYTE;
-typedef uint_fast8_t idx; // mainly short structure/loop indexing - was uint8 but Arm is native 32
+typedef uint_fast8_t idx; // mainly short structure/loop indexing
 
 /*
  typedef struct {

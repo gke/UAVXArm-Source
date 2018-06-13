@@ -74,7 +74,7 @@ typedef struct {
 	uint8 state;
 	uint8 index;
 	uint8 channel;
-	uint32 lastByteReceived;
+	timeval lastByteReceived;
 } RCFrameStruct_t;
 
 RCFrameStruct_t RCFrame;
@@ -106,7 +106,7 @@ typedef struct {
 #define SPEKTRUM_CHANNEL2	0x05
 
 void CheckSerialRx(void);
-void DoRCSerial(uint32 Now);
+void DoRCSerial(timeval Now);
 void DoSpektrum(void);
 void Spek1024LoopBack(void);
 
@@ -148,12 +148,12 @@ void UpdateRCMap(void);
 
 // ISR
 
-void RCSerialISR(uint32 Now);
+void RCSerialISR(timeval Now);
 void RCParallelISR(TIM_TypeDef *tim);
 void RCUSARTISR(uint8 ch);
 
 extern RCInpDefStruct_t RCInp[];
-extern uint32 RCLastFrameuS;
+extern timeval RCLastFrameuS;
 extern uint32 RCSyncWidthuS;
 extern uint32 RCFrameIntervaluS;
 extern uint8 Channel;
@@ -169,7 +169,7 @@ extern real32 DesiredCamPitchTrim;
 extern real32 ThrLow, ThrHigh, ThrNeutral;
 extern uint8 NoOfControls;
 extern int8 RCStart;
-extern uint32 NextNavSwUpdatemS;
+extern timeval NextNavSwUpdatemS;
 
 extern boolean RxLoopbackEnabled;
 

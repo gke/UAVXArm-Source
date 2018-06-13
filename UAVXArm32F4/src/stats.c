@@ -20,23 +20,21 @@
 
 #include "UAVX.h"
 
-__attribute__((always_inline))     inline void incStat(uint8 s) {
+void incStat(uint8 s) {
 #if defined(INC_STATS_TEL)
 	NV.Stats[s]++;
 #endif
 } // incStats
 
-__attribute__((always_inline))     inline void setStat(uint8 s, int16 v) {
+void setStat(uint8 s, int16 v) {
 #if defined(INC_STATS_TEL)
 	NV.Stats[s] = v;
 #endif
 } // setStats
 
 
-__attribute__((always_inline))     inline int16 currStat(uint8 s) {
-
+int16 currStat(uint8 s) {
 	return NV.Stats[s];
-
 } // currStats
 
 void ZeroStats(void) {

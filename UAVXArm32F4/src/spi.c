@@ -43,7 +43,7 @@ const SPIDefStruct SPIDef[] = {
 		{ false, spi_10_5, spi_10_5 }, //
 		{ false, spi_10_5, spi_10_5 } };
 
-SPI_TypeDef * SPISetBaudRate(uint8 devSel, boolean R) {
+SPI_TypeDef * SPISetBaudRate(uint8 spiDev, boolean R) {
 	// It would be good if there was some consistency with SPI protocols!!!
 	// All of this for the HMC5983.
 
@@ -51,11 +51,11 @@ SPI_TypeDef * SPISetBaudRate(uint8 devSel, boolean R) {
 	uint16 devRate;
 	SPI_TypeDef * SPIx;
 
-	SPIx = SPIPorts[busDev[devSel].busNo].SPIx;
+	SPIx = SPIPorts[busDev[spiDev].busNo].SPIx;
 
 	SPI_Cmd(SPIx, DISABLE);
 
-	devRate = R ? SPIDef[devSel].ReadRate : SPIDef[devSel].WriteRate;
+	devRate = R ? SPIDef[spiDev].ReadRate : SPIDef[spiDev].WriteRate;
 
 	SPIx->CR1 = (SPIx->CR1 & 0b1111111111000111) | devRate;
 	Delay1uS(5);
@@ -66,13 +66,13 @@ SPI_TypeDef * SPISetBaudRate(uint8 devSel, boolean R) {
 } // SPISetBaudRate
 
 
-void SPISelect(uint8 devSel, boolean Sel) {
+void SPISelect(uint8 spiDev, boolean Sel) {
 
 	if (Sel) {
 		Delay1uS(1);
-		DigitalWrite(&busDev[devSel].selP.P, 0);
+		DigitalWrite(&busDev[spiDev].P, 0);
 	} else
-		DigitalWrite(&busDev[devSel].selP.P, 1);
+		DigitalWrite(&busDev[spiDev].P, 1);
 
 } // SPISelect
 
@@ -105,39 +105,8 @@ uint8 SPISend(SPI_TypeDef * SPIx, uint8 d) {
 	return SPIx->DR;
 } // SPISend
 
-uint8 SPISendzzz(SPI_TypeDef * SPIx, uint8 d) {
-	uint16 SPITimeout;
 
-	SPI_I2S_SendData(SPIx, d);
-
-	SPITimeout = 0x1000;
-
-	while (SPI_I2S_GetFlagStatus(SPIx, SPI_I2S_FLAG_TXE) == RESET) {
-		if ((SPITimeout--) == 0) {
-			SPIErrors++;
-			setStat(SPIFailS, SPIErrors);
-			return (0);
-		}
-		//Delay1uS(2); ???
-	}
-
-	SPITimeout = 0x1000;
-
-	while (SPI_I2S_GetFlagStatus(SPIx, SPI_I2S_FLAG_RXNE) == RESET) {
-		if ((SPITimeout--) == 0) {
-			F.spiFatal |= true;
-			SPIErrors++;
-			setStat(SPIFailS, SPIErrors);
-			return (0);
-		}
-		//Delay1uS(2); ???
-	}
-
-	return ((uint8) SPI_I2S_ReceiveData(SPIx)); // a read for every write in full duplex
-
-} // SPISend
-
-boolean SPIReadBlock(uint8 devSel, uint8 d, uint8 len, uint8* data) {
+boolean SPIReadBlock(uint8 spiDev, uint8 d, uint8 len, uint8* data) {
 	idx i;
 	SPI_TypeDef * s;
 	uint32 r;
@@ -147,44 +116,44 @@ boolean SPIReadBlock(uint8 devSel, uint8 d, uint8 len, uint8* data) {
 
 	// KLUDGE
 
-	if ((devSel == imu0Sel) || (devSel == imu1Sel))
+	if ((spiDev == imu0Sel) || (spiDev == imu1Sel))
 		Prefix = 0x80;
-	else if (devSel == magSel) {
+	else if (spiDev == magSel) {
 		Prefix = (len > 1) ? 0xc0 : 0x80;
 	} else
 		Prefix = 0;
 
-	s = SPISetBaudRate(devSel, true);
+	s = SPISetBaudRate(spiDev, true);
 
-	SPISelect(devSel, true);
+	SPISelect(spiDev, true);
 	SPISend(s, Prefix | d); // MANY devices do not use Read if MSB set so do not OR in here
 
 	for (i = 0; i < len; i++)
 		data[i] = SPISend(s, 0);
 
-	SPISelect(devSel, false);
+	SPISelect(spiDev, false);
 
 	return (r == SPIErrors);
 
 } // SPIReadBlock
 
 
-boolean SPIWriteBlock(uint8 devSel, uint8 d, uint8 len, uint8 *data) {
+boolean SPIWriteBlock(uint8 spiDev, uint8 d, uint8 len, uint8 *data) {
 	idx i;
 	SPI_TypeDef * s;
 	uint32 r;
 
 	r = SPIErrors;
 
-	s = SPISetBaudRate(devSel, false);
+	s = SPISetBaudRate(spiDev, false);
 
-	SPISelect(devSel, true);
+	SPISelect(spiDev, true);
 	SPISend(s, d);
 
 	for (i = 0; i < len; i++)
 		SPISend(s, data[i]);
 
-	SPISelect(devSel, false);
+	SPISelect(spiDev, false);
 
 	return (r == SPIErrors);
 

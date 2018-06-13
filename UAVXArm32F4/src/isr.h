@@ -45,7 +45,7 @@ void SysTick_Handler(void);
 void SysTick_Handler(void);
 void GPSInISR(void);
 
-extern volatile uint32 sysTickUptime;
+extern volatile timeval sysTickUptime;
 extern volatile uint32 sysTickCycleCounter;
 
 

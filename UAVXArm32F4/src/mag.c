@@ -80,8 +80,8 @@ boolean ReadMagnetometer(void) {
 
 
 void GetMagnetometer(void) {
-	uint32 NowmS;
-	static uint32 LastMagUpdateuS = 0;
+	timeval NowmS;
+	static timeval LastMagUpdateuS = 0;
 	int32 a;
 
 	if (F.MagnetometerActive) {
@@ -324,9 +324,8 @@ void CalibrateHMC5XXX(uint8 s) {
 		F.MagnetometerCalibrated = true;
 	}
 
-#if defined(UAVXF4V4)
 	SendAckPacket(s, UAVXMiscPacketTag, F.MagnetometerCalibrated);
-#endif
+
 } // CalibrateHMC5XXX
 
 

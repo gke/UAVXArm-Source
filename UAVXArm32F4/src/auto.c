@@ -71,8 +71,8 @@ boolean ProbableLanding(void) {
 } // ProbableLanding
 
 boolean DoLanding(void) {
-	static uint32 LastLandUpdateuS;
-	static int32 bucketmS = 0.0f;
+	static timeval LastLandUpdateuS;
+	static int32 bucketmS = 0;
 	real32 dTmS;
 	boolean HasLanded;
 

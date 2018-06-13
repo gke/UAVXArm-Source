@@ -90,15 +90,12 @@ SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
 
 PinDef USBDisconnectPin = { false, 0, };
 
-const uint8 currGimbalType = noGimbal;
-const boolean ledsLowOn = true;
-
 DevDef busDev[maxDevSel] = {
-	{true, imu0Sel, mpu6000IMU, true, 2, 0, {true, PB12, OutPinConfig,}},  
-	{false,imu1Sel, },  
-	{true, baroSel, ms5611Baro, true, 2, 0, {true, PC5, OutPinConfig,}},
-	{true, magSel, hmc5xxxMag, true, 2, 0, {true, PC4, OutPinConfig,}},
-	{true, memSel, spiFlashMem, true, 2, 0, {true, PC3, OutPinConfig,}},
+	{true, imu0Sel, mpu6000IMU, true, 2, 0, PB12},  
+	{false, imu1Sel, },  
+	{true, baroSel, ms5611Baro, true, 2, 0, PC5},
+	{true, magSel, hmc5xxxMag, true, 2, 0, PC4},
+	{true, memSel, spiFlashMem, true, 2, 0, PC3},
 	{false, gpsSel, },
 	{false, rfSel, },
 	{false, asSel, },
@@ -106,6 +103,9 @@ DevDef busDev[maxDevSel] = {
 	{false, escSel, }
 };
 
+
+const uint8 currGimbalType = noGimbal;
+const boolean ledsLowOn = true;
 const uint8 imuSel = imu0Sel;
 
 void InitTarget(void) {

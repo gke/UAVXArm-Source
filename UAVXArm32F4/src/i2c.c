@@ -180,13 +180,13 @@ void i2c_ev_handler(uint8 CurrI2C) {
 } // i2c_ev_handler
 
 
-boolean I2CReadBlock(uint8 i2cx, uint8 id, uint8 reg, uint8 len, uint8* buf) {
+boolean I2CReadBlock(uint8 i2cDev, uint8 id, uint8 reg, uint8 len, uint8* buf) {
 	// Original source unknown but based on those in baseflight by TimeCop
 	uint32 timeout = I2C_DEFAULT_TIMEOUT;
 	idx CurrI2C;
 	const I2CPortDef * d;
 
-	CurrI2C = i2cx;
+	CurrI2C = busDev[i2cDev].busNo;
 	d = &I2CPorts[CurrI2C];
 
 	I2CState[CurrI2C].addr = id;
@@ -221,7 +221,7 @@ boolean I2CReadBlock(uint8 i2cx, uint8 id, uint8 reg, uint8 len, uint8* buf) {
 	return (true);
 } // I2CReadBlock
 
-boolean I2CWriteBlock(uint8 i2cx, uint8 id, uint8 reg, uint8 len_,
+boolean I2CWriteBlock(uint8 i2cDev, uint8 id, uint8 reg, uint8 len_,
 		uint8 *data) {
 	// Original source unknown but based on those in baseflight by TimeCop
 	idx i, CurrI2C;
@@ -232,7 +232,7 @@ boolean I2CWriteBlock(uint8 i2cx, uint8 id, uint8 reg, uint8 len_,
 	if (len_ > 127)
 		return (false);
 
-	CurrI2C = i2cx;
+	CurrI2C = busDev[i2cDev].busNo;
 	d = &I2CPorts[CurrI2C];
 
 	I2CState[CurrI2C].addr = id;

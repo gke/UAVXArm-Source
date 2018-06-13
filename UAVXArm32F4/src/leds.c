@@ -503,7 +503,7 @@ void RestoreLEDs(void) {
 } // RestoreLEDs
 
 void LEDChaser(void) {
-	uint32 NowmS;
+	timeval NowmS;
 
 	NowmS = mSClock();
 	if (NowmS > mS[LEDChaserUpdate]) {

@@ -27,9 +27,9 @@ void SendFrSkyHubTelemetry(uint8 s);
 void RxFrSkySPort(uint8 v);
 void TxFrSkySPort(uint8 s);
 
-extern uint32 FrSkyDLinkuS;
+extern timeval FrSkyDLinkuS;
 
-extern uint32 FrSkySPortLastTxuS;
+extern timeval FrSkySPortLastTxuS;
 extern uint8 FrSkyRxPacketByteCount;
 extern uint8 FrSkyRxPacketLength;
 extern uint8 FrSkyReceivedPacketTag;

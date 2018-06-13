@@ -43,7 +43,7 @@ uint8 MPU6000DLPF = 0;
 uint8 MPU6XXXDHPF = 0;
 
 real32 MPU6XXXTemperature = 25.0f;
-uint32 mpu6xxxLastUpdateuS = 0;
+timeval mpu6xxxLastUpdateuS = 0;
 
 boolean UseGyroOS = false;
 
@@ -75,9 +75,9 @@ void ComputeMPU6XXXTemperature(uint8 imuSel, int16 T) {
 
 
 void ReadGyro(uint8 imuSel) { // Roll Right +, Pitch Up +, Yaw ACW +
-	static uint32 LastUpdateuS = 0;
+	static timeval LastUpdateuS = 0;
 	real32 GyrodT;
-	uint32 NowuS;
+	timeval NowuS;
 	int16 B[3];
 	static int16 BP[3] = { 0, };
 	idx a;
@@ -126,8 +126,8 @@ void ReadAcc(uint8 imuSel) { // Roll Right +, Pitch Up +, Yaw ACW +
 } // ReadAcc
 
 void ReadFilteredGyroAndAcc(uint8 imuSel) {
-	static uint32 LastUpdateuS = 0;
-	uint32_t NowuS;
+	static timeval LastUpdateuS = 0;
+	timeval NowuS;
 	real32 dT;
 	uint8 a;
 
@@ -315,7 +315,10 @@ void CheckMPU6XXXActive(uint8 imuSel) {
 
 	Delay1mS(35);
 	MPU6XXXId = SIORead(imuSel, MPU_RA_WHO_AM_I);
-	r = MPU6XXXId == ((busDev[imuSel].i2cId >> 1) & 0xfe);
+	if (busDev[imuSel].useSPI)
+	   r = MPU6XXXId > 0;
+	else
+	    r = MPU6XXXId == ((busDev[imuSel].i2cId >> 1) & 0xfe);
 
 	F.IMUActive = r;
 

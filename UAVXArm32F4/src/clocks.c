@@ -68,7 +68,7 @@ void TimingDelay(unsigned int tick) {
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-volatile uint32 TicksuS;
+volatile timeval TicksuS;
 
 void cycleCounterInit(void) {
 	RCC_ClocksTypeDef clocks;
@@ -82,8 +82,8 @@ void cycleCounterInit(void) {
 } // cycleCounterInit
 
 
-uint32 uSClock(void) { // wraps at 71 minutes
-	volatile uint32 ms, cycle_cnt;
+timeval uSClock(void) { // wraps at 71 minutes
+	volatile timeval ms, cycle_cnt;
 
 	do {
 		ms = sysTickUptime;
@@ -98,7 +98,7 @@ uint32 uSClock(void) { // wraps at 71 minutes
 
 void Delay1uS(uint16 d) {
 	// TODO: needs round up
-	uint32 TimeOut;
+	timeval TimeOut;
 
 	TimeOut = uSClock() + d;
 	while (uSClock() < TimeOut) {
@@ -107,13 +107,13 @@ void Delay1uS(uint16 d) {
 } // Delay1uS
 
 
-__attribute__((always_inline))      inline uint32 mSClock(void) {
+timeval mSClock(void) {
 	return (sysTickUptime);
 } // mSClock
 
 void Delay1mS(uint16 d) {
 	// TODO: needs round up
-	uint32 TimeOut;
+	timeval TimeOut;
 
 	TimeOut = mSClock() + d + 1; // clock may be rolling over
 	while (mSClock() < TimeOut) {
@@ -121,7 +121,7 @@ void Delay1mS(uint16 d) {
 
 } // Delay1mS
 
-real32 dTUpdate(uint32 NowuS, uint32 * LastUpdateuS) {
+real32 dTUpdate(timeval NowuS, timeval * LastUpdateuS) {
 	real32 dT;
 
 	NowuS = uSClock();
@@ -132,11 +132,11 @@ real32 dTUpdate(uint32 NowuS, uint32 * LastUpdateuS) {
 } // dtUpdate
 
 
-void mSTimer(uint32 NowmS, uint8 t, int32 TimePeriod) {
+void mSTimer(timeval NowmS, uint8 t, int32 TimePeriod) {
 	mS[t] = NowmS + TimePeriod;
 } // mSTimer
 
-void uSTimer(uint32 NowuS, uint8 t, int32 TimePeriod) {
+void uSTimer(timeval NowuS, uint8 t, int32 TimePeriod) {
 	uS[t] = NowuS + TimePeriod;
 } // uSTimer
 
