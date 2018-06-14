@@ -95,7 +95,7 @@ void autotuneUpdateGains(pidAutotuneData_t * data) {
 }
 
 void autotuneCheckUpdateGains(void) {
-	const timeval NowmS = mSClock();
+	const timemS NowmS = mSClock();
 
 	if ((NowmS - lastGainsUpdateTime) >= AUTOTUNE_SAVE_PERIOD) {
 		// If pilot will exit autotune we'll restore values we are flying now
@@ -138,7 +138,7 @@ void autotuneUpdateState(void) {
 
 void autotuneUpdate(const idx a, real32 desiredRateDps, real32 reachedRateDps,
 		real32 pidOutput) {
-	const timeval NowmS = mSClock();
+	const timemS NowmS = mSClock();
 	const real32 absDesiredRateDps = Abs(desiredRateDps);
 	real32 maxDesiredRate = 123; //zzz A[]] * 10.0f;
 	pidAutotuneState_e newState;

@@ -52,7 +52,7 @@ real32 BaroTemperature, BaroPressure, CompensatedBaroPressure;
 real32 OriginAltitude, BaroAltitude, AltitudeP, AccZ;
 real32 ROC, ROCF;
 real32 BaroRawAltitude, BaroRawAltitudeP;
-timeval NextBaroUpdateuS;
+timeuS NextBaroUpdateuS;
 real32 Airspeed;
 uint8 CurrRFSensorType;
 
@@ -237,9 +237,9 @@ void StartBaro(boolean ReadPressure) {
 
 
 void GetBaro(void) {
-	static timeval LastBaroUpdateuS = 0;
+	static timeuS LastBaroUpdateuS = 0;
 	real32 BarodT;
-	timeval NowuS;
+	timeuS NowuS;
 	uint8 B[3];
 
 	if (F.BaroActive) {
@@ -384,7 +384,7 @@ void GetRangefinderAltitude(void);
 void InitRangefinder(void);
 
 real32 RangefinderAltitude;
-timeval LastRangefinderUpdateuS = 0;
+timeuS LastRangefinderUpdateuS = 0;
 real32 RFdT, RFdTR;
 real32 MaxSonarAltitude;
 
@@ -677,8 +677,8 @@ void SelectAltitudeSensor(void) {
 #endif
 
 void UpdateAltitudeEstimates(void) {
-	static timeval LastAltUpdatemS = 0;
-	timeval NowmS;
+	static timemS LastAltUpdatemS = 0;
+	timemS NowmS;
 
 	GetBaro();
 	GetRangefinderAltitude();

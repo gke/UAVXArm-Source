@@ -36,7 +36,7 @@
 #include "UAVX.h"
 
 
-volatile timeval sd_card_timer       = 0;
+volatile timemS sd_card_timer       = 0;
 
 void checkResetType(void);
 

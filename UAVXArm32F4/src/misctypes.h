@@ -30,13 +30,16 @@ typedef int int32;
 typedef int64_t int64;
 typedef uint64_t uint64;
 typedef uint32_t uint32;
-typedef uint64_t timeval;
+
 typedef uint8 boolean;
 typedef float real32;
 typedef double real64;
 typedef void (*voidFuncPtr)(void);
 typedef void (*i16FuncPtr)(int16 * v);
 typedef unsigned char BYTE;
+
+typedef uint64_t timeuS; // 1423 hours
+typedef uint32_t timemS; // 1193 hours
 typedef uint_fast8_t idx; // mainly short structure/loop indexing
 
 /*

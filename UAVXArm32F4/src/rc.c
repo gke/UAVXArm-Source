@@ -49,9 +49,9 @@ uint8 RSSI;
 
 RCInpDefStruct_t RCInp[RC_MAX_CHANNELS];
 
-timeval RCLastFrameuS = 0;
-uint32 RCSyncWidthuS = 0;
-uint32 RCFrameIntervaluS = 0;
+timeuS RCLastFrameuS = 0;
+timeuS RCSyncWidthuS = 0;
+timeuS RCFrameIntervaluS = 0;
 uint8 Channel = 0;
 
 int8 SignalCount = RC_GOOD_BUCKET_MAX;
@@ -67,7 +67,7 @@ real32 DesiredCamPitchTrim;
 real32 ThrLow, ThrHigh, ThrNeutral;
 real32 CurrMaxRollPitchStick;
 int8 RCStart;
-timeval NextNavSwUpdatemS = 0;
+timemS NextNavSwUpdatemS = 0;
 
 boolean RxLoopbackEnabled = false;
 
@@ -80,9 +80,9 @@ void EnableRC(void) {
 
 } // EnableRC
 
-void RCSerialISR(timeval TimerVal) {
+void RCSerialISR(timeuS TimerVal) {
 	int32 Temp;
-	timeval NowuS;
+	timeuS NowuS;
 	int16 Width;
 
 	NowuS = uSClock();
@@ -135,7 +135,7 @@ void RCParallelISR(TIM_TypeDef *tim) {
 	int32 Width;
 	RCInpDefStruct_t * RCPtr;
 	const TIMChannelDef * u;
-	timeval NowuS;
+	timeuS NowuS;
 
 	// scan ALL RC inputs as the channel pulses arrive
 	// in arbitrary order depending on Rx
@@ -250,7 +250,7 @@ void DoSBus(void) {
 
 } // DoSBus
 
-void CheckSBusFlags(timeval NowuS) {
+void CheckSBusFlags(timeuS NowuS) {
 
 	SBusSignalLost = (RCFrame.u.b[22] & SBUS_SIGNALLOST_MASK) != 0;
 	SBusFailsafe = (RCFrame.u.b[22] & SBUS_FAILSAFE_MASK) != 0;
@@ -277,11 +277,11 @@ void RCUSARTISR(uint8 v) { // based on MultiWii
 		SBusWaitSentinel, SBusWaitData, SBusWaitEnd
 	};
 
-	timeval Interval, NowuS;
+	timeuS IntervaluS, NowuS;
 
 	NowuS = uSClock();
-	Interval = NowuS - RCFrame.lastByteReceived; // uS clock wraps every 71 minutes - ignore
-	RCFrame.lastByteReceived = NowuS;
+	IntervaluS = NowuS - RCFrame.lastByteReceiveduS; // uS clock wraps every 71 minutes - ignore
+	RCFrame.lastByteReceiveduS = NowuS;
 
 	switch (CurrRxType) {
 	case FrSkyFBusRx:
@@ -306,8 +306,8 @@ void RCUSARTISR(uint8 v) { // based on MultiWii
 		break;
 	case FutabaSBusRx:
 
-		if (Interval > SBUS_MIN_SYNC_PAUSE_US) {
-			RCSyncWidthuS = Interval;
+		if (IntervaluS > SBUS_MIN_SYNC_PAUSE_US) {
+			RCSyncWidthuS = IntervaluS;
 			RCFrame.index = 0;
 			RCFrame.state = SBusWaitSentinel;
 		}
@@ -337,8 +337,8 @@ void RCUSARTISR(uint8 v) { // based on MultiWii
 	case Deltang1024Rx:
 	case Spektrum1024Rx:
 	case Spektrum2048Rx:
-		if (Interval > (uint32) MIN_SPEK_SYNC_PAUSE_US) {
-			RCSyncWidthuS = Interval;
+		if (IntervaluS > (uint32) MIN_SPEK_SYNC_PAUSE_US) {
+			RCSyncWidthuS = IntervaluS;
 			RCFrame.index = 0;
 		}
 
@@ -532,7 +532,7 @@ void UpdateRCMap(void) {
 } // UpdateRCMap
 
 void InitRC(void) {
-	timeval NowmS;
+	timemS NowmS;
 	uint8 c;
 	RCInpDefStruct_t * R;
 
@@ -676,10 +676,10 @@ void SBusLoopback(void) {
 
 	static RCFrameStruct_t TestFrame;
 
-	static timeval NextUpdateuS = 0;
+	static timeuS NextUpdateuS = 0;
 	static boolean Primed = false;
 	static uint16 Wiggle = 0;
-	static timeval NextWigglemS = 0;
+	static timemS NextWigglemS = 0;
 	idx i;
 
 	if (!Primed) {
@@ -730,13 +730,13 @@ void SpekLoopback(boolean HiRes) {
 			1500, 1600, 1700 };
 	int8 SpekByte, SpekCh;
 	int16 v;
-	static timeval NextUpdateuS = 0;
+	static timeuS NextUpdateuS = 0;
 	static uint8 LBFrame[56];
 	static boolean Primed = false;
 	//static uint16 LostFrameCount = 0;
 	static boolean TicTac = true;
 	static uint16 Wiggle = 0;
-	static timeval NextWigglemS = 0;
+	static timemS NextWigglemS = 0;
 	idx i;
 
 	uint8 Channels = HiRes ? 12 : 7;
@@ -760,7 +760,7 @@ void SpekLoopback(boolean HiRes) {
 		Primed = true;
 	}
 
-	timeval NowuS = uSClock();
+	timeuS NowuS = uSClock();
 
 	if (NowuS > NextUpdateuS) {
 		if (TicTac) {
@@ -895,7 +895,7 @@ void UpdateControls(void) {
 } // UpdateControls
 
 void CheckThrottleMoved(void) {
-	timeval NowmS;
+	timemS NowmS;
 
 	NowmS = mSClock();
 	if (NowmS < mS[ThrottleUpdate])

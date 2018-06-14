@@ -23,10 +23,10 @@
 Flags F;
 uint8 State;
 boolean FirstIMU;
-uint32 CurrPIDCycleuS = PID_CYCLE_2000US;
+timeuS CurrPIDCycleuS = PID_CYCLE_2000US;
 real32 CurrPIDCycleS;
-volatile timeval uS[uSLastArrayEntry];
-volatile timeval mS[mSLastArrayEntry];
+volatile timeuS uS[uSLastArrayEntry];
+volatile timemS mS[mSLastArrayEntry];
 
 uint8 ch;
 int8 i, m;
@@ -62,7 +62,7 @@ void DoHouseKeeping(void) {
 
 } // DoHousekeeping
 
-void CalculatedT(timeval NowuS) {
+void CalculatedT(timeuS NowuS) {
 
 	dT = dTUpdate(NowuS, &LastInertialUpdateuS);
 	dTOn2 = 0.5f * dT;
@@ -72,7 +72,7 @@ void CalculatedT(timeval NowuS) {
 } // CalculatedT
 
 void ResetMainTimeouts(void) {
-	timeval NowmS;
+	timemS NowmS;
 
 	NowmS = mSClock();
 	mSTimer(mSClock(), CrashedTimeout, CRASHED_TIMEOUT_MS);
@@ -241,8 +241,8 @@ void DoTesting(void) {
 
 
 int main() {
-	timeval NowuS;
-	static timeval LastUpdateuS = 0;
+	timeuS NowuS;
+	static timeuS LastUpdateuS = 0;
 
 	InitClocks();
 	Delay1mS(1000);

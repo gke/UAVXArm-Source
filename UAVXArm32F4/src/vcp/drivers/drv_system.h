@@ -63,6 +63,6 @@
 #define TM_DELAY_SetTime2(time)			(sd_card_timer = (time))
 
 // sd card support
-extern volatile timeval sd_card_timer;
+extern volatile timemS sd_card_timer;
 
 #endif

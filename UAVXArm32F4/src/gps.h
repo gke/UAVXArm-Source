@@ -39,8 +39,8 @@ typedef struct {
 	uint8 day;
 	uint8 noofsats;
 	uint8 fix;
-	timeval missionTime, startTime;
-	timeval lastVelUpdatemS, lastPosUpdatemS;
+	timemS missionTime, startTime;
+	timemS lastVelUpdatemS, lastPosUpdatemS;
 	real32 altitude, relAltitude, originAltitude, geoidheight;
 	GPSCoord C[3];
 	real32 longitudeCorrection;
@@ -69,13 +69,13 @@ typedef struct {
 	//real32 DOP[3];
 	real32 gDOP;
 
-	timeval TPtowMS; // timepulse time of week (ms)
-	timeval lastReceivedTPtowMS;
+	timemS TPtowMS; // timepulse time of week (ms)
+	timemS lastReceivedTPtowMS;
 
-	timeval lastTimepulse;
+	timemS lastTimepulse;
 	//uint32 lastPosUpdate;
 	//uint32 lastVelUpdate;
-	timeval lastMessage;
+	timemS lastMessage;
 	boolean gpsVelFlag; // gke
 	//int32 microsPerSecond;
 } GPSRec;
@@ -118,7 +118,7 @@ extern const uint8 NMEATags[MAX_NMEA_SENTENCES][5];
 
 extern uint8 GPSPacketTag;
 extern real32 GPSdT, GPSdTR;
-extern timeval LastGPSUpdatemS;
+extern timemS LastGPSUpdatemS;
 extern uint8 nll, cc, lo, hi;
 extern boolean EmptyField;
 extern real32 GPSLag;

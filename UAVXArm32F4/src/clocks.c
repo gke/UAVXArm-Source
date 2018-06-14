@@ -68,7 +68,7 @@ void TimingDelay(unsigned int tick) {
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-volatile timeval TicksuS;
+volatile timeuS TicksuS;
 
 void cycleCounterInit(void) {
 	RCC_ClocksTypeDef clocks;
@@ -82,8 +82,9 @@ void cycleCounterInit(void) {
 } // cycleCounterInit
 
 
-timeval uSClock(void) { // wraps at 71 minutes
-	volatile timeval ms, cycle_cnt;
+timeuS uSClock(void) {
+	volatile timemS ms;
+	volatile int64 cycle_cnt;
 
 	do {
 		ms = sysTickUptime;
@@ -91,37 +92,37 @@ timeval uSClock(void) { // wraps at 71 minutes
 		asm volatile("\tnop\n");
 	} while (ms != sysTickUptime);
 
-	return (ms * 1000) + (TicksuS * 1000 - cycle_cnt) / TicksuS;
+	return ((timeuS)ms * 1000) + (TicksuS * 1000 - cycle_cnt) / TicksuS;
 	//return (ms * 1000) + ((8000 - cycle_cnt) >> 3);
 
 } // uSClock
 
 void Delay1uS(uint16 d) {
 	// TODO: needs round up
-	timeval TimeOut;
+	timeuS TimeOutuS;
 
-	TimeOut = uSClock() + d;
-	while (uSClock() < TimeOut) {
+	TimeOutuS = uSClock() + d;
+	while (uSClock() < TimeOutuS) {
 	};
 
 } // Delay1uS
 
 
-timeval mSClock(void) {
+timemS mSClock(void) {
 	return (sysTickUptime);
 } // mSClock
 
 void Delay1mS(uint16 d) {
 	// TODO: needs round up
-	timeval TimeOut;
+	timemS TimeOutmS;
 
-	TimeOut = mSClock() + d + 1; // clock may be rolling over
-	while (mSClock() < TimeOut) {
+	TimeOutmS = mSClock() + (timemS)d + 1; // clock may be rolling over
+	while (mSClock() < TimeOutmS) {
 	};
 
 } // Delay1mS
 
-real32 dTUpdate(timeval NowuS, timeval * LastUpdateuS) {
+real32 dTUpdate(timeuS NowuS, timeuS * LastUpdateuS) {
 	real32 dT;
 
 	NowuS = uSClock();
@@ -132,12 +133,12 @@ real32 dTUpdate(timeval NowuS, timeval * LastUpdateuS) {
 } // dtUpdate
 
 
-void mSTimer(timeval NowmS, uint8 t, int32 TimePeriod) {
-	mS[t] = NowmS + TimePeriod;
+void mSTimer(timemS NowmS, uint8 t, timemS TimePeriodmS) {
+	mS[t] = NowmS + TimePeriodmS;
 } // mSTimer
 
-void uSTimer(timeval NowuS, uint8 t, int32 TimePeriod) {
-	uS[t] = NowuS + TimePeriod;
+void uSTimer(timeuS NowuS, uint8 t, timeuS TimePerioduS) {
+	uS[t] = NowuS + TimePerioduS;
 } // uSTimer
 
 

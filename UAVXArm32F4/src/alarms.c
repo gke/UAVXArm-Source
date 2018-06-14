@@ -91,21 +91,20 @@ boolean Armed(void) {
 boolean FailPreflight(void) {
 	boolean r;
 
-	r = !F.Signal //
-			|| (RCStart > 0) //
-			|| ((Armed() && FirstPass) //
-					&& !((UAVXAirframe == Instrumentation) || (UAVXAirframe
-							== IREmulation))) //
-			|| (RC[NavModeRC] > FromPercent(20)) //
-			|| F.ThrottleOpen //
-			|| !F.IMUActive //
-			|| !F.IMUCalibrated
-			|| ((busDev[baroSel].type != noBaro)&&!F.BaroActive) //
-			|| (F.IsFixedWing || ((busDev[magSel].type != noMag) && !(F.MagnetometerActive && F.MagnetometerCalibrated)))//
-			|| F.LowBatt //
-			|| F.spiFatal //
-			|| F.i2cFatal //
-			|| (F.ReturnHome || F.Navigate);
+	r = !((UAVXAirframe == Instrumentation) || (UAVXAirframe == IREmulation) || ( //
+			F.Signal //
+		&& (RCStart <= 0) //
+		&& !(Armed() && FirstPass) //
+		&& !F.ThrottleOpen //
+		&& (RC[NavModeRC] <= FromPercent(20)) //
+		&& F.IMUActive //
+		&& F.IMUCalibrated //
+		&& (F.BaroActive || (busDev[baroSel].type == noBaro)) //
+		&& ((F.MagnetometerActive && F.MagnetometerCalibrated) //
+				|| ((busDev[magSel].type == noMag) //
+				|| F.IsFixedWing)) //
+		&& !(F.LowBatt || F.spiFatal || F.i2cFatal || F.ReturnHome || F.Navigate) //
+		));
 
 	PreflightFail = F.ReturnHome || F.Navigate || !F.Signal;
 
@@ -115,7 +114,7 @@ boolean FailPreflight(void) {
 
 
 void DoCalibrationAlarm(void) {
-	static timeval TimeoutmS = 0;
+	static timemS TimeoutmS = 0;
 
 	if (!F.IMUCalibrated || !((F.MagnetometerActive && F.MagnetometerCalibrated) || F.IsFixedWing)) {
 		if (mSClock() > TimeoutmS) {
@@ -128,22 +127,22 @@ void DoCalibrationAlarm(void) {
 
 void DoBeep(uint8 t, uint8 d) {
 	int32 i;
-	timeval Timeout;
+	timeuS TimeoutuS;
 
 	BeeperOn();
 	for (i = 0; i < (t * 100); i++) {
-		Timeout = uSClock() + 500;
+		TimeoutuS = uSClock() + 500;
 		do {
 			GetBaro(); // hammer it to warm it up!
-		} while (uSClock() < Timeout);
+		} while (uSClock() < TimeoutuS);
 	}
 	BeeperOff();
 
 	for (i = 0; i < (d * 100); i++) {
-		Timeout = uSClock() + 500;
+		TimeoutuS = uSClock() + 500;
 		do {
 			GetBaro();
-		} while (uSClock() < Timeout);
+		} while (uSClock() < TimeoutuS);
 	}
 } // DoBeep
 

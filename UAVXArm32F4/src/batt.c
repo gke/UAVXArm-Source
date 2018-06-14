@@ -61,7 +61,7 @@ void CheckBatteries(void) {
 	enum lvcStates {
 		lvcStart = 0, lvcMonitor, lvcWarning, lvcWait, lvcLand
 	};
-	timeval NowmS;
+	timemS NowmS;
 	uint16 dTmS;
 
 	NowmS = mSClock();

@@ -23,23 +23,23 @@
 #include "UAVX.h"
 
 const struct {
-	timeval waittimeoutmS;
+	timemS waittimeoutmS;
 	uint32 timethreshmS;
 	real32 velthresh;
 	real32 accthresh;
 	real32 idlethrottle;
-	timeval glidemS;
-	timeval spinupmS;
-	timeval timemS;
+	timemS glidemS;
+	timemS spinupmS;
+	timemS timemS;
 	real32 angle;
 	real32 swingrate;
 } Launch = { 3000, 40, 3.0f, GRAVITY_MPS_S * 1.5f, FromPercent(0), 500, 300,
 		5000L, DegreesToRadians(45), DegreesToRadians(100) };
 
 uint8 LaunchState = initLaunch;
-timeval LaunchTimermS;
+timemS LaunchTimermS;
 
-boolean LaunchDetected(timeval NowmS) { // main contribution from iNav
+boolean LaunchDetected(timemS NowmS) { // main contribution from iNav
 	real32 swingVel;
 	boolean isHandLaunched, isSwingLaunched, AngleOK, Launched;
 
@@ -73,7 +73,7 @@ void OverrideSticks(void) {
 } // OverrideSticks
 
 
-real32 ThrottleUp(timeval TimemS) {
+real32 ThrottleUp(timemS TimemS) {
 	real32 Thr;
 
 	if (Launch.spinupmS > 0) { // ramp up motor(s)
@@ -88,8 +88,8 @@ real32 ThrottleUp(timeval TimemS) {
 } // ThrottleUp
 
 void LaunchFW(void) {
-	static timeval MotorStartTimemS;
-	timeval NowmS;
+	static timemS MotorStartTimemS;
+	timemS NowmS;
 
 	NowmS = mSClock();
 

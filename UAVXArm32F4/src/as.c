@@ -103,7 +103,7 @@ void ReadASDiffPressureI2C(void) {
 
 } // ReadAirspeedI2C
 
-timeval NextASUpdatemS = 0;
+timemS NextASUpdatemS = 0;
 
 void InitASDiffPressureI2C(void) {
 

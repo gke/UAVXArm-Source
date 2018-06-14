@@ -70,6 +70,7 @@ void ClassifyAFType(void) {
 	IsMulticopter = !(F.IsFixedWing || (AF == VTOLAF) || (AF == Heli90AF)
 			|| (AF == Heli120AF));
 
+
 	OrientationRad = DegreesToRadians(AFOrientation[AF]);
 	OrientS = sinf(OrientationRad);
 	OrientC = cosf(OrientationRad);
@@ -391,7 +392,7 @@ void AccTrimStickAdjust(real32 BFTrim, real32 LRTrim) {
 
 void UpdateSticksState(void) {
 	// pattern scheme from MultiWii
-	timeval NowmS;
+	timemS NowmS;
 	uint8 pattern = 0;
 	idx i;
 
@@ -439,7 +440,7 @@ void UpdateSticksState(void) {
 
 
 void DoStickProgramming(void) {
-	timeval NowmS;
+	timemS NowmS;
 	int8 NewCurrPS;
 	real32 BFTrim, LRTrim;
 	boolean Changed;

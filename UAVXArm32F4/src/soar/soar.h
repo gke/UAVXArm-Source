@@ -27,7 +27,7 @@ typedef struct {
 
 // Thermalling log structure
 struct {
-	timeval mS;
+	timemS mS;
 	real32 vario;
 	real32 dx;
 	real32 dy;

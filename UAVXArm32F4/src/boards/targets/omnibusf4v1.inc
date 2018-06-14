@@ -36,18 +36,20 @@
 #endif
 */
 
-PinDef RCPins[MAX_RC_INPUTS] = { };
+PinDef RCPins[MAX_RC_INPUTS] = {
+		
+		
+};
 
 PinDef PWMPins[MAX_PWM_OUTPUTS] = {
 	{true, PB0, PWMPinConfig, PWMOut_3_3},
 	{true, PB1, PWMPinConfig, PWMOut_3_4},
 	{true, PA3, PWMPinConfig, PWMOut_2_4},
 	{true, PA2, PWMPinConfig, PWMOut_2_3},	 
-	{true, PA1, PWMPinConfig, PWMOut_5_2},
 #if defined(IS_PRO)
     {true, PB6, PWMPinConfig, PWMOut_4_1},
 #else
-    {false, 0 },
+    {true, PA1, PWMPinConfig, PWMOut_5_2},
 #endif	
 	{true, PA8, PWMPinConfig, PWMOut_1_1},
 };
@@ -89,11 +91,13 @@ AnalogPinDef AnalogPins[MAX_ANALOG_CHANNELS] = { //
 
 PinDef USBDisconnectPin = {true, PA12, OutPinConfig,};
 
-DevDef busDev[maxDevSel] = { 	 	
+//imu0Sel,imu1Sel,baroSel,magSel,memSel,gpsSel,rfSel,asSel,flowSel,escSel, maxDevSel
+DevDef busDev[maxDevSel] = { // MUST be in enum order otherwise CheckBusDev fails	 	
 	{true, imu0Sel, mpu6000IMU, true, 1, 0, PA4}, 
 	{false, imu1Sel, }, 
-	{false, baroSel, ms5611Baro, false, 2, MS56XX_ID,},
-	{false, magSel, hmc5xxxMag, false, 2, HMC5XXX_ID,},
+	{false, baroSel, noBaro },//baroSel, ms5611Baro, false, 2, MS56XX_ID,},
+	{false, magSel, noMag, }, //magSel, hmc5xxxMag, false, 2, HMC5XXX_ID,},
+	{false, memSel, noMem, }, 
 	{false, gpsSel, },
 	{false, rfSel, },
 	{false, asSel, },

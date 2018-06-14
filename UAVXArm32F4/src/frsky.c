@@ -113,7 +113,7 @@ enum {
 
 };
 
-timeval FrSkyDLinkuS;
+timeuS FrSkyDLinkuS;
 
 uint16 MakeFrac(real32 v, uint16 s) {
 	return (Abs((int32)(v * s)) % s);
@@ -206,7 +206,7 @@ void TxFrSkyHubTemperature2(uint8 s) {
 } // TxFrSkyHubTemperature2
 
 void TxFrSkyHubTime(uint8 s) {
-	timeval seconds = mSClock() / 1000;
+	timemS seconds = mSClock() / 1000;
 	uint8 minutes = (seconds / 60) % 60;
 
 	// if we fly for more than an hour, something's wrong anyway
@@ -466,7 +466,7 @@ const uint16 SPortID[] = { FSSP_ID_SPEED, FSSP_ID_VFAS, FSSP_ID_CURRENT,
 
 uint16 FrSkyTxCheckSum, FrSkyRxCheckSum;
 
-timeval FrSkySPortLastTxuS = 0;
+timeuS FrSkySPortLastTxuS = 0;
 uint8 FrSkyRxPacketByteCount;
 uint8 FrSkyRxPacketLength;
 uint8 FrSkyReceivedPacketTag;

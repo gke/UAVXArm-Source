@@ -23,7 +23,7 @@
 
 #define MAX_MAG_YAW_RATE_RADPS DegreesToRadians(60) // TODO: 180 may be too high - above this rate AHRS compensation of heading is zero
 real32 dT, dTR, dTOn2, dTROn2;
-timeval LastInertialUpdateuS = 0;
+timeuS LastInertialUpdateuS = 0;
 real32 AccConfidenceSDevR = 5.0f;
 real32 AccConfidence;
 real32 AccZ;
@@ -335,7 +335,7 @@ void MadgwickUpdate(real32 gx, real32 gy, real32 gz, real32 ax,
 
 
 void TrackPitchAttitude(void) {
-	static timeval GlidingTimemS = 0;
+	static timemS GlidingTimemS = 0;
 
 	if (F.IsFixedWing && (DesiredThrottle < IdleThrottle)
 			&& (State == InFlight)) {

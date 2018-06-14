@@ -28,13 +28,13 @@
 
 #define FLAG_BYTES  10
 
-extern volatile timeval mS[];
-extern volatile timeval uS[];
+extern volatile timemS mS[];
+extern volatile timeuS uS[];
 extern real32 dT, dTR, dTOn2, dTROn2;
-extern uint32 CurrPIDCycleuS;
+extern timeuS CurrPIDCycleuS;
 extern real32 CurrPIDCycleS;
-extern timeval StartCycleuS;
-extern timeval LastUpdateuS;
+extern timeuS StartCycleuS;
+extern timeuS LastUpdateuS;
 extern const char SerHello[];
 
 enum uSTimes {

@@ -1192,7 +1192,7 @@ void CheckTelemetry(uint8 s) {
 	// KLUDGE - MAVLink is only active when armed as we need UAVXGUI
 	// which uses UAVXTelemetry for reconfiguration.
 
-	timeval NowmS;
+	timemS NowmS;
 
 	if (!(F.UsingMAVLink && (Armed() || (UAVXAirframe == Instrumentation))))
 		UAVXPollRx(s);

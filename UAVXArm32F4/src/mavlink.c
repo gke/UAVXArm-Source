@@ -338,9 +338,9 @@ void mavlinkPollRx(uint8 s) {
 
 
 void mavlinkUpdate(uint8 s) {
-	static timeval LastHeartbeatmS = 0;
+	static timemS LastHeartbeatmS = 0;
 	static uint8 Tick = 0;
-	timeval NowmS;
+	timemS NowmS;
 
 	NowmS = mSClock();
 

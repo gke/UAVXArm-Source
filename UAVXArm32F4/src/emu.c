@@ -80,14 +80,14 @@ real32 Thermal(real32 East, real32 North) {
 
 
 void DoEmulation(void) {
-	static timeval LastAltUpdatemS = 0;
+	static timemS LastAltUpdatemS = 0;
 	const real32 RollPitchInertiaR = (12.0f / (EM_MASS * Sqr(EM_ARM_LEN)));
 	const real32 InertiaR[3] = { RollPitchInertiaR, RollPitchInertiaR,
 			RollPitchInertiaR * 3.0f };
 	real32 Temp, Accel, Thrust;
 	int32 a;
 	real32 EffSink;
-	timeval NowmS;
+	timemS NowmS;
 
 	if (F.IsFixedWing) {
 
@@ -198,7 +198,7 @@ void DoEmulation(void) {
 
 
 void GPSEmulation(void) {
-	timeval NowmS;
+	timemS NowmS;
 
 	while (SerialAvailable(GPSRxSerial))
 		RxChar(GPSRxSerial); // flush

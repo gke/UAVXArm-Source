@@ -80,8 +80,8 @@ boolean ReadMagnetometer(void) {
 
 
 void GetMagnetometer(void) {
-	timeval NowmS;
-	static timeval LastMagUpdateuS = 0;
+	timemS NowmS;
+	static timeuS LastMagUpdateuS = 0;
 	int32 a;
 
 	if (F.MagnetometerActive) {

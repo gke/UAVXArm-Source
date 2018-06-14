@@ -37,6 +37,7 @@ const uint8 SM[] = { ThrottleC, RightAileronC, LeftAileronC, ElevatorC,
 
 real32 PWSense[MAX_PWM_OUTPUTS];
 real32 FWAileronDifferentialFrac = 0.0f;
+
 real32 OrientationRad = 0.0f;
 real32 OrientS = 0.0f;
 real32 OrientC = 1.0f;

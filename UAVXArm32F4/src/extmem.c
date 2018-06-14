@@ -131,7 +131,7 @@ boolean WriteBlockExtMem(uint32 a, uint16 l, int8 *v) {
 } // WriteBlockMem
 
 boolean EraseExtMem(void) {
-	timeval TimeoutmS;
+	timemS TimeoutmS;
 	uint32 a;
 	int8 B[MEM_BUFFER_SIZE];
 	boolean r = true;

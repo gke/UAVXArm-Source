@@ -22,15 +22,15 @@
 #ifndef _clocks_h
 #define _clocks_h
 
-extern volatile timeval TicksuS;
+extern volatile timeuS TicksuS;
 
 void cycleCounterInit(void);
-timeval uSClock(void);
-void Delay1uS(uint16);
-timeval mSClock(void);
-void Delay1mS(uint16);
-real32 dTUpdate(timeval NowuS, timeval * LastUpdateuS);
-void mSTimer(timeval NowmS, uint8 t, int32 TimePeriod);
-void uSTimer(timeval NowuS, uint8 t, int32 TimePeriod);
+timeuS uSClock(void);
+void Delay1uS(uint16 DelayuS);
+timemS mSClock(void);
+void Delay1mS(uint16 DelaymS);
+real32 dTUpdate(timeuS NowuS, timeuS * LastUpdateuS);
+void mSTimer(timemS NowmS, uint8 t, timemS TimePeriodmS);
+void uSTimer(timeuS NowuS, uint8 t, timeuS TimePerioduS);
 
 #endif

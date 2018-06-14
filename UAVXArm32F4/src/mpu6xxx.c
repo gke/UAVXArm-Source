@@ -43,7 +43,7 @@ uint8 MPU6000DLPF = 0;
 uint8 MPU6XXXDHPF = 0;
 
 real32 MPU6XXXTemperature = 25.0f;
-timeval mpu6xxxLastUpdateuS = 0;
+timeuS mpu6xxxLastUpdateuS = 0;
 
 boolean UseGyroOS = false;
 
@@ -75,9 +75,9 @@ void ComputeMPU6XXXTemperature(uint8 imuSel, int16 T) {
 
 
 void ReadGyro(uint8 imuSel) { // Roll Right +, Pitch Up +, Yaw ACW +
-	static timeval LastUpdateuS = 0;
+	static timeuS LastUpdateuS = 0;
 	real32 GyrodT;
-	timeval NowuS;
+	timeuS NowuS;
 	int16 B[3];
 	static int16 BP[3] = { 0, };
 	idx a;
@@ -126,8 +126,8 @@ void ReadAcc(uint8 imuSel) { // Roll Right +, Pitch Up +, Yaw ACW +
 } // ReadAcc
 
 void ReadFilteredGyroAndAcc(uint8 imuSel) {
-	static timeval LastUpdateuS = 0;
-	timeval NowuS;
+	static timeuS LastUpdateuS = 0;
+	timeuS NowuS;
 	real32 dT;
 	uint8 a;
 

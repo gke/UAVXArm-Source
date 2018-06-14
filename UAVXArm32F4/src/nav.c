@@ -23,7 +23,7 @@
 #include "UAVX.h"
 
 real32 NavdT, NavdTR;
-timeval LastNavUpdateuS = 0;
+timeuS LastNavUpdateuS = 0;
 NavStruct Nav;
 real32 DesiredVel;
 real32 POIHeading = 0.0f;
@@ -127,7 +127,7 @@ void ZeroNavCorrections(void) {
 
 
 void DecayNavCorrections(void) {
-	static timeval LastUpdateuS = 0;
+	static timeuS LastUpdateuS = 0;
 	real32 dT, Decay;
 	int32 a;
 

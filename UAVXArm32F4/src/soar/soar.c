@@ -39,7 +39,7 @@ real32 AltCutoffM = ALT_CUTOFF_M;
 real32 AltMaxM = ALT_MAX_M;
 real32 AltMinM = ALT_MIN_M;
 
-timeval PrevKFUpdatemS = 0;
+timemS PrevKFUpdatemS = 0;
 
 boolean ThrottleSuppressed = false;
 boolean Thermalling = false;
@@ -158,7 +158,7 @@ void UpdateThermalEstimate(void) {
 
 	//invoked when F.NewNavUpdate
 
-	timeval NowmS = mSClock();
+	timemS NowmS = mSClock();
 
 	real32 dx = Nav.C[NorthC].Pos - Soar.Th[NorthC].Pos;
 	real32 dy = Nav.C[EastC].Pos - Soar.Th[EastC].Pos;

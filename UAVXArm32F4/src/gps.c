@@ -49,7 +49,7 @@ real32 GPSdT, GPSdTR;
 real32 GPSLag = 1.0f; // MTK 0.5 for UBlox
 real32 GPSMinhAcc = GPS_MIN_HACC;
 
-timeval LastGPSUpdatemS = 0;
+timemS LastGPSUpdatemS = 0;
 
 uint8 nll, cc, lo, hi, ll, ss, tt, GPSCheckSumChar;
 uint8 GPSTxCheckSum, RxCheckSum;
@@ -1199,7 +1199,7 @@ void UpdateField(void) {
 } // UpdateField
 
 void ParseGXGGASentence(void) { // full position $GXGGA fix
-	timeval PacketTimemS;
+	timemS PacketTimemS;
 
 	cc = 0;
 	nll = NMEA.length;
@@ -1247,7 +1247,7 @@ void ParseGXGGASentence(void) { // full position $GXGGA fix
 } // ParseGXGGASentence
 
 void ParseGXRMCSentence() { // main current position and heading
-	timeval PacketTimemS;
+	timemS PacketTimemS;
 
 	cc = 0;
 	nll = NMEA.length;
@@ -1433,7 +1433,7 @@ void RxNMEAPacket(void) {
 } // RxNMEAPacket
 
 void UpdateGPS(void) {
-	timeval NowmS;
+	timemS NowmS;
 
 	if (F.Emulation)
 
