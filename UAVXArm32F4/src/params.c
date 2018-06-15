@@ -231,7 +231,8 @@ void UpdateParameters(void) {
 
 		// Misc
 
-		F.UsingConvPropSense = (P(ServoSense) & UseConvPropSenseMask) != 0;
+		F.UsingConvYawSense = (P(ServoSense) & UseConvYawSenseMask) != 0;
+		YawSense = F.UsingConvYawSense ? 1.0f: -1.0f;
 
 		UpdateRCMap(); // for channel re-assignment
 

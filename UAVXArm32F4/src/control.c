@@ -28,7 +28,7 @@ AxisStruct A[3];
 real32 CameraAngle[3];
 real32 OrbitCamAngle = 0.0f;
 real32 TiltThrFF;
-
+real32 YawSense = 1.0f;
 
 uint8 CurrOSLPFType;
 
@@ -36,6 +36,7 @@ idx AttitudeMode = AngleMode;
 real32 DesiredHeading, SavedHeading;
 real32 Altitude;
 real32 AltComp, ROC, MinROCMPS, EffMinROCMPS;
+real32 TiltThrFFFrac = 0.0f;
 real32 TiltThrFFComp = 1.0f;
 real32 BattThrFFComp = 1.0f;
 real32 AltAccComp = 0.0f;
@@ -55,6 +56,8 @@ real32 FWRollPitchFFFrac, FWAileronDifferentialFrac, FWPitchThrottleFFFrac,
 		FWAltSpoilerFFFrac, MaxROCMPS, VRSDescentRateMPS;
 real32 FWGlideAngleOffsetRad = 0.0f;
 real32 ThrottleGain, gainScale;
+
+real32 MaxControlGainReduction;
 
 void ZeroThrottleCompensation(void) {
 	AltComp = 0.0f;

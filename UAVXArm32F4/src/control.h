@@ -86,32 +86,33 @@ real32 ComputeRateDerivative(PIDStruct *C);
 void DoControl(void);
 void InitControl(void);
 
-AxisStruct A[3];
+extern AxisStruct A[];
 
-idx AttitudeMode;
-real32 TiltThrFFFrac;
+extern idx AttitudeMode;
+extern real32 TiltThrFFFrac;
+extern real32 YawSense;
 
-uint8 CurrOSLPFType;
+extern uint8 CurrOSLPFType;
 
-real32 CameraAngle[3], OrbitCamAngle;
-real32 DesiredHeading, SavedHeading;
-real32 CurrMaxTiltAngle;
-real32 Altitude;
-real32 AltComp, ROC, MinROCMPS;
-real32 CruiseThrottle;
-real32 BattThrFFComp, TiltThrFFComp;
-real32 AltAccComp;
-real32 HorizonTransScale;
-real32 StickDeadZone;
-real32 OrientationRad, OrientS, OrientC;
+extern real32 CameraAngle[3], OrbitCamAngle;
+extern real32 DesiredHeading, SavedHeading;
+extern real32 CurrMaxTiltAngle;
+extern real32 Altitude;
+extern real32 AltComp, ROC, MinROCMPS;
+extern real32 CruiseThrottle;
+extern real32 BattThrFFComp, TiltThrFFComp;
+extern real32 AltAccComp;
+extern real32 HorizonTransScale;
+extern real32 StickDeadZone;
+extern real32 OrientationRad, OrientS, OrientC;
 
-real32 FWRollPitchFFFrac, FWAileronDifferentialFrac,
+extern real32 FWRollPitchFFFrac, FWAileronDifferentialFrac,
 		FWPitchThrottleFFFrac, FWMaxClimbAngleRad, FWClimbThrottleFrac,
 		MaxRollAngleRad, FWGlideAngleOffsetRad, FWBoardPitchAngleRad,
 		FWSpoilerDecayS, FWAileronRudderFFFrac,
 		FWAltSpoilerFFFrac, MaxROCMPS, VRSDescentRateMPS;
-real32 MaxControlGainReduction;
-real32 GS;
+extern real32 MaxControlGainReduction;
+extern real32 GS;
 
 #endif
 

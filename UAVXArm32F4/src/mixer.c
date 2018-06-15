@@ -337,6 +337,8 @@ void DoMulticopterMix(void) {
 
 	RotateOrientation(&Rl, &Pl, Rl, Pl);
 
+	Yl *= YawSense;
+
 	if (DesiredThrottle < IdleThrottle)
 		CurrThrottlePW = 0;
 	else {

@@ -261,7 +261,7 @@ typedef struct {
 // bit 7 unusable in UAVPSet
 
 // In Servo Sense Byte
-#define	UseConvPropSenseMask			(1<<6)
+#define	UseConvYawSenseMask			(1<<6)
 
 extern volatile boolean StickArmed, TxSwitchArmed;
 extern const ParamStruct_t DefaultParams[];

@@ -41,9 +41,15 @@ const uint8 PWMOutputsUsed[AFUnknown + 1] = { 5, 8, 6, 6, 6, 10, 10, 8, 8, 10,
 		3, 6, 7, 5, 6, 3, //
 		4, 2, 0, 0, 4 };
 
+#if defined(UAVXF4V3) || defined(UAVXF4V4)
 const idx DM[10] = { 0, 1, 2, 3, // TIM4
 		6, 7, 8, 9, // TIM3
 		4, 5 }; // TIM1 V4 TIM8  camera servo channels always last
+#else
+const idx DM[10] = { 0, 1, 2, 3, // TIM4 ROBERT needs reordering for MW convention
+		6, 7, 8, 9, // TIM3
+		4, 5 }; // TIM1 V4 TIM8  camera servo channels always last
+#endif
 
 typedef struct {
 	unsigned int cmd :1;

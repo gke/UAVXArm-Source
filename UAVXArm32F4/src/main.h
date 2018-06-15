@@ -187,7 +187,7 @@ typedef union {
 				// 9
 				ForcedLanding :1, NewGPSPosition :1,
 				EnforceDriveSymmetry :1, RCFrameOK :1, spiFatal :1,
-				NewCommands :1, UsingMAVLink :1, UsingConvPropSense :1; // MAXED OUT
+				NewCommands :1, UsingMAVLink :1, UsingConvYawSense :1; // MAXED OUT
 	};
 } Flags;
 
