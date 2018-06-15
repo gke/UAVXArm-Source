@@ -29,8 +29,7 @@ extern boolean SIOWriteBlock(uint8 sioDev, uint8 reg, uint8 len,
 
 extern uint8 SIORead(uint8 sioDev, uint8 reg);
 extern uint8 SIOReadataddr(uint8 sioDev, uint8 reg);
-extern boolean SIOReadBlockataddr(uint8 sioDev, uint8 reg, uint8 len,
-		uint8 * data);
+//extern boolean SIOReadBlockataddr(uint8 sioDev, uint8 reg, uint8 len, uint8 * data);
 extern boolean SIOReadBlocki16v(uint8 sioDev, uint8 len,
 		int16 * data, boolean h);
 extern boolean SIOReadBlocki16vataddr(uint8 sioDev, uint8 reg,

@@ -85,6 +85,7 @@ void GetMagnetometer(void) {
 	int32 a;
 
 	if (F.MagnetometerActive) {
+
 		NowmS = mSClock();
 		if (NowmS >= mS[MagnetometerUpdate]) {
 			mSTimer(NowmS, MagnetometerUpdate, MAG_TIME_MS);
@@ -177,14 +178,10 @@ void InitMagnetometer(void) {
 
 	MagScale[BF] = MagScale[LR] = MagScale[UD] = 0.0f;
 
-	if (MagnetometerIsActive()) {
+	CheckMagnetometerActive();
 
-		F.MagnetometerActive = true;
+	if (F.MagnetometerActive) {
 
-		SIOWriteBlockataddr(magSel, HMC5XXX_CONFIG_A, 3,
-				HMC5XXXSetReset);
-
-		Delay1mS(50);
 		ReadMagnetometer(); // discard initial values
 
 		for (s = 0; s < Samples; s++) {
@@ -227,9 +224,10 @@ void InitMagnetometer(void) {
 		CheckMagnetometerIsCalibrated();
 
 		F.MagnetometerFailure = !F.MagnetometerCalibrated;
+
 	} else {
 		F.MagnetometerFailure = true;
-		F.NewMagValues = F.MagnetometerActive = false;
+		F.NewMagValues = false;
 	}
 
 } // InitMagnetometer
@@ -329,16 +327,21 @@ void CalibrateHMC5XXX(uint8 s) {
 } // CalibrateHMC5XXX
 
 
-boolean MagnetometerIsActive(void) {
+void CheckMagnetometerActive(void) {
 
 	if (busDev[magSel].Used && (busDev[magSel].type == hmc5xxxMag)) {
 		uint8 v = 0;
-		SIOReadBlock(magSel, HMC5XXX_TAG, 1, &v);
 
-		return (v == 'H');
+		SIOWriteBlockataddr(magSel, HMC5XXX_CONFIG_A, 3, HMC5XXXSetReset);
+		Delay1mS(50);
+
+		SIOReadBlock(magSel, HMC5XXX_TAG, 1, &v);
+		F.MagnetometerActive = v == 'H';
+
 	} else
-		return (false);
+		F.MagnetometerActive = false;
+
 }
-//  MagnetometerActive
+//  CheckMagnetometerActive
 
 

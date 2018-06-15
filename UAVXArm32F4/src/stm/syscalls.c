@@ -12,9 +12,16 @@
 #include <stdlib.h>
 #include <sys/types.h>
 
-// not commissioned
 
-//extern int  __HEAP_START;
+void systemReset(boolean useBootLoader) {
+// generally due to Nesbitt and Ihlien
+
+    if (useBootLoader)
+    	*((uint32_t *)0x2001FFFC) = 0xDEADBEEF; // 128KB SRAM STM32F4XX
+
+    __disable_irq();
+    NVIC_SystemReset();
+} // systemReset
 
 caddr_t _sbrk ( int incr )
 {

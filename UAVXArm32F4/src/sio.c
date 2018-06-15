@@ -62,6 +62,7 @@ uint8 SIOReadataddr(uint8 sioDev, uint8 a) {
 	return (v);
 } // readataddr
 
+
 boolean SIOReadBlockataddr(uint8 sioDev, uint8 a, uint8 l, uint8 *S) {
 
 	if (busDev[sioDev].useSPI)
@@ -70,6 +71,7 @@ boolean SIOReadBlockataddr(uint8 sioDev, uint8 a, uint8 l, uint8 *S) {
 		return (I2CReadBlock(busDev[sioDev].busNo, busDev[sioDev].i2cId & 0xfe,
 				a, l, S)); //
 } // blockreadataddr
+
 
 boolean SIOReadBlocki16v(uint8 sioDev, uint8 l, int16 *v, boolean h) {
 	uint8 ll, b;

@@ -102,6 +102,11 @@
 #define PWMIn_3_3 {true,TIM3,TIM_Channel_3,TIM_IT_CC3,0,GPIO_AF_TIM3},{false,},TIM3_IRQn
 #define PWMIn_3_4 {true,TIM3,TIM_Channel_4,TIM_IT_CC4,0,GPIO_AF_TIM3},{false,},TIM3_IRQn
 
+#define PWMIn_4_1 {true,TIM4,TIM_Channel_1,TIM_IT_CC1,0,GPIO_AF_TIM4},{false,},TIM4_IRQn
+#define PWMIn_4_2 {true,TIM4,TIM_Channel_2,TIM_IT_CC2,0,GPIO_AF_TIM4},{false,},TIM4_IRQn
+#define PWMIn_4_3 {true,TIM4,TIM_Channel_3,TIM_IT_CC3,0,GPIO_AF_TIM4},{false,},TIM4_IRQn
+#define PWMIn_4_4 {true,TIM4,TIM_Channel_4,TIM_IT_CC4,0,GPIO_AF_TIM4},{false,},TIM4_IRQn
+
 #define PWMOut_1_1 {true,TIM1,TIM_Channel_1,0,&(TIM1->CCR1),GPIO_AF_TIM1}
 #define PWMOut_1_2 {true,TIM1,TIM_Channel_2,0,&(TIM1->CCR2),GPIO_AF_TIM1}
 #define PWMOut_1_3 {true,TIM1,TIM_Channel_3,0,&(TIM1->CCR3),GPIO_AF_TIM1}
@@ -340,12 +345,14 @@ typedef const struct {
 } SerialPortDef;
 
 typedef const struct {
+	boolean Used;
 	I2C_TypeDef* I2C;
 	ConnectDef SCL, SDA;
 	uint8 I2C_AF;
 } I2CPortDef;
 
 typedef const struct {
+	boolean Used;
 	SPI_TypeDef* SPIx;
 	ConnectDef P[3];
 } SPIPortDef;
@@ -372,7 +379,7 @@ typedef const struct { // C2 Port GUI changeable UAVX
 #define spi_0_15640625 	SPI_BaudRatePrescaler_256
 
 #define MAX_SPI_PORTS 4
-#define MAX_I2C_PORTS 3
+#define MAX_I2C_PORTS 4
 
 //______________________________________________________________________
 

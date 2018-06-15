@@ -10,10 +10,10 @@ INSTALL_DIR = "C:/Flight/gitHub/UAVXArm.git/UAVXArm/firmware"
 #-------------------------------------------------------------
 
 #BOARD= OMNIBUSF4V1
-BOARD= OMNIBUSF4NXT
+#BOARD= OMNIBUSF4NXT
 #BOARD= DISCOVERYF4
 #BOARD= UAVXF4V4
-#BOARD= UAVXF4V3
+BOARD= UAVXF4V3
 
 #-------------------------------------------------------------
  
@@ -60,7 +60,7 @@ LINKER_FLAGS= -lm $(FPFLAGS) -Wl,--gc-sections -T$(LINK_SCRIPT) -static \
 ASSEMBLER_FLAGS=-c -g $(OPT) $(FPFLAGS) -x assembler-with-cpp  $(INCLUDES)
 
 #-Wall 
-COMPILER_FLAGS=-c -g  $(OPT) $(FPFLAGS) $(CONFIG) -D$(BOARD) -ffunction-sections -fdata-sections \
+COMPILER_FLAGS=-c -g $(OPT) $(FPFLAGS) $(CONFIG) -D$(BOARD) -finline-functions -ffunction-sections -fdata-sections \
 	-D"STM32F407xx" -D"USE_STDPERIPH_DRIVER" $(INCLUDES)
 
 # Define sources and objects
@@ -123,6 +123,10 @@ svn: src/UAVXRevisionSVN.h
 
 uavxarm: svn  $(OBJS) 
 	$(CC) -o "$(BIN_DIR)/$(TARGET).elf" $(OBJS)  $(LINKER_FLAGS) 
+	
+#bootloader: // requires termios! 
+#		$(CC) -g -o stmloader -I./ \
+#		./stmloader/loader.c ./stmloader/serial.c  ./stmloader/stmbootloader.c -Wall
 
 clean:
 #	$(RM) $(OBJS) "$(BIN_DIR)/*.*"

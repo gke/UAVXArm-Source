@@ -1101,6 +1101,11 @@ void ProcessRxPacket(uint8 s) {
 				} else
 					SendAckPacket(s, miscLB, false);
 				break;
+			case miscBootLoader:
+				// goes to bootloader - careful with GPS and Serial Rx
+				//as they can be seen as bootloader input!
+				systemReset(true);
+				break;
 			default:
 				break;
 			} // switch

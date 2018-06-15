@@ -88,6 +88,19 @@ SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
 	{false, 0 } // SoftSerial
 };
 
+I2CPortDef I2CPorts[MAX_I2C_PORTS] = {
+	{false, 0, }, // notionally I2C0
+	{true, I2C1, PB6, PB7, GPIO_AF_I2C1 },//
+	{true, I2C2, PB10, PB11, GPIO_AF_I2C2 } 
+	{false, I2C3, }};
+
+SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
+	{false, 0, }, // notionally SPI0
+	{true, SPI1, {PA5, PA6, PA7}}, //
+	{true, SPI2, {PB13, PB14, PB15}}, //
+	{true, SPI3, {PC10, PC11, PC12}}
+};
+
 PinDef USBDisconnectPin = { false, 0, };
 
 DevDef busDev[maxDevSel] = {
@@ -102,7 +115,6 @@ DevDef busDev[maxDevSel] = {
 	{false, flowSel, },
 	{false, escSel, }
 };
-
 
 const uint8 currGimbalType = noGimbal;
 const boolean ledsLowOn = true;

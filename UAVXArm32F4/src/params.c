@@ -255,7 +255,7 @@ void UpdateParameters(void) {
 					|| (CurrGPSType != P(GPSProtocol)) //
 					|| (CurrMotorStopSel != P(MotorStopSel)) //
 					|| (CurrNoOfWSLEDs != P(WS2812Leds)))
-				NVIC_SystemReset();
+				systemReset(false);
 
 
 			memset(&A, 0, sizeof(A[3]));

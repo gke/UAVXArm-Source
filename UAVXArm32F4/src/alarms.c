@@ -99,10 +99,12 @@ boolean FailPreflight(void) {
 		&& (RC[NavModeRC] <= FromPercent(20)) //
 		&& F.IMUActive //
 		&& F.IMUCalibrated //
+		/*
 		&& (F.BaroActive || (busDev[baroSel].type == noBaro)) //
 		&& ((F.MagnetometerActive && F.MagnetometerCalibrated) //
 				|| ((busDev[magSel].type == noMag) //
 				|| F.IsFixedWing)) //
+		*/
 		&& !(F.LowBatt || F.spiFatal || F.i2cFatal || F.ReturnHome || F.Navigate) //
 		));
 

@@ -50,7 +50,7 @@ void InitMagnetometerBias(void);
 void TrackMaxMin(void);
 
 void MagnetometerTest(uint8 s);
-boolean MagnetometerIsActive(void);
+void CheckMagnetometerActive(void);
 
 void WriteMagCalNV(void);
 void UpdateMagHist(void);

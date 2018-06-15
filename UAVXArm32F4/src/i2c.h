@@ -44,8 +44,6 @@ boolean I2CReadBlock(uint8 devSel, uint8 id, uint8 reg, uint8 l,
 boolean I2CWriteBlock(uint8 devSel, uint8 id, uint8 reg, uint8 len,
 		uint8 *data);
 
-boolean I2CResponse(uint8 devSel, uint8 d);
-
 void i2c_er_handler(uint8 i2cCurr);
 void i2c_ev_handler(uint8 i2cCurr);
 

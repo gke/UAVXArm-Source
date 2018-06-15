@@ -89,6 +89,19 @@ AnalogPinDef AnalogPins[MAX_ANALOG_CHANNELS] = { //
 	{true, ADC1, PC2, ADC_Channel_12, DMA2_0_0_noIRQn, 3}, // Volts
 };
 
+I2CPortDef I2CPorts[MAX_I2C_PORTS] = {
+	{false, 0, }, // notionally I2C0
+	{true, I2C1, PB6, PB7, GPIO_AF_I2C1 },//
+	{true, I2C2, PB10, PB11, GPIO_AF_I2C2 } 
+	{false, I2C3, }};
+
+SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
+	{false, 0, }, // notionally SPI0
+	{true, SPI1, {PA5, PA6, PA7}}, //
+	{true, SPI2, {PB13, PB14, PB15}}, //
+	{true, SPI3, {PC10, PC11, PC12}}
+};
+
 PinDef USBDisconnectPin = {true, PA12, OutPinConfig,};
 
 //imu0Sel,imu1Sel,baroSel,magSel,memSel,gpsSel,rfSel,asSel,flowSel,escSel, maxDevSel

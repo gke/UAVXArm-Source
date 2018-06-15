@@ -314,6 +314,7 @@ void CheckMPU6XXXActive(uint8 imuSel) {
 	boolean r;
 
 	Delay1mS(35);
+
 	MPU6XXXId = SIORead(imuSel, MPU_RA_WHO_AM_I);
 	if (busDev[imuSel].useSPI)
 	   r = MPU6XXXId > 0;

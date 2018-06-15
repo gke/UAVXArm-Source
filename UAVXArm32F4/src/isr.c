@@ -221,3 +221,11 @@ void I2C2_EV_IRQHandler(void) {
 	i2c_ev_handler(2);
 }
 
+void I2C3_ER_IRQHandler(void) {
+	i2c_er_handler(3);
+}
+
+void I2C3_EV_IRQHandler(void) {
+	i2c_ev_handler(3);
+}
+

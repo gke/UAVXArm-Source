@@ -102,7 +102,7 @@ void DoTesting(void) {
 			LEDToggle(ledYellowSel);
 			uint8 ch = RxChar(USBSerial);
 			if (ch == '!')
-				NVIC_SystemReset();
+				systemReset(false);
 			else
 				TxChar(USBSerial, ch);
 		}

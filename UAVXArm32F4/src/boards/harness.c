@@ -21,17 +21,6 @@
 
 #include "UAVX.h"
 
-I2CPortDef I2CPorts[MAX_I2C_PORTS] = {
-	{ 0, }, // notionally I2C0
-	{ I2C1, PB6, PB7, GPIO_AF_I2C1 },//
-	{ I2C2, PB10, PB11, GPIO_AF_I2C2 } };
-
-SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
-	{ 0, }, // notionally SPI0
-	{ SPI1, {PA5, PA6, PA7}}, //
-	{ SPI2, {PB13, PB14, PB15}}, //
-	{ SPI3, {PC10, PC11, PC12}}};
-
 idx GPSRxSerial, GPSTxSerial, RCSerial, TelemetrySerial;
 boolean RxUsingSerial;
 uint8 CurrNoOfRCPins;
@@ -39,22 +28,20 @@ uint8 CurrNoOfRCPins;
 #include "./targets/targets.inc"
 
 boolean DigitalRead(ConnectDef * d) {
-		return GPIO_ReadInputDataBit(d->Port, d->Pin);
+	return GPIO_ReadInputDataBit(d->Port, d->Pin);
 } // DigitalRead
 
-void DigitalWrite(ConnectDef * d,
-		uint8 m) {
+void DigitalWrite(ConnectDef * d, uint8 m) {
 
-		if (m)
-			d->Port->BSRRL = d->Pin;
-		else
-			d->Port->BSRRH = d->Pin;
-
+	if (m)
+		d->Port->BSRRL = d->Pin;
+	else
+		d->Port->BSRRH = d->Pin;
 
 } // DigitalWrite
 
 void DigitalToggle(ConnectDef * d) {
-		d->Port->ODR ^= d->Pin;
+	d->Port->ODR ^= d->Pin;
 } // DigitalToggle
 
 
@@ -262,11 +249,11 @@ void InitI2C(uint8 i2cCurr) {
 	// Original source unknown but based on those in baseflight by TimeCop
 	NVIC_InitTypeDef NVIC_InitStructure;
 	I2C_InitTypeDef I2C_InitStructure;
-	const I2CPortDef * d;
+	I2CPortDef * d;
 
-	if ((i2cCurr > 0) && (i2cCurr < MAX_I2C_PORTS)) {
+	d = &I2CPorts[i2cCurr];
 
-		d = &I2CPorts[i2cCurr];
+	if (d->Used) {
 
 		GPIO_PinAFConfig(d->SCL.Port, d->SCL.PinSource, d->I2C_AF);
 
@@ -286,23 +273,45 @@ void InitI2C(uint8 i2cCurr) {
 
 		NVIC_PriorityGroupConfig(0x500);
 
-		// I2C ER Interrupt
-		NVIC_InitStructure.NVIC_IRQChannel = I2C2_ER_IRQn;
 		NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
 		NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
 		NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 		NVIC_Init(&NVIC_InitStructure);
 		// I2C EV Interrupt
-		NVIC_InitStructure.NVIC_IRQChannel = I2C2_EV_IRQn;
+
 		NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-		NVIC_Init(&NVIC_InitStructure);
+
 
 		switch (i2cCurr) {
 		case 1:
+			// I2C ER Interrupt
+			NVIC_InitStructure.NVIC_IRQChannel = I2C1_ER_IRQn;
+			NVIC_Init(&NVIC_InitStructure);
+			// I2C EV Interrupt
+			NVIC_InitStructure.NVIC_IRQChannel = I2C1_EV_IRQn;
+			NVIC_Init(&NVIC_InitStructure);
+
 			RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1, ENABLE);
 			break;
 		case 2:
+			// I2C ER Interrupt
+			NVIC_InitStructure.NVIC_IRQChannel = I2C2_ER_IRQn;
+			NVIC_Init(&NVIC_InitStructure);
+			// I2C EV Interrupt
+			NVIC_InitStructure.NVIC_IRQChannel = I2C2_EV_IRQn;
+			NVIC_Init(&NVIC_InitStructure);
+
 			RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C2, ENABLE);
+			break;
+		case 3:
+			// I2C ER Interrupt
+			NVIC_InitStructure.NVIC_IRQChannel = I2C3_ER_IRQn;
+			NVIC_Init(&NVIC_InitStructure);
+			// I2C EV Interrupt
+			NVIC_InitStructure.NVIC_IRQChannel = I2C3_EV_IRQn;
+			NVIC_Init(&NVIC_InitStructure);
+
+			RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C3, ENABLE);
 			break;
 		}
 	}
@@ -318,53 +327,55 @@ void UnstickI2C(uint8 i2cCurr) {
 	const I2CPortDef * d;
 
 	d = &I2CPorts[i2cCurr];
+	if (d->Used) {
 
-	GPIO_StructInit(&GPIO_InitStructure);
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_OD;
-	GPIO_InitStructure.GPIO_Pin = d->SCL.Pin;
-	GPIO_Init(d->SCL.Port, &GPIO_InitStructure);
+		GPIO_StructInit(&GPIO_InitStructure);
+		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+		GPIO_InitStructure.GPIO_OType = GPIO_OType_OD;
+		GPIO_InitStructure.GPIO_Pin = d->SCL.Pin;
+		GPIO_Init(d->SCL.Port, &GPIO_InitStructure);
 
-	GPIO_InitStructure.GPIO_Pin = d->SDA.Pin;
-	GPIO_Init(d->SDA.Port, &GPIO_InitStructure);
-
-	GPIO_SetBits(d->SCL.Port, d->SCL.Pin);
-	GPIO_SetBits(d->SDA.Port, d->SDA.Pin);
-
-	Timeout = mSClock() + 100;
-	for (i = 0; i < 8; i++) { // Wait for any clock stretching to finish
-		while (!GPIO_ReadInputDataBit(d->SCL.Port, d->SCL.Pin)) {
-			Delay1uS(I2C_DELAY_US);
-			if (mSClock() > Timeout) {
-				F.i2cFatal = true;
-				return;
-			}
-		}
-
-		GPIO_ResetBits(d->SCL.Port, d->SCL.Pin);
-		Delay1uS(I2C_DELAY_US);
+		GPIO_InitStructure.GPIO_Pin = d->SDA.Pin;
+		GPIO_Init(d->SDA.Port, &GPIO_InitStructure);
 
 		GPIO_SetBits(d->SCL.Port, d->SCL.Pin);
+		GPIO_SetBits(d->SDA.Port, d->SDA.Pin);
+
+		Timeout = mSClock() + 100;
+		for (i = 0; i < 8; i++) { // Wait for any clock stretching to finish
+			while (!GPIO_ReadInputDataBit(d->SCL.Port, d->SCL.Pin)) {
+				Delay1uS(I2C_DELAY_US);
+				if (mSClock() > Timeout) {
+					F.i2cFatal = true;
+					return;
+				}
+			}
+
+			GPIO_ResetBits(d->SCL.Port, d->SCL.Pin);
+			Delay1uS(I2C_DELAY_US);
+
+			GPIO_SetBits(d->SCL.Port, d->SCL.Pin);
+			Delay1uS(I2C_DELAY_US);
+		}
+
+		GPIO_ResetBits(d->SDA.Port, d->SDA.Pin);
 		Delay1uS(I2C_DELAY_US);
+		GPIO_ResetBits(d->SCL.Port, d->SCL.Pin);
+		Delay1uS(I2C_DELAY_US);
+		GPIO_SetBits(d->SCL.Port, d->SCL.Pin);
+		Delay1uS(I2C_DELAY_US);
+		GPIO_SetBits(d->SDA.Port, d->SDA.Pin);
+
+		GPIO_InitStructure.GPIO_Pin = d->SCL.Pin;
+		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+		GPIO_InitStructure.GPIO_OType = GPIO_OType_OD;
+		GPIO_Init(d->SCL.Port, &GPIO_InitStructure);
+
+		GPIO_InitStructure.GPIO_Pin = d->SDA.Pin;
+		GPIO_Init(d->SDA.Port, &GPIO_InitStructure);
 	}
-
-	GPIO_ResetBits(d->SDA.Port, d->SDA.Pin);
-	Delay1uS(I2C_DELAY_US);
-	GPIO_ResetBits(d->SCL.Port, d->SCL.Pin);
-	Delay1uS(I2C_DELAY_US);
-	GPIO_SetBits(d->SCL.Port, d->SCL.Pin);
-	Delay1uS(I2C_DELAY_US);
-	GPIO_SetBits(d->SDA.Port, d->SDA.Pin);
-
-	GPIO_InitStructure.GPIO_Pin = d->SCL.Pin;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_OD;
-	GPIO_Init(d->SCL.Port, &GPIO_InitStructure);
-
-	GPIO_InitStructure.GPIO_Pin = d->SDA.Pin;
-	GPIO_Init(d->SDA.Port, &GPIO_InitStructure);
 
 } // UnstickI2C
 
@@ -397,15 +408,17 @@ void InitSPIGPIOPins(uint8 spiPort, boolean highClock) {
 void InitSPISelectPin(uint8 spiSel) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 
-	GPIO_StructInit(&GPIO_InitStructure);
-	GPIO_InitStructure.GPIO_Pin = busDev[spiSel].P.Pin;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT,
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(busDev[spiSel].P.Port, &GPIO_InitStructure);
+	if (busDev[spiSel].useSPI) {
+		GPIO_StructInit(&GPIO_InitStructure);
+		GPIO_InitStructure.GPIO_Pin = busDev[spiSel].P.Pin;
+		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT, GPIO_InitStructure.GPIO_OType
+				= GPIO_OType_PP;
+		GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+		GPIO_Init(busDev[spiSel].P.Port, &GPIO_InitStructure);
 
-	DigitalWrite(&busDev[spiSel].P, 1);
+		DigitalWrite(&busDev[spiSel].P, 1);
+	}
 
 } // InitSPISelectPin
 
@@ -419,32 +432,41 @@ void InitSPI(uint8 spiPort) {
 	SPI_InitTypeDef SPI_InitStructure;
 	const SPIPortDef * p;
 
-	if ((spiPort > 0) && (spiPort < MAX_SPI_PORTS)) {
-		p = &SPIPorts[spiPort];
+	p = &SPIPorts[spiPort];
 
+	if (p->Used) {
 		InitSPIGPIOPins(spiPort, false);
 
 		switch (spiPort) {
 		case 1:
 			RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1, ENABLE);
 			Delay1uS(100);
-			GPIO_PinAFConfig(p->P[sckPin].Port, p->P[sckPin].PinSource, GPIO_AF_SPI1);
-			GPIO_PinAFConfig(p->P[misoPin].Port, p->P[misoPin].PinSource, GPIO_AF_SPI1);
-			GPIO_PinAFConfig(p->P[mosiPin].Port, p->P[mosiPin].PinSource, GPIO_AF_SPI1);
+			GPIO_PinAFConfig(p->P[sckPin].Port, p->P[sckPin].PinSource,
+					GPIO_AF_SPI1);
+			GPIO_PinAFConfig(p->P[misoPin].Port, p->P[misoPin].PinSource,
+					GPIO_AF_SPI1);
+			GPIO_PinAFConfig(p->P[mosiPin].Port, p->P[mosiPin].PinSource,
+					GPIO_AF_SPI1);
 			break;
 		case 2:
 			RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI2, ENABLE);
 			Delay1uS(100);
-			GPIO_PinAFConfig(p->P[sckPin].Port, p->P[sckPin].PinSource, GPIO_AF_SPI2);
-			GPIO_PinAFConfig(p->P[misoPin].Port, p->P[misoPin].PinSource, GPIO_AF_SPI2);
-			GPIO_PinAFConfig(p->P[mosiPin].Port, p->P[mosiPin].PinSource, GPIO_AF_SPI2);
+			GPIO_PinAFConfig(p->P[sckPin].Port, p->P[sckPin].PinSource,
+					GPIO_AF_SPI2);
+			GPIO_PinAFConfig(p->P[misoPin].Port, p->P[misoPin].PinSource,
+					GPIO_AF_SPI2);
+			GPIO_PinAFConfig(p->P[mosiPin].Port, p->P[mosiPin].PinSource,
+					GPIO_AF_SPI2);
 			break;
 		case 3:
 			RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI3, ENABLE);
 			Delay1uS(100);
-			GPIO_PinAFConfig(p->P[sckPin].Port, p->P[sckPin].PinSource, GPIO_AF_SPI3);
-			GPIO_PinAFConfig(p->P[misoPin].Port, p->P[misoPin].PinSource, GPIO_AF_SPI3);
-			GPIO_PinAFConfig(p->P[mosiPin].Port, p->P[mosiPin].PinSource, GPIO_AF_SPI3);
+			GPIO_PinAFConfig(p->P[sckPin].Port, p->P[sckPin].PinSource,
+					GPIO_AF_SPI3);
+			GPIO_PinAFConfig(p->P[misoPin].Port, p->P[misoPin].PinSource,
+					GPIO_AF_SPI3);
+			GPIO_PinAFConfig(p->P[mosiPin].Port, p->P[mosiPin].PinSource,
+					GPIO_AF_SPI3);
 			break;
 		}
 		SPI_DeInit(p->SPIx);
@@ -485,30 +507,33 @@ void DeInitSPI(uint8 spiPort) {
 
 	p = &SPIPorts[spiPort];
 
-	SPI_I2S_DeInit(p->SPIx);
+	if (p->Used) {
 
-	SPI_Cmd(p->SPIx, DISABLE);
-	switch (spiPort) {
-	case 0:
-		RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1, DISABLE);
-		break;
-	case 1:
-		RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI2, DISABLE);
-		break;
-	case 2:
-		RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI3, DISABLE);
-		break;
+		SPI_I2S_DeInit(p->SPIx);
+
+		SPI_Cmd(p->SPIx, DISABLE);
+		switch (spiPort) {
+		case 0:
+			RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1, DISABLE);
+			break;
+		case 1:
+			RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI2, DISABLE);
+			break;
+		case 2:
+			RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI3, DISABLE);
+			break;
+		}
+
+		/* All SPI-Pins to input with weak internal pull-downs */
+		GPIO_InitStructure.GPIO_Pin = p->P[sckPin].Pin | p->P[misoPin].Pin
+				| p->P[mosiPin].Pin;
+		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+		GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
+
+		GPIO_Init(p->P[sckPin].Port, &GPIO_InitStructure);
+
+		SPISetDivisor(p->SPIx, 2); // 21 MHz SPI clock (within 20 +/- 10%)
 	}
-
-	/* All SPI-Pins to input with weak internal pull-downs */
-	GPIO_InitStructure.GPIO_Pin = p->P[sckPin].Pin | p->P[misoPin].Pin
-			| p->P[mosiPin].Pin;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
-
-	GPIO_Init(p->P[sckPin].Port, &GPIO_InitStructure);
-
-	SPISetDivisor(p->SPIx, 2); // 21 MHz SPI clock (within 20 +/- 10%)
 
 } // DeInitSPI
 
@@ -830,6 +855,7 @@ void InitHarness(void) {
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM5, ENABLE);
 
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA1, ENABLE);
@@ -846,7 +872,7 @@ void InitHarness(void) {
 	GPIO_Init(GPIOD, &GPIO_InitStructure); // F407
 
 #if !(defined(UAVXF4V4) || defined(UAVXF4V3))
-    GPIO_InitStructure.GPIO_Pin &= ~(GPIO_Pin_11 | GPIO_Pin_12); // leave USB D+/D- alone
+	GPIO_InitStructure.GPIO_Pin &= ~(GPIO_Pin_11 | GPIO_Pin_12); // leave USB D+/D- alone
 	GPIO_InitStructure.GPIO_Pin &= ~(GPIO_Pin_13 | GPIO_Pin_14); // leave JTAG pins alone
 #endif
 	GPIO_Init(GPIOA, &GPIO_InitStructure);

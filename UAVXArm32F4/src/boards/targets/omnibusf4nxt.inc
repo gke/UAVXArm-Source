@@ -1,3 +1,5 @@
+
+
 // ===============================================================================================
 // =                                UAVX Quadrocopter Controller                                 =
 // =                           Copyright (c) 2008 by Prof. Greg Egan                             =
@@ -21,21 +23,18 @@
 #ifndef _omnibusf4nxt_h
 #define _omnibusf4nxt_h
 
+#define USE_VCP
+#define VBUS_SENSING_PIN        PC15
+#define VBUS_SENSING_ENABLED
+
 #include "UAVX.h"
 
+
 PinDef RCPins[MAX_RC_INPUTS] = {
-	{ true, GPIOB, GPIO_Pin_7, GPIO_PinSource7, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP, 
-		{true, TIM4, TIM_Channel_2, TIM_IT_CC2, 0, GPIO_AF_TIM4 }, TIM4_IRQn },
-		{false, },
-		{false, },
-		{false, },
-		{false, },
-		{false, },
-		{false, },
-		{false, }
+		
+	{ true, PB7, PWMPinConfig, PWMIn_4_2},
 };
 		
-
 PinDef PWMPins[MAX_PWM_OUTPUTS] = {
 		// Drives 1-4
 	{ true, GPIOB, GPIO_Pin_5, GPIO_PinSource5, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP, 
@@ -58,79 +57,115 @@ PinDef PWMPins[MAX_PWM_OUTPUTS] = {
 	{ false, GPIOB, GPIO_Pin_8, GPIO_PinSource8, GPIO_Mode_AF,GPIO_OType_PP, GPIO_PuPd_UP, 
 		{true, TIM10, TIM_Channel_1, 0, &(TIM10->CCR1), GPIO_AF_TIM10 } }, 
 		
-		
+/*	I am confused as to which pins are used for the various Omnibus boards	
+		{true, PB0, PWMPinConfig, PWMOut_3_3},
+		{true, PB1, PWMPinConfig, PWMOut_3_4},
+		{true, PA3, PWMPinConfig, PWMOut_2_4},
+		{true, PA2, PWMPinConfig, PWMOut_2_3},	 
+	#if defined(IS_PRO)
+	    {true, PB6, PWMPinConfig, PWMOut_4_1},
+	#else
+	    {true, PA1, PWMPinConfig, PWMOut_5_2},
+	#endif	
+		{true, PA8, PWMPinConfig, PWMOut_1_1},
+*/		
 	{ false, },
 	{ false, }
 };
 
 PinDef GPIOPins[MAX_GPIO_PINS] = {
-	{ true, GPIOC, GPIO_Pin_13, GPIO_PinSource13, GPIO_Mode_OUT, GPIO_OType_PP, GPIO_PuPd_UP,}, // Beeper
-	{ false, GPIOC, GPIO_Pin_10, GPIO_PinSource10, GPIO_Mode_IN, GPIO_OType_PP, GPIO_PuPd_UP,}, // Armed
-	{ false, GPIOC, GPIO_Pin_9, GPIO_PinSource9, GPIO_Mode_IN, GPIO_OType_PP, GPIO_PuPd_UP,}, // Landing
-	{ false, GPIOA, GPIO_Pin_5, GPIO_PinSource5, GPIO_Mode_OUT, GPIO_OType_PP, GPIO_PuPd_UP,}, // Aux1
-	{ false, GPIOA, GPIO_Pin_15, GPIO_PinSource15, GPIO_Mode_OUT, GPIO_OType_PP, GPIO_PuPd_UP,}, // Aux2
-	{ false, GPIOC, GPIO_Pin_8, GPIO_PinSource8, GPIO_Mode_OUT, GPIO_OType_PP, GPIO_PuPd_UP,}, // Probe (Aux3)
-	{ false, GPIOC, GPIO_Pin_14, GPIO_PinSource14, GPIO_Mode_IN, GPIO_OType_PP, GPIO_PuPd_UP,}, // MPU6XXXIntSel 
-	{ false, GPIOC, GPIO_Pin_15, GPIO_PinSource15, GPIO_Mode_IN, GPIO_OType_PP, GPIO_PuPd_UP,} // HMC5XXXRdySel
+	{true, PB4, OutPinConfig,}, // Beeper
+	{false, }, // Armed
+	{false,}, // Landing
+	{false, }, // Aux1
+	{true, PC0, OutPinConfig,}, // Aux2/Inverter
+	{true, PB14, OutPinConfig,}, // Probe (Aux3)
+	{true, PC4, InpPinConfig,}, // MPU6XXXIntSel 
+	{false, } // HMC5XXXRdySel	
 };
 
 PinDef WSPin = // Aux1 Pin for UAVXF4V3
-	{false, GPIOA, GPIO_Pin_9, GPIO_PinSource9, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_NOPULL, 
+	{false, PA9, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_NOPULL, 
 		{true, TIM1, TIM_Channel_2, TIM_DMA_CC2, &(TIM1->CCR2), GPIO_AF_TIM1 },
 		{true, DMA_Channel_0, DMA2_Stream2}, DMA2_Stream2_IRQn }; // ???
 
 PinDef LEDPins[MAX_LED_PINS] = {
-	{ true, GPIOB, GPIO_Pin_2, GPIO_PinSource2, GPIO_Mode_OUT, GPIO_OType_PP, GPIO_PuPd_NOPULL,}, // 
-	{ false, },
-	{ false, },
-	{ false, }
+	{true, PB5, LEDPinConfig,},
 };
 
 const AnalogPinDef AnalogPins[MAX_ANALOG_CHANNELS] = {			
-	{ false, }, // RF
-	{ true, ADC1, GPIOC, GPIO_Pin_1, ADC_Channel_11, {true, DMA_Channel_0, DMA2_Stream0}, 2 }, // Current
-	{ true, ADC1, GPIOC, GPIO_Pin_0, ADC_Channel_12, {true, DMA_Channel_0, DMA2_Stream0}, 3 }, // Volts
-
-	{ false, 0, }, // Roll
-	{ false, 0, }, // Pitch
-	{ false, 0, } // Yaw
+	{false,  }, 
+	{true, ADC1, PC1, ADC_Channel_11, DMA2_0_0_noIRQn, 2}, // Current
+	{true, ADC1, PC2, ADC_Channel_12, DMA2_0_0_noIRQn, 3}, // Volts
 };
-
-SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
+	
+SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { 
 	{false, }, // mapped to USBSerial
-	{true, USART1, //  
-		GPIO_AF_USART1, GPIOB, GPIO_Pin_6, GPIO_PinSource6, GPIO_Pin_7, GPIO_PinSource7, 
-		true, USART1_IRQn,
-		false, DMA_Channel_4, DMA2_Stream7, DMA2_Stream7_IRQn, DMA2_Stream5, 115200 }, //
-	{true, USART2, // 
-		GPIO_AF_USART2, GPIOA, GPIO_Pin_2, GPIO_PinSource2, GPIO_Pin_3, GPIO_PinSource3, 
-		true, USART2_IRQn, 
-		false, DMA_Channel_4, DMA1_Stream6, DMA1_Stream6_IRQn, DMA1_Stream5, 9600 }, //
-	{true, USART3, // 
-		GPIO_AF_USART3, GPIOB, GPIO_Pin_10, GPIO_PinSource10, GPIO_Pin_11, GPIO_PinSource11, 
-		true, USART3_IRQn, 
-		false, DMA_Channel_4, DMA1_Stream3, DMA1_Stream3_IRQn, DMA1_Stream1, 115200 }, //
-	{true, UART4, 
-		GPIO_AF_UART4, GPIOA, GPIO_Pin_0, GPIO_PinSource0, GPIO_Pin_1, GPIO_PinSource1, 
-		true, UART4_IRQn, 
-		false, DMA_Channel_4, DMA1_Stream3, DMA1_Stream3_IRQn, DMA1_Stream1, 115200 }, //
-	{false, 0 } // Soft Serial
+	{true, USART1, PB6, PB7, 115200, USART1Config,},
+	{true, USART2, PA2, PA3, 9600, USART2Config,},
+	{true, USART3, PB10, PB11, 115200, USART3Config,},
+	{true, UART4, PA0, PA1, 115200, UART4Config,},
+	{false, 0 } // SoftSerial
 };
 
+/*
+#define USE_SPI
+#define USE_SPI_DEVICE_1
+#define SPI1_SCK_PIN            PA5
+#define SPI1_MISO_PIN           PA6
+#define SPI1_MOSI_PIN           PA7
+
+#define USE_SPI_DEVICE_2
+#define SPI2_SCK_PIN            PB13
+#define SPI2_MISO_PIN           PB14
+#define SPI2_MOSI_PIN           PC3
+
+#define USE_SPI_DEVICE_3
+#define SPI3_SCK_PIN            PC10          // PC10, alt UART3_TX, UART4_TX
+#define SPI3_MISO_PIN           PC11          // PC11, alt UART3_RX, UART4_RX
+#define SPI3_MOSI_PIN           PC12          // PC12, alt UART5_TX
+
+#define USE_I2C
+#define USE_I2C_DEVICE_1
+#define I2C1_SCL                PB8           // PB8, alt MST8
+#define I2C1_SDA                PB9           // PB9, alt MST7
+
+#define USE_I2C_DEVICE_2
+#define I2C2_SCL                NONE          // PB10 alt UART3TX
+#define I2C2_SDA                NONE          // PB11 alt UART3RX
+
+#define USE_I2C_DEVICE_3
+#define I2C3_SCL                NONE
+#define I2C3_SDA                NONE
+*/
+
+I2CPortDef I2CPorts[MAX_I2C_PORTS] = {
+	{false, 0, }, // notionally I2C0
+	{true, I2C1, PB6, PB7, GPIO_AF_I2C1},
+	{true, I2C2, PB10, PB11, GPIO_AF_I2C2}, 
+	{false, I2C3, }
+};
+
+SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
+	{false, 0, }, // notionally SPI0
+	{true, SPI1, {PA5, PA6, PA7}}, //
+	{true, SPI2, {PB13, PB14, PB15}}, //
+	{true, SPI3, {PC10, PC11, PC12}}
+};
 
 PinDef USBDisconnectPin = { false, 0, };
 
 const DevDef busDev[] = {
-	{ true, mpu6000IMU, useSPI, 1, xxx}, // imu0Sel
-	{ false, },// imu1Sel 
-	{ true, ms5611Baro, useSPI, 2, }, // baroSel
-	{ true, hmc5xxxMag, useI2C, 1, HMC5XXX_ID}, // magSel 
-	{ false, spiFlashMem, useSPI, 2,}, // memSel 
-	{ false, }, // gpsSel
-	{ false, }, // rfSel
-	{ false, }, // asSel,
-	{ false, }, // flowSel
-	{ false, }, // escSel
+    {true, imu0Sel, mpu6000IMU, true, 1, 0, PA4},
+	{false, },// imu1Sel 
+	{true, ms5611Baro, useSPI, 2, }, // baroSel
+	{true, hmc5xxxMag, useI2C, 1, HMC5XXX_ID}, // magSel 
+	{false, spiFlashMem, useSPI, 2,}, // memSel 
+	{false, }, // gpsSel
+	{false, }, // rfSel
+	{false, }, // asSel,
+	{false, }, // flowSel
+	{false, }, // escSel
 };
 
 const uint8 currGimbalType = noGimbal;
@@ -138,9 +173,18 @@ const boolean ledsLowOn = true;
 const uint8 imuSel = imu0Sel;
 
 void InitTarget(void) {
-			
-	TelemetrySerial = Usart3;
-	InitSerialPort(TelemetrySerial, true, false);
+	
+    GPIO_InitTypeDef GPIO_InitStructure;
+
+    GPIO_InitStructure.GPIO_Pin   = GPIO_Pin_10;
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IN;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_OD;
+    GPIO_InitStructure.GPIO_PuPd  = GPIO_PuPd_NOPULL;
+    GPIO_Init(GPIOC, &GPIO_InitStructure);
+
+    TelemetrySerial = USBSerial;
+    InitSerialPort(TelemetrySerial, true, false);
 
 	CurrRxType = FutabaSBusRx;
 	
@@ -162,9 +206,5 @@ void InitTarget(void) {
 	GPSRxSerial = GPSTxSerial = Uart4;
 	InitSerialPort(GPSRxSerial, false, false); 
 
-	if (CurrwsNoOfLeds > 0) 
-		CurrMaxPWMOutputs = 4;
-
 } // omnibusf4nxtInit
 #endif
-
