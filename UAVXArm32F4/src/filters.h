@@ -69,6 +69,7 @@ real32 Make2Pi(real32);
 real32 MakePi(real32);
 real32 invSqrt(real32 x);
 void Rotate(real32 * nx, real32 * ny, real32 x, real32 y, real32 A);
+void RotateSensor(int16 * x, int16 * y, const uint8 Q);
 real32 DecayX(real32 v, real32 d, real32 dT);
 real32 scaleRangef(real32 v, real32 srcMin, real32 srcMax, real32 destMin,
 		real32 destMax);

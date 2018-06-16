@@ -91,9 +91,10 @@ AnalogPinDef AnalogPins[MAX_ANALOG_CHANNELS] = { //
 
 I2CPortDef I2CPorts[MAX_I2C_PORTS] = {
 	{false, 0, }, // notionally I2C0
-	{true, I2C1, PB6, PB7, GPIO_AF_I2C1 },//
-	{true, I2C2, PB10, PB11, GPIO_AF_I2C2 } 
-	{false, I2C3, }};
+	{true, I2C1, PB6, PB7, GPIO_AF_I2C1},
+	{true, I2C2, PB10, PB11, GPIO_AF_I2C2}, 
+	{false, I2C3, }
+};
 
 SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
 	{false, 0, }, // notionally SPI0
@@ -118,11 +119,37 @@ DevDef busDev[maxDevSel] = { // MUST be in enum order otherwise CheckBusDev fail
 	{false, escSel, }
 };
 
+
+const uint8 IMUQuadrant = 1;
+const uint8 MagQuadrant = 1;
+
 const uint8 currGimbalType = noGimbal;
 const boolean ledsLowOn = false;
 const uint8 imuSel = imu0Sel;
 
+#define GKE // for debugging until I get USB working!!!!
+
+#if defined(GKE)
+
 void InitTarget(void) {
+
+	TelemetrySerial = Usart1; 
+	InitSerialPort(TelemetrySerial, true, false);
+
+	RxUsingSerial = false; // use CPPM for now
+	CurrNoOfRCPins = 1;
+
+	GPSRxSerial = GPSTxSerial = Usart3;
+	InitSerialPort(GPSRxSerial, false, false);
+
+	CurrMaxPWMOutputs = 4;
+
+} // InitTarget
+
+#else
+
+void InitTarget(void) {
+
 
 	TelemetrySerial = USBSerial;
 	InitSerialPort(TelemetrySerial, true, false);
@@ -139,6 +166,8 @@ void InitTarget(void) {
 	CurrMaxPWMOutputs = 4;
 
 } // InitTarget
+
+#endif
 
 #endif
 

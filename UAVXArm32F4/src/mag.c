@@ -71,6 +71,8 @@ boolean ReadMagnetometer(void) {
 
 	//MagTemperature = (real32) RawTemp * 0.0078125 + 25.0f;
 
+	RotateSensor(&RawMag[X], &RawMag[Y], MagQuadrant);
+
 	r = (RawMag[0] != -4096) && (RawMag[1] != -4096) && (RawMag[2] != -4096);
 	if (!r)
 		incStat(CompassFailS);

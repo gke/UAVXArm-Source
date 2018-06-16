@@ -400,6 +400,10 @@ extern uint8 CurrNoOfRCPins;
 extern idx CurrMaxPWMOutputs;
 extern idx GPSRxSerial, GPSTxSerial, RCSerial, TelemetrySerial;
 extern boolean RxUsingSerial;
+
+extern const uint8 IMUQuadrant;
+extern const uint8 MagQuadrant;
+
 extern const uint8 currGimbalType;
 extern const DevDef busDev[];
 extern const boolean ledsLowOn;

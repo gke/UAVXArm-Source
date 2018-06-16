@@ -118,8 +118,7 @@ SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
 
 PinDef USBDisconnectPin = {false, 0, };
 
-const uint8 currGimbalType = noGimbal;
-const boolean ledsLowOn = false;
+
 
 DevDef busDev[maxDevSel] = {
 	{true, imu0Sel, mpu6050IMU, false, 2, MPU_0x68_ID,},  
@@ -134,7 +133,13 @@ DevDef busDev[maxDevSel] = {
 	{false, escSel, },
 };
 
+const uint8 IMUQuadrant = 0;
+const uint8 MagQuadrant = 0;
+
+const uint8 currGimbalType = noGimbal;
+const boolean ledsLowOn = false;
 const uint8 imuSel = imu0Sel;
+
 
 void InitTarget(void) {
 

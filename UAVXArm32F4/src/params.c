@@ -70,8 +70,8 @@ void ClassifyAFType(void) {
 	IsMulticopter = !(F.IsFixedWing || (AF == VTOLAF) || (AF == Heli90AF)
 			|| (AF == Heli120AF));
 
-
 	OrientationRad = DegreesToRadians(AFOrientation[AF]);
+
 	OrientS = sinf(OrientationRad);
 	OrientC = cosf(OrientationRad);
 

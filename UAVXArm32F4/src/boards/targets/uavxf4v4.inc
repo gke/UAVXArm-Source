@@ -116,9 +116,13 @@ DevDef busDev[maxDevSel] = {
 	{false, escSel, }
 };
 
+const uint8 IMUQuadrant = 0;
+const uint8 MagQuadrant = 0;
+
 const uint8 currGimbalType = noGimbal;
-const boolean ledsLowOn = true;
+const boolean ledsLowOn = false;
 const uint8 imuSel = imu0Sel;
+
 
 void InitTarget(void) {
 

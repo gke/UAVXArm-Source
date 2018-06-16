@@ -20,6 +20,8 @@
 
 #include "UAVX.h"
 
+#include <ctype.h>
+
 #define TELEMETRY_FLAG_BYTES  6
 
 enum RxPacketStates {
@@ -128,6 +130,105 @@ void TxVal32(uint8 s, int32 V, int8 dp, uint8 Separator) {
 	if (Separator != ASCII_NUL)
 		TxChar(s, Separator);
 } // TxVal32
+
+#if defined(CLI)
+
+uint8 SkipToDigit(uint8 s) {
+	uint8 ch;
+
+	do {
+		while(!SerialAvailable(s)) {};
+		ch = RxChar(s);
+	} while (!isdigit(ch));
+
+	return(ch);
+
+} // SkipToDigit
+
+uint32 RxU32(uint8 s) {
+	uint8 ch;
+	uint32 v = 0;
+
+	ch = SkipToDigit(s);
+	while (isdigit(ch)) {
+		v = v * 10 + (ch - '0');
+		while (!SerialAvailable(s)) {};
+		ch = RxChar(s);
+	}
+
+	return(v);
+
+} // RxU32
+
+void InitPollRxPacket(void) {};
+void SendRawIMU(uint8 s) {};
+
+void CheckTelemetry(uint8 s) {
+	idx i;
+	uint8 p, v;
+	uint8 ch;
+
+	if (SerialAvailable(s)) {
+		ch = tolower(RxChar(s));
+		switch (ch) {
+			case 'b':
+				TxString(s, "BOOTLOADER\n");
+				Delay1mS(20);
+				systemReset(true);
+			break;
+			case 'd':
+			for (i = 0; i< MAX_PARAMETERS; i++) {
+				TxString(s,"w ");
+				TxVal32(s, i+1, 0,' ');
+				TxVal32(s, P(i), 0,' ');
+				TxNextLine(s);
+			}
+			break;
+			case 'w':
+				p = RxU32(s);
+				v = RxU32(s);
+
+				if ((p > 0) && (p <= MAX_PARAMETERS) && (v < 256)) {
+					SetP(p-1, v);
+				} else {
+					TxString(s, "RANGE ");
+					TxVal32(s, p, 0,' ');
+					TxVal32(s, v, 0,' ');
+					TxNextLine(s);
+				}
+			break;
+			case 'v':
+				if (NVChanged) {
+					TxString(s, "UPDATING FLASH\n");
+					UpdateNV();
+					F.ParametersChanged = true;
+					UpdateParameters();
+				} else
+					TxString(s, "PARAMETERS UNCHANGED\n ");
+				break;
+			case 'r':
+				TxString(s, "RESET\n");
+				Delay1mS(20);
+				systemReset(false);
+			break;
+			case '?':
+			case 'h':
+				TxString(s, "THERE ARE NO CHECKS ON CLI COMMAND VALIDITY\n");
+				TxString(s, "b enter bootloader\n");
+				TxString(s, "r reset\n");
+				TxString(s, "d dump parameters\n");
+				TxString(s, "v update FLASH parameters\n");
+				TxString(s, "w p v update p to value v\n");
+				TxString(s, "? or h  help\n");
+			default:
+			break;
+		}
+	}
+
+} // CheckTelemetry
+
+
+#else
 
 void TxESCu8(uint8 s, uint8 ch) {
 	if ((ch == ASCII_SOH) || (ch == ASCII_EOT) || (ch == ASCII_ESC))
@@ -1293,5 +1394,7 @@ void CheckTelemetry(uint8 s) {
 
 }
 // CheckTelemetry
+
+#endif
 
 

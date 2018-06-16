@@ -102,6 +102,9 @@ void ReadGyro(uint8 imuSel) { // Roll Right +, Pitch Up +, Yaw ACW +
 	 #endif
 	 */
 
+
+	RotateSensor(&B[X], &B[Y], IMUQuadrant);
+
 	for (a = X; a <= Z; a++) {
 		ShadowRawIMU[a + 4] = B[a];
 		RawGyro[a] = OSF(&OSGyroF[a], (real32) B[a], GyrodT);
@@ -115,6 +118,9 @@ void ReadAcc(uint8 imuSel) { // Roll Right +, Pitch Up +, Yaw ACW +
 	idx a;
 
 	SIOReadBlocki16vataddr(imuSel, MPU_RA_ACC_XOUT_H, 4, B, true);
+
+
+	RotateSensor(&B[X], &B[Y], IMUQuadrant);
 
 	for (a = X; a <= Z; a++) {
 		ShadowRawIMU[a] = B[a];

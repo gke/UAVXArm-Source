@@ -46,7 +46,7 @@ const idx DM[10] = { 0, 1, 2, 3, // TIM4
 		6, 7, 8, 9, // TIM3
 		4, 5 }; // TIM1 V4 TIM8  camera servo channels always last
 #else
-const idx DM[10] = { 0, 1, 2, 3, // TIM4 ROBERT needs reordering for MW convention
+const idx DM[10] = { 3, 2, 1, 0, // TIM4 ROBERT needs reordering for MW convention
 		6, 7, 8, 9, // TIM3
 		4, 5 }; // TIM1 V4 TIM8  camera servo channels always last
 #endif

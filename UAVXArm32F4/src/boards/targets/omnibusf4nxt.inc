@@ -168,6 +168,9 @@ const DevDef busDev[] = {
 	{false, }, // escSel
 };
 
+const uint8 IMUQuadrant = 1;
+const uint8 MagQuadrant = 1;
+
 const uint8 currGimbalType = noGimbal;
 const boolean ledsLowOn = true;
 const uint8 imuSel = imu0Sel;

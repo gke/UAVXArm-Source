@@ -20,7 +20,6 @@
 
 #include "UAVX.h"
 
-
 void DFT8(real32 v, real32 *DFT) { // 137uS
 #if defined(INC_DFT)
 	const real32 mR = 0.125f;
@@ -437,6 +436,31 @@ void Rotate(real32 * nx, real32 * ny, real32 x, real32 y, real32 A) { // A rotat
 	*nx = Temp;
 
 } // Rotate
+
+void RotateSensor(int16 * x, int16 * y, const uint8 Q) {
+	int16 Temp;
+
+	if (Q > 0)
+		switch (Q) {
+		case 1:
+			Temp = *x;
+			*x = *y;
+			*y = -Temp;
+			break;
+		case 2:
+			*x = -*x;
+			*y = -*y;
+			break;
+		case 3:
+			Temp = *x;
+			*x = -*y;
+			*y = Temp;
+			break;
+		default:
+			break;
+		}
+
+} // RotateSensor
 
 
 real32 DecayX(real32 v, real32 rate, real32 dT) {
