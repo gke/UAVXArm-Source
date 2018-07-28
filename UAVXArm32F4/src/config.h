@@ -41,6 +41,7 @@
 #define RC_MAXIMUM 1.0f
 #define RC_NEUTRAL 0.5f
 
+#define PID_CYCLE_1000US 1000
 #define PID_CYCLE_2000US 2000
 #define PID_SYNCPWM_CYCLE_2050US 2050 //2500 // for synchronised standard PWM
 

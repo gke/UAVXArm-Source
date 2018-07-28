@@ -31,7 +31,7 @@ void InitServoSense(void);
 
 extern real32 IdleThrottlePW;
 extern real32 NetThrottle;
-extern boolean LaunchOrTransitionMode;
+extern boolean VTOLMode;
 
 #endif
 

@@ -109,7 +109,7 @@ enum PWMTagsElevon {
 };
 
 enum PWMTagsVTOL {
-	RightPitchYawC = 1, LeftPitchYawC = 2, RollC = 3
+	LeftThrottleC = 0, RightThrottleC = 1, RightPitchYawC = 2, LeftPitchYawC = 3
 };
 enum PWMTagsVTail {
 	RightElevatorC = ElevatorC, LeftElevatorC = RudderC

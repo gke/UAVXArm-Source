@@ -3,21 +3,20 @@
 
 #include "UAVX.h"
 
-#include "USBd_cdc_core.h"
-#include "USB_core.h"
-#include "USBd_desc.h"
-#include "USBd_usr.h"
+#include "usbd_cdc_core.h"
+#include "usb_core.h"
+#include "usbd_desc.h"
+#include "usbd_usr.h"
 
-#include "drv_USB.h"
+#include "drv_usb.h"
 
 #include <stdarg.h>
 
-volatile bool USBDeviceConfigured = false;
+volatile uint8_t USBDeviceConfigured = false;
 
-bool previousUSBDeviceConfigured = false;
+uint8_t previousUSBDeviceConfigured = false;
 
 __ALIGN_BEGIN USB_OTG_CORE_HANDLE USB_OTG_dev __ALIGN_END;
-
 
 //enum { expandEvr = 1 };
 //
@@ -65,43 +64,33 @@ __ALIGN_BEGIN USB_OTG_CORE_HANDLE USB_OTG_dev __ALIGN_END;
  } // USBCableIsInserted
 
  */
-void USBGenerateDisconnectPulse(void) {
-	GPIO_InitTypeDef GPIO_InitStructure;
 
-	GPIO_InitStructure.GPIO_Pin = GPIO_PinSource12;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_OD;
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-
-	GPIO_Init(GPIOA, &GPIO_InitStructure);
-
-	GPIO_ResetBits(GPIOA, GPIO_PinSource12);
-	Delay1mS(200);
-	GPIO_SetBits(GPIOA, GPIO_PinSource12);
-
-} // USBGenerateDisconnectPulse
-
-
-uint8_t USBRxChar(void) {
+uint8_t USBRxChar(void)
+{
 	uint8_t data;
-	if (USBDeviceConfigured) {
+	if (USBDeviceConfigured)
+	{
 		CDC_Receive_DATA(&data);
 		return data;
-	} else
+	}
+	else
 		return (0);
 } // USBRxChar
 
 
-void USBTxChar(char ch) {
+void USBTxChar(char ch)
+{
 	if (USBDeviceConfigured)
 		CDC_Send_DATA((uint8 *)&ch, 1);
 } // USBTxChar
 
 
-void USBTxString(char* str) {
+void USBTxString(char* str)
+{
 	if (USBDeviceConfigured)
+	{
 		CDC_Send_DATA((uint8_t *) str, strlen(str));
+	}
 } // USBTxString
 
 
@@ -186,17 +175,29 @@ void USBActive(boolean forceCheck) {
 
 
 void USBConnect(void) {
+    GPIO_InitTypeDef  GPIO_InitStructure;
+    EXTI_InitTypeDef EXTI_InitStructure;
 
-	USBGenerateDisconnectPulse();
+    /* Configure the EXTI line 18 connected internally to the USB IP */
+    EXTI_ClearITPendingBit(EXTI_Line18);
+    EXTI_InitStructure.EXTI_Line = EXTI_Line18;
+    EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
+    EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+    EXTI_Init(&EXTI_InitStructure);
 
-	Delay1mS(200);
+    GPIO_InitStructure.GPIO_Pin   = USBDisconnectPin.P.Pin;
+    GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_OUT;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_OD;
+    GPIO_InitStructure.GPIO_PuPd  = GPIO_PuPd_NOPULL;
 
-	USBD_Init(&USB_OTG_dev, USB_OTG_FS_CORE_ID, &USR_desc, &USBD_CDC_cb,
-			&USR_cb);
+    GPIO_Init(USBDisconnectPin.P.Port, &GPIO_InitStructure);
 
-	Delay1mS(200);
-	USBActive(true);
-	if (!USBDeviceConfigured) {
-	}
+    GPIO_ResetBits(USBDisconnectPin.P.Port, USBDisconnectPin.P.Pin);
 
+    Delay1mS(200);
+
+    GPIO_SetBits(USBDisconnectPin.P.Port, USBDisconnectPin.P.Pin);
+
+    USBD_Init(&USB_OTG_dev, USB_OTG_FS_CORE_ID, &USR_desc, &USBD_CDC_cb, &USR_cb);
 } // USBConnect

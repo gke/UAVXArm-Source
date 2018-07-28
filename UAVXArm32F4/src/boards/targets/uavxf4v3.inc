@@ -118,8 +118,6 @@ SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
 
 PinDef USBDisconnectPin = {false, 0, };
 
-
-
 DevDef busDev[maxDevSel] = {
 	{true, imu0Sel, mpu6050IMU, false, 2, MPU_0x68_ID,},  
 	{false, imu1Sel, },  

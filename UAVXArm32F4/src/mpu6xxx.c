@@ -220,12 +220,12 @@ void CalibrateAccAndGyro(uint8 s, uint8 imuSel) {
 
 	F.IMUCalibrated = Abs(TempDiff) < (RangeT * 2.0f); // check if too fast!!!
 	if (F.IMUCalibrated) {
-		NVChanged = true;
 		UpdateNV();
-		UpdateGyroTempComp(imuSel);
 		DoBeep(8, 1);
 		LEDOff(ledBlueSel);
 		SendAckPacket(s, UAVXMiscPacketTag, 1);
+		Delay1mS(100);
+		systemReset(false);
 	} else {
 		SendAckPacket(s, UAVXMiscPacketTag, 255);
 		Catastrophe();

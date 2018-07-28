@@ -65,10 +65,10 @@ void USB_OTG_BSP_Init(USB_OTG_CORE_HANDLE *pdev)
     NVIC_InitStructure.NVIC_IRQChannel = OTG_FS_IRQn;
 #endif
 
- //   zzz gke NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
- //   NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;
- //   NVIC_InitStructure.NVIC_IRQChannelCmd = DISABLE;
- //   NVIC_Init(&NVIC_InitStructure);
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = DISABLE;
+    NVIC_Init(&NVIC_InitStructure);
 
 
     NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 7;

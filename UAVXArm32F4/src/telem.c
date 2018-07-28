@@ -199,10 +199,9 @@ void CheckTelemetry(uint8 s) {
 			break;
 			case 'v':
 				if (NVChanged) {
-					TxString(s, "UPDATING FLASH\n");
+					TxString(s, "UPDATING FLASH AND RESETING\n");
 					UpdateNV();
-					F.ParametersChanged = true;
-					UpdateParameters();
+					systemReset(false);
 				} else
 					TxString(s, "PARAMETERS UNCHANGED\n ");
 				break;
@@ -213,7 +212,10 @@ void CheckTelemetry(uint8 s) {
 			break;
 			case '?':
 			case 'h':
-				TxString(s, "THERE ARE NO CHECKS ON CLI COMMAND VALIDITY\n");
+				TxString(s, "THERE ARE NO CHECKS ON CLI PARAMETER CHANGE VALIDITY\n");
+				TxString(TelemetrySerial, "Revision ");
+				TxVal32(TelemetrySerial, NV.CurrRevisionNo,0,' ');
+				if (CheckSumFailNV()) TxString(TelemetrySerial, "NV Checksum FAIL\n");
 				TxString(s, "b enter bootloader\n");
 				TxString(s, "r reset\n");
 				TxString(s, "d dump parameters\n");

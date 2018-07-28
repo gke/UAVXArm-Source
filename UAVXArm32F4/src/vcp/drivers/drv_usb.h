@@ -38,9 +38,8 @@
 #include "UAVX.h"
 
 #include <stdint.h>
-#include <stdbool.h>
 
-extern volatile bool USBDeviceConfigured;
+extern volatile uint8 usbDeviceConfigured;
 
 void USBGenerateDisconnectPulse(void);
 void USBConnect(void);

@@ -45,7 +45,7 @@ real32 OrientC = 1.0f;
 real32 IdleThrottlePW;
 real32 NetThrottle;
 real32 CGOffset;
-boolean LaunchOrTransitionMode = false;
+boolean VTOLMode = false;
 
 void RotateOrientation(real32 * nx, real32 * ny, real32 x, real32 y) {
 	real32 Temp;
@@ -66,6 +66,43 @@ void DoDifferential(uint8_t R, uint8_t L) {
 		PW[L] *= d;
 
 } // DoDifferential
+
+void DoVTOLMix(void) {
+	real32 TempThrottle, TempElevator, TempRudder;
+
+	TempThrottle = (F.Bypass) ? DesiredThrottle : DesiredThrottle + AltComp;
+
+	NetThrottle = TempThrottle = Limit(TempThrottle * OUT_MAXIMUM, 0.0f, 1.0f);
+
+	if (VTOLMode) {
+
+		PW[LeftThrottleC] = TempThrottle + Rl;
+		PW[RightThrottleC] = TempThrottle - Rl;
+
+		TempRudder = -PWSense[RudderC] * Yl;
+		TempElevator = PWSense[ElevatorC] * Pl;
+
+		// assume servos are opposite hand
+		PW[RightPitchYawC] = PWSense[RightPitchYawC] * (TempElevator + TempRudder)
+				+ OUT_NEUTRAL;
+		PW[LeftPitchYawC] = PWSense[LeftPitchYawC] * (-TempElevator + TempRudder)
+				+ OUT_NEUTRAL;
+
+	} else {
+
+		TempRudder = -PWSense[RudderC] * Yl; // use Roll not Yaw
+		PW[LeftThrottleC] = TempThrottle + Yl;
+		PW[RightThrottleC] = TempThrottle - Yl;
+
+		TempElevator = PWSense[ElevatorC] * (F.Bypass ? Pl : (Pl
+				+ FWRollPitchFFFrac * Abs(Rl)));
+		// assume servos are opposite hand
+		PW[RightPitchYawC] = PWSense[RightPitchYawC] * (TempElevator + TempRudder
+				+ Rl) + OUT_NEUTRAL;
+		PW[LeftPitchYawC] = PWSense[LeftPitchYawC] * (-TempElevator + TempRudder
+				+ Rl) + OUT_NEUTRAL;
+	}
+} // DoVTOLMix
 
 void DoMix(void) {
 #define OUT_MAX_SPOILER 0.3f // so we still have some aileron control left
@@ -170,7 +207,9 @@ void DoMix(void) {
 		PW[RightSpoilerC] = PWSense[RightSpoilerC] * Sl + OUT_NEUTRAL;
 		PW[LeftSpoilerC] = -PWSense[RightSpoilerC] * Sl + OUT_NEUTRAL;
 		break;
-	case VTOLAF: //  elevon with axis swap
+	case VTOLAF:
+		DoVTOLMix();
+		break;
 	case DeltaAF:
 		PW[RudderC] = -PWSense[RudderC] * Yl + OUT_NEUTRAL;
 

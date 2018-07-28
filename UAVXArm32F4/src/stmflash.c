@@ -21,11 +21,32 @@
 
 #include "UAVX.h"
 
-__attribute__((__section__(".scratchFLASH")))   const int8 FlashNV[NV_FLASH_SIZE];
+__attribute__((__section__(".scratchFLASH")))    const int8 FlashNV[NV_FLASH_SIZE];
 #define FLASH_SCRATCH_ADDR (0x8000000+NV_FLASH_SIZE)
 #define FLASH_SCRATCH_SECTOR	FLASH_Sector_1 // 11
-
 boolean NVChanged = false;
+
+void UpdateCheckSumNV(void) {
+	uint32 i;
+	uint8 CSum = 0;
+
+	for (i = 0; i < MAX_PARAMETERS; i++)
+		CSum ^= P(i);
+
+	NV.CheckSum = CSum;
+
+} // UpdateCheckSumNV
+
+boolean CheckSumFailNV(void) {
+	uint32 i;
+	uint8 CSum = 0;
+
+	for (i = 0; i < MAX_PARAMETERS; i++)
+		CSum ^= P(i);
+
+	return (CSum != 0);
+
+} // CheckSumFailNV
 
 void ReadBlockNV(uint32 a, uint16 l, int8 * v) {
 	uint16 i;
@@ -43,8 +64,10 @@ boolean UpdateNV(void) {
 	//for (i = 0; i < l; i++) // TODO: optimise to word compares
 	//	r &= v[i] == FlashNV[a + i]; //*(int8 *) (FLASH_SCRATCH_ADDR + a + i);
 
-
 	if (NVChanged) {
+
+		UpdateCheckSumNV();
+
 		FLASH_Unlock();
 		FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR
 				| FLASH_FLAG_PGAERR | FLASH_FLAG_PGPERR | FLASH_FLAG_PGSERR);
@@ -59,9 +82,9 @@ boolean UpdateNV(void) {
 			}
 		}
 		FLASH_Lock();
-	}
 
-	NVChanged = false;
+		NVChanged = false;
+	}
 
 	return (r);
 } // UpdateNV

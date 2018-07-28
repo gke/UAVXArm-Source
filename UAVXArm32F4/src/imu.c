@@ -22,7 +22,6 @@
 
 #include "UAVX.h"
 
-
 // ITG3200  1.214142088
 const real32 GyroScale[] = { //
 		13.0834, // MLX90609
@@ -50,18 +49,36 @@ boolean CaptureIMUBias = false;
 void ScaleRateAndAcc(uint8 imuSel) {
 	idx a;
 
-	Rate[Pitch] = (RawGyro[X] - GyroBias[X]) * GyroScale[CurrAttSensorType];
-	Rate[Roll] = (RawGyro[Y] - GyroBias[Y]) * GyroScale[CurrAttSensorType];
-	Rate[Yaw] = -(RawGyro[Z] - GyroBias[Z]) * GyroScale[CurrAttSensorType];
+	if (VTOLMode) {
 
-	if (CurrAttSensorType == InfraRedAngle) {
+		Rate[Pitch] = (RawGyro[X] - GyroBias[X]) * GyroScale[CurrAttSensorType];
+		Rate[Yaw] = -(RawGyro[Y] - GyroBias[Y]) * GyroScale[CurrAttSensorType];
+		Rate[Roll] = -(RawGyro[Z] - GyroBias[Z]) * GyroScale[CurrAttSensorType];
 
-		// TODO: bias and scale from where? track max min with decay???
+		if (CurrAttSensorType == InfraRedAngle) {
 
+			// TODO: bias and scale from where? track max min with decay???
+
+		} else {
+			Acc[UD] = -(RawAcc[Y] - NV.AccCal.Bias[Y]) * NV.AccCal.Scale[Y];
+			Acc[LR] = (RawAcc[X] - NV.AccCal.Bias[X]) * NV.AccCal.Scale[X];
+			Acc[BF] = -(RawAcc[Z] - NV.AccCal.Bias[Z]) * NV.AccCal.Scale[Z] - 1.0f;
+		}
 	} else {
-		Acc[BF] = (RawAcc[Y] - NV.AccCal.Bias[Y]) * NV.AccCal.Scale[Y];
-		Acc[LR] = (RawAcc[X] - NV.AccCal.Bias[X]) * NV.AccCal.Scale[X];
-		Acc[UD] = -(RawAcc[Z] - NV.AccCal.Bias[Z]) * NV.AccCal.Scale[Z];
+
+		Rate[Pitch] = (RawGyro[X] - GyroBias[X]) * GyroScale[CurrAttSensorType];
+		Rate[Roll] = (RawGyro[Y] - GyroBias[Y]) * GyroScale[CurrAttSensorType];
+		Rate[Yaw] = -(RawGyro[Z] - GyroBias[Z]) * GyroScale[CurrAttSensorType];
+
+		if (CurrAttSensorType == InfraRedAngle) {
+
+			// TODO: bias and scale from where? track max min with decay???
+
+		} else {
+			Acc[BF] = (RawAcc[Y] - NV.AccCal.Bias[Y]) * NV.AccCal.Scale[Y];
+			Acc[LR] = (RawAcc[X] - NV.AccCal.Bias[X]) * NV.AccCal.Scale[X];
+			Acc[UD] = -(RawAcc[Z] - NV.AccCal.Bias[Z]) * NV.AccCal.Scale[Z];
+		}
 	}
 
 	F.IMUFailure = !F.IMUCalibrated;
@@ -156,7 +173,7 @@ void InitIMU(uint8 imuSel) {
 	ScaleRateAndAcc(imuSel);
 
 	r = true;
-	for (a = X; a <= Z; a++)
+	for (a = X; a <= Y; a++)
 		r &= NV.AccCal.Bias[a] == 0.0f;
 
 	F.AccCalibrated = F.IMUCalibrated = !r;

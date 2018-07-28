@@ -12,11 +12,11 @@ INSTALL_DIR = "C:/Flight/gitHub/UAVXArm.git/UAVXArm/firmware"
 
 #USE_CLI= CLI
 
-BOARD= OMNIBUSF4V1
+#BOARD= OMNIBUSF4V1
 #BOARD= OMNIBUSF4NXT
 #BOARD= DISCOVERYF4
 #BOARD= UAVXF4V4
-#BOARD= UAVXF4V3
+BOARD= UAVXF4V3
 
 #-------------------------------------------------------------
  

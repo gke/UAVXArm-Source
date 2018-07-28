@@ -94,6 +94,7 @@ void InitOutputPin(PinDef * d) {
 	}
 } // InitOutputPin
 
+
 void NVICDisable(IRQn_Type ISR) {
 	NVIC_InitTypeDef NVIC_InitStructure;
 
@@ -108,6 +109,34 @@ void NVICDisable(IRQn_Type ISR) {
 
 TIM_ICInitTypeDef TIM_ICInitStructure = { 0, }; // global for rc
 
+void InitTIM_RCC_APB(TIM_TypeDef *TIMx ) {
+
+if (TIMx == TIM1) RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1, ENABLE);
+if (TIMx == TIM2) RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
+if (TIMx == TIM3) RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+if (TIMx == TIM4) RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
+if (TIMx == TIM5) RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM5, ENABLE);
+if (TIMx == TIM6) RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM6, ENABLE);
+if (TIMx == TIM7) RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM7, ENABLE);
+
+if (TIMx == TIM8) RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM8, ENABLE);
+if (TIMx == TIM9) RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM9, ENABLE);
+if (TIMx == TIM10) RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM10, ENABLE);
+if (TIMx == TIM11) RCC_APB2PeriphResetCmd(RCC_APB2Periph_TIM11, ENABLE);
+if (TIMx == TIM12) RCC_APB1PeriphResetCmd(RCC_APB1Periph_TIM12, ENABLE);
+if (TIMx == TIM13) RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM13, ENABLE);
+if (TIMx == TIM14) RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM14, ENABLE);
+
+} // InitTIM_RCC_APB
+
+void InitPORT_RCC_APB(GPIO_TypeDef* Port) {
+if (Port == GPIOA) RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
+if (Port == GPIOB) RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
+if (Port == GPIOC) RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
+if (Port == GPIOD) RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
+if (Port == GPIOE) RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOE, ENABLE);
+} // InitPort_RCC_APB
+
 void InitRCPins(uint8 PPMInputs) {
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure = { 0, };
 	NVIC_InitTypeDef NVIC_InitStructure;
@@ -118,7 +147,8 @@ void InitRCPins(uint8 PPMInputs) {
 	for (i = 0; i < MAX_RC_INPUTS; i++)
 		if (RCPins[i].Used) {
 			TIM_CtrlPWMOutputs(RCPins[i].Timer.Tim, DISABLE);
-			TIM_DeInit(RCPins[i].Timer.Tim);
+			//TIM_DeInit(RCPins[i].Timer.Tim);
+			InitTIM_RCC_APB(RCPins[i].Timer.Tim);
 		}
 
 	TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
@@ -632,117 +662,113 @@ void InitSerialPort(uint8 s, boolean Enable, boolean SBusConfig) {
 	NVIC_InitTypeDef NVIC_InitStructure;
 	SerialPortDef * u;
 
-	if (s == 0)
-		USBConnect();
-	else {
-		u = &SerialPorts[s];
+	u = &SerialPorts[s];
 
-		if (u->Used) {
-			switch (s) {
-			case 1:
-				RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
-				break;
-			case 2:
-				RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
-				break;
-			case 3:
-				RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3, ENABLE);
-				break;
-			case 4:
-				RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART4, ENABLE);
-				break;
-			} // switch
+	if (u->Used) {
+		switch (s) {
+		case 0:
+			USBConnect();
+			break;
+		case 1:
+			RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
+			break;
+		case 2:
+			RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
+			break;
+		case 3:
+			RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3, ENABLE);
+			break;
+		case 4:
+			RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART4, ENABLE);
+			break;
+		} // switch
 
-			GPIO_StructInit(&GPIO_InitStructure);
-			GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-			GPIO_InitStructure.GPIO_Pin = u->Tx.Pin | u->Rx.Pin;
-			GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-			//GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
-			GPIO_Init(u->Tx.Port, &GPIO_InitStructure);
+		GPIO_StructInit(&GPIO_InitStructure);
+		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+		GPIO_InitStructure.GPIO_Pin = u->Tx.Pin | u->Rx.Pin;
+		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+		//GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+		GPIO_Init(u->Tx.Port, &GPIO_InitStructure);
 
-			GPIO_PinAFConfig(u->Tx.Port, u->Tx.PinSource, u->USART_AF);
-			GPIO_PinAFConfig(u->Rx.Port, u->Rx.PinSource, u->USART_AF);
+		GPIO_PinAFConfig(u->Tx.Port, u->Tx.PinSource, u->USART_AF);
+		GPIO_PinAFConfig(u->Rx.Port, u->Rx.PinSource, u->USART_AF);
 
-			USART_StructInit(&USART_InitStructure);
+		USART_StructInit(&USART_InitStructure);
 
-			if (SBusConfig) {
-				USART_InitStructure.USART_BaudRate = 100000; // 96000; //100000;
-				USART_InitStructure.USART_WordLength = USART_WordLength_9b;
-				USART_InitStructure.USART_StopBits = USART_StopBits_2;
-				USART_InitStructure.USART_Parity = USART_Parity_Even;
-				USART_Init(u->USART, &USART_InitStructure);
-			} else {
-				USART_InitStructure.USART_Parity = USART_Parity_No;
-				USART_InitStructure.USART_BaudRate = u->Baud;
-			}
+		if (SBusConfig) {
+			USART_InitStructure.USART_BaudRate = 100000; // 96000; //100000;
+			USART_InitStructure.USART_WordLength = USART_WordLength_9b;
+			USART_InitStructure.USART_StopBits = USART_StopBits_2;
+			USART_InitStructure.USART_Parity = USART_Parity_Even;
 			USART_Init(u->USART, &USART_InitStructure);
-
-			NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
-			NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;
-			NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-
-			TxQTail[s] = TxQHead[s] = TxQNewHead[s] = 0;
-
-			if (u->InterruptsUsed) {
-				RxQTail[s] = RxQHead[s] = 0;
-				NVIC_InitStructure.NVIC_IRQChannel = u->ISR;
-				NVIC_Init(&NVIC_InitStructure);
-
-				USART_ITConfig(u->USART, USART_IT_RXNE, ENABLE);
-			} else {
-				// Common
-				DMA_StructInit(&DMA_InitStructure);
-				DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
-				DMA_InitStructure.DMA_Priority = DMA_Priority_Medium;
-				DMA_InitStructure.DMA_PeripheralBaseAddr
-						= (uint32) &u->USART->DR;
-				DMA_InitStructure.DMA_BufferSize = SERIAL_BUFFER_SIZE;
-
-				// Receive DMA
-				DMA_DeInit(u->RxStream);
-				while (DMA_GetCmdStatus(u->RxStream) != DISABLE) {
-				};
-
-				DMA_InitStructure.DMA_PeripheralBaseAddr
-						= (uint32) &u->USART->DR;
-				DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
-				DMA_InitStructure.DMA_Channel = u->DMAChannel;
-				DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralToMemory;
-				DMA_InitStructure.DMA_Memory0BaseAddr = (uint32) RxQ[s];
-
-				DMA_Init(u->RxStream, &DMA_InitStructure);
-				DMA_Cmd(u->RxStream, ENABLE);
-				USART_DMACmd(u->USART, USART_DMAReq_Rx, ENABLE);
-
-				RxQTail[s] = RxQHead[s] = SERIAL_BUFFER_SIZE
-						- DMA_GetCurrDataCounter(u->RxStream);
-
-				// Transmit DMA
-				NVIC_InitStructure.NVIC_IRQChannel = u->TxDMAISR;
-				NVIC_Init(&NVIC_InitStructure);
-
-				DMA_DeInit(u->TxStream);
-				while (DMA_GetCmdStatus(u->TxStream) != DISABLE) {
-				};
-
-				DMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToPeripheral;
-				//	DMA_InitStructure.DMA_Memory0BaseAddr = (uint32) TxQ[s];
-				DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
-				DMA_Init(u->TxStream, &DMA_InitStructure);
-
-				DMA_SetCurrDataCounter(u->TxStream, 0);
-				DMA_ITConfig(u->TxStream, DMA_IT_TC, ENABLE);
-
-				USART_DMACmd(u->USART, USART_DMAReq_Tx, ENABLE);
-			}
-
-			RxEnabled[s] = Enable;
-			USART_Cmd(u->USART, ENABLE);
 		} else {
-			RxEnabled[s] = false;
+			USART_InitStructure.USART_Parity = USART_Parity_No;
+			USART_InitStructure.USART_BaudRate = u->Baud;
 		}
-	}
+		USART_Init(u->USART, &USART_InitStructure);
 
+		NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+		NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;
+		NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+
+		TxQTail[s] = TxQHead[s] = TxQNewHead[s] = 0;
+
+		if (u->InterruptsUsed) {
+			RxQTail[s] = RxQHead[s] = 0;
+			NVIC_InitStructure.NVIC_IRQChannel = u->ISR;
+			NVIC_Init(&NVIC_InitStructure);
+
+			USART_ITConfig(u->USART, USART_IT_RXNE, ENABLE);
+		} else {
+			// Common
+			DMA_StructInit(&DMA_InitStructure);
+			DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+			DMA_InitStructure.DMA_Priority = DMA_Priority_Medium;
+			DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32) &u->USART->DR;
+			DMA_InitStructure.DMA_BufferSize = SERIAL_BUFFER_SIZE;
+
+			// Receive DMA
+			DMA_DeInit(u->RxStream);
+			while (DMA_GetCmdStatus(u->RxStream) != DISABLE) {
+			};
+
+			DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32) &u->USART->DR;
+			DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
+			DMA_InitStructure.DMA_Channel = u->DMAChannel;
+			DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralToMemory;
+			DMA_InitStructure.DMA_Memory0BaseAddr = (uint32) RxQ[s];
+
+			DMA_Init(u->RxStream, &DMA_InitStructure);
+			DMA_Cmd(u->RxStream, ENABLE);
+			USART_DMACmd(u->USART, USART_DMAReq_Rx, ENABLE);
+
+			RxQTail[s] = RxQHead[s] = SERIAL_BUFFER_SIZE
+					- DMA_GetCurrDataCounter(u->RxStream);
+
+			// Transmit DMA
+			NVIC_InitStructure.NVIC_IRQChannel = u->TxDMAISR;
+			NVIC_Init(&NVIC_InitStructure);
+
+			DMA_DeInit(u->TxStream);
+			while (DMA_GetCmdStatus(u->TxStream) != DISABLE) {
+			};
+
+			DMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToPeripheral;
+			//	DMA_InitStructure.DMA_Memory0BaseAddr = (uint32) TxQ[s];
+			DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
+			DMA_Init(u->TxStream, &DMA_InitStructure);
+
+			DMA_SetCurrDataCounter(u->TxStream, 0);
+			DMA_ITConfig(u->TxStream, DMA_IT_TC, ENABLE);
+
+			USART_DMACmd(u->USART, USART_DMAReq_Tx, ENABLE);
+		}
+
+		RxEnabled[s] = Enable;
+		USART_Cmd(u->USART, ENABLE);
+	} else {
+		RxEnabled[s] = false;
+	}
 } // InitSerialPort
 
 void InitAnalogPorts(void) {
@@ -839,25 +865,82 @@ void CheckBusDev(void) {
 
 void InitHarness(void) {
 	GPIO_InitTypeDef GPIO_InitStructure;
-	uint8 i, j;
+	uint8 i;
 
-	// Using all ports - could be generalised but .... later
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
+	// UGLY but covers everything for now :)
+	RCC_AHB1PeriphClockCmd(
+	    RCC_AHB1Periph_GPIOA |
+	    RCC_AHB1Periph_GPIOB |
+	    RCC_AHB1Periph_GPIOC |
+	    RCC_AHB1Periph_GPIOD |
+	    RCC_AHB1Periph_GPIOE |
+	#ifdef STM32F40_41xxx
+	    RCC_AHB1Periph_GPIOF |
+	    RCC_AHB1Periph_GPIOG |
+	    RCC_AHB1Periph_GPIOH |
+	    RCC_AHB1Periph_GPIOI |
+	#endif
+	    RCC_AHB1Periph_CRC |
+	    RCC_AHB1Periph_FLITF |
+	    RCC_AHB1Periph_SRAM1 |
+	    RCC_AHB1Periph_SRAM2 |
+	    RCC_AHB1Periph_BKPSRAM |
+	    RCC_AHB1Periph_DMA1 |
+	    RCC_AHB1Periph_DMA2 |
+	    0, ENABLE
+	);
 
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE); // for interrupts zzz
-	//RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
+	RCC_AHB2PeriphClockCmd(
+	    0, ENABLE);
+	#ifdef STM32F40_41xxx
+	RCC_AHB3PeriphClockCmd(
+	    0, ENABLE);
+	#endif
+	RCC_APB1PeriphClockCmd(
+	    RCC_APB1Periph_TIM2 |
+	    RCC_APB1Periph_TIM3 |
+	    RCC_APB1Periph_TIM4 |
+	    RCC_APB1Periph_TIM5 |
+	    RCC_APB1Periph_TIM6 |
+	    RCC_APB1Periph_TIM7 |
+	    RCC_APB1Periph_TIM12 |
+	    RCC_APB1Periph_TIM13 |
+	    RCC_APB1Periph_TIM14 |
+	    RCC_APB1Periph_WWDG |
+	    RCC_APB1Periph_SPI2 |
+	    RCC_APB1Periph_SPI3 |
+	    RCC_APB1Periph_USART2 |
+	    RCC_APB1Periph_USART3 |
+	    RCC_APB1Periph_UART4 |
+	    RCC_APB1Periph_UART5 |
+	    RCC_APB1Periph_I2C1 |
+	    RCC_APB1Periph_I2C2 |
+	    RCC_APB1Periph_I2C3 |
+	    RCC_APB1Periph_CAN1 |
+	    RCC_APB1Periph_CAN2 |
+	    RCC_APB1Periph_PWR |
+	    RCC_APB1Periph_DAC |
+	    0, ENABLE);
 
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1, ENABLE);
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM8, ENABLE);
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM5, ENABLE);
+	RCC_APB2PeriphClockCmd(
+	    RCC_APB2Periph_TIM1 |
+	    RCC_APB2Periph_TIM8 |
+	    RCC_APB2Periph_USART1 |
+	    RCC_APB2Periph_USART6 |
+	    RCC_APB2Periph_ADC |
+	    RCC_APB2Periph_ADC1 |
+	    RCC_APB2Periph_ADC2 |
+	    RCC_APB2Periph_ADC3 |
+	    RCC_APB2Periph_SDIO |
 
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
+	    RCC_APB2Periph_SPI1 |
+	    RCC_APB2Periph_SYSCFG |
+	    RCC_APB2Periph_TIM9 |
+	    RCC_APB2Periph_TIM10 |
+	    RCC_APB2Periph_TIM11 |
+	    RCC_APB2Periph_SPI1 |
+	    0, ENABLE);
+
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA1, ENABLE);
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2, ENABLE);
 
@@ -870,6 +953,12 @@ void InitHarness(void) {
 	GPIO_Init(GPIOB, &GPIO_InitStructure);
 	GPIO_Init(GPIOC, &GPIO_InitStructure);
 	GPIO_Init(GPIOD, &GPIO_InitStructure); // F407
+#ifdef STM32F40_41xxx
+	GPIO_Init(GPIOF, &GPIO_InitStructure);
+	GPIO_Init(GPIOG, &GPIO_InitStructure);
+	GPIO_Init(GPIOH, &GPIO_InitStructure);
+	GPIO_Init(GPIOI, &GPIO_InitStructure);
+#endif
 
 #if !(defined(UAVXF4V4) || defined(UAVXF4V3))
 	GPIO_InitStructure.GPIO_Pin &= ~(GPIO_Pin_11 | GPIO_Pin_12); // leave USB D+/D- alone

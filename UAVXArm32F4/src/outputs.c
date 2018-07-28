@@ -31,7 +31,7 @@
 const uint8 DrivesUsed[AFUnknown + 1] = { 3, 6, 4, 4, 4, 8, 8, 6, 6, 8, 8, // TriAF, TriCoaxAF, VTailAF, QuadAF, QuadXAF, QuadCoaxAF, QuadCoaxXAF, HexAF, HexXAF, OctAF, OctXAF
 		1, 1, // Heli90AF, Heli120AF,
 		1, 1, 1, 1, 1, 1, // ElevonAF, DeltaAF, AileronAF, AileronSpoilerFlapsAF, AileronVTailAF, RudderElevatorAF,
-		1, 0, // VTOLAF, GimbalAF,
+		2, 0, // VTOLAF, GimbalAF,
 		0, 4, // Instrumentation, IREmulation,
 		0 }; // AFUnknown,
 

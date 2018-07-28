@@ -30,25 +30,24 @@
 #include "UAVX.h"
 
 
-PinDef RCPins[MAX_RC_INPUTS] = {
-		
-	{ true, PB7, PWMPinConfig, PWMIn_4_2},
+PinDef RCPins[MAX_RC_INPUTS] = {		
+	{true, PB7, PWMPinConfig, PWMIn_4_2},
 };
 		
 PinDef PWMPins[MAX_PWM_OUTPUTS] = {
 		// Drives 1-4
-	{ true, GPIOB, GPIO_Pin_5, GPIO_PinSource5, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP, 
+	{true, GPIOB, GPIO_Pin_5, GPIO_PinSource5, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP, 
 		{true, TIM3, TIM_Channel_2, 0, &(TIM3->CCR2), GPIO_AF_TIM3 }}, //
-	{ true, GPIOB, GPIO_Pin_4, GPIO_PinSource4, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP, 
+	{true, GPIOB, GPIO_Pin_4, GPIO_PinSource4, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP, 
 		{true, TIM3, TIM_Channel_1, 0,&(TIM3->CCR1), GPIO_AF_TIM3 }}, //
-	{ true, GPIOB, GPIO_Pin_0, GPIO_PinSource0, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP, 
+	{true, GPIOB, GPIO_Pin_0, GPIO_PinSource0, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP, 
 		{true, TIM3, TIM_Channel_3, 0, &(TIM3->CCR3), GPIO_AF_TIM3 }}, //
-	{ true, GPIOB, GPIO_Pin_1, GPIO_PinSource1, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP, 
+	{true, GPIOB, GPIO_Pin_1, GPIO_PinSource1, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP, 
 		{true, TIM3, TIM_Channel_4, 0, &(TIM3->CCR4), GPIO_AF_TIM3 }},
 		
-	{ true, GPIOC, GPIO_Pin_9, GPIO_PinSource9, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP,
+	{true, GPIOC, GPIO_Pin_9, GPIO_PinSource9, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP,
 		{true, TIM8, TIM_Channel_4, 0, &(TIM8->CCR4), GPIO_AF_TIM8 }}, // optionally WS2812
-	{ true, GPIOC, GPIO_Pin_8, GPIO_PinSource8, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP, 
+	{true, GPIOC, GPIO_Pin_8, GPIO_PinSource8, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP, 
 		{true, TIM8, TIM_Channel_3, 0, &(TIM8->CCR3), GPIO_AF_TIM8 }},
 		
 		
@@ -100,7 +99,7 @@ const AnalogPinDef AnalogPins[MAX_ANALOG_CHANNELS] = {
 };
 	
 SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { 
-	{false, }, // mapped to USBSerial
+	{true, }, // mapped to USBSerial
 	{true, USART1, PB6, PB7, 115200, USART1Config,},
 	{true, USART2, PA2, PA3, 9600, USART2Config,},
 	{true, USART3, PB10, PB11, 115200, USART3Config,},
@@ -108,52 +107,39 @@ SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = {
 	{false, 0 } // SoftSerial
 };
 
-/*
-#define USE_SPI
-#define USE_SPI_DEVICE_1
-#define SPI1_SCK_PIN            PA5
-#define SPI1_MISO_PIN           PA6
-#define SPI1_MOSI_PIN           PA7
-
-#define USE_SPI_DEVICE_2
-#define SPI2_SCK_PIN            PB13
-#define SPI2_MISO_PIN           PB14
-#define SPI2_MOSI_PIN           PC3
-
-#define USE_SPI_DEVICE_3
-#define SPI3_SCK_PIN            PC10          // PC10, alt UART3_TX, UART4_TX
-#define SPI3_MISO_PIN           PC11          // PC11, alt UART3_RX, UART4_RX
-#define SPI3_MOSI_PIN           PC12          // PC12, alt UART5_TX
-
-#define USE_I2C
-#define USE_I2C_DEVICE_1
-#define I2C1_SCL                PB8           // PB8, alt MST8
-#define I2C1_SDA                PB9           // PB9, alt MST7
-
-#define USE_I2C_DEVICE_2
-#define I2C2_SCL                NONE          // PB10 alt UART3TX
-#define I2C2_SDA                NONE          // PB11 alt UART3RX
-
-#define USE_I2C_DEVICE_3
-#define I2C3_SCL                NONE
-#define I2C3_SDA                NONE
-*/
-
 I2CPortDef I2CPorts[MAX_I2C_PORTS] = {
 	{false, 0, }, // notionally I2C0
-	{true, I2C1, PB6, PB7, GPIO_AF_I2C1},
-	{true, I2C2, PB10, PB11, GPIO_AF_I2C2}, 
+	{true, I2C1, 
+			PB8, // PB8, alt MST8 
+			PB9, // PB9, alt MST7
+			GPIO_AF_I2C1},
+	{false, I2C2, 
+			PB10, // PB10 alt UART3TX
+			PB11, // PB11 alt UART3RX
+			GPIO_AF_I2C2}, // used by usart3
 	{false, I2C3, }
 };
 
 SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
 	{false, 0, }, // notionally SPI0
-	{true, SPI1, {PA5, PA6, PA7}}, //
-	{true, SPI2, {PB13, PB14, PB15}}, //
-	{true, SPI3, {PC10, PC11, PC12}}
+	{true, SPI1, {
+			PA5, 
+			PA6, 
+			PA7
+	}}, //
+	{true, SPI2, {
+			PB13, 
+			PB14, 
+			PC3 // PC3????
+	}}, 
+	{true, SPI3, {
+			PC10, // PC10, alt UART3_TX, UART4_TX
+			PC11, // PC11, alt UART3_RX, UART4_RX
+			PC12  // PC12, alt UART5_TX 
+	}} 
 };
 
-PinDef USBDisconnectPin = { false, 0, };
+PinDef USBDisconnectPin = {true, PA12,};
 
 const DevDef busDev[] = {
     {true, imu0Sel, mpu6000IMU, true, 1, 0, PA4},

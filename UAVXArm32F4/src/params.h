@@ -28,8 +28,8 @@ void RegeneratePIDCoeffs(void);
 void UpdateParameters(void);
 void UseDefaultParameters(uint8 DefaultPS);
 void DoStickProgramming(void);
-void CheckParametersInitialised(void);
-void InitParameters(void);
+void LoadParameters(void);
+void CheckParameters(void);
 uint8 P(uint8 i);
 void SetP(uint8 i, uint8 v);
 

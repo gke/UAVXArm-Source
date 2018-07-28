@@ -75,7 +75,7 @@ PinDef LEDPins[MAX_LED_PINS] = { //
 //		{true, DMA_Channel_0, DMA2_Stream2}, DMA2_Stream2_IRQn };
 
 SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { 
-	{false, }, // mapped to USBSerial
+	{true, }, // mapped to USBSerial
 	{true, USART1, PA9, PA10, 115200, USART1Config,},
 	{false, USART2, PA14, PA15, 9600, USART2Config,},
 	{true, USART3, PB10, PB11, 115200, USART3Config,},
@@ -103,7 +103,7 @@ SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
 	{true, SPI3, {PC10, PC11, PC12}}
 };
 
-PinDef USBDisconnectPin = {true, PA12, OutPinConfig,};
+PinDef USBDisconnectPin = {true, PA12,};
 
 //imu0Sel,imu1Sel,baroSel,magSel,memSel,gpsSel,rfSel,asSel,flowSel,escSel, maxDevSel
 DevDef busDev[maxDevSel] = { // MUST be in enum order otherwise CheckBusDev fails	 	
@@ -127,7 +127,7 @@ const uint8 currGimbalType = noGimbal;
 const boolean ledsLowOn = false;
 const uint8 imuSel = imu0Sel;
 
-#define GKE // for debugging until I get USB working!!!!
+//#define GKE // for debugging until I get USB working!!!!
 
 #if defined(GKE)
 

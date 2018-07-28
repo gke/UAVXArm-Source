@@ -878,7 +878,7 @@ void UpdateControls(void) {
 
 		TxSwitchArmed = Triggered(ArmRC);
 
-		LaunchOrTransitionMode = Triggered(TransitionRC); // && (UAVXAirframe == VTOLAF);
+		VTOLMode = Triggered(TransitionRC) && (UAVXAirframe == VTOLAF) && !F.Bypass;
 
 		//_________________________________________________________________________________________
 

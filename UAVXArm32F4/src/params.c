@@ -216,7 +216,7 @@ void SetPIDPeriod(void) {
 	if (CurrESCType == ESCSyncPWM)
 		CurrPIDCycleuS = PID_SYNCPWM_CYCLE_2050US;
 	else
-		CurrPIDCycleuS = busDev[imuSel].Used ? PID_CYCLE_2000US >> 1
+		CurrPIDCycleuS = busDev[imuSel].useSPI ? PID_CYCLE_1000US
 				: PID_CYCLE_2000US;
 
 	CurrPIDCycleS = CurrPIDCycleuS * 1.0e-6;
@@ -232,7 +232,7 @@ void UpdateParameters(void) {
 		// Misc
 
 		F.UsingConvYawSense = (P(ServoSense) & UseConvYawSenseMask) != 0;
-		YawSense = F.UsingConvYawSense ? 1.0f: -1.0f;
+		YawSense = F.UsingConvYawSense ? 1.0f : -1.0f;
 
 		UpdateRCMap(); // for channel re-assignment
 
@@ -257,7 +257,6 @@ void UpdateParameters(void) {
 					|| (CurrMotorStopSel != P(MotorStopSel)) //
 					|| (CurrNoOfWSLEDs != P(WS2812Leds)))
 				systemReset(false);
-
 
 			memset(&A, 0, sizeof(A[3]));
 			memset(&Alt, 0, sizeof(Alt));
@@ -344,11 +343,12 @@ void UpdateParameters(void) {
 
 		CurrYawLPFHz = LimitP(YawLPFHz, 25, 255);
 		CurrServoLPFHz = LimitP(ServoLPFHz, 10, 100);
-#if defined(UAVXF4V3)
-		SetP(OSLPFHz, Limit(P(OSLPFHz), 2, 5)); // 1KHz limited by i2c
-#else
-		SetP(OSLPFHz, Limit(P(OSLPFHz), 2, 40)); // 8KHz
-#endif
+
+		if (busDev[imuSel].useSPI)
+			SetP(OSLPFHz, Limit(P(OSLPFHz), 2, 40)); // 8KHz
+		else
+			SetP(OSLPFHz, Limit(P(OSLPFHz), 2, 5)); // 1KHz limited by i2c
+
 		CurrOSLPKFQ = CurrOSLPFHz = (real32) P(OSLPFHz) * 100.0f;
 
 		CurrOSLPFType = P(OSLPFType);
@@ -544,63 +544,32 @@ void DoStickProgramming(void) {
 } // DoStickProgramming
 
 
-void UseDefaultParameters(uint8 DefaultPS) { // loads a representative set of initial parameters as a base for tuning
+void UseDefaultParameters(uint8 DefaultPS) {
 	uint16 i;
 
+	memset(&NV, 0, sizeof(NV));
+
 	NV.CurrPS = 0;
+	NV.CurrRevisionNo = RevisionNo;
 
 	for (i = 0; i < MAX_PARAMETERS; i++)
 		SetP(DefaultParams[i].tag, DefaultParams[i].p[DefaultPS]);
 
-	ClassifyAFType();
+	NV.AccCal.Bias[Z] = MPU_1G;
 
-	ClearNavMission();
+	InitMagnetometerBias();
 
+	NVChanged = true;
 	UpdateNV();
-
-	F.ParametersChanged = true;
 
 } // UseDefaultParameters
 
-void CheckParametersInitialised(void) {
-	uint8 v;
-	uint16 i;
-	boolean InitialisedNV;
 
-	ReadBlockNV(0, sizeof(NV), (int8 *) (&NV));
-
-	NV.CurrPS = 0;
-
-	InitialisedNV = false;
-	i = 1;
-	do {
-		InitialisedNV = (P(0) != P(i));
-		i++;
-	} while ((i < MAX_PARAMETERS) && !InitialisedNV);
-
-	if (!InitialisedNV) {
-
-		memset(&NV, 0, sizeof(NV));
-		NV.CurrRevisionNo = RevisionNo;
-		UseDefaultParameters(0);
-		InitMagnetometerBias();
-
-		UpdateNV();
-	}
-
-} // CheckParametersInitialised
-
-void InitParameters(void) {
+void CheckParameters(void) {
 
 	F.UsingUplink = F.ParametersValid = true; //unused
 
-	ReadBlockNV(0, sizeof(NV), (int8 *) (&NV)); // redundant?
-
-	NV.CurrPS = 0; // zzz force it
-
 	ClassifyAFType();
-
-	// must have these
 
 	CurrIMUOption = P(IMUOption);
 
@@ -643,8 +612,19 @@ void InitParameters(void) {
 	InitMAVLink();
 
 	F.ParametersChanged = true;
+
 	UpdateParameters();
 
-} // InitParameters
+} // CheckParameters
 
 
+void LoadParameters(void) {
+
+	ReadBlockNV(0, sizeof(NV), (int8 *) (&NV));
+
+	if ((NV.CurrRevisionNo != RevisionNo)) // || CheckSumFailNV())
+		UseDefaultParameters(0);
+
+	CheckParameters();
+
+} // LoadParameters

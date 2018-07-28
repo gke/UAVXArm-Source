@@ -249,6 +249,7 @@ void InitMagnetometerBias(void) {
 		NV.MagCal.Bias[a] = 0.0f;
 
 	NV.MagCal.CalSamples = 0;
+	NVChanged = true;
 
 } // InitMagnetometerBias
 

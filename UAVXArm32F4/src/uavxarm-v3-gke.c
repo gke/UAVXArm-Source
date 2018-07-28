@@ -249,8 +249,7 @@ int main() {
 
 	InitMisc();
 
-	CheckParametersInitialised();
-	InitParameters();
+	LoadParameters();
 	InitHarness();
 
 	InitLEDs();
