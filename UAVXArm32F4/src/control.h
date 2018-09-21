@@ -79,6 +79,7 @@ typedef struct {
 AltStruct Alt;
 
 void ZeroThrottleCompensation(void);
+void ResetHeading(void);
 void DoAltitudeControl(void);
 void ZeroIntegrators(void);
 real32 ComputeRateDerivative(PIDStruct *C);

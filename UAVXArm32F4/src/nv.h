@@ -33,16 +33,15 @@
 
 typedef struct {
 	real32 TRef;
-	real32 DynamicAccBias[3], Scale[3], Bias[3];
+	real32 Scale[3], Bias[3];
 }__attribute__((packed)) AccCalStruct;
 
 typedef struct {
 	real32 TRef;
-	real32 DynamicAccBias[3], M[3], C[3];
+	real32 M[3], C[3];
 }__attribute__((packed)) GyroCalStruct;
 
 typedef struct {
-	uint8 CheckSum;
 	uint16 CurrRevisionNo;
 	uint8 CurrPS;
 	int8 P[NO_OF_PARAM_SETS][MAX_PARAMETERS];
@@ -52,6 +51,7 @@ typedef struct {
 	GyroCalStruct GyroCal;
 
 	MissionStruct Mission;
+	uint8 CheckSum;
 }__attribute__((packed)) NVStruct;
 
 extern NVStruct NV;
@@ -70,8 +70,7 @@ extern boolean NVChanged;
 extern boolean UpdateNV(void);
 extern int8 ReadNV(uint32 a);
 extern void ReadBlockNV(uint32 a, uint16 l, int8 *v);
-void UpdateCheckSumNV(void);
-boolean CheckSumFailNV(void);
+extern boolean NVUninitialised(void);
 
 extern boolean EraseExtMem(void);
 

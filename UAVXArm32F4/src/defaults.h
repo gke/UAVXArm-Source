@@ -34,7 +34,7 @@ const ParamStruct_t DefaultParams[] = { //
 				{ RollAngleIntLimit, 0, 255, { 10, 10, 10, 10 } }, //  05
 				{ RollRateKp, 0, 255, { 20, 35, 40, 40 } }, //  01
 				{ RollRateKd, 0, 255, { 45, 45, 40, 40 } }, //  12
-				{ MaxRollRate, 0, 255, { 60, 60, 60, 60 } }, // x10 deg/S 83
+				{ MaxRollRate, 0, 255, { 60, 60, 20, 20 } }, // x10 deg/S 83
 
 				{ MaxPitchAngle, 0, 255, { 60, 60, 45, 45 } }, // deg  75
 				{ PitchAngleKp, 0, 255, { 28, 28, 3, 3 } }, //  08
@@ -42,7 +42,7 @@ const ParamStruct_t DefaultParams[] = { //
 				{ PitchAngleIntLimit, 0, 255, { 10, 10, 10, 10 } }, //  10
 				{ PitchRateKp, 0, 255, { 20, 35, 40, 40 } }, //  06
 				{ PitchRateKd, 0, 255, { 45, 45, 40, 40 } }, //  28
-				{ MaxPitchRate, 0, 255, { 60, 60, 30, 30 } }, // x10 deg/S 84
+				{ MaxPitchRate, 0, 255, { 60, 60, 20, 20 } }, // x10 deg/S 84
 
 				{ YawAngleKp, 0, 255, { 0, 0, 0, 0 } }, // 97
 				{ YawAngleKi, 0, 255, { 5, 5, 0, 0 } }, // 98
@@ -83,31 +83,32 @@ const ParamStruct_t DefaultParams[] = { //
 
 				// Filters
 				{ ServoLPFHz, 0, 255, { 25, 25, 25, 25 } }, // 27
-				{ YawLPFHz, 0, 255, { 50, 50, 50, 50 } }, // 78
+				{ YawLPFHz, 0, 255, { 50, 50, 30, 30 } }, // 78
 				{ GyroLPFSel, 0, 255, { 2, 2, 2, 2 } }, // 48
 				{ AccLPFSel, 0, 255, { 4, 4, 4, 4 } }, // P90,
 				{ OSLPFType, 0, 255, { RC2, } }, // 105
 				{ OSLPFHz, 0, 255, { 40, } }, // 106 *10
 
 				// Rx
-				{ RCChannels, 0, 255, { 7, 7, 7, 7 } }, //  37c
-				{ RxThrottleCh, 0, 255, { 1, 1, 1, 1 } }, //  17
-				{ RxRollCh, 0, 255, { 2, 2, 2, 2 } }, //  38
-				{ RxPitchCh, 0, 255, { 3, 3, 3, 3 } }, //  42
-				{ RxYawCh, 0, 255, { 4, 4, 4, 4 } }, //  43
-				{ RxGearCh, 0, 255, { 5, 5, 5, 5 } }, //  50c
-				{ RxAux1Ch, 0, 255, { 6, 6, 6, 6 } }, //  51
-				{ RxAux2Ch, 0, 255, { 7, 7, 7, 7 } }, //  55c
-				{ RxAux3Ch, 0, 255, { 8, 8, 8, 8 } }, // 56
-				{ RxAux4Ch, 0, 255, { 9, 9, 9, 9 } }, //  60
-				{ RxAux5Ch, 0, 255, { 10, 10, 10, 10 } }, //  94
-				{ RxAux6Ch, 0, 255, { 11, 11, 11, 11 } }, //  95
-				{ RxAux7Ch, 0, 255, { 12, 12, 12, 12 } }, //  96
+
+				{ RCChannels, 0, 255, { 7, 7, 7, 7} }, //  37c
+				{ RxThrottleCh, 0, 255, { ThrottleRC, ThrottleRC, ThrottleRC, ThrottleRC} }, //  17
+				{ RxRollCh, 0, 255, { RollRC, RollRC, RollRC, RollRC } }, //  38
+				{ RxPitchCh, 0, 255, { PitchRC, PitchRC, PitchRC, PitchRC } }, //  42
+				{ RxYawCh, 0, 255, { YawRC, YawRC, YawRC, YawRC } }, //  43
+				{ RxGearCh, 0, 255, { NavModeRC, NavModeRC, NavModeRC, NavModeRC} }, //  50c
+				{ RxAux1Ch, 0, 255, { AttitudeModeRC, AttitudeModeRC, AttitudeModeRC, AttitudeModeRC} }, //  51
+				{ RxAux2Ch, 0, 255, { NavGainRC, NavGainRC, ArmRC, ArmRC} }, //  55c
+				{ RxAux3Ch, 0, 255, { BypassRC, BypassRC, BypassRC, BypassRC} }, // 56
+				{ RxAux4Ch, 0, 255, { CamPitchRC, CamPitchRC, CamPitchRC, CamPitchRC} }, // 56
+				{ RxAux5Ch, 0, 255, { Unused10RC, Unused10RC, Unused10RC, Unused10RC } }, //  94
+				{ RxAux6Ch, 0, 255, { TransitionRC, TransitionRC, TransitionRC, TransitionRC } }, //  95
+				{ RxAux7Ch, 0, 255, { ArmRC, ArmRC, NavGainRC, NavGainRC } }, //  96
 				{ ServoSense, 0, 255, { 0, } }, //  52c
 
 				// Navigation
-				{ GPSProtocol, 0, 255, { UBXBinGPS, UBXBinGPS, UBXBinGPS,
-						UBXBinGPS } }, // GPSProtocol 62
+				{ GPSProtocol, 0, 255, { NoGPS, NoGPS, NoGPS,
+						NoGPS } }, // GPSProtocol 62
 				{ NavPosKp, 0, 255, { 20, 20, 20, 20 } }, //  57
 				{ NavPosKi, 0, 255, { 5, 5, 5, 5 } }, //  61
 				{ NavPosIntLimit, 0, 255, { 3, 3, 12, 12 } }, // 41
@@ -139,8 +140,11 @@ const ParamStruct_t DefaultParams[] = { //
 				{ StickHysteresis, 0, 255, { 2, 2, 2, 2 } }, //  % 21c
 				{ EstCruiseThr, 0, 255, { 50, 50, 20, 20, } }, //  20c
 				{ PercentIdleThr, 0, 255, { 10, 7, 0, 0 } }, //  23c
-
-				{ GyroSlewRate, 0, 255, { 0, 0, 0, 0 } }, // *100 Deg/S/S P92
+#if defined(UAVXF4V3)
+				{ GyroSlewRate, 0, 255, { 5, 5, 5, 5 } }, // %FS P92
+#else
+				{ GyroSlewRate, 0, 255, { 40, 40, 40, 40 } }, // %FS P92
+#endif
 
 				{ MotorStopSel, 0, 255, { landNoStop, landNoStop, landNoStop,
 						landNoStop } }, // 101
@@ -159,37 +163,27 @@ const ParamStruct_t DefaultParams[] = { //
 
 				// Configuration
 				{ ArmingMode, 0, 255, { RollStickArming, RollStickArming,
-						RollStickArming, RollStickArming } }, //  04
-				{ Config1Bits, 0, 255, { UseRapidDescentMask
-						| UseRTHDescendMask | GPSToLaunchRequiredMask,
-						UseRapidDescentMask | UseRTHDescendMask
-								| GPSToLaunchRequiredMask, UseRapidDescentMask
-								| UseManualAltHoldMask, UseRapidDescentMask
-								| UseManualAltHoldMask } }, //  16c
-#if defined(UAVXF4V3)
+						TxSwitchArming, TxSwitchArming } }, //  04
+				{ Config1Bits, 0, 255, {
+						UseRapidDescentMask | UseRTHDescendMask | GPSToLaunchRequiredMask, //
+						0, //
+						UseRapidDescentMask | UseManualAltHoldMask | GPSToLaunchRequiredMask, //
+						UseRapidDescentMask | UseManualAltHoldMask | GPSToLaunchRequiredMask} }, //  16c
+
 				{ Config2Bits, 0, 255, { //
-						UseFastStartMask ,
-						UseFastStartMask,
-						UseFastStartMask,
+						0 , //
+						0, //
+
+						UseFastStartMask, //
 						UseFastStartMask } }, //  74
-#else
-				{ Config2Bits, 0, 255, { //
-						UseGyroOSMask | UseFastStartMask,
-						UseGyroOSMask | UseFastStartMask,
-						UseGyroOSMask | UseFastStartMask,
-						UseGyroOSMask | UseFastStartMask } }, //  74
-#endif
 				{ RxType, 0, 255, { CPPMRx, CPPMRx,
 						CPPMRx, CPPMRx } }, //  15
 				{ AFType, 0, 255, { QuadXAF, QuadXAF, AileronSpoilerFlapsAF,
 						ElevonAF } }, // ,44c
-#if defined(UAVXF4V3)
-	{ TelemetryType, 0, 255, { UAVXTelemetry, UAVXTelemetry,
-						FrSkyV1Telemetry, MAVLinkTelemetry } }, //  45c
-#else
+
 				{	TelemetryType, 0, 255, {UAVXTelemetry, UAVXTelemetry,
-						FrSkyV1Telemetry, MAVLinkTelemetry}}, //  45c
-#endif
+						FrSkyV1Telemetry, FrSkyV1Telemetry}}, //  45c
+
 				{ ESCType, 0, 255, { ESCUnknown, ESCUnknown, ESCUnknown,
 						ESCUnknown } }, //  36c
 				{ WS2812Leds, 0, 255, { 0, 0, 0, 0 } }, // 80,

@@ -39,8 +39,6 @@ real32 Acc[3], Rate[3];
 real32 RateEnergySum;
 uint32 RateEnergySamples;
 
-boolean CaptureIMUBias = false;
-
 // NED
 // P,R,Y
 // BF, LR, UD
@@ -48,6 +46,8 @@ boolean CaptureIMUBias = false;
 
 void ScaleRateAndAcc(uint8 imuSel) {
 	idx a;
+
+	UpdateGyroTempComp(imuSel);
 
 	if (VTOLMode) {
 
@@ -62,7 +62,8 @@ void ScaleRateAndAcc(uint8 imuSel) {
 		} else {
 			Acc[UD] = -(RawAcc[Y] - NV.AccCal.Bias[Y]) * NV.AccCal.Scale[Y];
 			Acc[LR] = (RawAcc[X] - NV.AccCal.Bias[X]) * NV.AccCal.Scale[X];
-			Acc[BF] = -(RawAcc[Z] - NV.AccCal.Bias[Z]) * NV.AccCal.Scale[Z] - 1.0f;
+			Acc[BF] = -(RawAcc[Z] - NV.AccCal.Bias[Z]) * NV.AccCal.Scale[Z]
+					- 1.0f;
 		}
 	} else {
 
@@ -81,48 +82,47 @@ void ScaleRateAndAcc(uint8 imuSel) {
 		}
 	}
 
-	F.IMUFailure = !F.IMUCalibrated;
-
 } // ScaleRateAndAcc
 
 void ErectGyros(uint8 imuSel, int32 TS) {
 	const int32 IntervalmS = 2;
-	idx g;
+	idx a;
 	int32 i;
-	real32 MaxRawGyro[3], MinRawGyro[3], Av[3];
-	int32 s = TS * 1000 / IntervalmS;
+	real32 gMax[3], gMin[3], g[3], t;
+	int16 Samples = TS * 1000 / IntervalmS;
+	real32 SamplesR = 1.0f / Samples;
 	boolean Moving = false;
 
 	LEDOn(ledRedSel);
 
 	ReadFilteredGyroAndAcc(imuSel);
 
-	for (g = X; g <= Z; g++)
-		MaxRawGyro[g] = MinRawGyro[g] = Av[g] = RawGyro[g];
+	for (a = X; a <= Z; a++)
+		gMax[a] = gMin[a] = g[a] = RawGyro[a];
+	t = 0.0f;
 
-	for (i = 1; i < s; i++) {
+	for (i = 1; i < Samples; i++) {
 		Delay1mS(IntervalmS);
 
 		ReadFilteredGyroAndAcc(imuSel);
 
-		for (g = X; g <= Z; g++) {
-
-			Av[g] += RawGyro[g];
-
-			if (RawGyro[g] > MaxRawGyro[g])
-				MaxRawGyro[g] = RawGyro[g];
-			else if (RawGyro[g] < MinRawGyro[g])
-				MinRawGyro[g] = RawGyro[g];
+		for (a = X; a <= Z; a++) {
+			g[a] += RawGyro[a];
+			if (RawGyro[a] > gMax[a])
+				gMax[a] = RawGyro[a];
+			else if (RawGyro[a] < gMin[a])
+				gMin[a] = RawGyro[a];
 		}
+		t += MPU6XXXTemperature;
 	}
 
-	for (g = X; g <= Z; g++) {
-		Av[g] /= (real32) s;
-		MaxRawGyro[g] -= Av[g];
-		MinRawGyro[g] -= Av[g];
-		Moving |= Max(Abs(MaxRawGyro[g]), Abs(MinRawGyro[g]))
-				> GYRO_MAX_SHAKE_RAW;
+	for (a = X; a <= Z; a++) {
+		g[a] *= SamplesR;
+		gMax[a] -= g[a];
+		gMin[a] -= g[a];
+		Moving |= Max(Abs(gMax[a]), Abs(gMin[a])) > GYRO_MAX_SHAKE_RAW;
 	}
+	t *= SamplesR;
 
 	if (Moving) {
 		SaveLEDs();
@@ -133,14 +133,14 @@ void ErectGyros(uint8 imuSel, int32 TS) {
 		}
 		RestoreLEDs();
 	} else {
-		if (F.UsingAnalogGyros) {
-			for (g = X; g <= Z; g++)
-				GyroBias[g] = Av[g];
-		} else { // leave MPU6xxx calibration alone
-			NV.GyroCal.TRef = MPU6XXXTemperature;
-			for (g = X; g <= Z; g++)
-				NV.GyroCal.C[g] = Av[g];
-		}
+		 // leave MPU6xxx calibration alone
+			for (a = X; a <= Z; a++)
+				NV.GyroCal.C[a] = g[a];
+			NV.GyroCal.TRef = t;
+			NVChanged = true;
+			UpdateNV();
+			if (CurrTelType == UAVXTelemetry)
+				SendCalibrationPacket(TelemetrySerial);
 	}
 
 	LEDOff(ledRedSel);
@@ -154,23 +154,8 @@ void InitIMU(uint8 imuSel) {
 
 	InitMPU6XXX(imuSel);
 
-	if (F.UsingAnalogGyros) {
-		ReadGyro(imuSel);
-		for (a = X; a <= Z; a++)
-			GyroBias[a] = RawGyro[a]; //  until erect gyros
-	} else if (CurrAttSensorType == InfraRedAngle) {
-
-		// TODO: have to put it through the roll/pitch combos to capture
-		//current max/min assume bias is mid point.
-
-	}
-
-	mpuReads = gyroGlitches = 0;
-	for (a = 0; a < 8; a++)
+	for (a = 0; a < MAX_NOISE_BANDS; a++)
 		Noise[a] = 0;
-
-	ReadFilteredGyroAndAcc(imuSel);
-	ScaleRateAndAcc(imuSel);
 
 	r = true;
 	for (a = X; a <= Y; a++)

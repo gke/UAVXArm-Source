@@ -51,7 +51,7 @@ PinDef PWMPins[MAX_PWM_OUTPUTS] = {
 };
 
 PinDef GPIOPins[MAX_GPIO_PINS] = {
-	{true, PA4, OutPinConfig,}, // Beeper
+	{true, PA4, OutPinConfig,}, // 12? Beeper
 	{true, PC10, InpPinConfig,}, // Armed
 	{true, PC9, InpPinConfig,}, // Landing
 	{true, PA5, OutPinConfig,}, // Aux1
@@ -90,9 +90,10 @@ SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
 
 I2CPortDef I2CPorts[MAX_I2C_PORTS] = {
 	{false, 0, }, // notionally I2C0
-	{true, I2C1, PB6, PB7, GPIO_AF_I2C1 },//
-	{true, I2C2, PB10, PB11, GPIO_AF_I2C2 } 
-	{false, I2C3, }};
+	{false, I2C1, PB6, PB7, GPIO_AF_I2C1 },//
+	{false, I2C2, PB10, PB11, GPIO_AF_I2C2 }, 
+	{false, I2C3, }
+};
 
 SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
 	{false, 0, }, // notionally SPI0
@@ -103,12 +104,20 @@ SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
 
 PinDef USBDisconnectPin = { false, 0, };
 
+#define FULL_V4
+
 DevDef busDev[maxDevSel] = {
-	{true, imu0Sel, mpu6000IMU, true, 2, 0, PB12},  
+	{true, imu0Sel, mpu6000IMU, true, 2, 0, PB12}, 
 	{false, imu1Sel, },  
+#if defined(FULL_V4)	
 	{true, baroSel, ms5611Baro, true, 2, 0, PC5},
 	{true, magSel, hmc5xxxMag, true, 2, 0, PC4},
 	{true, memSel, spiFlashMem, true, 2, 0, PC3},
+#else
+	{false, baroSel, ms5611Baro, true, 2, 0, PC5},
+	{false, magSel, hmc5xxxMag, true, 2, 0, PC4},
+	{false, memSel, spiFlashMem, true, 2, 0, PC3},		
+#endif
 	{false, gpsSel, },
 	{false, rfSel, },
 	{false, asSel, },
@@ -136,11 +145,13 @@ void InitTarget(void) {
 		CurrNoOfRCPins = 1;
 		RxUsingSerial = false;
 		break;
+	/* Ken does not use V4 SPI boards
 	case ParallelPPMRx:
 		CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 6;
 		CurrNoOfRCPins = MAX_RC_INPUTS; //P(RCChannels);
 		RxUsingSerial = false;
 		break;
+	 */
 	default:
 		CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 10;
 		CurrNoOfRCPins = 0;

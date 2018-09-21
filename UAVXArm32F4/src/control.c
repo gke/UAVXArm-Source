@@ -59,6 +59,11 @@ real32 ThrottleGain, gainScale;
 
 real32 MaxControlGainReduction;
 
+void ResetHeading(void) {
+	SavedHeading = DesiredHeading = Nav.TakeoffBearing = Nav.DesiredHeading
+			= Heading;
+} // SetDesiredHeading;
+
 void ZeroThrottleCompensation(void) {
 	AltComp = 0.0f;
 	BattThrFFComp = TiltThrFFComp = 1.0f;
@@ -140,7 +145,7 @@ void AltitudeHold(real32 CurrMinROCMPS, real32 CurrMaxROCMPS) {
 
 	Alt.R.Desired = P->PTerm + P->ITerm;
 
-DoROCControl(Alt.R.Desired, CurrMinROCMPS, CurrMaxROCMPS);
+	DoROCControl(Alt.R.Desired, CurrMinROCMPS, CurrMaxROCMPS);
 
 } // AltitudeHold
 
@@ -385,10 +390,39 @@ void DoAngleControl(idx a) {
 
 } // DoHorizonControl
 
+static void DoYawControlFW(void) {
+	static real32 KpScale = 1.0f;
+	real32 NewRollCorr;
+	PIStruct *P = &A[Yaw].P;
+	PIDStruct *R = &A[Yaw].R;
 
-#define NEW_YAW
+	/*
+	 if (F.YawActive) {
+	 DesiredHeading = Heading;
+	 KpScale = 1.0f;
+	 } else if (NavState != PIC) {
+	 DesiredHeading = Nav.DesiredHeading;
+	 KpScale = Nav.Sensitivity;
+	 }
+	 */
 
-#if defined(NEW_YAW)
+	P->Error = MinimumTurn(DesiredHeading);
+	P->Error = Limit1(P->Error, Nav.HeadingTurnout); // 150 30
+
+	P->PTerm = P->Error * P->Kp * 0.1f * KpScale; //60deg * 20 * 0.1 * 0.8 -> 12
+
+	R->Desired = P->PTerm;
+
+	R->Error = (R->Desired + A[Yaw].Control) - Rate[Yaw];
+	R->PTerm = R->Error * R->Kp;
+
+	A[Yaw].Out = Limit1(R->PTerm, 1.0); // needs to be driven by LR acc
+
+	NewRollCorr = atanf(R->Desired * Airspeed * GRAVITY_MPS_S_R);
+	A[Roll].NavCorr = Limit1(NewRollCorr, Nav.MaxBankAngle);
+
+} // DoYawControlFW
+
 
 void RefreshDesiredYawRate(void) {
 	PIStruct *P = &A[Yaw].P;
@@ -427,7 +461,7 @@ void RefreshDesiredYawRate(void) {
 		A[Yaw].R.Desired = Limit1(P->PTerm + P->ITerm, Nav.MaxCompassRate); // redundant limit
 	}
 
-} // DesiredYawRate
+} // RefreshDesiredYawRate
 
 
 static void DoTurnControl(void) {
@@ -442,98 +476,23 @@ static void DoTurnControl(void) {
 
 	A[Yaw].Out = R->PTerm + R->DTerm;
 
-	if (F.IsFixedWing) {
+	// Simple minded version
+	if (F.IsFixedWing)
+#if defined(COORDINATED_TURN)
+	DoYawControlFW();
+#else
+	{
 		A[Roll].NavCorr
 				= F.Bypass ? 0.0f
-						: Limit1(R->Error * Airspeed * GRAVITY_MPS_S_R, Nav.MaxBankAngle)
-								* Nav.Sensitivity;
+						: Limit1(R->Error * Airspeed * GRAVITY_MPS_S_R, Nav.MaxBankAngle);
 		A[Yaw].Out *= FWAileronRudderFFFrac;
 	}
+#endif
 
 	A[Yaw].Out = conditionOut(A[Yaw].Out);
 
 } // DoTurnControl
 
-#else
-
-static void DoYawControlFW(void) {
-	static real32 KpScale = 1.0f;
-	real32 NewRollCorr;
-	PIStruct *P = &A[Yaw].P;
-	PIDStruct *R = &A[Yaw].R;
-
-	if (F.YawActive) {
-		DesiredHeading = Heading;
-		KpScale = 1.0f;
-	} else if (NavState != PIC) {
-		DesiredHeading = Nav.DesiredHeading;
-		KpScale = Nav.Sensitivity;
-	}
-
-	P->Error = MinimumTurn(DesiredHeading);
-	P->Error = Limit1(P->Error, Nav.HeadingTurnout); // 150 30
-
-	P->PTerm = P->Error * P->Kp * 0.1f * KpScale; //60deg * 20 * 0.1 * 0.8 -> 12
-
-	R->Desired = P->PTerm;
-
-	R->Error = (R->Desired + A[Yaw].Control) - Rate[Yaw];
-	R->PTerm = R->Error * R->Kp;
-
-	A[Yaw].Out = Limit1(R->PTerm, 1.0); // needs to be driven by LR acc
-
-	NewRollCorr = atanf(R->Desired * Airspeed * GRAVITY_MPS_S_R);
-	A[Roll].NavCorr = Limit1(NewRollCorr, Nav.MaxBankAngle);
-
-} // DoYawControlFW
-
-
-static void DoTurnControl(void) {
-
-	if (F.IsFixedWing) {
-
-		F.YawActive = Max(Abs(A[Roll].Control), Abs(A[Yaw].Control))
-		> StickDeadZone;
-		DoYawControlFW();
-	} else {
-
-		F.YawActive = Abs(A[Yaw].Stick) > StickDeadZone;
-
-		PIStruct *P = &A[Yaw].P;
-		PIDStruct *R = &A[Yaw].R;
-
-		if (AttitudeMode == RateMode) {
-
-			R->Desired = Limit1(A[Yaw].Control, R->Max);
-			R->Error = R->Desired - Rate[Yaw];
-			R->PTerm = R->Error * R->Kp;
-
-			A[Yaw].Out = Limit1(R->PTerm, 1.0);
-
-		} else {
-
-			if (F.YawActive)
-			DesiredHeading = Heading;
-			else if (F.OrbitingWP || F.RapidDescentHazard || F.UsingPOI)
-			DesiredHeading = Nav.DesiredHeading;
-
-			P->Error = MinimumTurn(DesiredHeading);
-			P->Error = Limit1(P->Error, Nav.HeadingTurnout);
-
-			P->PTerm = P->Error * P->Kp;
-
-			R->Desired = Limit1(P->PTerm, R->Max);
-
-			R->Error = (R->Desired + (A[Yaw].Stick * A[Yaw].R.Max)) - Rate[Yaw];
-			R->PTerm = R->Error * R->Kp;
-
-			A[Yaw].Out = Limit1(R->PTerm, 1.0f);
-		}
-	}
-
-} // DoYawControl
-
-#endif
 
 void DoControl(void) {
 	idx a;
@@ -542,7 +501,7 @@ void DoControl(void) {
 	F.NearLevel = CurrMaxTiltAngle < NAV_RTH_LOCKOUT_ANGLE_RAD;
 
 	//CalcTiltThrFFComp();
-	//CalcBattThrComp();
+	//CalcBattThrComp(); // MUST HAVE VOLTAGE SENSOR
 
 	determineGainScale(); // primitive gain scheduling
 

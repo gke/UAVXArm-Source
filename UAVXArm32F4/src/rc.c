@@ -519,12 +519,12 @@ void UpdateRCMap(void) {
 	Map[NavGainRC] = P(RxAux2Ch);
 	Map[BypassRC] = P(RxAux3Ch);
 	Map[CamPitchRC] = P(RxAux4Ch);
-	Map[WPNavRC] = P(RxAux5Ch);
+	Map[Unused10RC] = P(RxAux5Ch);
 	Map[TransitionRC] = P(RxAux6Ch);
 	Map[ArmRC] = P(RxAux7Ch);
 
-	for (c = ThrottleRC; c < NullRC; c++)
-		Map[c] -= 1;
+	//for (c = ThrottleRC; c < NullRC; c++)
+	//	Map[c] -= 1;
 
 	for (c = 0; c < RC_MAX_CHANNELS; c++)
 		RMap[Map[c]] = c;
@@ -815,8 +815,8 @@ boolean ActiveCh(uint8 r) {
 	return DiscoveredRCChannels > Map[r];
 } // ActiveCh
 
-boolean Triggered(uint8 r) {
-	return ActiveCh(r) && (RC[r] > FromPercent(70));
+boolean Triggered(uint8 t, uint8 r) {
+	return ActiveCh(r) && (RC[r] > FromPercent(t));
 } // Triggered
 
 void UpdateControls(void) {
@@ -849,7 +849,7 @@ void UpdateControls(void) {
 		StickThrottle = RC[ThrottleRC];
 		F.ThrottleOpen = StickThrottle >= RC_THRES_START_STICK;
 
-		F.Bypass = Triggered(BypassRC);
+		F.Bypass = Triggered(70, BypassRC);
 
 		if (ActiveCh(NavModeRC))
 			NavSwState = Limit((uint8)(RC[NavModeRC] * 3.0f), SwLow, SwHigh);
@@ -874,11 +874,11 @@ void UpdateControls(void) {
 		DesiredCamPitchTrim = ActiveCh(CamPitchRC) ? RC[CamPitchRC]
 				- RC_NEUTRAL : 0;
 
-		F.UsingWPNavigation = F.OriginValid && (NV.Mission.NoOfWayPoints > 0); // Triggered(WPNavRC) &&
+		F.UsingWPNavigation = F.OriginValid && (NV.Mission.NoOfWayPoints > 0);
 
-		TxSwitchArmed = Triggered(ArmRC);
+		TxSwitchArmed = Triggered(50, ArmRC);
 
-		VTOLMode = Triggered(TransitionRC) && (UAVXAirframe == VTOLAF) && !F.Bypass;
+		VTOLMode = Triggered(50, TransitionRC) && (UAVXAirframe == VTOLAF) && !F.Bypass;
 
 		//_________________________________________________________________________________________
 

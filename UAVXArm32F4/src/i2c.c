@@ -211,7 +211,7 @@ boolean I2CReadBlock(uint8 i2cSel, uint8 id, uint8 reg, uint8 len, uint8* buf) {
 	}
 	if (timeout == 0) {
 		I2CState[i2cCurr].i2cErrors++;
-		setStat(I2CFailS, I2CState[i2cCurr].i2cErrors);
+		setStat(SIOFailS, I2CState[i2cCurr].i2cErrors);
 		InitI2C(i2cCurr);
 		return (false);
 	}
@@ -260,7 +260,7 @@ boolean I2CWriteBlock(uint8 i2cSel, uint8 id, uint8 reg, uint8 len_, uint8 *data
 	}
 	if (timeout == 0) {
 		I2CState[i2cCurr].i2cErrors++;
-		setStat(I2CFailS, I2CState[i2cCurr].i2cErrors);
+		setStat(SIOFailS, I2CState[i2cCurr].i2cErrors);
 		InitI2C(i2cCurr);
 		return (false);
 	}

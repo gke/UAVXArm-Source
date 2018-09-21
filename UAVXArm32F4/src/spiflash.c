@@ -100,9 +100,9 @@ boolean FLASHFlagSet(uint8 devSel, uint8 fb) {
 
 
 void FLASHSendAddress(SPI_TypeDef * s, uint32 a) {
-	oxo = SPISend(s, (uint8) (a >> 16));
-	oxo = SPISend(s, (uint8) (a >> 8));
-	oxo = SPISend(s, (uint8) a);
+	oxo = SPITransfer(s, (uint8) (a >> 16));
+	oxo = SPITransfer(s, (uint8) (a >> 8));
+	oxo = SPITransfer(s, (uint8) a);
 } // FLASHPageAddress
 
 //___________________________________________________________________
@@ -120,9 +120,9 @@ uint8 FLASHReadStatus(uint8 devSel) {
 	s = SPISetBaudRate(devSel, true);
 
 	SPISelect(devSel, true);
-	oxo = SPISend(s, STATUS_FL);
-	FLASHStatus1 = SPISend(s, 0);
-	//FLASHStatus2 = SPISend(s, 0);
+	oxo = SPITransfer(s, STATUS_FL);
+	FLASHStatus1 = SPITransfer(s, 0);
+	//FLASHStatus2 = SPITransfer(s, 0);
 	SPISelect(devSel, false);
 
 	return(FLASHStatus1);
@@ -142,9 +142,9 @@ boolean FLASHDeviceInfoValid(uint8 devSel) {
 	s = SPISetBaudRate(devSel, true);
 
 	SPISelect(devSel, true);
-	oxo = SPISend(s, DEV_FL);
+	oxo = SPITransfer(s, DEV_FL);
 	for (i = 0; i < 5; i++)
-		FLASHInfo[i] = SPISend(s, 0);
+		FLASHInfo[i] = SPITransfer(s, 0);
 	SPISelect(devSel, false);
 
 	r = true;
@@ -166,10 +166,10 @@ void FLASHReset(uint8 devSel) {
 	s = SPISetBaudRate(devSel, false);
 
 	SPISelect(devSel, true);
-	oxo = SPISend(s, 0x80);
-	oxo = SPISend(s, 0);
-	oxo = SPISend(s, 0);
-	oxo = SPISend(s, 0);
+	oxo = SPITransfer(s, 0x80);
+	oxo = SPITransfer(s, 0);
+	oxo = SPITransfer(s, 0);
+	oxo = SPITransfer(s, 0);
 	SPISelect(devSel, false);
 
 	uSTimer(uSClock(),MemReady, 35);
@@ -186,22 +186,22 @@ boolean FLASHReadPage(uint8 devSel, uint32 a, uint32 len, int8 * data) {
 		// BLOCKING
 	};
 
-	r = SPIErrors;
+	r = spiErrors;
 
 	s = SPISetBaudRate(devSel, true);
 
 	SPISelect(devSel, true);
-	oxo = SPISend(s, RD_FL);
+	oxo = SPITransfer(s, RD_FL);
 	FLASHSendAddress(s, a);
-	oxo = SPISend(s, 0); // dummy to allow setup
-	oxo = SPISend(s, 0);
-	oxo = SPISend(s, 0);
-	oxo = SPISend(s, 0);
+	oxo = SPITransfer(s, 0); // dummy to allow setup
+	oxo = SPITransfer(s, 0);
+	oxo = SPITransfer(s, 0);
+	oxo = SPITransfer(s, 0);
 	for (i = 0; i < len; i++)
-		data[i] = SPISend(s, 0);
+		data[i] = SPITransfer(s, 0);
 	SPISelect(devSel, false);
 
-	return (r == SPIErrors);
+	return (r == spiErrors);
 
 } // FLASHReadPage
 
@@ -220,10 +220,10 @@ boolean FLASHConfig256(uint8 devSel) {
 	s = SPISetBaudRate(devSel, false);
 
 	SPISelect(devSel, true);
-	oxo = SPISend(s, 0x3d);
-	oxo = SPISend(s, 0x2a);
-	oxo = SPISend(s, 0x80);
-	oxo = SPISend(s, 0xa6);
+	oxo = SPITransfer(s, 0x3d);
+	oxo = SPITransfer(s, 0x2a);
+	oxo = SPITransfer(s, 0x80);
+	oxo = SPITransfer(s, 0xa6);
 	SPISelect(devSel, false);
 
 	uSTimer(uSClock(),MemReady, 35000);
@@ -242,20 +242,20 @@ boolean FLASHReadModifyWrite(uint8 devSel, uint32 a, uint32 len, int8 *data) {
 		// BLOCKING
 	};
 
-	r = SPIErrors;
+	r = spiErrors;
 
 	s = SPISetBaudRate(devSel, false);
 
 	SPISelect(devSel, true);
-	oxo = SPISend(s, RD_MOD_WR_B1_FL);
+	oxo = SPITransfer(s, RD_MOD_WR_B1_FL);
 	FLASHSendAddress(s, a);
 	for (i = 0; i < len; i++)
-		oxo = SPISend(s, data[i]);
+		oxo = SPITransfer(s, data[i]);
 	SPISelect(devSel, false);
 
 	uSTimer(uSClock(),MemReady, 35000);
 
-	return (r == SPIErrors);
+	return (r == spiErrors);
 
 } // FLASHReadModifyWrite
 
@@ -271,18 +271,18 @@ boolean FLASHErasePage(uint8 devSel, uint32 a) {
 		// BLOCKING
 	};
 
-	r = SPIErrors;
+	r = spiErrors;
 
 	s = SPISetBaudRate(devSel, false);
 
 	SPISelect(devSel, true);
-	oxo = SPISend(s, ERASE_PAGE_FL);
+	oxo = SPITransfer(s, ERASE_PAGE_FL);
 	FLASHSendAddress(s, a);
 	SPISelect(devSel, false);
 
 	uSTimer(uSClock(),MemReady, 35000);
 
-	return (r == SPIErrors);
+	return (r == spiErrors);
 
 } // FLASHErasePage
 
@@ -294,20 +294,20 @@ boolean FLASHEraseSector(uint8 devSel, uint32 a) {
 		// BLOCKING
 	};
 
-	r = SPIErrors;
+	r = spiErrors;
 
 	s = SPISetBaudRate(devSel, false);
 
 	SPISelect(devSel, true);
 
-	oxo = SPISend(s, ERASE_SECTOR_FL);
+	oxo = SPITransfer(s, ERASE_SECTOR_FL);
 	FLASHSendAddress(s, a);
 
 	SPISelect(devSel, false);
 
 	uSTimer(uSClock(),MemReady, 6500000);
 
-	return (r == SPIErrors);
+	return (r == spiErrors);
 
 } // FLASHEraseSector
 
@@ -322,19 +322,19 @@ boolean FLASHErase(uint8 devSel) {
 		// BLOCKING
 	};
 
-	r = SPIErrors;
+	r = spiErrors;
 
 	s = SPISetBaudRate(devSel, false);
 
 	SPISelect(devSel, true);
-	oxo = SPISend(s, 0xc7);
-	oxo = SPISend(s, 0x94);
-	oxo = SPISend(s, 0x80);
-	oxo = SPISend(s, 0x9a);
+	oxo = SPITransfer(s, 0xc7);
+	oxo = SPITransfer(s, 0x94);
+	oxo = SPITransfer(s, 0x80);
+	oxo = SPITransfer(s, 0x9a);
 	SPISelect(devSel, false);
 
 	uSTimer(uSClock(),MemReady, 208000000);
 
-	return (r == SPIErrors);
+	return (r == spiErrors);
 
 } // FLASHErase

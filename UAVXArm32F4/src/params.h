@@ -32,6 +32,7 @@ void LoadParameters(void);
 void CheckParameters(void);
 uint8 P(uint8 i);
 void SetP(uint8 i, uint8 v);
+uint8 LimitP(uint8 i, uint8 l, uint8 h);
 
 enum RCControls {
 	ThrottleRC,
@@ -43,7 +44,7 @@ enum RCControls {
 	NavGainRC,
 	BypassRC,
 	CamPitchRC,
-	WPNavRC,
+	Unused10RC,
 	TransitionRC,
 	ArmRC,
 	NullRC
@@ -84,6 +85,7 @@ enum AFs {
 	AileronVTailAF,
 	RudderElevatorAF,
 	VTOLAF,
+	VTOL2AF,
 	GimbalAF,
 	Instrumentation,
 	IREmulation,
@@ -241,22 +243,22 @@ typedef struct {
 } ParamStruct_t;
 
 // Config1
-#define UseInvertMagMask 		0x01
-#define	UseRTHDescendMask		(1<<1)
-#define UseManualAltHoldMask 	(1<<2)
-#define EmulationEnableMask		(1<<3)
-#define GPSToLaunchRequiredMask (1<<4)
-#define	UseGPSAltMask			(1<<5)
-#define	UseRapidDescentMask		(1<<6)
+#define UseInvertMagMask 		0x01   // bit01CheckBox 16_0
+#define	UseRTHDescendMask		(1<<1) // bit11CheckBox 16_1
+#define UseManualAltHoldMask 	(1<<2) // bit21CheckBox 16_2
+#define EmulationEnableMask		(1<<3) // bit31CheckBox 16_3
+#define GPSToLaunchRequiredMask (1<<4) // bit41CheckBox 16_4
+#define	UseGPSAltMask			(1<<5) // bit51CheckBox 16_5
+#define	UseRapidDescentMask		(1<<6) // bit61CheckBox 16_6
 
 // Config2
-#define UsePavelFilterMask			 0x01
-#define	UseFastStartMask		(1<<1)
-#define UseBLHeliMask 			(1<<2)
-#define UseGliderStrategyMask	(1<<3)
-#define UseGyroOSMask			(1<<4)
+#define UsePavelFilterMask		0x01   // bit02CheckBox 74_1
+#define	UseFastStartMask		(1<<1) // bit12CheckBox 74_2
+#define UseBLHeliMask 			(1<<2) // bit22CheckBox 74_3
+#define UseGliderStrategyMask	(1<<3) // bit32CheckBox 74_4
+#define UseGyroOSMask			(1<<4) // bit42CheckBox
 #define	UseTurnToWPMask			(1<<5)
-#define	UnusedUseHWLPFMask			(1<<6)
+#define	UnusedUseHWLPFMask		(1<<6) // bit32CheckBox 74_7
 
 // bit 7 unusable in UAVPSet
 

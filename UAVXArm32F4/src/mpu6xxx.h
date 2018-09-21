@@ -35,6 +35,8 @@ extern const uint8 MPUDLPFMask[];
 
 extern const char * DHPFName[];
 
+extern real32 SlewBand;
+
 extern filterStruct OSLPF[3];
 
 extern uint8 MPU6XXXDLPF;
@@ -55,13 +57,10 @@ void ComputeMPU6XXXTemperature(uint8 imuSel, int16 T);
 extern uint8 MPU0_ID, MPU1_ID;
 extern timeuS mpu6xxxLastUpdateuS;
 extern real32 RawAcc[], RawGyro[];
-extern uint32 gyroGlitches;
-extern uint32 mpuReads;
-extern boolean UseGyroOS;
 
 extern uint32 Noise[];
-extern uint16 SlewLimitGyroClicks;
-extern uint16 SlewHistScale;
+extern real32 GyroSlewLimitFrac;
+extern boolean UseGyroOS;
 
 #endif
 

@@ -82,14 +82,78 @@ void ResetMainTimeouts(void) {
 } // ResetMainTimeouts
 
 void DoTesting(void) {
-
+	idx i, c;
+	int32 d;
+	static int16 MaxShadow[7];
+	static int16 MinShadow[7];
+	static int16 PrevShadow[7];
+	static int32 MaxDelta[7];
 	//#define COMMISSIONING_TEST
+	//#define TEMP_COMP_TESTING
 	//#define USB_TESTING
 	//#define KF_TESTING
 	//#define BARO_TESTING
+	//#define MAG_CAL_TESTING
+
+#if defined(TEMP_COMP_TESTING)
+
+	//CalibrateAccAndGyro(TelemetrySerial, imuSel);
+	LEDsOff();
+
+	for (i = 0; i < 7; i++) {
+		MaxShadow[i] = -32000;
+		MinShadow[i] = 32000;
+		MaxDelta[i] = 0;
+	}
+
+	c = 0;
+	while (true) {
+		Delay1mS(1);
+		ReadFilteredGyroAndAcc(imuSel);
+
+		for (i = 0; i < 7; i++) {
+			if (ShadowRawIMU[i] > MaxShadow[i])
+			MaxShadow[i] = ShadowRawIMU[i];
+			else if (ShadowRawIMU[i] < MinShadow[i])
+			MinShadow[i] = ShadowRawIMU[i];
+
+			MaxDelta[i] = ShadowRawIMU[i] - PrevShadow[i];
+			PrevShadow[i] = ShadowRawIMU[i];
+
+		}
+
+		if (++c >= 2)
+		{
+			c = 0;
+
+			/*
+			 * for (i = 0; i < 3; i++) {
+			 TxVal32(TelemetrySerial, ShadowRawIMU[i], 0, ',');
+			 TxVal32(TelemetrySerial, RawAcc[i] * 10.0f, 1, ',');
+			 TxVal32(TelemetrySerial, MinShadow[i], 0, ',');
+			 TxVal32(TelemetrySerial, MaxShadow[i], 0, ',');
+			 }
+			 */
+
+			for (i = 0; i < 3; i++) {
+				TxVal32(TelemetrySerial, ShadowRawIMU[i + 4], 0, ',');
+				//TxVal32(TelemetrySerial, RawGyro[i] * 10.0f, 1, ',');
+				//TxVal32(TelemetrySerial, MinShadow[i + 4], 0, ',');
+				//TxVal32(TelemetrySerial, MaxShadow[i + 4], 0, ',');
+				TxVal32(TelemetrySerial, MaxDelta[i + 4], 0, ',');
+			}
+
+			//TxVal32(TelemetrySerial, ShadowRawIMU[4], 0, ',');
+			//TxVal32(TelemetrySerial, MaxShadow[4], 0, ',');
+			//TxVal32(TelemetrySerial, MPU6XXXTemperature * 1000.0f, 3, ',');
 
 
-#if defined(USB_TESTING)
+			TxNextLine(TelemetrySerial);
+			LEDToggle(ledGreenSel);
+		}
+	};
+
+#elif defined(USB_TESTING)
 
 	USBConnect();
 
@@ -102,9 +166,9 @@ void DoTesting(void) {
 			LEDToggle(ledYellowSel);
 			uint8 ch = RxChar(USBSerial);
 			if (ch == '!')
-				systemReset(false);
+			systemReset(false);
 			else
-				TxChar(USBSerial, ch);
+			TxChar(USBSerial, ch);
 		}
 	}
 #elif defined(COMMISSIONING_TEST)
@@ -134,25 +198,25 @@ void DoTesting(void) {
 		LEDToggle(ledGreenSel);
 		if (cycles-- <= 0) {
 			cycles = 10;
-			TxVal32(0, BaroTempVal, 0, ',');
-			TxVal32(0, BaroPressVal, 0, ',');
-			TxVal32(0, BaroTemperature * 1000, 3, ',');
-			TxVal32(0, BaroPressure * 100, 2, ',');
-			TxVal32(0, BaroRawAltitude * 1000, 3, ',');
-			TxVal32(0, BaroAltitude * 1000, 3, ',');
-			TxNextLine(0);
+			TxVal32(TelemetrySerial, BaroTempVal, 0, ',');
+			TxVal32(TelemetrySerial, BaroPressVal, 0, ',');
+			TxVal32(TelemetrySerial, BaroTemperature * 1000, 3, ',');
+			TxVal32(TelemetrySerial, BaroPressure * 100, 2, ',');
+			TxVal32(TelemetrySerial, BaroRawAltitude * 1000, 3, ',');
+			TxVal32(TelemetrySerial, BaroAltitude * 1000, 3, ',');
+			TxNextLine(TelemetrySerial);
 		}
 		LSBBaro[BaroPressVal & 0xff]++;
 
 	}
 
-	TxVal32(0, (uSClock() - start) / 3000, 3, ',');
-	TxNextLine(0);
+	TxVal32(TelemetrySerial, (uSClock() - start) / 3000, 3, ',');
+	TxNextLine(TelemetrySerial);
 
 	for (kkk = 0; kkk < 256; kkk++) {
-		TxVal32(0, kkk, 0, ',');
-		TxVal32(0, LSBBaro[kkk], 0, ',');
-		TxNextLine(0);
+		TxVal32(TelemetrySerial, kkk, 0, ',');
+		TxVal32(TelemetrySerial, LSBBaro[kkk], 0, ',');
+		TxNextLine(TelemetrySerial);
 	}
 
 	LEDsOn();
@@ -197,7 +261,7 @@ void DoTesting(void) {
 	initLPFn(&FinalLPF, 1, GyroHz);
 
 	TxString(0, "TimemS, Noise, Raw, Kalyn, Fujin, RC, RC2");
-	TxNextLine(0);
+	TxNextLine(TelemetrySerial);
 	do {
 
 		// mix signals with offsets - could add some noise
@@ -217,14 +281,14 @@ void DoTesting(void) {
 			RC = LPFn(&FinalLPF, OSRC, GyroHz);
 		}
 
-		TxVal32(0, TimeS * 1000000, 3, ',');
-		TxVal32(0, RN * 100, 2, ',');
-		TxVal32(0, v * 100, 2, ',');
-		TxVal32(0, Kalyn * 100, 2, ',');
-		TxVal32(0, Fujin * 100, 2, ',');
-		TxVal32(0, OSRC * 100, 2, ',');
-		TxVal32(0, RC * 100, 2, ',');
-		TxNextLine(0);
+		TxVal32(TelemetrySerial, TimeS * 1000000, 3, ',');
+		TxVal32(TelemetrySerial, RN * 100, 2, ',');
+		TxVal32(TelemetrySerial, v * 100, 2, ',');
+		TxVal32(TelemetrySerial, Kalyn * 100, 2, ',');
+		TxVal32(TelemetrySerial, Fujin * 100, 2, ',');
+		TxVal32(TelemetrySerial, OSRC * 100, 2, ',');
+		TxVal32(TelemetrySerial, RC * 100, 2, ',');
+		TxNextLine(TelemetrySerial);
 
 		TimeS += OverSampledT;
 
@@ -233,6 +297,31 @@ void DoTesting(void) {
 	LEDsOn();
 	while (true) {
 	};
+#elif defined(MAG_CAL_TESTING)
+
+	int16 ii, jj;
+
+	CalibrateHMC5XXX(0);
+
+	for (ii = 0; ii < MAG_CAL_SAMPLES; ii++) {
+
+		TxVal32(TelemetrySerial, ii, 0, ',');
+
+		for (jj = 0; jj <= 2; jj++)
+			TxVal32(TelemetrySerial, MagSample[ii][jj], 0, ',');
+
+		TxNextLine(TelemetrySerial);
+	}
+
+	TxNextLine(TelemetrySerial);
+	for (jj = 0; jj <= 2; jj++)
+		TxVal32(TelemetrySerial, NV.MagCal.Bias[jj], 0, ',');
+	TxNextLine(TelemetrySerial);
+
+	while (1) {
+		Delay1mS(200);
+		LEDToggle(ledRedSel);
+	}
 #else
 	// NO TESTS
 #endif
@@ -253,6 +342,7 @@ int main() {
 	InitHarness();
 
 	InitLEDs();
+	InitWSLEDs();
 
 	InitExtMem();
 	InitPollRxPacket();
@@ -263,6 +353,7 @@ int main() {
 	InitIMU(imuSel);
 	InitMagnetometer();
 	InitMadgwick();
+
 	InitBarometer();
 	InitTemperature();
 
@@ -308,13 +399,13 @@ int main() {
 			FirstIMU = true;
 			do {
 				if (MPU6XXXReady(imuSel)) {
-					//	Probe(1);
+					Probe(1);
 					if (FirstIMU)
 						ReadFilteredGyroAndAcc(imuSel);
 					else
 						ReadGyro(imuSel);
 					FirstIMU = false;
-					//	Probe(0);
+					Probe(0);
 				}
 				NowuS = uSClock();
 			} while (NowuS < uS[NextCycleUpdate]);
@@ -323,7 +414,7 @@ int main() {
 
 		if (UseGyroOS || (NowuS >= uS[NextCycleUpdate])) {
 
-			//Probe(1);
+			Probe(1);
 
 			UpdateDrives(); // from previous cycle - one cycle lag minimise jitter
 
@@ -352,6 +443,7 @@ int main() {
 					LEDOn(ledRedSel);
 					LEDOff(ledGreenSel);
 				} else {
+
 					LEDOff(ledRedSel);
 					LEDOn(ledGreenSel);
 
@@ -366,6 +458,9 @@ int main() {
 
 				break;
 			case Ready:
+
+				ResetHeading();
+
 				if (Armed() || (UAVXAirframe == Instrumentation)) {
 					LEDOn(ledYellowSel);
 					RxLoopbackEnabled = false;
@@ -399,7 +494,9 @@ int main() {
 			case Warmup:
 
 				BatteryCurrentADCZero = LPF1(BatteryCurrentADCZero, analogRead(
-								BattCurrentAnalogSel), 0.5f);
+						BattCurrentAnalogSel), 0.5f);
+
+				ResetHeading();
 
 				if (mSClock() > mS[WarmupTimeout]) {
 					UbxSaveConfig(GPSTxSerial); //does this save ephemeris stuff?
@@ -418,14 +515,13 @@ int main() {
 				ZeroThrottleCompensation();
 				ZeroNavCorrections();
 
+				ResetHeading();
+
 				if (Armed() || (UAVXAirframe == Instrumentation)) {
 					F.DrivesArmed = CurrESCType == DCMotorsWithIdle;
 					DesiredThrottle = F.DrivesArmed ? IdleThrottle : 0.0f;
 
 					ZeroIntegrators();
-
-					SavedHeading = DesiredHeading = Nav.TakeoffBearing
-							= Nav.DesiredHeading = Heading;
 
 					DoStickProgramming();
 					F.HoldingAlt = false;
@@ -567,7 +663,11 @@ int main() {
 							RateEnergySum
 									+= Sqr(Abs(Rate[X]) + Abs(Rate[Y]) + Abs(Rate[Z]));
 							RateEnergySamples++;
-							DFT8(RawAcc[X], DFT); // 145uS
+
+#if defined(INC_DFT)
+							if (!UseGyroOS) // not enough time if OS
+							DFT8(RawAcc[X], DFT);
+#endif
 
 							DoAltitudeControl();
 						}
@@ -583,7 +683,7 @@ int main() {
 			setStat(UtilisationS, State == InFlight ? ((uSClock() - NowuS)
 					* 100.0f) / CurrPIDCycleuS : 0);
 
-			//Probe(0);
+			Probe(0);
 
 			if ((CurrTelType == UAVXFastRawIMUTelemetry) && (State == InFlight)) {
 

@@ -31,15 +31,16 @@
 const uint8 DrivesUsed[AFUnknown + 1] = { 3, 6, 4, 4, 4, 8, 8, 6, 6, 8, 8, // TriAF, TriCoaxAF, VTailAF, QuadAF, QuadXAF, QuadCoaxAF, QuadCoaxXAF, HexAF, HexXAF, OctAF, OctXAF
 		1, 1, // Heli90AF, Heli120AF,
 		1, 1, 1, 1, 1, 1, // ElevonAF, DeltaAF, AileronAF, AileronSpoilerFlapsAF, AileronVTailAF, RudderElevatorAF,
-		2, 0, // VTOLAF, GimbalAF,
+		1, 2, 0, // VTOLAF, VTOL2AF, GimbalAF,
 		0, 4, // Instrumentation, IREmulation,
 		0 }; // AFUnknown,
 
-const uint8 PWMOutputsUsed[AFUnknown + 1] = { 5, 8, 6, 6, 6, 10, 10, 8, 8, 10,
-		10, //
+const uint8 PWMOutputsUsed[AFUnknown + 1] = { 5, 8, 6, 6, 6, 10, 10, 8, 8, 10, 10, //
 		6, 6, //
 		3, 6, 7, 5, 6, 3, //
-		4, 2, 0, 0, 4 };
+		4, 4, 2, //
+		0, 0, //
+		0 };
 
 #if defined(UAVXF4V3) || defined(UAVXF4V4)
 const idx DM[10] = { 0, 1, 2, 3, // TIM4

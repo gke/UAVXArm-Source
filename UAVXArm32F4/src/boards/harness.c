@@ -109,32 +109,51 @@ void NVICDisable(IRQn_Type ISR) {
 
 TIM_ICInitTypeDef TIM_ICInitStructure = { 0, }; // global for rc
 
-void InitTIM_RCC_APB(TIM_TypeDef *TIMx ) {
+void InitTIM_RCC_APB(TIM_TypeDef *TIMx) {
 
-if (TIMx == TIM1) RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1, ENABLE);
-if (TIMx == TIM2) RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
-if (TIMx == TIM3) RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
-if (TIMx == TIM4) RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
-if (TIMx == TIM5) RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM5, ENABLE);
-if (TIMx == TIM6) RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM6, ENABLE);
-if (TIMx == TIM7) RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM7, ENABLE);
+	if (TIMx == TIM1)
+		RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1, ENABLE);
+	if (TIMx == TIM2)
+		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
+	if (TIMx == TIM3)
+		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+	if (TIMx == TIM4)
+		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
+	if (TIMx == TIM5)
+		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM5, ENABLE);
+	if (TIMx == TIM6)
+		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM6, ENABLE);
+	if (TIMx == TIM7)
+		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM7, ENABLE);
 
-if (TIMx == TIM8) RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM8, ENABLE);
-if (TIMx == TIM9) RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM9, ENABLE);
-if (TIMx == TIM10) RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM10, ENABLE);
-if (TIMx == TIM11) RCC_APB2PeriphResetCmd(RCC_APB2Periph_TIM11, ENABLE);
-if (TIMx == TIM12) RCC_APB1PeriphResetCmd(RCC_APB1Periph_TIM12, ENABLE);
-if (TIMx == TIM13) RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM13, ENABLE);
-if (TIMx == TIM14) RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM14, ENABLE);
+	if (TIMx == TIM8)
+		RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM8, ENABLE);
+	if (TIMx == TIM9)
+		RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM9, ENABLE);
+	if (TIMx == TIM10)
+		RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM10, ENABLE);
+	if (TIMx == TIM11)
+		RCC_APB2PeriphResetCmd(RCC_APB2Periph_TIM11, ENABLE);
+	if (TIMx == TIM12)
+		RCC_APB1PeriphResetCmd(RCC_APB1Periph_TIM12, ENABLE);
+	if (TIMx == TIM13)
+		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM13, ENABLE);
+	if (TIMx == TIM14)
+		RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM14, ENABLE);
 
 } // InitTIM_RCC_APB
 
 void InitPORT_RCC_APB(GPIO_TypeDef* Port) {
-if (Port == GPIOA) RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
-if (Port == GPIOB) RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
-if (Port == GPIOC) RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
-if (Port == GPIOD) RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
-if (Port == GPIOE) RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOE, ENABLE);
+	if (Port == GPIOA)
+		RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
+	if (Port == GPIOB)
+		RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
+	if (Port == GPIOC)
+		RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
+	if (Port == GPIOD)
+		RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
+	if (Port == GPIOE)
+		RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOE, ENABLE);
 } // InitPort_RCC_APB
 
 void InitRCPins(uint8 PPMInputs) {
@@ -311,7 +330,6 @@ void InitI2C(uint8 i2cCurr) {
 
 		NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
 
-
 		switch (i2cCurr) {
 		case 1:
 			// I2C ER Interrupt
@@ -413,36 +431,14 @@ enum {
 	sckPin, misoPin, mosiPin
 };
 
-void InitSPIGPIOPins(uint8 spiPort, boolean highClock) {
-	GPIO_InitTypeDef GPIO_InitStructure;
-	const SPIPortDef * p;
-
-	p = &SPIPorts[spiPort];
-
-	GPIO_StructInit(&GPIO_InitStructure);
-	GPIO_InitStructure.GPIO_Pin = p->P[sckPin].Pin | p->P[mosiPin].Pin
-			| p->P[misoPin].Pin;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-	if (highClock)
-		GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
-	else
-		//GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
-		GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-	GPIO_Init(p->P[sckPin].Port, &GPIO_InitStructure);
-
-} // InitSPIGPIOPins
-
-
 void InitSPISelectPin(uint8 spiSel) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 
 	if (busDev[spiSel].useSPI) {
 		GPIO_StructInit(&GPIO_InitStructure);
 		GPIO_InitStructure.GPIO_Pin = busDev[spiSel].P.Pin;
-		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT, GPIO_InitStructure.GPIO_OType
-				= GPIO_OType_PP;
+		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+		GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
 		GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
 		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 		GPIO_Init(busDev[spiSel].P.Port, &GPIO_InitStructure);
@@ -454,6 +450,7 @@ void InitSPISelectPin(uint8 spiSel) {
 
 
 void InitSPI(uint8 spiPort) {
+	GPIO_InitTypeDef GPIO_InitStructure;
 	volatile uint8 dummyread __attribute__((unused));
 	enum {
 		CS, SCK, MISO, MOSI
@@ -465,7 +462,15 @@ void InitSPI(uint8 spiPort) {
 	p = &SPIPorts[spiPort];
 
 	if (p->Used) {
-		InitSPIGPIOPins(spiPort, false);
+
+		SPI_I2S_DeInit(p->SPIx);
+
+		GPIO_StructInit(&GPIO_InitStructure);
+		GPIO_InitStructure.GPIO_Pin = p->P[sckPin].Pin | p->P[mosiPin].Pin
+				| p->P[misoPin].Pin;
+		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+		GPIO_Init(p->P[sckPin].Port, &GPIO_InitStructure);
 
 		switch (spiPort) {
 		case 1:
@@ -499,21 +504,15 @@ void InitSPI(uint8 spiPort) {
 					GPIO_AF_SPI3);
 			break;
 		}
-		SPI_DeInit(p->SPIx);
-		SPI_StructInit(&SPI_InitStructure);
-		SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex; // MISO & MOSI
-		SPI_InitStructure.SPI_Mode = SPI_Mode_Master;
-		SPI_InitStructure.SPI_DataSize = SPI_DataSize_8b;
 
-		//SPI_InitStructure.SPI_CPOL = SPI_CPOL_Low;
-		//SPI_InitStructure.SPI_CPHA = SPI_CPHA_1Edge;
+		SPI_StructInit(&SPI_InitStructure);
+
 		SPI_InitStructure.SPI_CPOL = SPI_CPOL_High;
 		SPI_InitStructure.SPI_CPHA = SPI_CPHA_2Edge;
 
+		SPI_InitStructure.SPI_Mode = SPI_Mode_Master;
 		SPI_InitStructure.SPI_NSS = SPI_NSS_Soft;
-		SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_128; // 42/128 = 328.125 kHz SPI Clock
-		SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;
-		SPI_InitStructure.SPI_CRCPolynomial = 7;
+		SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_128;
 
 		SPI_Init(p->SPIx, &SPI_InitStructure);
 
@@ -528,44 +527,6 @@ void InitSPI(uint8 spiPort) {
 		dummyread = SPI_I2S_ReceiveData(p->SPIx);
 	}
 } // InitSPI
-
-
-void DeInitSPI(uint8 spiPort) {
-
-	GPIO_InitTypeDef GPIO_InitStructure;
-	const SPIPortDef * p;
-
-	p = &SPIPorts[spiPort];
-
-	if (p->Used) {
-
-		SPI_I2S_DeInit(p->SPIx);
-
-		SPI_Cmd(p->SPIx, DISABLE);
-		switch (spiPort) {
-		case 0:
-			RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1, DISABLE);
-			break;
-		case 1:
-			RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI2, DISABLE);
-			break;
-		case 2:
-			RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI3, DISABLE);
-			break;
-		}
-
-		/* All SPI-Pins to input with weak internal pull-downs */
-		GPIO_InitStructure.GPIO_Pin = p->P[sckPin].Pin | p->P[misoPin].Pin
-				| p->P[mosiPin].Pin;
-		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-		GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
-
-		GPIO_Init(p->P[sckPin].Port, &GPIO_InitStructure);
-
-		SPISetDivisor(p->SPIx, 2); // 21 MHz SPI clock (within 20 +/- 10%)
-	}
-
-} // DeInitSPI
 
 
 void InitPWMPin(PinDef * u, uint16 pwmprescaler, uint32 pwmperiod,
@@ -702,8 +663,8 @@ void InitSerialPort(uint8 s, boolean Enable, boolean SBusConfig) {
 			USART_InitStructure.USART_Parity = USART_Parity_Even;
 			USART_Init(u->USART, &USART_InitStructure);
 		} else {
+			USART_InitStructure.USART_BaudRate = 115200;
 			USART_InitStructure.USART_Parity = USART_Parity_No;
-			USART_InitStructure.USART_BaudRate = u->Baud;
 		}
 		USART_Init(u->USART, &USART_InitStructure);
 
@@ -868,78 +829,42 @@ void InitHarness(void) {
 	uint8 i;
 
 	// UGLY but covers everything for now :)
-	RCC_AHB1PeriphClockCmd(
-	    RCC_AHB1Periph_GPIOA |
-	    RCC_AHB1Periph_GPIOB |
-	    RCC_AHB1Periph_GPIOC |
-	    RCC_AHB1Periph_GPIOD |
-	    RCC_AHB1Periph_GPIOE |
-	#ifdef STM32F40_41xxx
-	    RCC_AHB1Periph_GPIOF |
-	    RCC_AHB1Periph_GPIOG |
-	    RCC_AHB1Periph_GPIOH |
-	    RCC_AHB1Periph_GPIOI |
-	#endif
-	    RCC_AHB1Periph_CRC |
-	    RCC_AHB1Periph_FLITF |
-	    RCC_AHB1Periph_SRAM1 |
-	    RCC_AHB1Periph_SRAM2 |
-	    RCC_AHB1Periph_BKPSRAM |
-	    RCC_AHB1Periph_DMA1 |
-	    RCC_AHB1Periph_DMA2 |
-	    0, ENABLE
-	);
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA | RCC_AHB1Periph_GPIOB
+			| RCC_AHB1Periph_GPIOC | RCC_AHB1Periph_GPIOD
+			| RCC_AHB1Periph_GPIOE |
+#ifdef STM32F40_41xxx
+			RCC_AHB1Periph_GPIOF |
+			RCC_AHB1Periph_GPIOG |
+			RCC_AHB1Periph_GPIOH |
+			RCC_AHB1Periph_GPIOI |
+#endif
+			RCC_AHB1Periph_CRC | RCC_AHB1Periph_FLITF | RCC_AHB1Periph_SRAM1
+			| RCC_AHB1Periph_SRAM2 | RCC_AHB1Periph_BKPSRAM
+			| RCC_AHB1Periph_DMA1 | RCC_AHB1Periph_DMA2 | 0, ENABLE);
 
-	RCC_AHB2PeriphClockCmd(
-	    0, ENABLE);
-	#ifdef STM32F40_41xxx
+	RCC_AHB2PeriphClockCmd(0, ENABLE);
+#ifdef STM32F40_41xxx
 	RCC_AHB3PeriphClockCmd(
-	    0, ENABLE);
-	#endif
-	RCC_APB1PeriphClockCmd(
-	    RCC_APB1Periph_TIM2 |
-	    RCC_APB1Periph_TIM3 |
-	    RCC_APB1Periph_TIM4 |
-	    RCC_APB1Periph_TIM5 |
-	    RCC_APB1Periph_TIM6 |
-	    RCC_APB1Periph_TIM7 |
-	    RCC_APB1Periph_TIM12 |
-	    RCC_APB1Periph_TIM13 |
-	    RCC_APB1Periph_TIM14 |
-	    RCC_APB1Periph_WWDG |
-	    RCC_APB1Periph_SPI2 |
-	    RCC_APB1Periph_SPI3 |
-	    RCC_APB1Periph_USART2 |
-	    RCC_APB1Periph_USART3 |
-	    RCC_APB1Periph_UART4 |
-	    RCC_APB1Periph_UART5 |
-	    RCC_APB1Periph_I2C1 |
-	    RCC_APB1Periph_I2C2 |
-	    RCC_APB1Periph_I2C3 |
-	    RCC_APB1Periph_CAN1 |
-	    RCC_APB1Periph_CAN2 |
-	    RCC_APB1Periph_PWR |
-	    RCC_APB1Periph_DAC |
-	    0, ENABLE);
+			0, ENABLE);
+#endif
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2 | RCC_APB1Periph_TIM3
+			| RCC_APB1Periph_TIM4 | RCC_APB1Periph_TIM5 | RCC_APB1Periph_TIM6
+			| RCC_APB1Periph_TIM7 | RCC_APB1Periph_TIM12 | RCC_APB1Periph_TIM13
+			| RCC_APB1Periph_TIM14 | RCC_APB1Periph_WWDG | RCC_APB1Periph_SPI2
+			| RCC_APB1Periph_SPI3 | RCC_APB1Periph_USART2
+			| RCC_APB1Periph_USART3 | RCC_APB1Periph_UART4
+			| RCC_APB1Periph_UART5 | RCC_APB1Periph_I2C1 | RCC_APB1Periph_I2C2
+			| RCC_APB1Periph_I2C3 | RCC_APB1Periph_CAN1 | RCC_APB1Periph_CAN2
+			| RCC_APB1Periph_PWR | RCC_APB1Periph_DAC | 0, ENABLE);
 
-	RCC_APB2PeriphClockCmd(
-	    RCC_APB2Periph_TIM1 |
-	    RCC_APB2Periph_TIM8 |
-	    RCC_APB2Periph_USART1 |
-	    RCC_APB2Periph_USART6 |
-	    RCC_APB2Periph_ADC |
-	    RCC_APB2Periph_ADC1 |
-	    RCC_APB2Periph_ADC2 |
-	    RCC_APB2Periph_ADC3 |
-	    RCC_APB2Periph_SDIO |
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1 | RCC_APB2Periph_TIM8
+			| RCC_APB2Periph_USART1 | RCC_APB2Periph_USART6
+			| RCC_APB2Periph_ADC | RCC_APB2Periph_ADC1 | RCC_APB2Periph_ADC2
+			| RCC_APB2Periph_ADC3 | RCC_APB2Periph_SDIO |
 
-	    RCC_APB2Periph_SPI1 |
-	    RCC_APB2Periph_SYSCFG |
-	    RCC_APB2Periph_TIM9 |
-	    RCC_APB2Periph_TIM10 |
-	    RCC_APB2Periph_TIM11 |
-	    RCC_APB2Periph_SPI1 |
-	    0, ENABLE);
+	RCC_APB2Periph_SPI1 | RCC_APB2Periph_SYSCFG | RCC_APB2Periph_TIM9
+			| RCC_APB2Periph_TIM10 | RCC_APB2Periph_TIM11 | RCC_APB2Periph_SPI1
+			| 0, ENABLE);
 
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA1, ENABLE);
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2, ENABLE);

@@ -53,11 +53,11 @@ PinDef PWMPins[MAX_PWM_OUTPUTS] = {
 };
 
 PinDef GPIOPins[MAX_GPIO_PINS] = { 	
-	{true, PA12, OutPinConfig,}, // Beeper // USB
+	{true, PA12, OutPinConfig,}, // Beeper 4? // USB
 	{true, PC10, InpPinConfig,}, // Armed
 	{true, PC9, InpPinConfig,}, // Landing
-#if (defined(USE_WS2812) || defined(USE_WS2812B))
-	{false, PC6, OutPinConfig,}, // WSLEDs
+#if defined(USE_WS2812) || defined(USE_WS2812B)
+	{false, }, // WSLEDs
 #else
 	{true, PC6, OutPinConfig,}, // Aux1
 #endif	   
@@ -86,20 +86,19 @@ AnalogPinDef AnalogPins[MAX_ANALOG_CHANNELS] = {
 	{true, ADC1, PC5, ADC_Channel_15, DMA2_0_0_noIRQn, 6}, // Yaw
 };
 
-PinDef WSPin = // Aux1 Pin for UAVXF4V3
-	{true, PC6, PWMPinConfig, PWMOut_8_1CC, DMA2_0_2_IRQn};
-
 //PinDef WSPin = // Aux1 Pin for UAVXF4V3
-//	{true, PC6, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_NOPULL, 
-//		{true, TIM8, TIM_Channel_1, TIM_DMA_CC1, &(TIM8->CCR1), GPIO_AF_TIM8 },
-//		{true, DMA_Channel_0, DMA2_Stream2}, DMA2_Stream2_IRQn };
+//	{true, PC6, PWMPinConfig, PWMOut_8_1CC, DMA2_0_2_IRQn};
 
+PinDef WSPin = // Aux1 Pin for UAVXF4V3
+	{true, PC6, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_NOPULL, 
+		{true, TIM8, TIM_Channel_1, TIM_DMA_CC1, &(TIM8->CCR1), GPIO_AF_TIM8 },
+		{true, DMA_Channel_0, DMA2_Stream2}, DMA2_Stream2_IRQn };
 		
 PinDef LEDPins[MAX_LED_PINS] = { 
 	{true, PB3, LEDPinConfig,}, // Yellow
 	{true, PB4, LEDPinConfig,}, // Red
 	{true, PC11, LEDPinConfig,}, // Blue
-	{true, PC12, LEDPinConfig,},// Green
+	{true, PC12, LEDPinConfig,}, // Green
 };
 
 I2CPortDef I2CPorts[MAX_I2C_PORTS] = {

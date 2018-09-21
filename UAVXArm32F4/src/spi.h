@@ -36,14 +36,14 @@ extern void SPIClearSelects(void);
 extern SPI_TypeDef * SPISetBaudRate(uint8 spiDevS, boolean R);
 extern void SPISetDivisor(SPI_TypeDef *SPIx, uint16 d);
 
-extern uint8 SPISend(SPI_TypeDef *SPIx, uint8 d);
+extern uint8 SPITransfer(SPI_TypeDef *SPIx, uint8 d);
 
 extern boolean SPIReadBlock(uint8 spiDev, uint8 reg, uint8 len,
 		uint8 * data);
 extern boolean SPIWriteBlock(uint8 spiDev, uint8 reg, uint8 len,
 		uint8 * data);
 
-extern uint32 SPIErrors;
+extern uint32 spiErrors;
 
 #endif
 

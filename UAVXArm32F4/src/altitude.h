@@ -90,6 +90,7 @@ extern real32 ROC, ROCF;
 extern uint8 BaroType;
 extern real32 AltdT, AltdTR;
 extern real32 AltLPFHz;
+extern real32 AccZBias;
 extern uint16 ms56xx_ManufacturersData;
 extern real32 BaroRawAltitude, BaroRawAltitudeP; // fusion filter output
 

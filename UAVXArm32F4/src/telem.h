@@ -105,6 +105,7 @@ void InitPollRxPacket(void);
 void SendBBPacket(uint8 s, int32 seqNo, uint8 l, int8 * b);
 
 void SendFlightPacket(uint8 s);
+void SendCalibrationPacket(uint8 s);
 void SendAckPacket(uint8 s, uint8 Tag, uint8 Reason);
 void SendRawIMU(uint8 s);
 void SendMinPacket(uint8 s);

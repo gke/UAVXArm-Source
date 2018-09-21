@@ -139,7 +139,7 @@ uint8 SkipToDigit(uint8 s) {
 	do {
 		while(!SerialAvailable(s)) {};
 		ch = RxChar(s);
-	} while (!isdigit(ch));
+	}while (!isdigit(ch));
 
 	return(ch);
 
@@ -172,9 +172,9 @@ void CheckTelemetry(uint8 s) {
 		ch = tolower(RxChar(s));
 		switch (ch) {
 			case 'b':
-				TxString(s, "BOOTLOADER\n");
-				Delay1mS(20);
-				systemReset(true);
+			TxString(s, "BOOTLOADER\n");
+			Delay1mS(20);
+			systemReset(true);
 			break;
 			case 'd':
 			for (i = 0; i< MAX_PARAMETERS; i++) {
@@ -185,43 +185,43 @@ void CheckTelemetry(uint8 s) {
 			}
 			break;
 			case 'w':
-				p = RxU32(s);
-				v = RxU32(s);
+			p = RxU32(s);
+			v = RxU32(s);
 
-				if ((p > 0) && (p <= MAX_PARAMETERS) && (v < 256)) {
-					SetP(p-1, v);
-				} else {
-					TxString(s, "RANGE ");
-					TxVal32(s, p, 0,' ');
-					TxVal32(s, v, 0,' ');
-					TxNextLine(s);
-				}
+			if ((p > 0) && (p <= MAX_PARAMETERS) && (v < 256)) {
+				SetP(p-1, v);
+			} else {
+				TxString(s, "RANGE ");
+				TxVal32(s, p, 0,' ');
+				TxVal32(s, v, 0,' ');
+				TxNextLine(s);
+			}
 			break;
 			case 'v':
-				if (NVChanged) {
-					TxString(s, "UPDATING FLASH AND RESETING\n");
-					UpdateNV();
-					systemReset(false);
-				} else
-					TxString(s, "PARAMETERS UNCHANGED\n ");
-				break;
-			case 'r':
-				TxString(s, "RESET\n");
-				Delay1mS(20);
+			if (NVChanged) {
+				TxString(s, "UPDATING FLASH AND RESETING\n");
+				UpdateNV();
 				systemReset(false);
+			} else
+			TxString(s, "PARAMETERS UNCHANGED\n ");
+			break;
+			case 'r':
+			TxString(s, "RESET\n");
+			Delay1mS(20);
+			systemReset(false);
 			break;
 			case '?':
 			case 'h':
-				TxString(s, "THERE ARE NO CHECKS ON CLI PARAMETER CHANGE VALIDITY\n");
-				TxString(TelemetrySerial, "Revision ");
-				TxVal32(TelemetrySerial, NV.CurrRevisionNo,0,' ');
-				if (CheckSumFailNV()) TxString(TelemetrySerial, "NV Checksum FAIL\n");
-				TxString(s, "b enter bootloader\n");
-				TxString(s, "r reset\n");
-				TxString(s, "d dump parameters\n");
-				TxString(s, "v update FLASH parameters\n");
-				TxString(s, "w p v update p to value v\n");
-				TxString(s, "? or h  help\n");
+			TxString(s, "THERE ARE NO CHECKS ON CLI PARAMETER CHANGE VALIDITY\n");
+			TxString(TelemetrySerial, "Revision ");
+			TxVal32(TelemetrySerial, NV.CurrRevisionNo,0,' ');
+			if (CheckSumFailNV()) TxString(TelemetrySerial, "NV Checksum FAIL\n");
+			TxString(s, "b enter bootloader\n");
+			TxString(s, "r reset\n");
+			TxString(s, "d dump parameters\n");
+			TxString(s, "v update FLASH parameters\n");
+			TxString(s, "w p v update p to value v\n");
+			TxString(s, "? or h  help\n");
 			default:
 			break;
 		}
@@ -382,7 +382,7 @@ void SendFlightPacket(uint8 s) {
 	SendPacketHeader(s);
 
 	TxESCu8(s, UAVXFlightPacketTag);
-	TxESCu8(s, TELEMETRY_FLAG_BYTES + 11 + 3 * 10 + 34 + 1 + CurrMaxPWMOutputs
+	TxESCu8(s, TELEMETRY_FLAG_BYTES + 11 + 3 * 10 + 36 + 1 + CurrMaxPWMOutputs
 			* 3 + 3);
 	for (b = 0; b < TELEMETRY_FLAG_BYTES; b++)
 		TxESCu8(s, F.AllFlags[b]);
@@ -424,9 +424,10 @@ void SendFlightPacket(uint8 s) {
 
 	TxESCi16(s, Make2Pi(MagHeading) * 1000.0f);
 
+	TxESCi16(s, MPU6XXXTemperature * 10.0f); // 0.1C
+
 	ShowDrives(s);
 
-	// 	TxESCi16(s, MPU6XXXTemperature * 10.0f); // 0.1C
 	TxESCi24(s, mSClock());
 
 	SendPacketTrailer(s);
@@ -459,7 +460,6 @@ void SendControlPacket(uint8 s) {
 
 	ShowDrives(s);
 
-	//TxESCi16(s, MPU6XXXTemperature * 10.0f); // 0.1C
 	TxESCi24(s, mSClock());
 
 	SendPacketTrailer(s);
@@ -593,7 +593,7 @@ void SendNavPacket(uint8 s) {
 
 	TxESCi24(s, mS[NavStateTimeout] - mSClock()); // mS
 
-	TxESCi16(s, MPU6XXXTemperature * 10.0f); // 0.1C
+	TxESCi16(s, 0); // was MPU Temp
 	TxESCi32(s, GPS.missionTime);
 
 	TxESCi16(s, Nav.Sensitivity * 1000.0f);
@@ -646,7 +646,7 @@ void SendFusionPacket(uint8 s) {
 
 	TxESCi24(s, BaroRawAltitude * 100.0f);
 	TxESCi16(s, ROCF * 100);
-	TxESCi16(s, NV.AccCal.DynamicAccBias[Z] * 1000.0f);
+	TxESCi16(s, AccZBias * 1000.0f);
 
 	TxESCi16(
 			s,
@@ -688,7 +688,7 @@ void SendCalibrationPacket(uint8 s) {
 	TxESCi16(s, CurrGyroLPFHz);
 	TxESCi16(s, CurrYawLPFHz);
 	TxESCi16(s, CurrServoLPFHz);
-	TxESCi16(s, gyroGlitches);
+	TxESCi16(s, 0); //gyroGlitches);
 
 	for (a = 24; a < 32; a++)
 		TxESCi16(s, -1);
@@ -788,19 +788,19 @@ void SendNoisePacket(uint8 s) {
 	SendPacketHeader(s);
 
 	TxESCu8(s, UAVXNoisePacketTag);
-	TxESCu8(s, 3 + 8 * 2);
+	TxESCu8(s, 3 + MAX_NOISE_BANDS * 2);
 #if defined(INC_DFT)
 	TxESCu8(s, 0);
 	TxESCi16(s, 1000000 / CurrPIDCycleuS);
-	for (i = 0; i < 8; i++)
-	TxESCi16(s, DFT[i] * 5000.0 / MPU_1G);
+	for (i = 0; i < MAX_NOISE_BANDS; i++)
+	TxESCi16(s, DFT[i] * 5000.0f / MPU_1G);
 #else
 	m = 0;
-	for (i = 0; i < 8; i++)
+	for (i = 0; i < MAX_NOISE_BANDS; i++)
 		m = Max(m, Noise[i]);
 	TxESCu8(s, 1);
-	TxESCi16(s, (gyroGlitches * 10000.0f) / (mpuReads * 3.0f));
-	for (i = 0; i < 8; i++)
+	TxESCi16(s, P(GyroSlewRate));
+	for (i = 0; i < MAX_NOISE_BANDS; i++)
 		TxESCi16(s, (real32) Noise[i] * 100.0f / (real32) m);
 #endif
 
@@ -1023,6 +1023,8 @@ void ProcessParamsPacket(uint8 s) {
 		for (p = 0; p < MAX_PARAMETERS; p++)
 			SetP(p, UAVXPacketi8(p + 3));
 
+		NVChanged = true;
+
 		UpdateNV();
 
 		F.ParametersChanged = true;
@@ -1187,8 +1189,7 @@ void ProcessRxPacket(uint8 s) {
 				SendCalibrationPacket(s);
 				break;
 			case miscLB:
-				if ((CurrRxType != CPPMRx)
-						&& (CurrRxType != ParallelPPMRx))
+				if ((CurrRxType != CPPMRx) && (CurrRxType != ParallelPPMRx))
 					RxLoopbackEnabled = !RxLoopbackEnabled;
 				SendAckPacket(s, miscLB, RxLoopbackEnabled);
 				break;
@@ -1286,7 +1287,8 @@ void UseUAVXTelemetry(uint8 s) {
 		SendGuidancePacket(s); // 2+7
 		SendRCChannelsPacket(s); // 27 -> 105
 	} else {
-		SendNavPacket(s); // 2+54+4 = 60
+		if (CurrGPSType != NoGPS)
+			SendNavPacket(s); // 2+54+4 = 60
 		SendNoisePacket(s); // 24
 		SendStatsPacket(s); // ~80 -> 104
 		if ((State == Preflight) || (State == Ready)) //Warmup) || (State == Landed))
@@ -1314,7 +1316,7 @@ void CheckTelemetry(uint8 s) {
 		SetTelemetryBaudRate(s, 115200);
 		if (NowmS >= mS[TelemetryUpdate]) {
 			mSTimer(NowmS, TelemetryUpdate, UAVX_TEL_INTERVAL_MS);
-            UseUAVXTelemetry(s);
+			UseUAVXTelemetry(s);
 		}
 	} else
 		switch (CurrTelType) {
@@ -1339,7 +1341,7 @@ void CheckTelemetry(uint8 s) {
 			if (NowmS >= mS[TelemetryUpdate]) {
 				mSTimer(NowmS, TelemetryUpdate, 20); // max rate
 				if (State == InFlight)
-				SendRawIMU(s);
+					SendRawIMU(s);
 			}
 			break;
 		case UAVXAnglePIDTelemetry:
@@ -1398,5 +1400,4 @@ void CheckTelemetry(uint8 s) {
 // CheckTelemetry
 
 #endif
-
 

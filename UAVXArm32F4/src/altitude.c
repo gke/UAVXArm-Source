@@ -58,6 +58,7 @@ uint8 CurrRFSensorType;
 
 filterStruct AccZLPF;
 real32 AltLPFHz;
+real32 AccZBias;
 
 uint8 BaroType = ms5611Baro;
 
@@ -70,10 +71,10 @@ void UpdateAccZ(real32 AccZdT) {
 	AccZ = Limit1(GravityCompensatedAccZ(), GRAVITY_MPS_S * 2.0f);
 
 	if (State == InFlight) // assume average vertical acceleration is zero
-		NV.AccCal.DynamicAccBias[Z] = NV.AccCal.DynamicAccBias[Z] * K_ACC_BIAS
+		AccZBias = AccZBias * K_ACC_BIAS
 				+ AccZ * (1.0 - K_ACC_BIAS);
 
-	AccZ = LPFn(&AccZLPF, AccZ, AccZdT) - NV.AccCal.DynamicAccBias[Z];
+	AccZ = LPFn(&AccZLPF, AccZ, AccZdT) - AccZBias;
 
 	F.AccZBump = AccZ > ACCZ_LANDING_MPS_S;
 
@@ -267,9 +268,8 @@ void GetBaro(void) {
 
 				UpdateAccZ(BarodT); // stale ~180uS
 
-				if (BaroWarmupCycles > 0) {
+				if (BaroWarmupCycles > 0)
 					BaroWarmupCycles--;
-				}
 
 				AcquiringPressure = false;
 

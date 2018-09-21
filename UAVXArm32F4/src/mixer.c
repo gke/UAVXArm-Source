@@ -27,7 +27,7 @@ const real32 AFOrientation[AFUnknown + 1] = { // K1 arm relative to board North
 				0, -22.5, // OctAF, OctXAF
 				0, 0, // Heli90AF, Heli120AF
 				0, 0, 0, 0, 0, 0, // ElevonAF, DeltaAF, AileronAF, AileronSpoilerFlapsAF, AileronVTailAF, RudderElevatorAF,
-				0, 0, // // VTOLAF, GimbalAF,
+				0, 0, 0, // VTOLAF, VTOL2AF, GimbalAF,
 				0, 0, // Instrumentation, IREmulation
 				0 }; // AFUnknown
 
@@ -67,11 +67,37 @@ void DoDifferential(uint8_t R, uint8_t L) {
 
 } // DoDifferential
 
+void MixAndLimitCam(void) {
+	real32 NewCamPitch, NewCamRoll;
+
+	if (!UsingDCMotors && (currGimbalType == servoGimbal)) {
+		if (UAVXAirframe == GimbalAF) {
+			NewCamRoll = A[Roll].Angle;
+			NewCamPitch = A[Pitch].Angle;
+
+			PW[CamRollC] = PW[CamPitchC] = OUT_NEUTRAL;
+		} else {
+			NewCamRoll = A[Roll].Angle * Cam.RollKp + (real32) P(RollCamTrim)
+					* 0.01f;
+			NewCamRoll = (real32) PWSense[CamRollC] * NewCamRoll * OUT_MAXIMUM
+					+ OUT_NEUTRAL;
+
+			NewCamPitch = A[Pitch].Angle * Cam.PitchKp + OrbitCamAngle
+					+ DesiredCamPitchTrim;
+			NewCamPitch = PWSense[CamPitchC] * NewCamPitch * OUT_MAXIMUM
+					+ OUT_NEUTRAL;
+
+			PW[CamRollC] = NewCamRoll;
+			PW[CamPitchC] = NewCamPitch;
+		}
+	}
+
+} // MixAndLimitCam
+
 void DoVTOLMix(void) {
 	real32 TempThrottle, TempElevator, TempRudder;
 
 	TempThrottle = (F.Bypass) ? DesiredThrottle : DesiredThrottle + AltComp;
-
 	NetThrottle = TempThrottle = Limit(TempThrottle * OUT_MAXIMUM, 0.0f, 1.0f);
 
 	if (VTOLMode) {
@@ -83,10 +109,10 @@ void DoVTOLMix(void) {
 		TempElevator = PWSense[ElevatorC] * Pl;
 
 		// assume servos are opposite hand
-		PW[RightPitchYawC] = PWSense[RightPitchYawC] * (TempElevator + TempRudder)
-				+ OUT_NEUTRAL;
-		PW[LeftPitchYawC] = PWSense[LeftPitchYawC] * (-TempElevator + TempRudder)
-				+ OUT_NEUTRAL;
+		PW[RightPitchYawC] = PWSense[RightPitchYawC] * (TempElevator
+				+ TempRudder) + OUT_NEUTRAL;
+		PW[LeftPitchYawC] = PWSense[LeftPitchYawC] * (-TempElevator
+				+ TempRudder) + OUT_NEUTRAL;
 
 	} else {
 
@@ -97,24 +123,24 @@ void DoVTOLMix(void) {
 		TempElevator = PWSense[ElevatorC] * (F.Bypass ? Pl : (Pl
 				+ FWRollPitchFFFrac * Abs(Rl)));
 		// assume servos are opposite hand
-		PW[RightPitchYawC] = PWSense[RightPitchYawC] * (TempElevator + TempRudder
-				+ Rl) + OUT_NEUTRAL;
-		PW[LeftPitchYawC] = PWSense[LeftPitchYawC] * (-TempElevator + TempRudder
-				+ Rl) + OUT_NEUTRAL;
+		PW[RightPitchYawC] = PWSense[RightPitchYawC] * (TempElevator
+				+ TempRudder + Rl) + OUT_NEUTRAL;
+		PW[LeftPitchYawC] = PWSense[LeftPitchYawC] * (-TempElevator
+				+ TempRudder + Rl) + OUT_NEUTRAL;
 	}
 } // DoVTOLMix
 
 void DoMix(void) {
 #define OUT_MAX_SPOILER 0.3f // so we still have some aileron control left
-	real32 TempRudder, TempElevator, TempAileron, TempSpoilerFlaps;
+	real32 TempThrottle, TempRudder, TempElevator, TempAileron,
+			TempSpoilerFlaps;
 
 	if (F.Bypass) // do here at lowest level rather than complicating higher level logic
-		PW[ThrottleC] = DesiredThrottle;
+		TempThrottle = DesiredThrottle;
 	else
-		PW[ThrottleC] = ThrottleSuppressed ? 0.0f : DesiredThrottle + AltComp;
+		TempThrottle = ThrottleSuppressed ? 0.0f : DesiredThrottle + AltComp;
 
-	NetThrottle = PW[ThrottleC]
-			= Limit(PW[ThrottleC] * OUT_MAXIMUM, 0.0f, 1.0f);
+	NetThrottle = PW[ThrottleC] = Limit(TempThrottle * OUT_MAXIMUM, 0.0f, 1.0f);
 
 	switch (UAVXAirframe) {
 	case Heli120AF:
@@ -207,23 +233,35 @@ void DoMix(void) {
 		PW[RightSpoilerC] = PWSense[RightSpoilerC] * Sl + OUT_NEUTRAL;
 		PW[LeftSpoilerC] = -PWSense[RightSpoilerC] * Sl + OUT_NEUTRAL;
 		break;
-	case VTOLAF:
+	case VTOL2AF:
 		DoVTOLMix();
 		break;
+	case VTOLAF:
 	case DeltaAF:
-		PW[RudderC] = -PWSense[RudderC] * Yl + OUT_NEUTRAL;
+		if (VTOLMode) {
+			PW[RudderC] = -PWSense[RudderC] * Rl + OUT_NEUTRAL;
 
-		TempElevator = PWSense[ElevatorC] * (F.Bypass ? Pl : (Pl
-				+ FWRollPitchFFFrac * Abs(Rl)));
-		// assume servos are opposite hand
-		PW[RightElevonC] = PWSense[RightElevonC] * (TempElevator + Rl)
-				+ OUT_NEUTRAL;
-		PW[LeftElevonC] = PWSense[LeftElevonC] * (-TempElevator + Rl)
-				+ OUT_NEUTRAL;
+			TempElevator = PWSense[ElevatorC] * Pl;
+			// assume servos are opposite hand
+			PW[RightElevonC] = PWSense[RightElevonC] * (TempElevator + Yl)
+					+ OUT_NEUTRAL;
+			PW[LeftElevonC] = PWSense[LeftElevonC] * (-TempElevator + Yl)
+					+ OUT_NEUTRAL;
+		} else {
+			PW[RudderC] = -PWSense[RudderC] * Yl + OUT_NEUTRAL;
 
-		if (UAVXAirframe == DeltaAF) {
-			PW[RightSpoilerC] = PWSense[RightSpoilerC] * Sl;
-			PW[LeftSpoilerC] = -PWSense[RightSpoilerC] * Sl;
+			TempElevator = PWSense[ElevatorC] * (F.Bypass ? Pl : (Pl
+					+ FWRollPitchFFFrac * Abs(Rl)));
+			// assume servos are opposite hand
+			PW[RightElevonC] = PWSense[RightElevonC] * (TempElevator + Rl)
+					+ OUT_NEUTRAL;
+			PW[LeftElevonC] = PWSense[LeftElevonC] * (-TempElevator + Rl)
+					+ OUT_NEUTRAL;
+
+			if (UAVXAirframe == DeltaAF) {
+				PW[RightSpoilerC] = PWSense[RightSpoilerC] * Sl;
+				PW[LeftSpoilerC] = -PWSense[RightSpoilerC] * Sl;
+			}
 		}
 		break;
 	default:
@@ -232,206 +270,182 @@ void DoMix(void) {
 
 } // DoMix
 
-void UpdateMulticopterMix(real32 CurrThrottlePW) {
+void MixMulti(void) {
 	real32 R, P, Y;
 	idx m;
 
-	if ((CurrThrottlePW < IdleThrottlePW) || !F.DrivesArmed) {
-		for (m = 0; m < NoOfDrives; m++)
-			PW[m] = PWp[m] = 0;
-	} else {
+	switch (UAVXAirframe) {
+	case TriAF: // usually flown K1 motor to the rear - use orientation of 24
+		R = Rl * 1.1547f;
+		P = Pl * (1.0f + CGOffset);
+		PW[LeftC] = -R + P;
+		PW[RightC] = R + P;
 
-		for (m = 0; m < NoOfDrives; m++)
-			PW[m] = CurrThrottlePW;
+		PW[FrontC] = -(Pl * (1.0f - CGOffset));
 
-		switch (UAVXAirframe) {
-		case TriAF: // usually flown K1 motor to the rear - use orientation of 24
-			R = Rl * 1.1547f;
-			P = Pl * (1.0f + CGOffset);
-			PW[LeftC] += -R + P;
-			PW[RightC] += R + P;
+		PW[YawC] = PWSense[YawC] * Yl + OUT_NEUTRAL; // * 1.3333 yaw servo
+		break;
+	case TriCoaxAF: // Y6
+		R = Rl * 1.1547f;
+		PW[FrontBC] = PW[FrontTC] = -Pl;
+		PW[LeftBC] = PW[LeftTC] = -R + Pl;
+		PW[RightBC] = PW[RightTC] = R + Pl;
 
-			PW[FrontC] -= Pl * (1.0f - CGOffset);
+		Y = Yl * 0.6667f;
+		PW[FrontTC] += Y;
+		PW[LeftTC] += Y;
+		PW[RightTC] += Y;
 
-			PW[YawC] = PWSense[YawC] * Yl + OUT_NEUTRAL; // * 1.3333 yaw servo
-			break;
-		case TriCoaxAF: // Y6
-			R = Rl * 1.1547f;
-			PW[FrontBC] = PW[FrontTC] += -Pl;
-			PW[LeftBC] = PW[LeftTC] += -R + Pl;
-			PW[RightBC] = PW[RightTC] += R + Pl;
+		PW[FrontBC] -= Y;
+		PW[LeftBC] -= Y;
+		PW[RightBC] -= Y;
+		break;
+	case VTailAF: // usually flown VTail (K1+K4) to the rear
+		P = Pl * (1.0f + CGOffset);
+		PW[LeftC] = P - Rl; // right rear
+		PW[RightC] = P + Rl; // left rear
 
-			Y = Yl * 0.6667f;
-			PW[FrontTC] += Y;
-			PW[LeftTC] += Y;
-			PW[RightTC] += Y;
+		P = Pl * (1.0f - CGOffset);
+		PW[FrontLeftC] = -(P + PWSense[RudderC] * Yl);
+		PW[FrontRightC] = -(P - PWSense[RudderC] * Yl);
+		break;
+	case QuadAF:
+	case QuadXAF:
+		PW[LeftC] = -Rl - Yl;
+		PW[RightC] = Rl - Yl;
+		PW[FrontC] = -Pl + Yl;
+		PW[BackC] = Pl + Yl;
+		break;
+	case QuadCoaxAF:
+	case QuadCoaxXAF: // not commissioned
+		R = Rl * 0.5f;
+		P = Pl * 0.5f;
+		PW[QLeftTC] = -R;
+		PW[QRightTC] = R;
+		PW[QFrontTC] = -P;
+		PW[QBackTC] = P;
 
-			PW[FrontBC] -= Y;
-			PW[LeftBC] -= Y;
-			PW[RightBC] -= Y;
-			break;
-		case VTailAF: // usually flown VTail (K1+K4) to the rear
-			P = Pl * (1.0f + CGOffset);
-			PW[LeftC] += P - Rl; // right rear
-			PW[RightC] += P + Rl; // left rear
+		PW[QLeftBC] = PW[QLeftTC];
+		PW[QRightBC] = PW[QRightTC];
+		PW[QFrontBC] = PW[QFrontTC];
+		PW[QBackBC] = PW[QBackTC];
 
-			P = Pl * (1.0f - CGOffset);
-			PW[FrontLeftC] -= P + PWSense[RudderC] * Yl;
-			PW[FrontRightC] -= P - PWSense[RudderC] * Yl;
-			break;
-		case QuadAF:
-		case QuadXAF:
-			PW[LeftC] += -Rl - Yl;
-			PW[RightC] += Rl - Yl;
-			PW[FrontC] += -Pl + Yl;
-			PW[BackC] += Pl + Yl;
-			break;
-		case QuadCoaxAF:
-		case QuadCoaxXAF: // not commissioned
-			R = Rl * 0.5f;
-			P = Pl * 0.5f;
-			PW[QLeftTC] += -R;
-			PW[QRightTC] += R;
-			PW[QFrontTC] += -P;
-			PW[QBackTC] += P;
+		Y = Yl * 0.5f;
+		PW[QLeftTC] += Y;
+		PW[QRightTC] += Y;
+		PW[QFrontTC] += Y;
+		PW[QBackTC] += Y;
 
-			PW[QLeftBC] = PW[QLeftTC];
-			PW[QRightBC] = PW[QRightTC];
-			PW[QFrontBC] = PW[QFrontTC];
-			PW[QBackBC] = PW[QBackTC];
+		PW[QLeftBC] -= Y;
+		PW[QRightBC] -= Y;
+		PW[QFrontBC] -= Y;
+		PW[QBackBC] -= Y;
+		break;
+	case HexAF:
+	case HexXAF:
+		P = Pl * 0.5f;
+		R = Rl * 0.5773503f;
+		Y = Yl; //* 0.6667f;
+		PW[HFrontC] = -P + Y;
+		PW[HLeftFrontC] = -R - P - Y;
+		PW[HRightFrontC] = R - P - Y;
 
-			Y = Yl * 0.5f;
-			PW[QLeftTC] += Y;
-			PW[QRightTC] += Y;
-			PW[QFrontTC] += Y;
-			PW[QBackTC] += Y;
+		PW[HLeftBackC] = -R + P + Y;
+		PW[HRightBackC] = R + P + Y;
+		PW[HBackC] = P - Y;
+		break;
+	case OctAF:
+	case OctXAF: // use Y leads
+		PW[LeftC] = (-Rl - Yl) * 0.5f;
+		PW[RightC] = (Rl - Yl) * 0.5f;
+		PW[FrontC] = (-Pl + Yl) * 0.5f;
+		PW[BackC] = (Pl + Yl) * 0.5f;
+		break;
+	default:
+		break;
+	} // switch
+} // MixMulti
 
-			PW[QLeftBC] -= Y;
-			PW[QRightBC] -= Y;
-			PW[QFrontBC] -= Y;
-			PW[QBackBC] -= Y;
-			break;
-		case HexAF:
-		case HexXAF:
-			P = Pl * 0.5f;
-			R = Rl * 0.5773503f;
-			Y = Yl; //* 0.6667f;
-			PW[HFrontC] += -P + Y;
-			PW[HLeftFrontC] += -R - P - Y;
-			PW[HRightFrontC] += R - P - Y;
-
-			PW[HLeftBackC] += -R + P + Y;
-			PW[HRightBackC] += R + P + Y;
-			PW[HBackC] += P - Y;
-			break;
-		case OctAF:
-		case OctXAF: // use Y leads
-			PW[LeftC] += (-Rl - Yl) * 0.5f;
-			PW[RightC] += (Rl - Yl) * 0.5f;
-			PW[FrontC] += (-Pl + Yl) * 0.5f;
-			PW[BackC] += (Pl + Yl) * 0.5f;
-			break;
-		default:
-			break;
-		} // switch
-	}
-} // UpdateMulticopterMix
-
-boolean MotorDemandRescale;
-
-boolean RescaleMix(real32 CurrThrottlePW) {
+real32 MaxMotorSwing(void) {
+	real32 DemandSwing, pw;
 	idx m;
-	real32 Scale, MaxMotor, DemandSwing, AvailableSwing;
 
-	MaxMotor = PW[0];
-	for (m = 1; m < NoOfDrives; m++)
-		if (PW[m] > MaxMotor)
-			MaxMotor = PW[m];
+	DemandSwing = Abs(PW[0]);
+	for (m = 1; m < NoOfDrives; m++) {
+		pw = Abs(PW[m]);
+		if (pw > DemandSwing)
+			DemandSwing = pw;
+	}
 
-	DemandSwing = MaxMotor - CurrThrottlePW;
+	return (DemandSwing);
+} // MaxMotorSwing
+
+void RescaledMultiMix(real32 CurrThrottlePW) {
+#define	MIN_PRESERVED_YAW_PW FromPercent(10)
+	idx m;
+	real32 Scale, DemandSwing, AvailableSwing, TempYl;
+
+	TempYl = Yl;
+	Yl = 0.0f;
+
+	MixMulti(); // without yaw
+
 	AvailableSwing
 			= Min(OUT_MAXIMUM - CurrThrottlePW, CurrThrottlePW - THR_START_PW);
+	DemandSwing = MaxMotorSwing();
 
-	F.Saturation = Armed() && (DemandSwing > AvailableSwing);
+	F.Saturation = DemandSwing > AvailableSwing;
 
-	if (F.Saturation) {
+	if (F.Saturation) { // nothing left for yaw!
 
 		NV.Stats[SaturationS]++;
 
-		Scale = AvailableSwing / DemandSwing;
+		Scale = AvailableSwing / (DemandSwing - MIN_PRESERVED_YAW_PW);
 		Rl *= Scale;
 		Pl *= Scale;
 
-		if (UAVXAirframe != TriAF)
-			Yl *= Scale;
+		Yl = Limit1(TempYl, MIN_PRESERVED_YAW_PW);
+		MixMulti();
+	} else {
+		Yl = Limit1(TempYl, AvailableSwing - DemandSwing);
+		MixMulti();
 	}
 
-	return (F.Saturation);
+} // RescaledMultiMix
 
-} // RescaleMix
 
 void DoMulticopterMix(void) {
-	real32 CurrThrottlePW;
+	real32 CurrThrottlePW, AvailableSwing, MinThrottle;
 	idx m;
 
 	RotateOrientation(&Rl, &Pl, Rl, Pl);
 
 	Yl *= YawSense;
 
-	if (DesiredThrottle < IdleThrottle)
-		CurrThrottlePW = 0;
-	else {
-		if (State == InFlight) {
-			CurrThrottlePW = (DesiredThrottle + AltComp) * OUT_MAXIMUM;
-#if defined(USE_ATT_BATT_COMP)
-			CurrThrottlePW *= TiltFFThrComp * BattFFThrComp;
-#endif
-		} else
-			CurrThrottlePW = DesiredThrottle * OUT_MAXIMUM;
+	CurrThrottlePW = (State == InFlight) ? (DesiredThrottle + AltComp)
+			* OUT_MAXIMUM * (TiltThrFFComp * BattThrFFComp) : DesiredThrottle
+			* OUT_MAXIMUM;
 
-		CurrThrottlePW = Limit(CurrThrottlePW, IdleThrottlePW, OUT_MAXIMUM);
+	CurrThrottlePW = Limit(CurrThrottlePW, IdleThrottlePW, OUT_MAXIMUM);
+
+	if ((CurrThrottlePW < IdleThrottlePW) || !F.DrivesArmed) {
+		CurrThrottlePW = 0.0f;
+		for (m = 0; m < NoOfDrives; m++)
+			PW[m] = PWp[m] = 0;
+	} else {
+		F.EnforceDriveSymmetry = true;
+		if (F.EnforceDriveSymmetry)
+			RescaledMultiMix(CurrThrottlePW);
+		else
+			MixMulti();
+
+		MinThrottle = (State == InFlight) ? IdleThrottlePW : 0.0f;
+		for (m = 0; m < NoOfDrives; m++)
+			PW[m] = Limit(PW[m] + CurrThrottlePW, MinThrottle, OUT_MAXIMUM);
 	}
 	NetThrottle = CurrThrottlePW; // for logging only
 
-	UpdateMulticopterMix(CurrThrottlePW);
-
-	F.EnforceDriveSymmetry = true;
-	if (F.EnforceDriveSymmetry)
-		if (RescaleMix(CurrThrottlePW))
-			UpdateMulticopterMix(CurrThrottlePW);
-
-	for (m = 0; m < NoOfDrives; m++)
-		PW[m] = State == InFlight ? Limit(PW[m], IdleThrottlePW, OUT_MAXIMUM)
-				: Limit(PW[m], 0, OUT_MAXIMUM);
-
 } // DoMulticopterMix
-
-void MixAndLimitCam(void) {
-	real32 NewCamPitch, NewCamRoll;
-
-	if (!UsingDCMotors && (currGimbalType == servoGimbal)) {
-		if (UAVXAirframe == GimbalAF) {
-			NewCamRoll = A[Roll].Angle;
-			NewCamPitch = A[Pitch].Angle;
-
-			PW[CamRollC] = PW[CamPitchC] = OUT_NEUTRAL;
-		} else {
-			NewCamRoll = A[Roll].Angle * Cam.RollKp + (real32) P(RollCamTrim)
-					* 0.01f;
-			NewCamRoll = (real32) PWSense[CamRollC] * NewCamRoll * OUT_MAXIMUM
-					+ OUT_NEUTRAL;
-
-			NewCamPitch = A[Pitch].Angle * Cam.PitchKp + OrbitCamAngle
-					+ DesiredCamPitchTrim;
-			NewCamPitch = PWSense[CamPitchC] * NewCamPitch * OUT_MAXIMUM
-					+ OUT_NEUTRAL;
-
-			PW[CamRollC] = NewCamRoll;
-			PW[CamPitchC] = NewCamPitch;
-		}
-	}
-
-} // MixAndLimitCam
 
 void InitServoSense(void) {
 	idx b, m;

@@ -118,6 +118,8 @@
 #define MPU_RA_FIFO_R_W         0x74
 #define MPU_RA_WHO_AM_I         0x75
 
+#define BIT_H_RESET				0x80
+
 #define MPU_RA_VDDIO_BIT           7
 
 #define MPU_RA_VDDIO_LEVEL_VLOGIC  0
@@ -300,6 +302,8 @@
 #define MPU_RA_USERCTRL_FIFO_RESET_BIT         2
 #define MPU_RA_USERCTRL_I2C_MST_RESET_BIT      1
 #define MPU_RA_USERCTRL_SIG_COND_RESET_BIT     0
+
+#define BIT_I2C_IF_DIS              0x10
 
 #define MPU_RA_PWR1_DEVICE_RESET_BIT   7
 #define MPU_RA_PWR1_SLEEP_BIT          6

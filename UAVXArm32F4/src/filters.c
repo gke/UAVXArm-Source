@@ -24,17 +24,17 @@ void DFT8(real32 v, real32 *DFT) { // 137uS
 #if defined(INC_DFT)
 	const real32 mR = 0.125f;
 	static boolean Primed = false;
-	static real32 cosarg[8][8], sinarg[8][8];
-	static real32 inp[8];
+	static real32 cosarg[MAX_NOISE_BANDS][MAX_NOISE_BANDS], sinarg[MAX_NOISE_BANDS][MAX_NOISE_BANDS];
+	static real32 inp[MAX_NOISE_BANDS];
 	long i, k;
 	double arg;
-	double x[8], y[8];
+	double x[MAX_NOISE_BANDS], y[MAX_NOISE_BANDS];
 
 	if (!Primed) {
-		for (i = 0; i < 8; i++) {
+		for (i = 0; i < MAX_NOISE_BANDS; i++) {
 			inp[i] = v;
 			arg = -2.0 * PI * (real32) i * mR;
-			for (k = 0; k < 8; k++) {
+			for (k = 0; k < MAX_NOISE_BANDS; k++) {
 				cosarg[i][k] = cosf(arg * (real32) k);
 				sinarg[i][k] = sinf(arg * (real32) k);
 			}
@@ -46,20 +46,46 @@ void DFT8(real32 v, real32 *DFT) { // 137uS
 		inp[0] = v;
 	}
 
-	for (i = 0; i < 8; i++) {
+	for (i = 0; i < MAX_NOISE_BANDS; i++) {
 		x[i] = y[i] = 0.0;
-		for (k = 0; k < 8; k++) {
+		for (k = 0; k < MAX_NOISE_BANDS; k++) {
 			x[i] += inp[k] * cosarg[i][k];
 			y[i] += inp[k] * sinarg[i][k];
 		}
 	}
 
-	for (i = 0; i < 8; i++)
+	for (i = 0; i < MAX_NOISE_BANDS; i++)
 	DFT[i] = sqrtf(Sqr(x[i]) + Sqr(y[i])) * mR;
-
 #endif
 } // DFT8
 
+
+void LMSQFit(real32 * M, real32 * C, real32 X[], real32 Y[], uint16 Samples) {
+	uint16 i;
+	real32 xMean, yMean, n, d;
+	real32 SamplesR;
+
+	SamplesR = 1.0f / Samples;
+	xMean = yMean = 0.0f;
+
+	for (i = 0; i < Samples; i++) {
+		xMean += X[i];
+		yMean += Y[i];
+	}
+
+	xMean *= SamplesR;
+	yMean *= SamplesR;
+
+	n = d = 0.0f;
+	for (i = 0; i < Samples; i++) {
+		n += (X[i] - xMean) * (Y[i] - yMean);
+		d += Sqr(X[i]-xMean);
+	}
+
+	*M = n / d;
+	*C = yMean - *M * xMean;
+
+} // LMSQFit
 
 // Algorithm from N. Wirth's book, implementation by N. Devillard.
 // This code in public domain.
@@ -521,8 +547,24 @@ void InitSWFilters(void) {
 
 	const real32 rKF = 88;
 
+	if (busDev[imuSel].useSPI)
+		SetP(OSLPFHz, Limit(P(OSLPFHz), 2, 40)); // 200-4000Hz sampling 8KHz
+	else
+		SetP(OSLPFHz, Limit(P(OSLPFHz), 2, 5)); // 200-500Hz sampling 1KHz limited by i2c
+	CurrOSLPKFQ = CurrOSLPFHz = (real32) P(OSLPFHz) * 100.0f;
+	CurrOSLPFType = P(OSLPFType);
+
+	CurrYawLPFHz = LimitP(YawLPFHz, 25, 255);
+	CurrServoLPFHz = LimitP(ServoLPFHz, 10, 100);
+
 	LPF1DriveK = initLPF1Coefficient(CurrGyroLPFHz, CurrPIDCycleS);
 	LPF1ServoK = initLPF1Coefficient(CurrServoLPFHz, CurrPIDCycleS);
+
+	CurrAccLPFSel = LimitP(AccLPFSel, 3, 5);
+	CurrAccLPFHz = MPUAccLPFHz[CurrAccLPFSel];
+
+	CurrGyroLPFSel = LimitP(GyroLPFSel, 1, 4);
+	CurrGyroLPFHz = MPUGyroLPFHz[CurrGyroLPFSel];
 
 	for (a = X; a <= Z; a++) {
 
@@ -547,9 +589,14 @@ void InitSWFilters(void) {
 		} // switch
 
 		initLPFn(&AccF[a], AccLPFOrder, CurrAccLPFHz);
-		initLPFn(&GyroF[a], GyroLPFOrder, CurrGyroLPFHz);
 
-		initLPFn(&A[a].R.RateF, DerivLPFOrder, CurrGyroLPFHz); // derivative
+		if (a != Z) {
+			initLPFn(&GyroF[a], GyroLPFOrder, CurrGyroLPFHz);
+			initLPFn(&A[a].R.RateF, DerivLPFOrder, CurrGyroLPFHz * 0.6f); // derivative
+		} else {
+			initLPFn(&GyroF[a], GyroLPFOrder, CurrYawLPFHz);
+			initLPFn(&A[a].R.RateF, DerivLPFOrder, CurrYawLPFHz * 0.6f); // derivative
+		}
 
 		// Pavel Holoborodko, see http://www.holoborodko.com/pavel/numerical-methods/
 		// numerical-derivative/smooth-low-noise-differentiators/
@@ -560,11 +607,14 @@ void InitSWFilters(void) {
 			initMA(&A[a].R.RateDF, 4);
 	}
 
+	AltLPFHz = LimitP(AltLPF, 1, 50) * 0.1f; // apply to Baro and Zacc
 	initLPFn(&AccZLPF, AltLPFOrder, AltLPFHz);
 
 	initLPFn(&BaroLPF, AltLPFOrder, AltLPFHz);
 	initLPFn(&ROCLPF, ROCLPFOrder, AltLPFHz);
 	initLPFn(&FROCLPF, ROCFLPFOrder, AltLPFHz * 0.25f);
+
+	initLPFn(&SensorTempF, 2, 0.5f); // TODO:
 
 } // InitSWFilters
 

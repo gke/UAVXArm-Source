@@ -57,10 +57,6 @@ real32 CalculateMagConfidence(void) {
 	// reduce confidence in mag for high yaw rates
 	real32 c;
 
-	//	xxx add 11% shift from initial mag?
-	// MagLockE ???
-
-
 	if (State == InFlight) {
 		c = KpMagBase * (1.0f - Rate[Yaw] / MAX_MAG_YAW_RATE_RADPS); // linear for now
 		c = Limit(c, 0.0f, KpMagBase);
@@ -195,14 +191,13 @@ void VersanoCompensation(void) {
 
 void InitMadgwick(void) {
 
-	ReadFilteredGyroAndAcc(imuSel);
-	ScaleRateAndAcc(imuSel);
-
 	real32 normR = 1.0f / sqrtf(Sqr(Acc[BF]) + Sqr(Acc[LR]) + Sqr(Acc[UD]));
 
 	A[Pitch].Angle = asinf(-Acc[BF] * normR);
 	A[Roll].Angle = asinf(Acc[LR] * normR);
-	A[Yaw].Angle = MagHeading;
+
+	CalculateInitialMagneticHeading();
+	A[Yaw].Angle = InitialMagHeading;
 
 	ConvertEulerToQuaternion(A[Pitch].Angle, A[Roll].Angle, A[Yaw].Angle);
 
@@ -218,7 +213,7 @@ void UpdateHeading(void) {
 		Heading = Make2Pi(MagHeading + MagVariation);
 	} else {
 
-		MagHeading = A[Yaw].Angle;
+	    MagHeading = A[Yaw].Angle;
 		Heading = Make2Pi(MagHeading + MagVariation);
 
 		// override for FW aircraft
@@ -355,9 +350,9 @@ void UpdateInertial(void) {
 	else {
 		if (!UseGyroOS)
 			ReadFilteredGyroAndAcc(imuSel);
+
 		ScaleRateAndAcc(imuSel);
 	}
-
 
 	GetMagnetometer();
 

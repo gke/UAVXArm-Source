@@ -95,7 +95,7 @@ void InitMAVLink(void) {
 	// Heli90AF, Heli120AF,
 	// ElevonAF, DeltaAF,
 	// AileronAF, AileronSpoilerFlapsAF, AileronVTailAF, RudderElevatorAF,
-	// VTOLAF, GimbalAF,
+	// VTOLAF, VTOL2AF, GimbalAF,
 	// 	Instrumentation, IREmulation,
 	// AFUnknown,
 
@@ -108,7 +108,7 @@ void InitMAVLink(void) {
 			MAV_TYPE_OCTOROTOR, MAV_TYPE_OCTOROTOR, //
 			MAV_TYPE_HELICOPTER, MAV_TYPE_HELICOPTER, //
 			MAV_TYPE_FIXED_WING, MAV_TYPE_FIXED_WING, MAV_TYPE_FIXED_WING, MAV_TYPE_FIXED_WING, //
-			MAV_TYPE_COAXIAL, MAV_TYPE_GENERIC, //
+			MAV_TYPE_COAXIAL, MAV_TYPE_GENERIC, MAV_TYPE_GENERIC, //
 			MAV_TYPE_COAXIAL, MAV_TYPE_GENERIC, //
 			MAV_TYPE_GENERIC };
 

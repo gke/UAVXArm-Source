@@ -19,8 +19,8 @@
 //    If not, see http://www.gnu.org/licenses/
 
 
-#ifndef _gyrosandaccelerometers_h
-#define _gyrosandaccelerometers_h
+#ifndef _imu_h
+#define _imu_h
 
 enum GyroTypes {
 	MLX90609Gyro,
@@ -39,7 +39,7 @@ void InertialTest(uint8 s);
 
 void ErectGyros(uint8 imuSel, int32 d);
 
-#define ACC_TRIM_STEP 5 // was 20 - too coarse
+#define ACC_TRIM_STEP 5
 
 void InitIMU(uint8 imuSel);
 void ScaleRateAndAcc(uint8 imuSel);
@@ -53,7 +53,6 @@ extern uint8 CurrAttSensorType;
 extern real32 Acc[], Rate[];
 extern real32 RateEnergySum;
 extern uint32 RateEnergySamples;
-extern boolean CaptureIMUBias;
 
 #endif
 

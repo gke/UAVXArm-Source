@@ -26,27 +26,11 @@ __attribute__((__section__(".scratchFLASH")))    const int8 FlashNV[NV_FLASH_SIZ
 #define FLASH_SCRATCH_SECTOR	FLASH_Sector_1 // 11
 boolean NVChanged = false;
 
-void UpdateCheckSumNV(void) {
-	uint32 i;
-	uint8 CSum = 0;
+boolean NVUninitialised(void) {
 
-	for (i = 0; i < MAX_PARAMETERS; i++)
-		CSum ^= P(i);
+	return((NV.P[0][0] == NV.P[0][1])); // UNLIKELY
 
-	NV.CheckSum = CSum;
-
-} // UpdateCheckSumNV
-
-boolean CheckSumFailNV(void) {
-	uint32 i;
-	uint8 CSum = 0;
-
-	for (i = 0; i < MAX_PARAMETERS; i++)
-		CSum ^= P(i);
-
-	return (CSum != 0);
-
-} // CheckSumFailNV
+} // NVUninitialised
 
 void ReadBlockNV(uint32 a, uint16 l, int8 * v) {
 	uint16 i;
@@ -65,8 +49,6 @@ boolean UpdateNV(void) {
 	//	r &= v[i] == FlashNV[a + i]; //*(int8 *) (FLASH_SCRATCH_ADDR + a + i);
 
 	if (NVChanged) {
-
-		UpdateCheckSumNV();
 
 		FLASH_Unlock();
 		FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR

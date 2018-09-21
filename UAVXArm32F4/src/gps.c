@@ -910,7 +910,7 @@ void InitUbxGPS(uint8 s) {
 
 		SetBaudRate(s, UBXGPSBaud);
 
-		Delay1mS(1000); // 1000
+		Delay1mS(1000);
 
 		UbxDisableNavMessages(s);
 

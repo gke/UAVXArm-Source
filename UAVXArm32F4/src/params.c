@@ -89,10 +89,10 @@ void DoConfigBits(void) {
 	F.UsingRapidDescent = (P(Config1Bits) & UseRapidDescentMask) != 0;
 	F.Emulation = (P(Config1Bits) & EmulationEnableMask) != 0;
 	F.UseManualAltHold = (P(Config1Bits) & UseManualAltHoldMask) != 0;
-	F.UsingGPSAltitude = (P(Config1Bits) & UseGPSAltMask) != 0;
-
+	F.UsingGPSAltitude = ((P(Config1Bits) & UseGPSAltMask) != 0) & F.IsFixedWing && ((CurrGPSType
+			== UBXBinGPS) || (CurrGPSType == UBXBinGPSInit));
 	// Config2
-	UsingPavelFilter = false; // TODO: skip for now (P(Config2Bits) & UsePavelFilterMask) != 0;
+	UsingPavelFilter = (P(Config2Bits) & UsePavelFilterMask) != 0;
 	UsingFastStart = (P(Config2Bits) & UseFastStartMask) != 0;
 	UsingBLHeliPrograming = (P(Config2Bits) & UseBLHeliMask) != 0;
 	UsingGliderStrategy = ((P(Config2Bits) & UseGliderStrategyMask) != 0)
@@ -101,8 +101,6 @@ void DoConfigBits(void) {
 	UseGyroOS = ((P(Config2Bits) & UseGyroOSMask) != 0) && !F.Emulation;
 
 	F.UsingTurnToWP = (P(Config2Bits) & UseTurnToWPMask) != 0;
-
-	//... currentl unused
 
 } // DoConfigBits
 
@@ -232,7 +230,7 @@ void UpdateParameters(void) {
 		// Misc
 
 		F.UsingConvYawSense = (P(ServoSense) & UseConvYawSenseMask) != 0;
-		YawSense = F.UsingConvYawSense ? 1.0f : -1.0f;
+		YawSense = F.UsingConvYawSense ? -1.0f : 1.0f;
 
 		UpdateRCMap(); // for channel re-assignment
 
@@ -241,8 +239,8 @@ void UpdateParameters(void) {
 		// Arm registers to a known state and to initialise new devices.
 
 		if ((State == Preflight) || (State == Ready)) { // NOT IN FLIGHT
-			if ((CurrIMUOption != P(IMUOption)) || (ArmingMethod != P(
-					ArmingMode)) //
+			if ((CurrIMUOption != P(IMUOption)) //
+					|| (ArmingMethod != P(ArmingMode)) //
 					|| (CurrAttSensorType != P(SensorHint)) //
 					|| (CurrRxType != P(RxType)) //
 					|| (CurrConfig1 != P(Config1Bits)) //
@@ -251,8 +249,8 @@ void UpdateParameters(void) {
 					|| (UAVXAirframe != P(AFType)) //
 					|| (CurrRFSensorType != P(RFSensorType)) //
 					|| (CurrASSensorType != P(ASSensorType)) //
-					|| (CurrGyroLPFSel != P(GyroLPFSel)) //
-					|| (CurrAccLPFSel != P(AccLPFSel)) //
+				//	|| (CurrGyroLPFSel != P(GyroLPFSel)) //
+				//	|| (CurrAccLPFSel != P(AccLPFSel)) //
 					|| (CurrGPSType != P(GPSProtocol)) //
 					|| (CurrMotorStopSel != P(MotorStopSel)) //
 					|| (CurrNoOfWSLEDs != P(WS2812Leds)))
@@ -270,12 +268,10 @@ void UpdateParameters(void) {
 		InitTune();
 
 		// Throttle
-
 		IdleThrottlePW = IdleThrottle
 				= FromPercent(LimitP(PercentIdleThr, RC_THRES_START + 1, 20));
 
 		FWPitchThrottleFFFrac = FromPercent(P(FWPitchThrottleFF));
-
 		TiltThrFFFrac = FromPercent(P(TiltThrottleFF));
 
 		CGOffset = FromPercent(Limit1(P(Balance), 100));
@@ -285,11 +281,9 @@ void UpdateParameters(void) {
 					: THR_DEFAULT_CRUISE_STICK;
 			SetP(EstCruiseThr, CruiseThrottle * 100.0f);
 		}
-
 		CruiseThrottle = FromPercent(P(EstCruiseThr));
 
 		// Attitude
-
 		StickDeadZone = FromPercent(LimitP(StickHysteresis, 1, 5));
 
 		KpAccBase = P(MadgwickKpAcc) * 0.1f;
@@ -308,24 +302,15 @@ void UpdateParameters(void) {
 		FWClimbThrottleFrac = FromPercent(P(FWClimbThrottle));
 
 		// Altitude
-
 		InitRangefinder();
 
 		MinROCMPS = -(real32) P(MaxDescentRateDmpS) * 0.1f;
 
-		F.UsingGPSAltitude = F.UsingGPSAltitude & F.IsFixedWing
-				&& ((CurrGPSType == UBXBinGPS)
-						|| (CurrGPSType == UBXBinGPSInit));
-
 		FWAileronRudderFFFrac = FromPercent(P(FWAileronRudderMix));
 		FWAltSpoilerFFFrac = FromPercent(P(FWAltSpoilerFF));
-
 		FWSpoilerDecayS = P(FWSpoilerDecayTime) * 0.1f;
 
-		AltLPFHz = LimitP(AltLPF, 1, 50) * 0.1f; // apply to Baro and Zacc
-
 		// Nav
-
 		Nav.CrossTrackKp = P(NavCrossTrackKp) * 0.01f;
 
 		GPSMinhAcc = GPS_MIN_HACC; // not set in GUI LimitP(MinhAcc, 10, GPS_MIN_HACC * 10) * 0.1f;
@@ -333,7 +318,6 @@ void UpdateParameters(void) {
 		GenerateHomeWP();
 
 		// Misc
-
 		InitServoSense();
 		InitBattery();
 
@@ -341,28 +325,15 @@ void UpdateParameters(void) {
 		F.UsingMAVLink = (CurrTelType == MAVLinkTelemetry) || (CurrTelType
 				== MAVLinkMinTelemetry);
 
-		CurrYawLPFHz = LimitP(YawLPFHz, 25, 255);
-		CurrServoLPFHz = LimitP(ServoLPFHz, 10, 100);
-
-		if (busDev[imuSel].useSPI)
-			SetP(OSLPFHz, Limit(P(OSLPFHz), 2, 40)); // 8KHz
-		else
-			SetP(OSLPFHz, Limit(P(OSLPFHz), 2, 5)); // 1KHz limited by i2c
-
-		CurrOSLPKFQ = CurrOSLPFHz = (real32) P(OSLPFHz) * 100.0f;
-
-		CurrOSLPFType = P(OSLPFType);
-
 		InitSWFilters();
 
-		SlewLimitGyroClicks = (DegreesToRadians(P(GyroSlewRate) * 100.0f)
-				* CurrPIDCycleS) / GyroScale[CurrAttSensorType]; // 65 for 2000
-		SlewHistScale = Limit(SlewLimitGyroClicks >> 3, 1, 255);
+		GyroSlewLimitFrac = FromPercent(Limit(P(GyroSlewRate), 1, 200));
+		SlewBand = MAX_NOISE_BANDS / (GyroSlewLimitFrac * 16384.0f);
 
 		RegeneratePIDCoeffs();
-
-		F.ParametersChanged = false;
 	}
+
+	F.ParametersChanged = false;
 
 } // UpdateParameters
 
@@ -565,7 +536,7 @@ void UseDefaultParameters(uint8 DefaultPS) {
 } // UseDefaultParameters
 
 
-void CheckParameters(void) {
+void ConditionParameters(void) {
 
 	F.UsingUplink = F.ParametersValid = true; //unused
 
@@ -585,6 +556,8 @@ void CheckParameters(void) {
 	CurrRFSensorType = P(RFSensorType);
 	CurrASSensorType = P(ASSensorType);
 
+	DoConfigBits();
+
 	SetPIDPeriod();
 
 	if (UAVXAirframe == IREmulation) { // force PWM for DAC function
@@ -592,39 +565,27 @@ void CheckParameters(void) {
 		CurrESCType = PWMDAC;
 	}
 
-	DoConfigBits();
-
-	CurrAccLPFSel = LimitP(AccLPFSel, 3, 5);
-	CurrAccLPFHz = MPUAccLPFHz[CurrAccLPFSel];
-
-	CurrGyroLPFSel = LimitP(GyroLPFSel, 1, 4);
-	CurrGyroLPFHz = MPUGyroLPFHz[CurrGyroLPFSel];
-
-	if (CurrRxType != UnknownRx)
-		InitHarness();
-
 	F.UsingAnalogGyros = (CurrAttSensorType != UAVXArm32IMU)
 			&& (CurrAttSensorType != FreeIMU);
 
 	CurrNoOfWSLEDs = LimitP(WS2812Leds, 0, MAX_WS2812_LEDS);
-	InitWSLEDs();
 
 	InitMAVLink();
 
 	F.ParametersChanged = true;
-
 	UpdateParameters();
 
-} // CheckParameters
+} // ConditionParameters
 
 
 void LoadParameters(void) {
 
 	ReadBlockNV(0, sizeof(NV), (int8 *) (&NV));
 
-	if ((NV.CurrRevisionNo != RevisionNo)) // || CheckSumFailNV())
+	//if ((NV.CurrRevisionNo != RevisionNo))
+	if (NVUninitialised())
 		UseDefaultParameters(0);
 
-	CheckParameters();
+	ConditionParameters();
 
 } // LoadParameters

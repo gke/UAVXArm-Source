@@ -32,7 +32,7 @@
 uint16 SphereFit(real32 d[][3], uint16 N, uint16 MaxIterations, real32 Err,
 		real32 SphereOrigin[], real32 * SphereRadius) {
 
-	int32 a;
+	idx a;
 	uint16 i, Iterations;
 	real32 s[3], s2[3], s3[3], sum[3], sum2[3], sum3[3];
 	real32 x2sum[3], y2sum[3], z2sum[3];
@@ -148,11 +148,12 @@ uint16 SphereFit(real32 d[][3], uint16 N, uint16 MaxIterations, real32 Err,
 	for (a = X; a <= Z; a++)
 		SphereOrigin[a] = c[a];
 
-	*SphereRadius = sqrtf(r2);
+//	*SphereRadius = sqrtf(Abs(r2));
 
 	return (Iterations);
 }
 // SphereFit
+
 
 //______________________________________________________________________________________
 
@@ -404,7 +405,7 @@ void CalibrateAccSixPointSphere(uint8 s, uint8 imuSel) {
 		NV.AccCal.Bias[a] = SphereOrigin[a];
 	}
 
-	NV.AccCal.DynamicAccBias[Z] = 0.0f;
+	AccZBias = 0.0f;
 
 	NVChanged = true;
 	UpdateNV();
@@ -508,7 +509,7 @@ void CalibrateAccSixPoint(uint8 s, uint8 imuSel) {
 	for (a = X; a <= Z; a++)
 		NV.AccCal.Scale[a] *= DEF_ACC_SCALE;
 
-	NV.AccCal.DynamicAccBias[Z] = 0.0f;
+	AccZBias = 0.0f;
 
 	NVChanged = true;
 	UpdateNV();

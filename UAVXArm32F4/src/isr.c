@@ -35,9 +35,8 @@ void NMI_Handler(void) {
 
 void HardFault_Handler(void) {
 	/* Go to infinite loop when Hard Fault exception occurs */
-	while (1) {
+	while (1)
 		Catastrophe();
-	}
 }
 
 void MemManage_Handler(void) {
@@ -158,6 +157,7 @@ void DMA1_Stream3_IRQHandler(void) {
 
 	DMA_ClearITPendingBit(DMA1_Stream3, DMA_IT_TCIF3);
 	DMA_Cmd(DMA1_Stream3, DISABLE);
+
 	TxQHead[3] = TxQNewHead[3];
 	if (TxQHead[3] != TxQTail[3])
 		SerialTxDMA(3);

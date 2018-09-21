@@ -84,6 +84,8 @@ extern OSLPFPtr OSF;
 extern filterStruct AccF[3], GyroF[3], OSGyroF[3];
 extern filterStruct ROCLPF, FROCLPF, BaroLPF;
 
+extern filterStruct SensorTempF;
+
 extern real32 CurrAccLPFHz, CurrGyroLPFHz, CurrYawLPFHz, CurrServoLPFHz, CurrOSLPFHz, CurrOSLPKFQ;
 extern boolean UsingPavelFilter;
 

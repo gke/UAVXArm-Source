@@ -45,6 +45,8 @@
 #define PID_CYCLE_2000US 2000
 #define PID_SYNCPWM_CYCLE_2050US 2050 //2500 // for synchronised standard PWM
 
+#define MAX_NOISE_BANDS 8
+
 #define ARMED_TIMEOUT_MS 120000L // mS. automatic disarming if armed for this long and landed
 #define NAV_LAND_TIMEOUT_MS 3000
 #define NAV_ACTIVE_DELAY_MS 10000 // mS. after throttle exceeds idle that Nav becomes active

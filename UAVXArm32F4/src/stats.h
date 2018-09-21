@@ -56,7 +56,7 @@ enum Statistics {
 	SPIFailS,
 	GyroFailS,
 	RCFailsafesS,
-	I2CFailS,
+	SIOFailS,
 
 	UtilisationS,
 	BadS,

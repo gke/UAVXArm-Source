@@ -150,9 +150,9 @@
 #define InpPinConfig GPIO_Mode_IN,GPIO_OType_PP,GPIO_PuPd_UP
 
 #define USART1Config GPIO_AF_USART1,true,USART1_IRQn
-#define USART2Config GPIO_AF_USART3,true,USART2_IRQn
+#define USART2Config GPIO_AF_USART2,true,USART2_IRQn
 #define USART3Config GPIO_AF_USART3,true,USART3_IRQn
-#define UART4Config GPIO_AF_USART3,true,UART4_IRQn
+#define UART4Config GPIO_AF_UART4,true,UART4_IRQn
 
 // More thought needed!
 #define DMA2_0_0_noIRQn {true,DMA_Channel_0,DMA2_Stream0}

@@ -42,44 +42,93 @@ uint8 MPU6XXXDLPF = 0;
 uint8 MPU6000DLPF = 0;
 uint8 MPU6XXXDHPF = 0;
 
+uint8 DisableGyroDLPF = 1;
+uint8 DisableAccDLPF = 1;
+
+filterStruct SensorTempF;
+
+const real32 MPU6XXXRefTemperature = 21.0f;
+
 real32 MPU6XXXTemperature = 25.0f;
+int16 RawMPU6XXXTemperature;
 timeuS mpu6xxxLastUpdateuS = 0;
-
 boolean UseGyroOS = false;
-
 real32 RawAcc[3], RawGyro[3];
+real32 GyroSlewLimitFrac;
+uint32 Noise[MAX_NOISE_BANDS];
+idx Band;
 
-uint32 Noise[8];
-uint32 gyroGlitches;
-uint32 mpuReads;
+real32 SlewBand;
+int32 BP[3] = { 0, };
 
-uint16 SlewLimitGyroClicks = 64;
-uint16 SlewHistScale = 8;
+// Roll Right +, Pitch Up +, Yaw ACW +
 
-void ComputeMPU6XXXTemperature(uint8 imuSel, int16 T) {
+
+void UpdateMPU6XXXTemperature(uint8 imuSel, int16 T, real32 TempdT) {
+	real32 R;
 
 	switch (busDev[imuSel].type) {
 	case mpu6050IMU:
-		MPU6XXXTemperature = ((real32) T + 12456.0f) * 0.002941f;
+		R = ((real32) T + 12456.0f) * 0.002941f;
 		break;
 	case icm20689IMU:
-		MPU6XXXTemperature = (real32) (T + 0) * (1.0f / 333.87f) + 21.0f;
+		R = (real32) T * (1.0f / 333.87f) + 21.0f;
 		break;
-	default:
 	case mpu6000IMU:
-		MPU6XXXTemperature = (real32) (T + 0) * (1.0f / 333.87f) + 21.0f;
+	default:
+		R = (real32) T * (1.0f / 333.87f) + 21.0f;
 		break;
 	}
 
-} // ComputeMPU6XXXTemperature
+	MPU6XXXTemperature = LPFn(&SensorTempF, R, TempdT);
 
+} // UpdateMPU6XXXTemperature
+
+
+void ReadAccGyro(uint8 imuSel) {
+	static timeuS LastUpdateuS = 0;
+	real32 GyrodT, RateD;
+	timeuS NowuS;
+	int16 B[7];
+	idx a;
+
+	SIOReadBlocki16vataddr(imuSel, MPU_RA_ACC_XOUT_H, 7, B, true);
+
+	NowuS = uSClock();
+	GyrodT = (NowuS - LastUpdateuS) * 0.000001f;
+	LastUpdateuS = NowuS;
+
+	for (a = 0; a <= 6; a++)
+		ShadowRawIMU[a] = B[a];
+
+	RotateSensor(&B[X], &B[Y], IMUQuadrant);
+
+	for (a = X; a <= Z; a++)
+		RawAcc[a] = (real32) B[a];
+
+	RawMPU6XXXTemperature = B[3];
+
+	RotateSensor(&B[X + 4], &B[Y + 4], IMUQuadrant);
+
+#if !defined(INC_DFT)
+	for (a = X; a <= Z; a++) {
+		RateD = Abs((int32)B[a+4] - BP[a]);
+		Band = Limit( (int16)(RateD * SlewBand), 0, (MAX_NOISE_BANDS-1));
+		Noise[Band]++;
+		BP[a] = B[a + 4];
+	}
+#endif
+
+	for (a = X; a <= Z; a++)
+		RawGyro[a] = OSF(&OSGyroF[a], (real32) B[a + 4], GyrodT);
+
+} // ReadAccGyro
 
 void ReadGyro(uint8 imuSel) { // Roll Right +, Pitch Up +, Yaw ACW +
 	static timeuS LastUpdateuS = 0;
-	real32 GyrodT;
+	real32 GyrodT, RateD;
 	timeuS NowuS;
 	int16 B[3];
-	static int16 BP[3] = { 0, };
 	idx a;
 
 	SIOReadBlocki16vataddr(imuSel, MPU_RA_GYRO_XOUT_H, 3, B, true);
@@ -88,22 +137,16 @@ void ReadGyro(uint8 imuSel) { // Roll Right +, Pitch Up +, Yaw ACW +
 	GyrodT = (NowuS - LastUpdateuS) * 0.000001f;
 	LastUpdateuS = NowuS;
 
-	/* rethink dT gke zzz
-	 #if !defined(INC_DFT)
-
-	 if (UseGyroOS) zzzz
-	 if (P(GyroSlewRate) > 0)
-	 for (a = 0; a < 3; a++) {
-	 Noise[Limit(Abs(B[a] - BP[a]) / SlewHistScale, 0, 7)]++;
-	 B[a]
-	 = SensorSlewLimit(GyroFailS, &BP[a], B[a],
-	 SlewLimitGyroClicks);
-	 }
-	 #endif
-	 */
-
-
 	RotateSensor(&B[X], &B[Y], IMUQuadrant);
+
+#if !defined(INC_DFT)
+	for (a = X; a <= Z; a++) {
+		RateD = Abs((int32)B[a] - BP[a]);
+		Band = Limit( (int16)(RateD * SlewBand), 0, (MAX_NOISE_BANDS-1));
+		Noise[Band]++;
+		BP[a] = B[a];
+	}
+#endif
 
 	for (a = X; a <= Z; a++) {
 		ShadowRawIMU[a + 4] = B[a];
@@ -113,23 +156,23 @@ void ReadGyro(uint8 imuSel) { // Roll Right +, Pitch Up +, Yaw ACW +
 } // ReadGyro
 
 
-void ReadAcc(uint8 imuSel) { // Roll Right +, Pitch Up +, Yaw ACW +
+void ReadAcc(uint8 imuSel) {
 	int16 B[4];
 	idx a;
 
 	SIOReadBlocki16vataddr(imuSel, MPU_RA_ACC_XOUT_H, 4, B, true);
 
+	RotateSensor(&B[0], &B[1], IMUQuadrant);
 
-	RotateSensor(&B[X], &B[Y], IMUQuadrant);
-
-	for (a = X; a <= Z; a++) {
+	for (a = 0; a <= 2; a++) {
 		ShadowRawIMU[a] = B[a];
 		RawAcc[a] = (real32) B[a];
 	}
 
-	ComputeMPU6XXXTemperature(imuSel, B[3]);
+	RawMPU6XXXTemperature = ShadowRawIMU[3] = B[3];
 
 } // ReadAcc
+
 
 void ReadFilteredGyroAndAcc(uint8 imuSel) {
 	static timeuS LastUpdateuS = 0;
@@ -141,13 +184,18 @@ void ReadFilteredGyroAndAcc(uint8 imuSel) {
 	dT = (NowuS - LastUpdateuS) * 0.000001f;
 	LastUpdateuS = NowuS;
 
-	ReadGyro(imuSel);
 	ReadAcc(imuSel);
+	ReadGyro(imuSel);
 
-	for (a = X; a <= Z; a++) {
-		RawGyro[a] = LPFn(&GyroF[a], RawGyro[a], dT);
-		RawAcc[a] = LPFn(&AccF[a], RawAcc[a], dT);
-	}
+	if (DisableAccDLPF == 1)
+		for (a = X; a <= Z; a++)
+			RawAcc[a] = LPFn(&AccF[a], RawAcc[a], dT);
+
+	if (DisableGyroDLPF == 1)
+		for (a = X; a <= Z; a++)
+			RawGyro[a] = LPFn(&GyroF[a], RawGyro[a], dT);
+
+	UpdateMPU6XXXTemperature(imuSel, RawMPU6XXXTemperature, dT);
 
 } //ReadFilteredGyroAndAcc
 
@@ -157,7 +205,7 @@ void CalibrateAccAndGyro(uint8 s, uint8 imuSel) {
 	// Basic idea from MEMSIC #AN-00MX-002 Ricardo Dao 4 Nov 2002
 	// gyro and acc temperature calibration using linear compensation
 	const real32 RangeT = 10.0f;
-	const int16 Samples = 300; // number of samples to be used.
+	const int16 Samples = 20; // was 300 // number of samples to be used.
 	const real32 SamplesR = 1.0f / (real32) Samples;
 
 	int16 i;
@@ -169,17 +217,20 @@ void CalibrateAccAndGyro(uint8 s, uint8 imuSel) {
 	LEDOn(ledBlueSel);
 
 	for (c = X; c <= Z; c++) {
-		for (i = 0; i < 2; i++)
+		for (i = 0; i <= 1; i++)
 			a[i][c] = g[i][c] = t[i] = 0.0f;
-		GyroBias[c] = 0.0f;
+		NV.AccCal.Scale[c] = DEF_ACC_SCALE;
+		NV.AccCal.Bias[c] = NV.GyroCal.M[c] = NV.GyroCal.C[c] = 0.0f;
 	}
 
 	ts = 0;
 	ThresholdT = -100.0f;
 	do {
+		Delay1mS(1);
 		ReadFilteredGyroAndAcc(imuSel);
 		if (MPU6XXXTemperature > ThresholdT) {
 			for (i = 0; i < Samples; i++) {
+				Delay1mS(1);
 				ReadFilteredGyroAndAcc(imuSel);
 				t[ts] += MPU6XXXTemperature;
 				RawAcc[Z] -= MPU_1G;
@@ -196,9 +247,9 @@ void CalibrateAccAndGyro(uint8 s, uint8 imuSel) {
 			Delay1mS(100);
 			LEDToggle(ledBlueSel);
 		}
-	} while (ts < 2);
+	} while (ts <= 1);
 
-	for (ts = 0; ts < 2; ts++) {
+	for (ts = 0; ts <= 1; ts++) {
 		for (c = X; c <= Z; c++) {
 			a[ts][c] *= SamplesR;
 			g[ts][c] *= SamplesR;
@@ -211,24 +262,22 @@ void CalibrateAccAndGyro(uint8 s, uint8 imuSel) {
 
 	for (c = X; c <= Z; c++) {
 		NV.AccCal.Scale[c] = DEF_ACC_SCALE;
-		NV.AccCal.Bias[c] = (a[0][c] + a[1][c]) * 0.5f;
-		NV.GyroCal.M[c] = (g[1][c] - g[0][c]) / TempDiff;
-		GyroBias[c] = NV.GyroCal.C[c] = g[0][c]; // use starting temperature
-	}
+		NV.AccCal.Bias[c] = (a[1][c] + a[0][c]) * 0.5f;
 
-	NV.AccCal.DynamicAccBias[Z] = 0.0f;
+		NV.GyroCal.M[c] = (g[1][c] - g[0][c]) / TempDiff;
+		NV.GyroCal.C[c] = g[0][c]; // use starting temperature
+	}
 
 	F.IMUCalibrated = Abs(TempDiff) < (RangeT * 2.0f); // check if too fast!!!
 	if (F.IMUCalibrated) {
+		NVChanged = true;
 		UpdateNV();
 		DoBeep(8, 1);
 		LEDOff(ledBlueSel);
 		SendAckPacket(s, UAVXMiscPacketTag, 1);
-		Delay1mS(100);
-		systemReset(false);
 	} else {
-		SendAckPacket(s, UAVXMiscPacketTag, 255);
 		Catastrophe();
+		SendAckPacket(s, UAVXMiscPacketTag, 255);
 	}
 
 } // CalibrateAccAndGyro
@@ -237,78 +286,106 @@ void CalibrateAccAndGyro(uint8 s, uint8 imuSel) {
 void UpdateGyroTempComp(uint8 imuSel) {
 	int32 a;
 
-	if (!F.UsingAnalogGyros) // keep using erection bias if analog gyros
-		for (a = X; a <= Z; a++)
-			GyroBias[a] = NV.GyroCal.C[a] + NV.GyroCal.M[a]
-					* (MPU6XXXTemperature - NV.GyroCal.TRef);
-
+	for (a = X; a <= Z; a++)
+#if defined(UAVXF4V4) // SPI temperature "unreliable"
+		GyroBias[a] = NV.GyroCal.C[a];
+#else
+		GyroBias[a] = NV.GyroCal.C[a] + NV.GyroCal.M[a] * (MPU6XXXTemperature
+				- NV.GyroCal.TRef);
+#endif
 } // UpdateGyroTempComp
 
 
 void InitMPU6XXX(uint8 imuSel) {
+
+	// THE MPU6000? USED ON UAVXARM32F4V4 NANO BOARDS ARE VERY VERY NOISY.
+	// MUCH MORE SO THAN ON OMNIBUS CLONES AND THE V3 I2C MPU6050 - CHECK WITH KEN.
 
 	// VERY IMPORTANT: ACCELEROMETER MAX SAMPLING RATE IS 1KHZ. IF READ FASTER THEN VALUES REPEAT.
 	// GYROS ARE SAMPLED AT 1KHZ UNLESS DISABLED WHEN THE SAMPLING RATE IS 8KHZ
 	// THE UPDATING OF REGISTERS IS ASYNCHRONOUS
 	// THE MPU6050 HAS COMMON DLPF CONFIG FOR ACC/GYRO, THE MPU6500 HAS A SEPARATE DLPF CONFIG FOR ACC
 
-	uint8 DisableGyroDLPF = 1;
-
 	CheckMPU6XXXActive(imuSel);
 	Delay1mS(100); // was 5
 
-	SIOWrite(imuSel, MPU_RA_PWR_MGMT_1, 1 << MPU_RA_PWR1_DEVICE_RESET_BIT);
-	Delay1mS(100);
+	switch (busDev[imuSel].type) {
+	case mpu6050IMU:
 
-	if (busDev[imuSel].type == mpu6000IMU) {
+		SIOWrite(imuSel, MPU_RA_PWR_MGMT_1, 1 << MPU_RA_PWR1_DEVICE_RESET_BIT);
+		Delay1mS(100);
+
+		SIOWrite(imuSel, MPU_RA_FIFO_EN, 0); // DISABLE FIFOs
+
+		SIOWrite(imuSel, MPU_RA_SMPLRT_DIV, 0); // NO sampling rate division - full speed
+		SIOWrite(imuSel, MPU_RA_PWR_MGMT_1, MPU_RA_CLOCK_PLL_XGYRO);
+
+		MPU6XXXRev = SIORead(imuSel, MPU_RA_PRODUCT_ID);
+
+		SIOWrite(imuSel, MPU_RA_GYRO_CONFIG, (MPU_RA_GYRO_FS_2000 << 3));
+		SIOWriteataddr(imuSel, MPU_RA_ACC_CONFIG, (MPU_RA_ACC_FS_4 << 3)
+				| MPU_RA_DHPF_1P25);
+
+		SIOWriteataddr(imuSel, MPU_RA_ACC_CONFIG2, (DisableAccDLPF << 3)
+				& MPUDLPFMask[CurrAccLPFSel]);
+
+		SIOWrite(imuSel, MPU_RA_INT_PIN_CFG, (1
+				<< MPU_RA_INTCFG_I2C_BYPASS_EN_BIT));
+
+		Delay1mS(100);
+
+		SIOWriteataddr(imuSel, MPU_RA_CONFIG, (DisableGyroDLPF << 3)
+				& MPUDLPFMask[CurrGyroLPFSel]);
+
+		Delay1mS(100);
+
+		MPU6XXXDLPF = SIOReadataddr(imuSel, MPU_RA_CONFIG) & 0x07;
+		MPU6XXXDHPF = SIOReadataddr(imuSel, MPU_RA_ACC_CONFIG) & 0x07;
+
+		Delay1mS(100); // added to prevent apparent SPI hang
+
+		break;
+	case icm20689IMU:
+	case mpu6000IMU:
+
+		SIOWrite(imuSel, MPU_RA_PWR_MGMT_1, 1 << MPU_RA_PWR1_DEVICE_RESET_BIT);
+		Delay1mS(100);
+
 		SIOWrite(imuSel, MPU_RA_SIGNAL_PATH_RESET, 7); // reset gyro, acc, temp
 		Delay1mS(100);
-	}
 
-	SIOWrite(imuSel, MPU_RA_FIFO_EN, 0); // DISABLE FIFOs
+		SIOWrite(imuSel, MPU_RA_FIFO_EN, 0); // DISABLE FIFOs
 
-	SIOWrite(imuSel, MPU_RA_SMPLRT_DIV, 0); // NO sampling rate division - full speed
-	SIOWrite(imuSel, MPU_RA_PWR_MGMT_1, MPU_RA_CLOCK_PLL_XGYRO);
+		SIOWrite(imuSel, MPU_RA_SMPLRT_DIV, 0); // NO sampling rate division - full speed
+		SIOWrite(imuSel, MPU_RA_PWR_MGMT_1, MPU_RA_CLOCK_PLL_XGYRO);
 
-	MPU6XXXRev = SIORead(imuSel, MPU_RA_PRODUCT_ID);
+		MPU6XXXRev = SIORead(imuSel, MPU_RA_PRODUCT_ID);
 
-	SIOWrite(imuSel, MPU_RA_GYRO_CONFIG, (MPU_RA_GYRO_FS_2000 << 3));
+		SIOWrite(imuSel, MPU_RA_GYRO_CONFIG, (MPU_RA_GYRO_FS_2000 << 3));
 
-	uint8 MPUAccFS = MPU_RA_ACC_FS_4; // +/-4g
-	SIOWriteataddr(imuSel, MPU_RA_ACC_CONFIG, (MPUAccFS << 3)
-			| MPU_RA_DHPF_1P25);
+		SIOWriteataddr(imuSel, MPU_RA_ACC_CONFIG, (MPU_RA_ACC_FS_4 << 3)
+				| MPU_RA_DHPF_1P25);
 
-	if (busDev[imuSel].type == mpu6000IMU) {
 		uint8 DisableAccDLPF = 1;
 		SIOWriteataddr(imuSel, MPU_RA_ACC_CONFIG2, (DisableAccDLPF << 3)
 				& MPUDLPFMask[CurrAccLPFSel]);
-	} else {
-		// Enable I2C master mode
-		uint8 v = SIOReadataddr(imuSel, MPU_RA_USER_CTRL);
-		bitClear(v, MPU_RA_USERCTRL_I2C_MST_EN_BIT);
-		SIOWrite(imuSel, MPU_RA_USER_CTRL, v);
 
-		// Allow bypass access to slave I2C devices (Magnetometer)
-		v = SIOReadataddr(imuSel, MPU_RA_INT_PIN_CFG);
-		bitSet(v, MPU_RA_INTCFG_I2C_BYPASS_EN_BIT);
-		SIOWrite(imuSel, MPU_RA_INT_PIN_CFG, v);
-	}
+		Delay1mS(100);
 
-	Delay1mS(100);
+		SIOWriteataddr(imuSel, MPU_RA_CONFIG, (DisableGyroDLPF << 3)
+				& MPUDLPFMask[CurrGyroLPFSel]);
 
-	SIOWriteataddr(imuSel, MPU_RA_CONFIG, (DisableGyroDLPF << 3)
-			& MPUDLPFMask[CurrGyroLPFSel]);
+		Delay1mS(100);
 
-	Delay1mS(100);
-
-	MPU6XXXDLPF = SIOReadataddr(imuSel, MPU_RA_CONFIG) & 0x07;
-	MPU6XXXDHPF = SIOReadataddr(imuSel, MPU_RA_ACC_CONFIG) & 0x07;
-	if (busDev[imuSel].type == mpu6000IMU)
+		MPU6XXXDLPF = SIOReadataddr(imuSel, MPU_RA_CONFIG) & 0x07;
+		MPU6XXXDHPF = SIOReadataddr(imuSel, MPU_RA_ACC_CONFIG) & 0x07;
 		MPU6000DLPF = SIOReadataddr(imuSel, MPU_RA_ACC_CONFIG2) & 0x07;
 
-	Delay1mS(100); // added to prevent apparent SPI hang
+		break;
+	} // switch
 
 } // InitMPU6XXX
+
 
 boolean MPU6XXXReady(uint8 imuSel) {
 
@@ -323,9 +400,9 @@ void CheckMPU6XXXActive(uint8 imuSel) {
 
 	MPU6XXXId = SIORead(imuSel, MPU_RA_WHO_AM_I);
 	if (busDev[imuSel].useSPI)
-	   r = MPU6XXXId > 0;
+		r = MPU6XXXId > 0;
 	else
-	    r = MPU6XXXId == ((busDev[imuSel].i2cId >> 1) & 0xfe);
+		r = MPU6XXXId == ((busDev[imuSel].i2cId >> 1) & 0xfe);
 
 	F.IMUActive = r;
 

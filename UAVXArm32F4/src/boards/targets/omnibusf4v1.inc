@@ -127,7 +127,7 @@ const uint8 currGimbalType = noGimbal;
 const boolean ledsLowOn = false;
 const uint8 imuSel = imu0Sel;
 
-//#define GKE // for debugging until I get USB working!!!!
+#define GKE // for debugging until I get USB working!!!!
 
 #if defined(GKE)
 
