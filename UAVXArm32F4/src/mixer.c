@@ -72,18 +72,18 @@ void MixAndLimitCam(void) {
 
 	if (!UsingDCMotors && (currGimbalType == servoGimbal)) {
 		if (UAVXAirframe == GimbalAF) {
-			NewCamRoll = A[Roll].Angle;
-			NewCamPitch = A[Pitch].Angle;
+			NewCamRoll = Angle[Roll];
+			NewCamPitch = Angle[Pitch];
 
 			PW[CamRollC] = PW[CamPitchC] = OUT_NEUTRAL;
 		} else {
-			NewCamRoll = A[Roll].Angle * Cam.RollKp + (real32) P(RollCamTrim)
+			NewCamRoll = Angle[Roll] * Cam.RollKp + (real32) P(RollCamTrim)
 					* 0.01f;
 			NewCamRoll = (real32) PWSense[CamRollC] * NewCamRoll * OUT_MAXIMUM
 					+ OUT_NEUTRAL;
 
-			NewCamPitch = A[Pitch].Angle * Cam.PitchKp + OrbitCamAngle
-					+ DesiredCamPitchTrim;
+			NewCamPitch = Angle[Pitch] * Cam.PitchKp + OrbitCamAngle
+					+ CamPitchTrim;
 			NewCamPitch = PWSense[CamPitchC] * NewCamPitch * OUT_MAXIMUM
 					+ OUT_NEUTRAL;
 
@@ -97,7 +97,7 @@ void MixAndLimitCam(void) {
 void DoVTOLMix(void) {
 	real32 TempThrottle, TempElevator, TempRudder;
 
-	TempThrottle = (F.Bypass) ? DesiredThrottle : DesiredThrottle + AltComp;
+	TempThrottle = (F.PassThru) ? DesiredThrottle : DesiredThrottle + AltComp;
 	NetThrottle = TempThrottle = Limit(TempThrottle * OUT_MAXIMUM, 0.0f, 1.0f);
 
 	if (VTOLMode) {
@@ -120,7 +120,7 @@ void DoVTOLMix(void) {
 		PW[LeftThrottleC] = TempThrottle + Yl;
 		PW[RightThrottleC] = TempThrottle - Yl;
 
-		TempElevator = PWSense[ElevatorC] * (F.Bypass ? Pl : (Pl
+		TempElevator = PWSense[ElevatorC] * (F.PassThru ? Pl : (Pl
 				+ FWRollPitchFFFrac * Abs(Rl)));
 		// assume servos are opposite hand
 		PW[RightPitchYawC] = PWSense[RightPitchYawC] * (TempElevator
@@ -135,7 +135,7 @@ void DoMix(void) {
 	real32 TempThrottle, TempRudder, TempElevator, TempAileron,
 			TempSpoilerFlaps;
 
-	if (F.Bypass) // do here at lowest level rather than complicating higher level logic
+	if (F.PassThru) // do here at lowest level rather than complicating higher level logic
 		TempThrottle = DesiredThrottle;
 	else
 		TempThrottle = ThrottleSuppressed ? 0.0f : DesiredThrottle + AltComp;
@@ -154,7 +154,7 @@ void DoMix(void) {
 
 	case ElevonAF:
 		TempRudder = -PWSense[RudderC] * Yl; // use Roll not Yaw
-		TempElevator = PWSense[ElevatorC] * (F.Bypass ? Pl : (Pl
+		TempElevator = PWSense[ElevatorC] * (F.PassThru ? Pl : (Pl
 				+ FWRollPitchFFFrac * Abs(Rl)));
 		// assume servos are opposite hand
 		PW[RightElevonC] = PWSense[RightElevonC] * (TempElevator + TempRudder
@@ -176,7 +176,7 @@ void DoMix(void) {
 		PW[RightAileronC] += OUT_NEUTRAL;
 		PW[LeftAileronC] += OUT_NEUTRAL;
 
-		PW[ElevatorC] = PWSense[ElevatorC] * (F.Bypass ? Pl : (Pl
+		PW[ElevatorC] = PWSense[ElevatorC] * (F.PassThru ? Pl : (Pl
 				+ FWRollPitchFFFrac * Abs(Rl))) + OUT_NEUTRAL;
 
 		PW[RightSpoilerC] = PWSense[RightSpoilerC] * Sl + OUT_NEUTRAL;
@@ -198,7 +198,7 @@ void DoMix(void) {
 		PW[LeftAileronC] += (-TempSpoilerFlaps + PW[LeftAileronC])
 				+ OUT_NEUTRAL;
 
-		PW[ElevatorC] = PWSense[ElevatorC] * (F.Bypass ? Pl : (Pl
+		PW[ElevatorC] = PWSense[ElevatorC] * (F.PassThru ? Pl : (Pl
 				+ FWRollPitchFFFrac * Abs(Rl))) + OUT_NEUTRAL;
 		break;
 	case AileronVTailAF:
@@ -211,7 +211,7 @@ void DoMix(void) {
 		PW[RightAileronC] += OUT_NEUTRAL;
 		PW[LeftAileronC] += OUT_NEUTRAL;
 
-		TempElevator = (F.Bypass ? Pl : (Pl + FWRollPitchFFFrac * Abs(Rl)));
+		TempElevator = (F.PassThru ? Pl : (Pl + FWRollPitchFFFrac * Abs(Rl)));
 		PW[RightElevatorC] = PWSense[RightElevatorC] * TempElevator
 				+ OUT_NEUTRAL;
 		PW[LeftElevatorC] = -PWSense[LeftElevatorC] * TempElevator
@@ -226,12 +226,13 @@ void DoMix(void) {
 	case RudderElevatorAF:
 		TempAileron = PWSense[RightAileronC] * Rl;
 
-		PW[RudderC] = PWSense[RudderC] * (TempAileron + Yl) + OUT_NEUTRAL;
-		PW[ElevatorC] = PWSense[ElevatorC] * (F.Bypass ? Pl : (Pl
+		PW[RE_RudderC] = PWSense[RudderC] * (TempAileron + Yl) + OUT_NEUTRAL;
+
+		PW[RE_ElevatorC] = PWSense[ElevatorC] * (F.PassThru ? Pl : (Pl
 				+ FWRollPitchFFFrac * Abs(Rl))) + OUT_NEUTRAL;
 
-		PW[RightSpoilerC] = PWSense[RightSpoilerC] * Sl + OUT_NEUTRAL;
-		PW[LeftSpoilerC] = -PWSense[RightSpoilerC] * Sl + OUT_NEUTRAL;
+		PW[RE_RightSpoilerC] = PWSense[RightSpoilerC] * Sl + OUT_NEUTRAL;
+		PW[RE_LeftSpoilerC] = -PWSense[RightSpoilerC] * Sl + OUT_NEUTRAL;
 		break;
 	case VTOL2AF:
 		DoVTOLMix();
@@ -250,7 +251,7 @@ void DoMix(void) {
 		} else {
 			PW[RudderC] = -PWSense[RudderC] * Yl + OUT_NEUTRAL;
 
-			TempElevator = PWSense[ElevatorC] * (F.Bypass ? Pl : (Pl
+			TempElevator = PWSense[ElevatorC] * (F.PassThru ? Pl : (Pl
 					+ FWRollPitchFFFrac * Abs(Rl)));
 			// assume servos are opposite hand
 			PW[RightElevonC] = PWSense[RightElevonC] * (TempElevator + Rl)
@@ -433,7 +434,7 @@ void DoMulticopterMix(void) {
 		for (m = 0; m < NoOfDrives; m++)
 			PW[m] = PWp[m] = 0;
 	} else {
-		F.EnforceDriveSymmetry = true;
+		F.EnforceDriveSymmetry = false; //TODO: BROKEN at low throttle - maybe try yaw preserve?;
 		if (F.EnforceDriveSymmetry)
 			RescaledMultiMix(CurrThrottlePW);
 		else

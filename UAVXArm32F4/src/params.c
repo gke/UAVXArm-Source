@@ -22,6 +22,8 @@
 
 #include "defaults.h"
 
+const uint8 NoOfDefParamSets = sizeof(DefaultParams) / sizeof(ParamStruct);
+
 //uint8 NavStrength;
 
 volatile boolean StickArmed = false;
@@ -29,7 +31,8 @@ volatile boolean TxSwitchArmed = false;
 
 uint8 UAVXAirframe = AFUnknown;
 boolean IsMulticopter;
-boolean UsingGliderStrategy, UsingFastStart, UsingBLHeliPrograming, UsingHWLPF;
+boolean UsingGliderStrategy, UsingFastStart, UsingBLHeliPrograming, UsingHWLPF,
+		UsingOffsetHome;
 
 uint8 CurrConfig1, CurrConfig2;
 uint8 CurrUAVXAirframe;
@@ -67,8 +70,8 @@ void ClassifyAFType(void) {
 	F.IsFixedWing = (AF == ElevonAF) || (AF == DeltaAF) || (AF == AileronAF)
 			|| (AF == AileronSpoilerFlapsAF) || (AF == AileronVTailAF) || (AF
 			== RudderElevatorAF);
-	IsMulticopter = !(F.IsFixedWing || (AF == VTOLAF) || (AF == Heli90AF)
-			|| (AF == Heli120AF));
+	IsMulticopter = !(F.IsFixedWing || (AF == VTOLAF) || (AF == VTOL2AF) || (AF
+			== Heli90AF) || (AF == Heli120AF));
 
 	OrientationRad = DegreesToRadians(AFOrientation[AF]);
 
@@ -89,8 +92,7 @@ void DoConfigBits(void) {
 	F.UsingRapidDescent = (P(Config1Bits) & UseRapidDescentMask) != 0;
 	F.Emulation = (P(Config1Bits) & EmulationEnableMask) != 0;
 	F.UseManualAltHold = (P(Config1Bits) & UseManualAltHoldMask) != 0;
-	F.UsingGPSAltitude = ((P(Config1Bits) & UseGPSAltMask) != 0) & F.IsFixedWing && ((CurrGPSType
-			== UBXBinGPS) || (CurrGPSType == UBXBinGPSInit));
+	UsingOffsetHome = (P(Config1Bits) & UseOffsetHomeMask) != 0;
 	// Config2
 	UsingPavelFilter = (P(Config2Bits) & UsePavelFilterMask) != 0;
 	UsingFastStart = (P(Config2Bits) & UseFastStartMask) != 0;
@@ -98,15 +100,37 @@ void DoConfigBits(void) {
 	UsingGliderStrategy = ((P(Config2Bits) & UseGliderStrategyMask) != 0)
 			&& F.IsFixedWing;
 
-	UseGyroOS = ((P(Config2Bits) & UseGyroOSMask) != 0) && !F.Emulation;
-
 	F.UsingTurnToWP = (P(Config2Bits) & UseTurnToWPMask) != 0;
 
 } // DoConfigBits
 
-void RegeneratePIDCoeffs(void) {
+void InitPIDStructs(void) {
 	// retains familiar historical UAVP values
 	AxisStruct * C;
+
+	// Nav
+
+	memset(&Nav, 0, sizeof(Nav));
+
+	Nav.PosKp = (real32) P(NavPosKp) * 0.0165f; //20 -> 0.33f;
+	Nav.PosKi = (real32) P(NavPosKi) * 0.004f; // 5 -> 0.02f;
+
+	Nav.CrossTrackKp = P(NavCrossTrackKp) * 0.01f;
+	Nav.MaxCompassRate = DegreesToRadians(P(MaxCompassYawRate) * 10.0f);
+	Nav.MaxBankAngle
+			= DegreesToRadians(LimitP(NavMaxAngle, 10, P(MaxRollAngle)));
+	Nav.HeadingTurnout
+				= DegreesToRadians(LimitP(NavHeadingTurnout, 10, 90));
+
+	Nav.VelKp = (real32) P(NavVelKp) * 0.06f; // 20 -> 1.2f; // @45deg max
+	Nav.MaxVelocity = P(NavPosIntLimit);
+
+	Nav.ProximityAlt = LimitP(NavProxAltM, 1, 5);
+	Nav.ProximityRadius = LimitP(NavProxRadiusM, 1, 100);
+
+	Nav.FenceRadius = NAV_DEFAULT_FENCE_M;
+
+	// Attitude
 
 	const real32 ScaleAngleKp = 0.25f;
 	const real32 ScaleAngleKi = 0.05f;
@@ -115,6 +139,8 @@ void RegeneratePIDCoeffs(void) {
 
 	const real32 ScaleRateKp = 0.005f;
 	const real32 ScaleRateKd = 0.0001f; // 0.0045
+
+	memset(&A, 0, sizeof(A[3]));
 
 	// Pitch
 	C = &A[Pitch];
@@ -144,16 +170,6 @@ void RegeneratePIDCoeffs(void) {
 	C->R.Max = C->P.Max * C->P.Kp;
 	SetP(MaxRollRate, RadiansToDegrees(C->R.Max) * 0.1f);
 
-	// Nav
-	Nav.PosKp = (real32) P(NavPosKp) * 0.0165f; //20 -> 0.33f;
-	Nav.PosKi = (real32) P(NavPosKi) * 0.004f; // 5 -> 0.02f;
-
-	Nav.MaxBankAngle
-			= DegreesToRadians(LimitP(NavMaxAngle, 10, P(MaxRollAngle)));
-
-	Nav.VelKp = (real32) P(NavVelKp) * 0.06f; // 20 -> 1.2f; // @45deg max
-	Nav.MaxVelocity = P(NavPosIntLimit);
-
 	// Yaw
 
 	const real32 ScaleAngleYawKp = 0.25f;
@@ -165,10 +181,7 @@ void RegeneratePIDCoeffs(void) {
 
 	C = &A[Yaw];
 
-	Nav.MaxCompassRate = DegreesToRadians(P(MaxCompassYawRate) * 10.0f);
-
-	C->P.Max = Nav.HeadingTurnout
-			= DegreesToRadians(LimitP(NavHeadingTurnout, 10, 90));
+	C->P.Max = Nav.HeadingTurnout;
 	C->P.Kp = Nav.MaxCompassRate / C->P.Max;
 
 	SetP(YawAngleKp, C->P.Kp / ScaleAngleYawKp);
@@ -181,6 +194,9 @@ void RegeneratePIDCoeffs(void) {
 	C->R.Max = DegreesToRadians(P(MaxYawRate) * 10.0f);
 
 	// Altitude
+
+	memset(&Alt, 0, sizeof(Alt));
+
 	Alt.P.Kp = (real32) P(AltPosKp) * 0.018f;
 	Alt.P.Ki = (real32) P(AltPosKi) * 0.0074f;
 	Alt.P.IntLim = (real32) P(AltPosIntLimit) * 0.035; // 0.35 0.15f;
@@ -207,7 +223,7 @@ void RegeneratePIDCoeffs(void) {
 	// Gain Scheduling
 	MaxControlGainReduction = FromPercent(LimitP(ThrottleGainRate, 0, 70));
 
-} // RegeneratePIDCoeffs
+} // InitPIDStructs
 
 void SetPIDPeriod(void) {
 
@@ -238,7 +254,7 @@ void UpdateParameters(void) {
 		// configuration or attached devices and forces a reboot to restore
 		// Arm registers to a known state and to initialise new devices.
 
-		if ((State == Preflight) || (State == Ready)) { // NOT IN FLIGHT
+		if ((State == Preflight) || (State == Ready)) // NOT IN FLIGHT
 			if ((CurrIMUOption != P(IMUOption)) //
 					|| (ArmingMethod != P(ArmingMode)) //
 					|| (CurrAttSensorType != P(SensorHint)) //
@@ -249,23 +265,16 @@ void UpdateParameters(void) {
 					|| (UAVXAirframe != P(AFType)) //
 					|| (CurrRFSensorType != P(RFSensorType)) //
 					|| (CurrASSensorType != P(ASSensorType)) //
-				//	|| (CurrGyroLPFSel != P(GyroLPFSel)) //
-				//	|| (CurrAccLPFSel != P(AccLPFSel)) //
+					//	|| (CurrGyroLPFSel != P(GyroLPFSel)) //
+					//	|| (CurrAccLPFSel != P(AccLPFSel)) //
 					|| (CurrGPSType != P(GPSProtocol)) //
 					|| (CurrMotorStopSel != P(MotorStopSel)) //
 					|| (CurrNoOfWSLEDs != P(WS2812Leds)))
 				systemReset(false);
 
-			memset(&A, 0, sizeof(A[3]));
-			memset(&Alt, 0, sizeof(Alt));
-			memset(&Rate, 0, sizeof(Rate[3]));
-			memset(&Acc, 0, sizeof(Acc[3]));
-			Acc[Z] = -GRAVITY_MPS_S;
-		}
-
 		DoConfigBits();
-
-		InitTune();
+		InitPIDStructs();
+		InitSWFilters();
 
 		// Throttle
 		IdleThrottlePW = IdleThrottle
@@ -284,6 +293,10 @@ void UpdateParameters(void) {
 		CruiseThrottle = FromPercent(P(EstCruiseThr));
 
 		// Attitude
+
+		GyroSlewLimitFrac = FromPercent(Limit(P(GyroSlewRate), 1, 200));
+		SlewBand = MAX_NOISE_BANDS / (GyroSlewLimitFrac * 16384.0f);
+
 		StickDeadZone = FromPercent(LimitP(StickHysteresis, 1, 5));
 
 		KpAccBase = P(MadgwickKpAcc) * 0.1f;
@@ -311,26 +324,18 @@ void UpdateParameters(void) {
 		FWSpoilerDecayS = P(FWSpoilerDecayTime) * 0.1f;
 
 		// Nav
-		Nav.CrossTrackKp = P(NavCrossTrackKp) * 0.01f;
+
+		MagVariation = DegreesToRadians((real32)P(NavMagVar) * 0.1f);
 
 		GPSMinhAcc = GPS_MIN_HACC; // not set in GUI LimitP(MinhAcc, 10, GPS_MIN_HACC * 10) * 0.1f;
-
-		GenerateHomeWP();
 
 		// Misc
 		InitServoSense();
 		InitBattery();
 
+		InitTune();
+
 		CurrTelType = P(TelemetryType);
-		F.UsingMAVLink = (CurrTelType == MAVLinkTelemetry) || (CurrTelType
-				== MAVLinkMinTelemetry);
-
-		InitSWFilters();
-
-		GyroSlewLimitFrac = FromPercent(Limit(P(GyroSlewRate), 1, 200));
-		SlewBand = MAX_NOISE_BANDS / (GyroSlewLimitFrac * 16384.0f);
-
-		RegeneratePIDCoeffs();
 	}
 
 	F.ParametersChanged = false;
@@ -393,13 +398,13 @@ void UpdateSticksState(void) {
 	case MonitorSticks:
 		if (StickPattern != pattern) {
 			StickPattern = pattern;
-			mSTimer(NowmS, StickTimeout, 2000);
+			mSTimer(StickTimeout, 2000);
 			SticksState = SticksChanging;
 		}
 		break;
 	case SticksChanging:
 		if (StickPattern == pattern) {
-			if (NowmS > mS[StickTimeout])
+			if (mSTimeout(StickTimeout))
 				SticksState = SticksChanged;
 		} else
 			SticksState = MonitorSticks;
@@ -502,8 +507,8 @@ void DoStickProgramming(void) {
 					DoBeep(1, 0);
 					SticksState = SticksChanging;
 					NowmS = mSClock();
-					mSTimer(NowmS, StickTimeout, 100);
-					mSTimer(NowmS, ArmedTimeout, ARMED_TIMEOUT_MS);
+					mSTimer(StickTimeout, 100);
+					mSTimer(ArmedTimeout, ARMED_TIMEOUT_MS);
 				} else
 					SticksState = MonitorSticks;
 			}
@@ -518,17 +523,22 @@ void DoStickProgramming(void) {
 void UseDefaultParameters(uint8 DefaultPS) {
 	uint16 i;
 
-	memset(&NV, 0, sizeof(NV));
+#if defined(USE_CONSERVATIVE_DEF_PARAM_LOAD)
+
+	if (NV.CurrRevisionNo != RevisionNo)
+	memset(&NV, 0, sizeof(NV)); // forces acc/mag recalibration
+
+#endif
 
 	NV.CurrPS = 0;
 	NV.CurrRevisionNo = RevisionNo;
 
 	for (i = 0; i < MAX_PARAMETERS; i++)
-		SetP(DefaultParams[i].tag, DefaultParams[i].p[DefaultPS]);
+		SetP(i, DefaultParams[DefaultPS].P[i]);
 
-	NV.AccCal.Bias[Z] = MPU_1G;
-
-	InitMagnetometerBias();
+	if (Abs(NV.Mission.NoOfWayPoints) >= NAV_MAX_WAYPOINTS)
+		memset(&NV.Mission, 0, sizeof(NV.Mission));
+	memset(&NV.Stats, 0, sizeof(NV.Stats));
 
 	NVChanged = true;
 	UpdateNV();
@@ -538,13 +548,16 @@ void UseDefaultParameters(uint8 DefaultPS) {
 
 void ConditionParameters(void) {
 
-	F.UsingUplink = F.ParametersValid = true; //unused
+	F.ParametersValid = true; //unused
+
+	F.UsingUplink = true;
 
 	ClassifyAFType();
 
 	CurrIMUOption = P(IMUOption);
 
 	ArmingMethod = P(ArmingMode);
+
 	CurrAttSensorType = P(SensorHint);
 	CurrRxType = P(RxType);
 	CurrConfig1 = P(Config1Bits);
@@ -569,8 +582,7 @@ void ConditionParameters(void) {
 			&& (CurrAttSensorType != FreeIMU);
 
 	CurrNoOfWSLEDs = LimitP(WS2812Leds, 0, MAX_WS2812_LEDS);
-
-	InitMAVLink();
+	UsingWS28XXLEDs = CurrNoOfWSLEDs != 0;
 
 	F.ParametersChanged = true;
 	UpdateParameters();

@@ -37,8 +37,6 @@ extern const char * DHPFName[];
 
 extern real32 SlewBand;
 
-extern filterStruct OSLPF[3];
-
 extern uint8 MPU6XXXDLPF;
 extern uint8 MPU6XXXDHPF;
 extern uint8 MPU6XXXAccDLPF;
@@ -48,7 +46,6 @@ void CalibrateAccAndGyro(uint8 s, uint8 imuSel);
 void InitMPU6XXX(uint8 imuSel);
 void CheckMPU6XXXActive(uint8 imuSel);
 void ReadFilteredGyroAndAcc(uint8 imuSel);
-void ReadGyro(uint8 imuSel);
 void UpdateGyroTempComp(uint8 imuSel);
 boolean MPU6XXXReady(uint8 imuSel);
 
@@ -60,7 +57,6 @@ extern real32 RawAcc[], RawGyro[];
 
 extern uint32 Noise[];
 extern real32 GyroSlewLimitFrac;
-extern boolean UseGyroOS;
 
 #endif
 

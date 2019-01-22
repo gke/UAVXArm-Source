@@ -23,7 +23,15 @@
 #define _telemetry_h
 
 enum MiscComms {
-	miscCalIMU, miscCalMag, miscLB, miscUnused, miscBBDump, miscGPSBypass, miscCalAcc, miscCalGyro, miscBootLoader
+	miscCalIMU,
+	miscCalMag,
+	miscLB,
+	miscUnused,
+	miscBBDump,
+	miscGPSPassThru,
+	miscCalAcc,
+	miscCalGyro,
+	miscBootLoader
 };
 
 enum PacketTags {
@@ -67,11 +75,8 @@ enum PacketTags {
 	UAVXFusionPacketTag = 60,
 	UAVXSoaringPacketTag = 61,
 	UAVXCalibrationPacketTag = 62,
-	UAVXAnglePIDPacketTag = 63,
-	UAVXRatePIDPacketTag = 64,
-	UAVXAltPIDPacketTag = 65,
-	UAVXGPSPIDPacketTag = 66,
-	UAVXRawIMUPacketTag = 67,
+	UAVXAFNamePacketTag = 63,
+	UAVXWindPacketTag = 64,
 
 	FrSkyPacketTag = 99
 };
@@ -81,20 +86,14 @@ enum TelemetryTypes {
 	UAVXTelemetry,
 	UAVXMinTelemetry,
 	FrSkyV1Telemetry,
-	FrSkyV2SPortTelemetry,
-	MAVLinkTelemetry,
-	MAVLinkMinTelemetry,
-	UAVXMinimOSDTelemetry,
-	UAVXAnglePIDTelemetry,
-	UAVXRatePIDTelemetry,
-	UAVXAltPIDTelemetry,
-	UAVXRawIMUTelemetry,
-	UAVXFastRawIMUTelemetry
+	FrSkyFPortTelemetry,
+	CleanflightBBTelemetry
 };
 
 void TxString(uint8 s, const char *);
 void TxNextLine(uint8 s);
 void TxValH(uint8 s, uint8);
+void TxValH32(uint8 s, int32 v);
 void TxVal32(uint8 s, int32, int8, uint8);
 
 void TxBin8(uint8 s, int8 v);
@@ -104,10 +103,10 @@ void TxBin32(uint8 s, int32 v);
 void InitPollRxPacket(void);
 void SendBBPacket(uint8 s, int32 seqNo, uint8 l, int8 * b);
 
+void SendDefAFNameNames(uint8 s);
 void SendFlightPacket(uint8 s);
 void SendCalibrationPacket(uint8 s);
 void SendAckPacket(uint8 s, uint8 Tag, uint8 Reason);
-void SendRawIMU(uint8 s);
 void SendMinPacket(uint8 s);
 
 void CheckTelemetry(uint8 s);
@@ -119,5 +118,4 @@ extern uint8 CurrTelType;
 extern int16 ShadowRawIMU[7];
 
 #endif
-
 

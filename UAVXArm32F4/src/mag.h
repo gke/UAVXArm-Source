@@ -23,10 +23,9 @@
 #define _magnetometer_h
 
 typedef struct {
+	uint8 Calibrated; // exactly = 1 => calibrated
 	real32 Magnitude; // retained for field strength measure - maybe used for gain setting
-	real32 UnusedScale[3]; // not stored in Flash
 	real32 Bias[3];
-	int16 CalSamples; // used to check whether calibrated or not
 } MagCalStruct;
 
 extern int16 RawMag[];

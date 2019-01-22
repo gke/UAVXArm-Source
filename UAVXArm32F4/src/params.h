@@ -29,7 +29,8 @@ void UpdateParameters(void);
 void UseDefaultParameters(uint8 DefaultPS);
 void DoStickProgramming(void);
 void LoadParameters(void);
-void CheckParameters(void);
+void ConditionParameters(void);
+
 uint8 P(uint8 i);
 void SetP(uint8 i, uint8 v);
 uint8 LimitP(uint8 i, uint8 l, uint8 h);
@@ -41,12 +42,12 @@ enum RCControls {
 	YawRC,
 	NavModeRC,
 	AttitudeModeRC,
-	NavGainRC,
-	BypassRC,
+	AHNavSensRC,
+	PassThruRC,
 	CamPitchRC,
 	Unused10RC,
 	TransitionRC,
-	ArmRC,
+	ArmAHWPNavRC,
 	NullRC
 };
 
@@ -92,6 +93,10 @@ enum AFs {
 	AFUnknown,
 };
 
+typedef const struct {
+	char AFName[32];
+	uint8 P[MAX_PARAMETERS];
+} ParamStruct;
 
 enum Params { // MAX 128
 	RollRateKp, // 01
@@ -185,8 +190,8 @@ enum Params { // MAX 128
 	FWBoardPitchAngle, // 82,
 	MaxRollRate, // 83
 	MaxPitchRate, // 84
-	CurrentScale, // 0.01 85
-	VoltScale, // 0.01 86
+	CurrentScaleTrim, // 0.01 85
+	VoltScaleTrim, // 0.01 86
 	FWAileronRudderMix, // 87
 	FWAltSpoilerFF, // 88
 	MaxCompassYawRate, // 89
@@ -207,12 +212,12 @@ enum Params { // MAX 128
 	AltVelKi, // 102
 	AltHoldBand, // 103
 	VRSDescentRate, // 104
-	OSLPFType, // 105
-	OSLPFHz, // 106
-	Unused107, // 107
-	Unused108, // 108
-	Unused109, // 109
-	Unused110, // 110
+	Unused105, // 105
+	Unused106, // 106
+	NavProxAltM, // 107
+	NavProxRadiusM, // 108
+	CurrentSensorFS, // 109
+	VoltageSensorFS, // 110
 
 	Unused111, // 111
 	Unused112, // 112
@@ -235,12 +240,6 @@ enum Params { // MAX 128
 // 128
 };
 
-typedef struct {
-	uint8 tag;
-	uint8 min;
-	uint8 max;
-	uint8 p[NO_OF_PARAM_SETS];
-} ParamStruct_t;
 
 // Config1
 #define UseInvertMagMask 		0x01   // bit01CheckBox 16_0
@@ -248,7 +247,7 @@ typedef struct {
 #define UseManualAltHoldMask 	(1<<2) // bit21CheckBox 16_2
 #define EmulationEnableMask		(1<<3) // bit31CheckBox 16_3
 #define GPSToLaunchRequiredMask (1<<4) // bit41CheckBox 16_4
-#define	UseGPSAltMask			(1<<5) // bit51CheckBox 16_5
+#define	UseOffsetHomeMask		(1<<5) // bit51CheckBox 16_5
 #define	UseRapidDescentMask		(1<<6) // bit61CheckBox 16_6
 
 // Config2
@@ -256,7 +255,7 @@ typedef struct {
 #define	UseFastStartMask		(1<<1) // bit12CheckBox 74_2
 #define UseBLHeliMask 			(1<<2) // bit22CheckBox 74_3
 #define UseGliderStrategyMask	(1<<3) // bit32CheckBox 74_4
-#define UseGyroOSMask			(1<<4) // bit42CheckBox
+#define Unused42Mask			(1<<4) // bit42CheckBox
 #define	UseTurnToWPMask			(1<<5)
 #define	UnusedUseHWLPFMask		(1<<6) // bit32CheckBox 74_7
 
@@ -266,15 +265,17 @@ typedef struct {
 #define	UseConvYawSenseMask			(1<<6)
 
 extern volatile boolean StickArmed, TxSwitchArmed;
-extern const ParamStruct_t DefaultParams[];
-extern const uint8 NoDefaultEntries;
+
+extern ParamStruct DefaultParams[];
+extern const uint8 NoOfDefParamSets;
+
 extern const uint16 ESCLimits[];
 extern int8 CP[];
 
 extern const real32 AFOrientation[];
 extern uint8 UAVXAirframe;
 extern boolean IsMulticopter, UsingFastStart, UsingBLHeliPrograming,
-		UsingGliderStrategy;
+		UsingGliderStrategy, UsingOffsetHome;
 extern uint8 CurrMotorStopSel;
 
 extern real32 AltCompDecayS;

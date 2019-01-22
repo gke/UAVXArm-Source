@@ -69,6 +69,10 @@ void TimingDelay(unsigned int tick) {
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 volatile timeuS TicksuS;
+volatile timeuS uS[uSLastArrayEntry];
+volatile timemS mS[mSLastArrayEntry];
+volatile tickStruct ticks[tickLastArrayEntry];
+volatile boolean tickCountsEnabled;
 
 void cycleCounterInit(void) {
 	RCC_ClocksTypeDef clocks;
@@ -122,7 +126,8 @@ void Delay1mS(uint16 d) {
 
 } // Delay1mS
 
-real32 dTUpdate(timeuS NowuS, timeuS * LastUpdateuS) {
+real32 dTUpdate(timeuS * LastUpdateuS) {
+	timeuS NowuS;
 	real32 dT;
 
 	NowuS = uSClock();
@@ -133,17 +138,49 @@ real32 dTUpdate(timeuS NowuS, timeuS * LastUpdateuS) {
 } // dtUpdate
 
 
-void mSTimer(timemS NowmS, uint8 t, timemS TimePeriodmS) {
-	mS[t] = NowmS + TimePeriodmS;
+void mSTimer(uint8 t, timemS TimePeriodmS) {
+	mS[t] = mSClock() + TimePeriodmS;
 } // mSTimer
 
-void uSTimer(timeuS NowuS, uint8 t, timeuS TimePerioduS) {
-	uS[t] = NowuS + TimePerioduS;
+void uSTimer(uint8 t, timeuS TimePerioduS) {
+	uS[t] = uSClock() + TimePerioduS;
 } // uSTimer
+
+boolean mSTimeout(uint8 t) {
+	return mSClock() > mS[t];
+} // mSTimeout
+
+boolean uSTimeout(uint8 t) {
+	return uSClock() > uS[t];
+} // mSTimeout
+
+void tickCountOn(uint8 t) {
+
+ // ticks[t].Start = SysTick->VAL;
+
+} // TickCountOn
+
+void tickCountOff(uint8 t){
+
+//	if (tickCountsEnabled)
+//		ticks[t].Cumulative += SysTick->VAL - ticks[t].Start;
+
+} // tickCountOff 
 
 
 void InitClocks(void) {
+	idx i;
 	cycleCounterInit();
 	SysTick_Config(SystemCoreClock / 1000); // 1mS
+
+	for (i = 0; i<mSLastArrayEntry; i++)
+		mS[i] = 0;
+	for (i = 0; i < uSLastArrayEntry; i++)
+		uS[i] = 0;
+	for (i = 0; i<tickLastArrayEntry; i++)
+			ticks[i].Cumulative = 0;
+
+	tickCountsEnabled = false;
+
 } // InitClocks
 

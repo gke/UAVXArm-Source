@@ -33,31 +33,80 @@ void SysTick_Handler(void) {
 void NMI_Handler(void) {
 }
 
+//#define USE_HARDFAULT_HANDLER
+
+#if defined(USE_HARDFAULT_HANDLER)
+
 void HardFault_Handler(void) {
-	/* Go to infinite loop when Hard Fault exception occurs */
-	while (1)
-		Catastrophe();
+
+	Catastrophe();
 }
 
+#else
+
+enum { r0, r1, r2, r3, r12, lr, pc, psr};
+
+void printUsageErrorMsg(uint32 CFSRValue) {
+	TxString(TelemetrySerial,"Usage fault: ");
+   CFSRValue >>= 16;                  // right shift to lsb
+   if((CFSRValue & (1 << 9)) != 0) {
+	   TxString(TelemetrySerial,"Divide by zero\n");
+   }
+}
+
+
+void Hard_Fault_Handler(uint32 stack[0]) {
+   TxString(TelemetrySerial,"In Hard Fault Handler\n");
+   TxString(TelemetrySerial,"SCB->HFSR = 0x%08lx"); TxValH32(TelemetrySerial, SCB->HFSR);
+   TxNextLine(TelemetrySerial);
+
+   if ((SCB->HFSR & (1 << 30)) != 0) {
+	   TxString(TelemetrySerial,"Forced Hard Fault\n");
+       TxString(TelemetrySerial,"SCB->CFSR = 0x%08lx"); TxValH32(TelemetrySerial, SCB->CFSR );
+       TxNextLine(TelemetrySerial);
+       if((SCB->CFSR & 0xFFFF0000) != 0)
+    	   printUsageErrorMsg(SCB->CFSR);
+   }
+
+   TxString(TelemetrySerial,"r0  = 0x%08lx"); TxValH32(TelemetrySerial, stack[r0]);  TxNextLine(TelemetrySerial);
+   TxString(TelemetrySerial,"r1  = 0x%08lx"); TxValH32(TelemetrySerial, stack[r1]);  TxNextLine(TelemetrySerial);
+   TxString(TelemetrySerial,"r2  = 0x%08lx"); TxValH32(TelemetrySerial, stack[r2]);  TxNextLine(TelemetrySerial);
+   TxString(TelemetrySerial,"r3  = 0x%08lx"); TxValH32(TelemetrySerial, stack[r3]);  TxNextLine(TelemetrySerial);
+   TxString(TelemetrySerial,"r12 = 0x%08lx"); TxValH32(TelemetrySerial, stack[r12]); TxNextLine(TelemetrySerial);
+   TxString(TelemetrySerial,"lr  = 0x%08lx"); TxValH32(TelemetrySerial, stack[lr]);  TxNextLine(TelemetrySerial);
+   TxString(TelemetrySerial,"pc  = 0x%08lx"); TxValH32(TelemetrySerial, stack[pc]);  TxNextLine(TelemetrySerial);
+   TxString(TelemetrySerial,"psr = 0x%08lx"); TxValH32(TelemetrySerial, stack[psr]); TxNextLine(TelemetrySerial);
+
+   Delay1mS(5000);
+
+   asm volatile ("BKPT #01\n\t");
+   Catastrophe();
+
+
+} // Hard_Fault_Handler
+
+void HardFault_Handler(void) {
+	  asm volatile(
+	      " mrs r0,msp    \n"
+	      " b Hard_Fault_Handler \n"
+	  );	 
+}
+
+#endif
+
+
 void MemManage_Handler(void) {
-	/* Go to infinite loop when Memory Manage exception occurs */
-	while (1) {
-		Catastrophe();
-	}
+
+	Catastrophe();
 }
 
 void BusFault_Handler(void) {
-	/* Go to infinite loop when Bus Fault exception occurs */
-	while (1) {
-		Catastrophe();
-	}
+
+	Catastrophe();
 }
 
 void UsageFault_Handler(void) {
-	/* Go to infinite loop when Usage Fault exception occurs */
-	while (1) {
 		Catastrophe();
-	}
 }
 
 void SVC_Handler(void) {
@@ -114,16 +163,12 @@ void TIM3_IRQHandler(void) {
 void DMA2_Stream2_IRQHandler(void) {
 
 #if (defined(USE_WS2812) || defined(USE_WS2812B))
-	// Half-Transfer completed
-	if (DMA_GetITStatus(DMA2_Stream2, DMA_IT_HTIF2)) {
-		DMA_ClearITPendingBit(DMA2_Stream2, DMA_IT_HTIF2);
-		UpdateWSLEDBuffer(WSLEDPWMBuffer);
-	}
 
-	// Transfer completed
 	if (DMA_GetITStatus(DMA2_Stream2, DMA_IT_TCIF2)) {
 		DMA_ClearITPendingBit(DMA2_Stream2, DMA_IT_TCIF2);
-		UpdateWSLEDBuffer(WSLEDPWMBuffer + (WSLEDBufferSize >> 1));
+
+		UpdateWSLEDBuffer();
+
 	}
 #endif
 

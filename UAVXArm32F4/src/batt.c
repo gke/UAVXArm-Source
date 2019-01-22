@@ -21,20 +21,26 @@
 
 #include "UAVX.h"
 
-#define THR_MAX_CURRENT 32 // Amps total current at full throttle for estimated mAH
+// APM Power Module:
+//	shunt resistor and the unipolar INA169
+//	BEC 5.3@3A
+// 	internal ref 5.3V 60mV/A or 90A so with UAVX 51A FS
+//	CAUTION: Banggood V1.0 Vision voltage divider is x0.5! => SMOKE
+
+// Allegro e.g. ACS758xCB:
+// 	Hall effect bipolar
+//	no BEC
+//	external ref 3-5.5V 40mV/A or 82.5A FS (+/-41.25A)
+
 #define CURRENT_SENSOR_MAX 50L // Amps range of current sensor - used for estimated consumption - no actual sensor yet.
+#define VOLTAGE_SCALE	((3.3f*(10.0f+2.2f))/2.2f) // 18.3V
+real32 VoltageScale, CurrentScale;
+real32 CurrentSensorSwing;
 
-#if defined(VOLT_MEASUREMENT_ONBOARD)
-#define VOLTS_SCALE	((3.3f*(10.0f+2.2f))/2.2f)
-#else
-#define VOLTS_SCALE	(3.3f)
-#endif
-#define POWER_SCALE (3.3f)
+real32 BatteryVolts, BatterySagR, StartupVolts, BatteryCurrent,
+		BatteryVoltsLimit, BatteryChargeUsedmAH, BatteryCapacitymLimitAH;
 
-real32 BatteryVolts, BatterySagR, StartupVolts, BatteryCurrent, BatteryVoltsLimit, BatteryChargeUsedmAH;
-real32 VoltScaleTrim = 1.0f;
-real32 CurrentScaleTrim = 1.0f;
-real32 BatteryCurrentADCZero = 0.0f;
+real32 BatteryCurrentADCZero = 0.0f; // takes a while for bipolar capture of offset
 
 real32 BatteryCapacitymAH;
 uint8 BatteryCellCount = 3;
@@ -65,58 +71,72 @@ void CheckBatteries(void) {
 	uint16 dTmS;
 
 	NowmS = mSClock();
-
-	if ((NowmS >= mS[BatteryUpdate])) {
-		mSTimer(NowmS, BatteryUpdate, BATTERY_UPDATE_MS);
-
-		if (F.Emulation) {
-			BatteryCurrent = (DesiredThrottle + AltComp) * THR_MAX_CURRENT; // Mock Sensor
-			BatteryVolts = MockBattery() * BatteryCellCount;
-		} else {
-#if defined(HAVE_CURRENT_SENSOR)
-			real32 Temp = -((analogRead(BattCurrentAnalogSel) - BatteryCurrentADCZero )) * (3.3f/0.04f) *CurrentScaleTrim;
-					//* CURRENT_SENSOR_MAX;
-			BatteryCurrent = LPF1(BatteryCurrent, Temp, 0.1f);
-#endif
-			BatteryVolts = 	LPF1(BatteryVolts, analogRead(BattVoltsAnalogSel) * VOLTS_SCALE * VoltScaleTrim, 0.25f); // * VoltScaleTrim
-		}
+	if (mSTimeout(BatteryUpdate)) {
+		mSTimer(BatteryUpdate, BATTERY_UPDATE_MS);
 
 		dTmS = NowmS - mS[LastBattery];
 		mS[LastBattery] = NowmS;
+
+		if (F.Emulation) {
+			BatteryCurrent = (DesiredThrottle + AltComp) * CurrentScale; // Mock Sensor
+			BatteryVolts = MockBattery() * BatteryCellCount;
+		} else {
+			real32 Temp = Abs(analogRead(BattCurrentAnalogSel)
+					- BatteryCurrentADCZero) * CurrentScale;
+
+			BatteryCurrent = LPF1(BatteryCurrent, Temp, 0.1f);
+			BatteryVolts = LPF1(BatteryVolts, analogRead(BattVoltsAnalogSel)
+					* VoltageScale, 0.25f);
+		}
 
 		BatterySagR = LPF1(BatterySagR, StartupVolts / BatteryVolts, 0.25f);
 
 		BatteryChargeUsedmAH += BatteryCurrent * (real32) dTmS * (1.0f
 				/ 3600.0f);
 
-		F.LowBatt = BatteryVolts <= BatteryVoltsLimit;
+		F.LowBatt = ((BatteryVolts <= BatteryVoltsLimit) && (P(LowVoltThres) > 0)) || (BatteryChargeUsedmAH > BatteryCapacitymLimitAH);
 	}
 } // CheckBatteries
 
+void CaptureBatteryCurrentADCZero(void) {
+
+	BatteryCurrentADCZero = LPF1(BatteryCurrentADCZero, analogRead(
+			BattCurrentAnalogSel), 0.1f);
+} // CaptureBatteryCurrentADCZero
 
 void InitBattery(void) {
+	idx i;
 
-	CurrentScaleTrim = (real32)P(CurrentScale) * 0.01f;
-	VoltScaleTrim = (real32)P(VoltScale) * 0.01f;
+#if defined(VOLT_MEASUREMENT_ONBOARD)
+	SetP(VoltageSensorFS, (uint8) (VOLTAGE_SCALE * 10.0f));
+#endif
+	VoltageScale = P(VoltageSensorFS) * 0.1f * FromPercent(P(VoltScaleTrim));
+
+	CurrentScale = P(CurrentSensorFS) * FromPercent(P(CurrentScaleTrim));
+
+	BatteryVoltsLimit = Limit(P(LowVoltThres) * 0.1f, 0.1f, 25.0f);
+	BatteryCapacitymAH = (P(BatteryCapacity) * 100.0f);
+	BatteryCapacitymLimitAH = BatteryCapacitymAH * 0.75f;
 
 	if (F.Emulation) {
 		BatteryCellCount = 3.0;
 		StartupVolts = BatteryVolts = 12.6f;
 	} else {
-		StartupVolts = BatteryVolts = analogRead(BattVoltsAnalogSel) * VOLTS_SCALE * VoltScaleTrim;
-		BatteryCellCount = (int16)(BatteryVolts / 3.7f); // OK for 3-6 cell LiPo if charged!
+		StartupVolts = BatteryVolts = analogRead(BattVoltsAnalogSel)
+				* VoltageScale;
+		BatteryCellCount = (int16) (BatteryVolts / 3.7f); // OK for 3-6 cell LiPo if charged!
 	}
 
 	BatterySagR = 1.0f;
 
-	BatteryVoltsLimit = P(LowVoltThres) * 0.1f;
-	BatteryCapacitymAH = (P(BatteryCapacity) * 100.0f);
 	BatteryVolts = BatteryVoltsLimit;
 	BatteryCurrent = BatteryChargeUsedmAH = 0.0f;
-#if defined(HAVE_CURRENT_SENSOR)
-	BatteryCurrentADCZero = analogRead(BattCurrentAnalogSel);
-#endif
 
+	BatteryCurrentADCZero = 0.0f;
+	for (i = 0; i < 100; i++) {
+		Delay1mS(1);
+		CaptureBatteryCurrentADCZero();
+	}
 
 } // InitBattery
 

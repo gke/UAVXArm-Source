@@ -24,6 +24,8 @@
 
 // tests.c
 
+void DoTesting(void);
+
 void OK(uint8 s, boolean b);
 void Calibrated(uint8 s, boolean b);
 void CommissioningTest(uint8 s);

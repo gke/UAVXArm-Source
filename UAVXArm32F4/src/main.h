@@ -26,16 +26,27 @@
 
 //________________________________________________________________________________________
 
-#define FLAG_BYTES  10
+#define FLAG_BYTES  12
 
-extern volatile timemS mS[];
-extern volatile timeuS uS[];
+
+
 extern real32 dT, dTR, dTOn2, dTROn2;
 extern timeuS CurrPIDCycleuS;
 extern real32 CurrPIDCycleS;
-extern timeuS StartCycleuS;
-extern timeuS LastUpdateuS;
-extern const char SerHello[];
+
+enum tickCounts {
+	FlightTick,
+	SIOReadTick,
+	SIOWriteTick,
+	IMUTick,
+	MagTick,
+	BaroTick,
+	NavigateTick,
+	ControlTick,
+	MadgwickTick,
+	TelemetryTick,
+	tickLastArrayEntry
+};
 
 enum uSTimes {
 	NextCycleUpdate, MemReady, LastCycleTime, NextGyroUpdate, uSLastArrayEntry
@@ -46,13 +57,13 @@ enum mSTimes {
 	StartTime,
 	GeneralCountdown,
 	UpdateTimeout,
-	LastPIDUpdate,
 	RCSignalTimeout,
 	BeeperTimeout,
 	ThrottleIdleTimeout,
 	AbortTimeout,
 	NavStateTimeout,
 	DescentUpdate,
+	GlidingTime,
 	LastValidRx,
 	LastGPS,
 	AccTimeout,
@@ -64,13 +75,13 @@ enum mSTimes {
 	LastBattery,
 	BatteryUpdate,
 	TelemetryUpdate,
-	NavActiveTime,
 	BeeperUpdate,
 	ArmedTimeout,
 	WarmupTimeout,
 	ThrottleUpdate,
 	BaroUpdate,
 	AltUpdate,
+	NextASUpdate,
 	FakeGPSUpdate,
 	GyroTempUpdate,
 	RangefinderUpdate,
@@ -80,6 +91,10 @@ enum mSTimes {
 	ThermalTimeout,
 	CruiseTimeout,
 	OpticalUpdate,
+	WPTimeout,
+	CalibrationTimeout,
+	MotorStart,
+	LastMAVHeartbeat,
 	mSLastArrayEntry
 };
 
@@ -130,10 +145,10 @@ typedef union {
 
 				// 3
 				UsingPOI :1,
-				Bypass :1,
+				PassThru :1,
 				UsingAngleControl :1,
 				Emulation :1,
-				BadBusDevConfig :1,
+				OffsetOriginValid :1,
 				DrivesArmed :1,
 				AccZBump :1,
 				UseManualAltHold :1,
@@ -150,7 +165,7 @@ typedef union {
 
 				// 5
 				IsFixedWing :1,
-				InvertMagnetometer :1,
+				WindEstValid :1,
 				MagnetometerCalibrated :1,
 				UsingUplink :1,
 				NewAltitudeValue :1,
@@ -180,14 +195,20 @@ typedef union {
 
 				// 8
 				NewMagValues :1, GPSToLaunchRequired :1, UsingAnalogGyros :1,
-				i2cFatal :1, GPSPacketReceived :1, ThrottleOpen :1,
+				sioFatal :1, GPSPacketReceived :1, ThrottleOpen :1,
 				FenceAlarm :1,
 				NavigationEnabled :1,
 
 				// 9
 				ForcedLanding :1, NewGPSPosition :1,
-				EnforceDriveSymmetry :1, RCFrameOK :1, spiFatal :1,
-				NewCommands :1, UsingMAVLink :1, UsingConvYawSense :1; // MAXED OUT
+				EnforceDriveSymmetry :1, RCFrameOK :1, InvertMagnetometer :1,
+				NewCommands :1, Unused_9_6 :1, UsingConvYawSense :1,
+
+				// 10
+				BadBusDevConfig :1
+
+				// 11
+				; // MAXED OUT
 	};
 } Flags;
 

@@ -35,17 +35,18 @@ const uint8 DrivesUsed[AFUnknown + 1] = { 3, 6, 4, 4, 4, 8, 8, 6, 6, 8, 8, // Tr
 		0, 4, // Instrumentation, IREmulation,
 		0 }; // AFUnknown,
 
-const uint8 PWMOutputsUsed[AFUnknown + 1] = { 5, 8, 6, 6, 6, 10, 10, 8, 8, 10, 10, //
+const uint8 PWMOutputsUsed[AFUnknown + 1] = { 5, 8, 6, 6, 6, 10, 10, 8, 8, 10,
+		10, //
 		6, 6, //
-		3, 6, 7, 5, 6, 3, //
+		3, 6, 7, 5, 6, 4, // inc rudder elev from 3->4 for spoilers
 		4, 4, 2, //
 		0, 0, //
 		0 };
 
 #if defined(UAVXF4V3) || defined(UAVXF4V4)
-const idx DM[10] = { 0, 1, 2, 3, // TIM4
-		6, 7, 8, 9, // TIM3
-		4, 5 }; // TIM1 V4 TIM8  camera servo channels always last
+const idx DM[10] = {0, 1, 2, 3, // TIM4
+	6, 7, 8, 9, // TIM3
+	4, 5}; // TIM1 V4 TIM8  camera servo channels always last
 #else
 const idx DM[10] = { 3, 2, 1, 0, // TIM4 ROBERT needs reordering for MW convention
 		6, 7, 8, 9, // TIM3
@@ -104,7 +105,7 @@ void servoWrite(idx channel, real32 v) {
 				PWM_MIN_SERVO, PWM_MAX_SERVO);
 		*PWMPins[DM[channel]].Timer.CCR = v;
 	}
-} // driveWrite
+} // servoWrite
 
 void driveSyncWrite(idx channel, real32 v) {
 	const PinDef * u;
@@ -144,12 +145,12 @@ void driveSyncStart(uint8 drives) {
 
 
 void driveI2CWrite(idx channel, real32 v) {
-/*
-	if (channel < CurrMaxPWMOutputs)
-		//ESCI2CFail[channel] =
-		SIOWrite(SIOESC, 0x52 + channel * 2, 0, Limit(
-				(uint16)(v * 225.0f),0, 225));
-*/
+	/*
+	 if (channel < CurrMaxPWMOutputs)
+	 //ESCI2CFail[channel] =
+	 SIOWrite(SIOESC, 0x52 + channel * 2, 0, Limit(
+	 (uint16)(v * 225.0f),0, 225));
+	 */
 } // driveI2CWrite
 
 void driveSPIWrite(idx channel, real32 v) {
@@ -207,10 +208,10 @@ void UpdateDrives(void) {
 	if (DrivesInitialised) {
 		if (UAVXAirframe == IREmulation) {
 
-			PW[IRRollC] = OUT_NEUTRAL + PWSense[IRRollC] * sinf(A[Roll].Angle)
+			PW[IRRollC] = OUT_NEUTRAL + PWSense[IRRollC] * sinf(Angle[Roll])
 					* OUT_NEUTRAL;
 			PW[IRPitchC] = OUT_NEUTRAL + PWSense[IRPitchC] * sinf(
-					A[Pitch].Angle) * OUT_NEUTRAL;
+					Angle[Pitch]) * OUT_NEUTRAL;
 			PW[IRZC] = OUT_NEUTRAL + PWSense[IRZC] * 0.0f; // TODO:
 
 			for (m = 0; m < NoOfDrives; m++)
@@ -226,8 +227,8 @@ void UpdateDrives(void) {
 			MixAndLimitCam();
 
 			for (m = 0; m < NoOfDrives; m++) { // drives
-				PWp[m] = (Armed() && !F.Emulation) ? LPF1(PWp[m],
-						PW[m], LPF1DriveK) : 0.0f;
+				PWp[m] = (Armed() && !F.Emulation) ? LPF1(PWp[m], PW[m],
+						LPF1DriveK) : 0.0f;
 
 				driveWritePtr(m, PWp[m]);
 
@@ -249,10 +250,10 @@ void UpdateDrives(void) {
 				}
 		} else {
 
-			if (F.Bypass) {
-				Rl = -A[Roll].Stick * STICK_BYPASS_SCALE;
-				Pl = -A[Pitch].Stick * STICK_BYPASS_SCALE;
-				Yl = A[Yaw].Stick * STICK_BYPASS_SCALE;
+			if (F.PassThru) {
+				Rl = -A[Roll].Stick * STICK_PASSTHRU_SCALE;
+				Pl = -A[Pitch].Stick * STICK_PASSTHRU_SCALE;
+				Yl = A[Yaw].Stick * STICK_PASSTHRU_SCALE;
 				Sl = 0.0f; //zzz
 			} else {
 				Rl = Limit1(A[Roll].Out, OUT_NEUTRAL);
@@ -263,9 +264,8 @@ void UpdateDrives(void) {
 			DoMix();
 
 			for (m = 0; m < NoOfDrives; m++) { // drives
-				PWp[m] = (Armed() && !F.Emulation) ? LPF1(PWp[m],
-						PW[m], LPF1DriveK) : 0.0f;
-
+				PWp[m] = (Armed() && !F.Emulation) ? LPF1(PWp[m], PW[m],
+						LPF1DriveK) : 0.0f;
 				servoWrite(m, PWp[m]);
 			}
 

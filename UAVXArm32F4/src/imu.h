@@ -50,7 +50,7 @@ extern const real32 MPUSign[];
 extern real32 GyroBias[];
 extern const real32 GyroScale[];
 extern uint8 CurrAttSensorType;
-extern real32 Acc[], Rate[];
+extern real32 Acc[], Rate[], Angle[];
 extern real32 RateEnergySum;
 extern uint32 RateEnergySamples;
 

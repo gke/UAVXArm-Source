@@ -5,7 +5,7 @@
 
 #include "ekf.h"
 
-// EKF
+// EKF zzz move elf.h?
 #define INIT_STRENGTH_COVARIANCE 0.0049f
 #define INIT_RADIUS_COVARIANCE 2500.0f
 #define INIT_POS_COVARIANCE 300.0f
@@ -18,28 +18,17 @@
 #define K_TE  0.03f // hard filtering
 #define DEF_LOITER_RADIUS_M 60.0f
 
-/*
- typedef struct {
- real32 Pos[3];
- real32 Velocity;
- int16 Loiter;
- real32 OrbitRadius;
- real32 OrbitAltitude;
- real32 OrbitVelocity;
- uint8 Action;
- } WPStruct;
- */
 
-WPStruct TH = { { 0, 0, 0 }, AS_MIN_MPS, 10000, DEF_LOITER_RADIUS_M,
-		ALT_MAX_M, AS_MIN_MPS, navGlide };
+WPStruct TH = { { 0, 0, 0 }, AS_MIN_MPS, 10000, DEF_LOITER_RADIUS_M, ALT_MAX_M,
+		AS_MIN_MPS, navGlide };
 
 #define F(o, n, k) (k * n + (1.0f - k) * o)
 
-real32 AltCutoffM = ALT_CUTOFF_M;
-real32 AltMaxM = ALT_MAX_M;
-real32 AltMinM = ALT_MIN_M;
+real32 AltCutOff = ALT_CUTOFF_M;
+real32 AltMax = ALT_MAX_M;
+real32 AltMin = ALT_MIN_M;
 
-timemS PrevKFUpdatemS = 0;
+timemS LastKFUpdatemS = 0;
 
 boolean ThrottleSuppressed = false;
 boolean Thermalling = false;
@@ -97,7 +86,7 @@ boolean SuppressThrottle(void) {
 		ThrottleSuppressed = true;
 		VarioFilt = 0; // zooming on motor climb
 		//zzz spdHgt->reset_pitch_I(); // zero pitch integral
-		mSTimer(mSClock(), CruiseTimeout, CRUISE_MIN_MS);
+		mSTimer(CruiseTimeout, CRUISE_MIN_MS);
 	};
 
 	return ThrottleSuppressed;
@@ -105,15 +94,15 @@ boolean SuppressThrottle(void) {
 } // SuppressThrottle
 
 boolean CommenceThermalling(void) {
-	return (mSClock() > mS[CruiseTimeout]) && (VarioFilt > THERMAL_MIN_MPS)
+	return mSTimeout(CruiseTimeout) && (VarioFilt > THERMAL_MIN_MPS)
 			&& InAltitudeBand();
-	//&& (StickThrottle <= IdleThrottle); // zzz
+	//zzz&& (StickThrottle <= IdleThrottle); // zzz
 } // CommenceThermalling
 
 
 boolean ResumeGlide(void) {
 
-	return (mSClock() > mS[ThermalTimeout]) && (!InAltitudeBand()
+	return mSTimeout(ThermalTimeout) && (!InAltitudeBand()
 			|| !ThermalOK());
 
 } // ResumeGlide
@@ -136,45 +125,45 @@ void InitThermalling(void) {
 	// Also reset covariance matrix p so filter is not affected by previous data
 	EKFreset(XR, P, Q, R);
 
-	AltCutoffM = ALT_CUTOFF_M;
-	AltMaxM = ALT_MAX_M;
-	AltMinM = ALT_MIN_M;
+	AltCutOff = ALT_CUTOFF_M;
+	AltMax = ALT_MAX_M;
+	AltMin = ALT_MIN_M;
 
 	Soar.Th[NorthC].Pos = Nav.C[NorthC].Pos;
 	Soar.Th[EastC].Pos = Nav.C[EastC].Pos;
 
-	PrevKFUpdatemS = mSClock();
-	mSTimer(mSClock(), ThermalTimeout, THERMAL_MIN_MS);
+	LastKFUpdatemS = mSClock();
+	mSTimer(ThermalTimeout, THERMAL_MIN_MS);
 
 } // InitThermalling
 
 
 void InitCruising(void) {
-	mSTimer(mSClock(), CruiseTimeout, CRUISE_MIN_MS);
+	mSTimer(CruiseTimeout, CRUISE_MIN_MS);
 	ThrottleSuppressed = true; // glide initially
 } // InitCruising
 
 void UpdateThermalEstimate(void) {
+	real32 dx, dy, dx_w, dy_w, KFdT;
 
 	//invoked when F.NewNavUpdate
 
 	timemS NowmS = mSClock();
 
-	real32 dx = Nav.C[NorthC].Pos - Soar.Th[NorthC].Pos;
-	real32 dy = Nav.C[EastC].Pos - Soar.Th[EastC].Pos;
+	dx = Nav.C[NorthC].Pos - Soar.Th[NorthC].Pos;
+	dy = Nav.C[EastC].Pos - Soar.Th[EastC].Pos;
 
-#if defined(HAVE_WIND_ESTIMATE)
 	// Wind correction
-	real32 KFdT = (NowmS - PrevKFUpdatemS) * 0.001f;
-	Vector3f wind; // = _ahrs.wind_estimate();
-	real32 dx_w = wind.x * KFdT;
-	real32 dy_w = wind.y * KFdT;
-	dx -= dx_w;
-	dy -= dy_w;
-#else
-	real32 dx_w = 0.0f;
-	real32 dy_w = 0.0f;
-#endif
+	if (F.WindEstValid) {
+		KFdT = (NowmS - LastKFUpdatemS) * 0.001f;
+		dx_w = Wind.Est[X] * KFdT;
+		dy_w = Wind.Est[Y] * KFdT;
+		dx -= dx_w;
+		dy -= dy_w;
+	} else {
+		dx_w = 0.0f;
+		dy_w = 0.0f;
+	}
 
 	// write log - save the data.
 	SoaringTune.mS = NowmS;
@@ -198,7 +187,7 @@ void UpdateThermalEstimate(void) {
 	Soar.Th[NorthC].Pos = Nav.C[NorthC].Pos;
 	Soar.Th[EastC].Pos = Nav.C[EastC].Pos;
 
-	PrevKFUpdatemS = NowmS;
+	LastKFUpdatemS = NowmS;
 
 } // UpdateThermalEstimate
 
@@ -251,22 +240,22 @@ void UpdateVario(void) {
 	//real32 Headroom, AltitudeLost;
 
 	/*
-	if (F.UsingWPNavigation) {
-		Headroom = WP.Pos[DownC] + DESCENT_ALT_DIFF_M;
-		AltitudeLost = (WPDistance(&WP) / GPS.gspeed) * (-EXP_THERMAL_SINK_MPS);
-		AltCutoffM = AltitudeLost * 1.5f + Headroom;
-		AltMaxM = AltitudeLost * 2.0f + Headroom;
-		AltMinM = Max(DESCENT_SAFETY_ALT_M, AltitudeLost + Headroom); //(real32) P(NavRTHAlt] + DESCENT_ALT_DIFF_M;
-	} else {
-	*/
-		AltCutoffM = ALT_CUTOFF_M;
-		AltMaxM = ALT_MAX_M;
-		AltMinM = ALT_MIN_M;
-//	}
+	 if (F.UsingWPNavigation) {
+	 Headroom = WP.Pos[DownC] + DESCENT_ALT_DIFF_M;
+	 AltitudeLost = (WPDistance(&WP) / GPS.gspeed) * (-EXP_THERMAL_SINK_MPS);
+	 AltCutOff = AltitudeLost * 1.5f + Headroom;
+	 AltMax = AltitudeLost * 2.0f + Headroom;
+	 AltMin = Max(DESCENT_SAFETY_ALT_M, AltitudeLost + Headroom); //(real32) P(NavRTHAlt] + DESCENT_ALT_DIFF_M;
+	 } else {
+	 */
+	AltCutOff = ALT_CUTOFF_M;
+	AltMax = ALT_MAX_M;
+	AltMin = ALT_MIN_M;
+	//	}
 
 	//#define USE_NETTO
 #if defined(USE_NETTO)
-	static timeval PrevThermalUpdatemS = 0;
+	static timemS LastThermalUpdatemS = 0;
 	static real32 TEP = 0.0f;
 	static real32 AirspeedFilt = 0.0f;
 
@@ -274,12 +263,12 @@ void UpdateVario(void) {
 	real32 TE = Altitude + 0.5f * Sqr(AirspeedFilt) / GRAVITY_MPS_S;
 	real32 SinkRate = CorrectNettoRate(0.0f, A[Roll].Angle, AirspeedFilt);
 
-	Vario = SinkRate + (TE - TEP) / ((mSClock() - PrevThermalUpdatemS) * 0.001f);
+	Vario = SinkRate + (TE - TEP) / ((mSClock() - LastThermalUpdatemS) * 0.001f);
 	VarioFilt = F(VarioFilt, Vario, K_TE);
 
 	TEP = TE;
 
-	PrevThermalUpdatemS = mSClock();
+	LastThermalUpdatemS = mSClock();
 #else
 	Vario = VarioFilt = ROC;
 #endif
@@ -291,7 +280,7 @@ void DoGlider(void) {
 
 	if (ResumeGlide()) {
 		F.Soaring = false;
-		mSTimer(mSClock(), CruiseTimeout, CRUISE_MIN_MS);
+		mSTimer(CruiseTimeout, CRUISE_MIN_MS);
 		PrevWPNo = -1; // force CaptureWPHeading
 		NavState = HoldingStation;
 	} else {
@@ -305,6 +294,5 @@ void DoGlider(void) {
 	}
 
 } // DoGlider
-
 
 

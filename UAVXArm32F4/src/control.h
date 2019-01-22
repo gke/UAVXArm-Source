@@ -62,11 +62,10 @@ typedef struct {
 } PIDStruct;
 
 typedef struct {
-	real32 Stick;
-	real32 Control; // zzz used by last good Ken version
+	real32 Stick, Control;
 	PIStruct P;
 	PIDStruct R;
-	real32 Angle;
+	//real32 Angle;
 	real32 NavCorr, NavCorrP;
 	real32 Out;
 } AxisStruct;

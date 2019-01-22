@@ -25,6 +25,8 @@
 real32 MinimumTurn(real32 Desired);
 void Navigate(WPStruct * W);
 real32 WPDistance(WPStruct * W);
+timemS WPDistanceTimeout(void);
+timemS WPAltitudeTimeout(void);
 void ZeroNavCorrections(void);
 void DecayNavCorrections(void);
 

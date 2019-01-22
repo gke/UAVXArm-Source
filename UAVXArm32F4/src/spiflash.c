@@ -172,7 +172,7 @@ void FLASHReset(uint8 devSel) {
 	oxo = SPITransfer(s, 0);
 	SPISelect(devSel, false);
 
-	uSTimer(uSClock(),MemReady, 35);
+	uSTimer(MemReady, 35);
 
 } // FLASHReset
 
@@ -226,7 +226,7 @@ boolean FLASHConfig256(uint8 devSel) {
 	oxo = SPITransfer(s, 0xa6);
 	SPISelect(devSel, false);
 
-	uSTimer(uSClock(),MemReady, 35000);
+	uSTimer(MemReady, 35000);
 
 	return(FLASHFlagSet(devSel, FLAG_256));
 
@@ -253,7 +253,7 @@ boolean FLASHReadModifyWrite(uint8 devSel, uint32 a, uint32 len, int8 *data) {
 		oxo = SPITransfer(s, data[i]);
 	SPISelect(devSel, false);
 
-	uSTimer(uSClock(),MemReady, 35000);
+	uSTimer(MemReady, 35000);
 
 	return (r == spiErrors);
 
@@ -280,7 +280,7 @@ boolean FLASHErasePage(uint8 devSel, uint32 a) {
 	FLASHSendAddress(s, a);
 	SPISelect(devSel, false);
 
-	uSTimer(uSClock(),MemReady, 35000);
+	uSTimer(MemReady, 35000);
 
 	return (r == spiErrors);
 
@@ -305,7 +305,7 @@ boolean FLASHEraseSector(uint8 devSel, uint32 a) {
 
 	SPISelect(devSel, false);
 
-	uSTimer(uSClock(),MemReady, 6500000);
+	uSTimer(MemReady, 6500000);
 
 	return (r == spiErrors);
 
@@ -333,7 +333,7 @@ boolean FLASHErase(uint8 devSel) {
 	oxo = SPITransfer(s, 0x9a);
 	SPISelect(devSel, false);
 
-	uSTimer(uSClock(),MemReady, 208000000);
+	uSTimer(MemReady, 208000000);
 
 	return (r == spiErrors);
 

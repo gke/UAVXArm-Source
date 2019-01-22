@@ -43,7 +43,7 @@ boolean LaunchDetected(timemS NowmS) { // main contribution from iNav
 	real32 swingVel;
 	boolean isHandLaunched, isSwingLaunched, AngleOK, Launched;
 
-	AngleOK = Max(Abs(A[Roll].Angle), Abs(A[Pitch].Angle)) < Launch.angle;
+	AngleOK = Max(Abs(Angle[Roll]), Abs(Angle[Pitch])) < Launch.angle;
 
 	swingVel = (Abs(Rate[Yaw]) > Launch.swingrate) ? Abs(Acc[LR] / Rate[Yaw])
 			: 0.0f;
@@ -88,12 +88,8 @@ real32 ThrottleUp(timemS TimemS) {
 } // ThrottleUp
 
 void LaunchFW(void) {
-	static timemS MotorStartTimemS;
-	timemS NowmS;
 
-	NowmS = mSClock();
-
-	if (F.Bypass) {
+	if (F.PassThru) {
 		F.DrivesArmed = true;
 		DesiredThrottle = StickThrottle;
 		LaunchState = finishedLaunch;
@@ -101,9 +97,9 @@ void LaunchFW(void) {
 
 	switch (LaunchState) {
 	case initLaunch:
-		mSTimer(mSClock(), NavStateTimeout, Launch.waittimeoutmS);
+		mSTimer(NavStateTimeout, Launch.waittimeoutmS);
 		DesiredThrottle = Max(IdleThrottle, Launch.idlethrottle);
-		LaunchTimermS = NowmS;
+		LaunchTimermS = mSClock();
 		LaunchState = waitLaunch;
 		break;
 	case waitLaunch:
@@ -111,23 +107,23 @@ void LaunchFW(void) {
 		ZeroThrottleCompensation();
 		DesiredThrottle = Max(IdleThrottle, Launch.idlethrottle);
 
-		if (NowmS > mS[NavStateTimeout]) { // 3Sec
+		if (mSTimeout(NavStateTimeout)) { // 3Sec
 			StopDrives();
 			LaunchState = finishedLaunch;
 		} else {
-			if (LaunchDetected(NowmS)) { // 40mS
-				MotorStartTimemS = NowmS + Launch.glidemS;
-				mSTimer(mSClock(), NavStateTimeout, Launch.timemS);
+			if (LaunchDetected(mSClock())) { // 40mS
+				mSTimer(MotorStart, Launch.glidemS);
+				mSTimer(NavStateTimeout, Launch.timemS);
 				LaunchState = doingLaunch;
 			}
 		}
 		break;
 	case doingLaunch:
-		if (NowmS > mS[NavStateTimeout]) // 5Sec
+		if (mSTimeout(NavStateTimeout)) // 5Sec
 			LaunchState = finishedLaunch;
 		else {
-			DesiredThrottle = (NowmS > MotorStartTimemS) ?
-			ThrottleUp(NowmS - MotorStartTimemS)
+			DesiredThrottle = mSTimeout(MotorStart) ?
+			ThrottleUp(mSClock() - mS[MotorStart])
 					: Max(IdleThrottle, Launch.idlethrottle);
 		}
 		break;

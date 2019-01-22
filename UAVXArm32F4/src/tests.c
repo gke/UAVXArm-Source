@@ -20,20 +20,326 @@
 
 #include "UAVX.h"
 
+void DoTesting(void) {
+
+	//#define COMMISSIONING_TEST
+	//#define TEMP_COMP_TESTING
+	//#define USB_TESTING
+	//#define KF_TESTING
+	//#define BARO_TESTING
+	//#define BARO_RAW_TESTING
+	//#define MAG_CAL_TESTING
+	//#define CURRENT_TESTING
+	idx i, c;
+	int32 d;
+	static int16 MaxShadow[7];
+	static int16 MinShadow[7];
+	static int16 PrevShadow[7];
+	static int32 MaxDelta[7];
+
+#if defined(TEMP_COMP_TESTING)
+
+	//CalibrateAccAndGyro(TelemetrySerial, imuSel);
+	LEDsOff();
+
+	for (i = 0; i < 7; i++) {
+		MaxShadow[i] = -32000;
+		MinShadow[i] = 32000;
+		MaxDelta[i] = 0;
+	}
+
+	c = 0;
+	while (true) {
+		Delay1mS(1);
+		ReadFilteredGyroAndAcc(imuSel);
+		ScaleRateAndAcc(imuSel);
+
+		for (i = 0; i < 7; i++) {
+			if (ShadowRawIMU[i] > MaxShadow[i])
+			MaxShadow[i] = ShadowRawIMU[i];
+			else if (ShadowRawIMU[i] < MinShadow[i])
+			MinShadow[i] = ShadowRawIMU[i];
+
+			MaxDelta[i] = ShadowRawIMU[i] - PrevShadow[i];
+			PrevShadow[i] = ShadowRawIMU[i];
+
+		}
+
+		if (++c >= 2)
+		{
+			c = 0;
+
+
+			// for (i = 0; i < 3; i++) {
+			// TxVal32(TelemetrySerial, ShadowRawIMU[i], 0, ',');
+			// TxVal32(TelemetrySerial, RawAcc[i] * 10.0f, 1, ',');
+			// TxVal32(TelemetrySerial, MinShadow[i], 0, ',');
+			// TxVal32(TelemetrySerial, MaxShadow[i], 0, ',');
+			// }
+
+
+			//for (i = 0; i < 3; i++) {
+				i = 0;
+			//}
+				TxVal32(TelemetrySerial, ShadowRawIMU[i + 4], 0, ',');
+				TxVal32(TelemetrySerial, RawGyroX[i] * 10.0f, 1, ',');
+				TxVal32(TelemetrySerial, RawGyro[i] * 10.0f, 1, ',');
+				//TxVal32(TelemetrySerial, MinShadow[i + 4], 0, ',');
+				//TxVal32(TelemetrySerial, MaxShadow[i + 4], 0, ',');
+				//TxVal32(TelemetrySerial, MaxDelta[i + 4], 0, ',');
+			//}
+
+			//TxVal32(TelemetrySerial, ShadowRawIMU[4], 0, ',');
+			//TxVal32(TelemetrySerial, MaxShadow[4], 0, ',');
+			//TxVal32(TelemetrySerial, MPU6XXXTemperature * 1000.0f, 3, ',');
+
+
+			TxNextLine(TelemetrySerial);
+			LEDToggle(ledGreenSel);
+		}
+	};
+
+#elif defined(USB_TESTING)
+
+	USBConnect();
+
+	LEDOn(ledGreenSel);
+
+	USBTxString("starting USB Test (! to force restart)\n");
+
+	while (true) {
+		if (SerialAvailable(USBSerial)) {
+			LEDToggle(ledYellowSel);
+			uint8 ch = RxChar(USBSerial);
+			if (ch == '!')
+			systemReset(false);
+			else
+			TxChar(USBSerial, ch);
+		}
+	}
+#elif defined(COMMISSIONING_TEST)
+
+	ReadBlockNV(0, sizeof(NV), (int8 *) (&NV));
+
+	NV.CurrPS = 0;
+	for (i = 0; i < MAX_PARAMETERS; i++)
+	SetP(DefaultParams[i].tag, DefaultParams[i].p[0]);
+
+	CommissioningTest(0);
+
+#elif defined(BARO_TESTING)
+
+	int16 kkk, cycles;
+	timeval start = uSClock();
+
+	for (kkk = 0; kkk < 256; kkk++)
+	LSBBaro[kkk] = 0;
+
+	cycles = 10;
+	for (kkk = 0; kkk < 3000; kkk++) {
+		while (!DEBUGNewBaro)
+		GetBaro();
+		DEBUGNewBaro = false;
+
+		LEDToggle(ledGreenSel);
+		if (cycles-- <= 0) {
+			cycles = 10;
+			TxVal32(TelemetrySerial, BaroTempVal, 0, ',');
+			TxVal32(TelemetrySerial, BaroPressVal, 0, ',');
+			TxVal32(TelemetrySerial, BaroTemperature * 1000, 3, ',');
+			TxVal32(TelemetrySerial, BaroPressure * 100, 2, ',');
+			TxVal32(TelemetrySerial, BaroRawAltitude * 1000, 3, ',');
+			TxVal32(TelemetrySerial, BaroAltitude * 1000, 3, ',');
+			TxNextLine(TelemetrySerial);
+		}
+		LSBBaro[BaroPressVal & 0xff]++;
+
+	}
+
+	TxVal32(TelemetrySerial, (uSClock() - start) / 3000, 3, ',');
+	TxNextLine(TelemetrySerial);
+
+	for (kkk = 0; kkk < 256; kkk++) {
+		TxVal32(TelemetrySerial, kkk, 0, ',');
+		TxVal32(TelemetrySerial, LSBBaro[kkk], 0, ',');
+		TxNextLine(TelemetrySerial);
+	}
+
+	LEDsOn();
+	while (true) {
+	};
+
+#elif defined(BARO_RAW_TESTING)
+	int16 kkk;
+
+	for (kkk = 0; kkk < 10000; kkk++) {
+		while (!DEBUGNewBaro)
+			GetBaro();
+		DEBUGNewBaro = false;
+
+		LEDToggle(ledGreenSel);
+
+		//TxVal32(TelemetrySerial, BaroTempVal, 0, ',');
+		TxVal32(TelemetrySerial, BaroPressVal, 0, ',');
+		//TxVal32(TelemetrySerial, BaroTemperature * 1000, 3, ',');
+		TxVal32(TelemetrySerial, BaroPressure * 100, 2, ',');
+		TxNextLine(TelemetrySerial);
+
+	}
+
+	LEDsOn();
+	while(1){};
+
+#elif defined(KF_TESTING)
+
+	const real32 qKF = 1000; // 400
+	const real32 rKF = 100; // 88
+
+	const real32 SampleHz = 8000.0f;
+	const real32 NyquistHz = 4000.0f;
+	const real32 PIDHz = 1000;
+	const real32 GyroHz = 100.0f;
+
+	real32 OverSampledT = 1.0f / SampleHz;
+	real32 PIDdT = 1.0f/ PIDHz;
+
+	filterStruct KalynF, FujinF, OSLPF, FinalLPF;
+	int kkk;
+	real32 Kalyn, Fujin, OSRC, RC, RN;
+
+	NowuS = uSClock();
+	timeval NextmS = mSClock();
+
+	timeval PrevuS = NowuS;
+
+	kkk = 0;
+
+	const real32 GyroSignalHz = 50.0f;
+	const real32 s2Hz = 7000.0f;
+	const real32 s3Hz = 23000.0f;
+	const real32 s4Hz = 33000.0f;
+
+	real32 TimeS = 0.0f;
+	real32 NextTimeS = 0.0f;
+
+	initKalynFastLPKF(&KalynF, qKF, rKF, NyquistHz); // 0.011? 0.025
+	initFujinFastLPKF(&FujinF, 300); //NyquistHz);
+	initLPFn(&OSLPF, 2, NyquistHz);
+	initLPFn(&FinalLPF, 1, GyroHz);
+
+	TxString(0, "TimemS, Noise, Raw, Kalyn, Fujin, RC, RC2");
+	TxNextLine(TelemetrySerial);
+	do {
+
+		// mix signals with offsets - could add some noise
+		RN = 1.0f * (real32) rand()/RAND_MAX;
+		real32 v =
+		sinf(TWO_PI * GyroSignalHz * TimeS)
+		+ sinf(TWO_PI * s2Hz * TimeS)
+		+ sinf(TWO_PI * s3Hz * TimeS) + sinf(TWO_PI * s4Hz * TimeS)
+		+ RN;
+
+		Kalyn = KalynFastLPKF(&KalynF, v, OverSampledT);
+		Fujin = FujinFastLPKF(&FujinF, v, OverSampledT);
+		OSRC = LPFn(&OSLPF, v, OverSampledT);
+
+		if (TimeS > NextTimeS) {
+			NextTimeS = TimeS + PIDdT;
+			RC = LPFn(&FinalLPF, OSRC, GyroHz);
+		}
+
+		TxVal32(TelemetrySerial, TimeS * 1000000, 3, ',');
+		TxVal32(TelemetrySerial, RN * 100, 2, ',');
+		TxVal32(TelemetrySerial, v * 100, 2, ',');
+		TxVal32(TelemetrySerial, Kalyn * 100, 2, ',');
+		TxVal32(TelemetrySerial, Fujin * 100, 2, ',');
+		TxVal32(TelemetrySerial, OSRC * 100, 2, ',');
+		TxVal32(TelemetrySerial, RC * 100, 2, ',');
+		TxNextLine(TelemetrySerial);
+
+		TimeS += OverSampledT;
+
+	}while (TimeS < 1.0f);
+
+	LEDsOn();
+	while (true) {
+	};
+#elif defined(MAG_CAL_TESTING)
+
+	int16 ii, jj;
+
+	CalibrateHMC5XXX(0);
+
+	for (ii = 0; ii < MAG_CAL_SAMPLES; ii++) {
+
+		TxVal32(TelemetrySerial, ii, 0, ',');
+
+		for (jj = 0; jj <= 2; jj++)
+		TxVal32(TelemetrySerial, MagSample[ii][jj], 0, ',');
+
+		TxNextLine(TelemetrySerial);
+	}
+
+	TxNextLine(TelemetrySerial);
+	for (jj = 0; jj <= 2; jj++)
+	TxVal32(TelemetrySerial, NV.MagCal.Bias[jj], 0, ',');
+	TxNextLine(TelemetrySerial);
+
+	while (1) {
+		Delay1mS(200);
+		LEDToggle(ledRedSel);
+	}
+#elif defined(CURRENT_TESTING)
+
+	real32 A;
+
+	BatteryCurrentADCZero = 0.5f;
+
+	for (i = 0; i < 1000; i++) {
+		Delay1mS(10);
+		BatteryCurrentADCZero = BatteryCurrentADCZero * 0.99f + analogRead(BattCurrentAnalogSel) * 0.01f;
+		LEDToggle(ledYellowSel);
+	}
+
+	BatteryCurrent = 0.0f;
+
+	while (1) {
+
+		Delay1mS(10);
+
+		A = analogRead(BattCurrentAnalogSel);
+
+		BatteryCurrent = BatteryCurrent * 0.99f + ((A - BatteryCurrentADCZero) * (3.3f / 0.04f)) * 0.01f;
+
+		TxVal32(TelemetrySerial, BatteryCurrentADCZero * 1000.0f, 3, ' ');
+		TxVal32(TelemetrySerial, A * 1000.0f, 3, ' ');
+		TxVal32(TelemetrySerial, BatteryCurrent * 1000.0f, 3, ' ');
+		TxNextLine(TelemetrySerial);
+
+		LEDToggle(ledRedSel);
+	}
+
+#else
+	// NO TESTS
+#endif
+
+} // DoTesting
+
+
 #if defined(COMMISSIONING_TEST)
 
 index i;
 
 void OK(uint8 s, boolean b) {
 	if (b)
-		TxString(s, " OK ");
+	TxString(s, " OK ");
 	else
-		TxString(s, " FAIL ");
+	TxString(s, " FAIL ");
 } // OK
 
 void Calibrated(uint8 s, boolean b) {
 	if (!b)
-		TxString(s, " NOT calibrated ");
+	TxString(s, " NOT calibrated ");
 } // Calibrated
 
 
@@ -155,8 +461,8 @@ void CommissioningTest(uint8 s) {
 		ReadFilteredGyroAndAcc(); ScaleRateAndAcc();
 
 		F.BaroActive = true; // force
-		if (mSClock() >= mS[BaroUpdate]) {
-			mSTimer(mSClock(), BaroUpdate, 4);
+		if (mSTimeout(BaroUpdate)) {
+			mSTimer(BaroUpdate, 4);
 			GetBaro();
 		}
 
@@ -235,7 +541,7 @@ void CommissioningTest(uint8 s) {
 	while (true) {
 		Delay1mS(2);
 
-		dT = dTUpdate(uSClock(), &LastInertialUpdateuS);
+		dT = dTUpdate(&LastInertialUpdateuS);
 		dTOn2 = 0.5f * dT;
 		dTR = 1.0f / dT;
 		dTROn2 = dTR * 0.5f;
@@ -359,7 +665,7 @@ void SphereFitTest(void) {
 
 	TxVal32(0, OK, 0, ',');
 	for (c = X; c <= Z; c++)
-		TxVal32(0, O[c] * 10000.0f, 4, ',');
+	TxVal32(0, O[c] * 10000.0f, 4, ',');
 	TxVal32(0, R * 10000.0f, 4, 0);
 	TxNextLine(0);
 
@@ -369,7 +675,7 @@ void SphereFitTest(void) {
 		TxChar(0, ',');
 
 		for (i = 0; i < 2; i++)
-			TxVal32(0, Population[i][c], 0, ',');
+		TxVal32(0, Population[i][c], 0, ',');
 		TxNextLine(0);
 	}
 	/*
@@ -388,7 +694,7 @@ void SphereFitTest(void) {
 	 TxVal32(0, sphere_radius * 10000.0, 4, ',');
 	 */
 	while (1)
-		;
+	;
 
 } // SphereFitTest
 
@@ -399,20 +705,20 @@ void ShowSIODeviceName(uint8 s, uint8 d) {
 
 	TxChar(s, ' ');
 	switch (d) {
-	case MPU_0x68_ID:
-	case MPU_0x69_ID:
+		case MPU_0x68_ID:
+		case MPU_0x69_ID:
 		TxString(s, "Invensense Gyro/IMU");
 		break;
-	case HMC5XXX_ID:
+		case HMC5XXX_ID:
 		TxString(s, "HMC5XXX Mag");
 		break;
-	case TMP100_ID:
+		case TMP100_ID:
 		TxString(s, "Temperature");
 		break;
-	case EEPROM_ID:
+		case EEPROM_ID:
 		TxString(s, "EEPROM");
 		break;
-	default:
+		default:
 		break;
 	} // switch
 	TxChar(s, ' ');
@@ -439,7 +745,6 @@ uint8 ScanSIOBus(uint8 s) {
 } // ScanSIOBus
 
 
-
 void MagnetometerTest(uint8 s) {
 	int32 a;
 	MagCalStruct * M;
@@ -449,18 +754,18 @@ void MagnetometerTest(uint8 s) {
 	TxString(s, "\r\nMagnetometer Test: ");
 	OK(s, F.MagnetometerActive);
 	if (!F.MagnetometerCalibrated)
-		TxString(s, " NOT CALIBRATED");
+	TxString(s, " NOT CALIBRATED");
 
 	SIOReadBlock(SIOMag, HMC5XXX_ID, HMC5XXX_TAG, 3, info);
 	TxString(s, "\r\nID: ");
 	for (k = 0; k < 3; k++)
-		TxChar(s, info[k]);
+	TxChar(s, info[k]);
 
 	if (F.MagnetometerActive) {
 
 		F.NewMagValues = false;
 		while (!F.NewMagValues)
-			GetMagnetometer();
+		GetMagnetometer();
 
 		TxString(s, "\r\nTemperature: ");
 		TxVal32(s, MagTemperature * 10.0f, 1, 'C');
@@ -483,24 +788,24 @@ void MagnetometerTest(uint8 s) {
 			TxNextLine(s);
 		}
 	} else
-		TxString(s, "\r\nFAIL\r\n");
+	TxString(s, "\r\nFAIL\r\n");
 
-		TxString(s, "\r\nMag Var (deg.):");
+	TxString(s, "\r\nMag Var (deg.):");
 
-		TxString(s, "\r\n\tUsing   ");
-		TxVal32(s, RadiansToDegrees(MagVariation) * 100.0f, 2, 0);
+	TxString(s, "\r\n\tUsing   ");
+	TxVal32(s, RadiansToDegrees(MagVariation) * 100.0f, 2, 0);
 
-		TxString(s, "\t (WMM2010 ");
-		MagVariationWMM2010 = ComputeMagVar();
+	TxString(s, "\t (WMM2010 ");
+	MagVariationWMM2010 = ComputeMagVar();
 
-		if (GPS.year != 0) {
-			TxVal32(s, RadiansToDegrees(MagVariationWMM2010) * 100.0f, 2, '@');
-			TxVal32(s, GPS.day, 0, '/');
-			TxVal32(s, GPS.month, 0, '/');
-			TxVal32(s, GPS.year, 0, ' ');
-		} else
-			TxString(s, " - no GPS yet!");
-		TxString(s, ")\r\n");
+	if (GPS.year != 0) {
+		TxVal32(s, RadiansToDegrees(MagVariationWMM2010) * 100.0f, 2, '@');
+		TxVal32(s, GPS.day, 0, '/');
+		TxVal32(s, GPS.month, 0, '/');
+		TxVal32(s, GPS.year, 0, ' ');
+	} else
+	TxString(s, " - no GPS yet!");
+	TxString(s, ")\r\n");
 
 } // MagnetometerTest
 
@@ -512,13 +817,13 @@ void BaroTest(uint8 s) {
 	TxVal32(s, ms56xx_ManufacturersData, 0, ' ');
 	TxString(s, " ms56xx[");
 	for (i = 1; i < 8; i++)
-		TxVal32(s, ms56xx_c[i], 0, ',');
+	TxVal32(s, ms56xx_c[i], 0, ',');
 	TxString(s, "]/r/n");
 
 	if (F.BaroActive) {
 		F.NewBaroValue = false;
 		while (!F.NewBaroValue)
-			GetDensityAltitude();
+		GetDensityAltitude();
 
 		TxString(s, "\r\nBaro. Temp.: ");
 		TxVal32(s, (int32) BaroTemperature * 100, 2, ' ');
@@ -542,11 +847,11 @@ void BaroTest(uint8 s) {
 		GetRangefinderAltitude();
 		TxString(s, "\r\nR.Finder: ");
 		if (!F.RangefinderActive)
-			TxString(s, "Inactive ");
+		TxString(s, "Inactive ");
 		TxVal32(s, (int32) RangefinderAltitude * 100.0f, 2, ' ');
 		TxString(s, "M\r\n");
 	} else
-		TxString(s, "\r\n Baro Inactive ");
+	TxString(s, "\r\n Baro Inactive ");
 
 } // BaroTest
 
@@ -562,7 +867,7 @@ void BatteryTest(uint8 s) {
 	TxString(s, " Limit is ");
 	TxVal32(s, BatteryVoltsLimit * 10.0f, 1, 'V');
 	if (F.LowBatt)
-		TxString(s, " LOW");
+	TxString(s, " LOW");
 	TxNextLine(s);
 
 } // BatteryTest
@@ -629,7 +934,7 @@ void InertialTest(uint8 s) {
 	TxVal32(s, (NV.AccCal.TRef) * 10.0f, 1, 0);
 	TxChar(s, 'C');
 	if (!F.IMUCalibrated)
-		TxString(s, " NOT CALIBRATED");
+	TxString(s, " NOT CALIBRATED");
 	TxString(s, "\r\n\t\tAcc\tComp\tBias\t/C\r\n");
 	for (a = X; a <= Z; a++) {
 		TxChar(s, ASCII_HT);
@@ -688,7 +993,7 @@ void InertialTest(uint8 s) {
 		TxVal32(s, Acc[UD] * 1000.0f, 3, 0);
 		TxNextLine(s);
 	} else
-		TxString(s, "ACCELEROMETERS NOT CALIBRATED");
+	TxString(s, "ACCELEROMETERS NOT CALIBRATED");
 
 } // InertialTest
 
@@ -706,12 +1011,12 @@ void ReceiverTest(uint8 s) {
 
 	TxString(s, "\r\nChannel order is: ");
 	for (c = 0; c < RC_MAX_CHANNELS; c++)
-		TxChar(s, RxChMnem[RMap[c]]);
+	TxChar(s, RxChMnem[RMap[c]]);
 
 	if (F.Signal)
-		TxString(s, "\r\nSignal OK\r\n");
+	TxString(s, "\r\nSignal OK\r\n");
 	else
-		TxString(s, "\r\nSignal FAIL\r\n");
+	TxString(s, "\r\nSignal FAIL\r\n");
 
 	if (RxUsingSerial) {
 		if (currRxType == Deltang) {
@@ -731,7 +1036,7 @@ void ReceiverTest(uint8 s) {
 		TxString(s, ": \t");
 		if ((currRxType == Spektrum1024_M7to10) || (currRxType == Spektrum2048_M7to10)
 				|| (currRxType == Deltang1024_M7to10) )
-			TxVal32(s, RCInp[c].SpekRaw, 3, ' ');
+		TxVal32(s, RCInp[c].SpekRaw, 3, ' ');
 		TxVal32(s, RCInp[c].Raw, 3, ' ');
 		TxString(s, " \t");
 		TxVal32(s, RC[RMap[c]] * 100.0, 0, '%');
@@ -844,13 +1149,12 @@ void ShowStat(uint8 s) {
 	}
 
 	if (currStat(OriginValidS))
-		TxString(s, "Nav ENABLED\r\n");
+	TxString(s, "Nav ENABLED\r\n");
 	else
-		TxString(s, "Nav DISABLED (No fix at launch)\r\n");
+	TxString(s, "Nav DISABLED (No fix at launch)\r\n");
 
 } // ShowStats
 
 
 #endif
-
 

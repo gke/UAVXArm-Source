@@ -82,19 +82,16 @@ boolean ReadMagnetometer(void) {
 
 
 void GetMagnetometer(void) {
-	timemS NowmS;
 	static timeuS LastMagUpdateuS = 0;
 	int32 a;
 
 	if (F.MagnetometerActive) {
-
-		NowmS = mSClock();
-		if (NowmS >= mS[MagnetometerUpdate]) {
-			mSTimer(NowmS, MagnetometerUpdate, MAG_TIME_MS);
+		if (mSTimeout(MagnetometerUpdate)) {
+			mSTimer(MagnetometerUpdate, MAG_TIME_MS);
 
 			RawMag[MX] = -4096;
 
-			MagdT = dTUpdate(uSClock(), &LastMagUpdateuS);
+			MagdT = dTUpdate(&LastMagUpdateuS);
 
 			if (ReadMagnetometer()) {
 
@@ -132,16 +129,17 @@ void CalculateInitialMagneticHeading(void) {
 	if (F.NewMagValues) {
 		F.NewMagValues = false;
 
-		cR = cosf(-A[Roll].Angle);
-		sR = sinf(-A[Roll].Angle);
-		cP = cosf(A[Pitch].Angle);
-		sP = sinf(A[Pitch].Angle);
+		cR = cosf(-Angle[Roll]);
+		sR = sinf(-Angle[Roll]);
+		cP = cosf(Angle[Pitch]);
+		sP = sinf(Angle[Pitch]);
 
 		xh = Mag[BF] * cP + sP * (Mag[UD] * cR - Mag[LR] * sR);
 		yh = Mag[LR] * cR + Mag[UD] * sR;
 
-		InitialMagHeading = -atan2f(yh, xh); // filtering is difficult because of 360deg discontinuity
-	}
+		InitialMagHeading = -atan2f(yh, xh);
+	} else
+		InitialMagHeading = 0.0f;
 
 } // CalculateInitialMagneticHeading
 
@@ -208,7 +206,7 @@ void InitMagnetometer(void) {
 		else
 			SIOWriteBlockataddr(magSel, HMC5XXX_CONFIG_A, 4, HMC5883LConfig);
 
-		mSTimer(mSClock(), MagnetometerUpdate, MAG_TIME_MS);
+		mSTimer(MagnetometerUpdate, MAG_TIME_MS);
 		Delay1mS(MAG_TIME_MS * 2);
 
 		F.NewMagValues = false;
@@ -232,7 +230,7 @@ void InitMagnetometer(void) {
 
 void CheckMagnetometerIsCalibrated(void) {
 
-	F.MagnetometerCalibrated = NV.MagCal.CalSamples == MAG_CAL_SAMPLES;
+	F.MagnetometerCalibrated = NV.MagCal.Calibrated == 1;
 
 } // CheckMagnetometerIsCalibrated
 
@@ -243,7 +241,9 @@ void InitMagnetometerBias(void) {
 	for (a = X; a <= Z; a++)
 		NV.MagCal.Bias[a] = 0.0f;
 
-	NV.MagCal.CalSamples = 0;
+	NV.MagCal.Calibrated = 0xff;
+	F.MagnetometerCalibrated = false;
+
 	NVChanged = true;
 
 } // InitMagnetometerBias
@@ -280,11 +280,11 @@ void CalibrateHMC5XXX(uint8 s) {
 		memset(&MagSample, 0, sizeof(MagSample));
 
 		ss = 0;
-		mSTimer(mSClock(), MagnetometerUpdate, MAG_TIME_MS);
+		mSTimer(MagnetometerUpdate, MAG_TIME_MS);
 
 		while (ss < MAG_CAL_SAMPLES)
-			if ((mSClock() > mS[MagnetometerUpdate])) {
-				mSTimer(mSClock(), MagnetometerUpdate, MAG_TIME_MS);
+			if (mSTimeout(MagnetometerUpdate)) {
+				mSTimer(MagnetometerUpdate, MAG_TIME_MS);
 
 				if (ReadMagnetometer()) {
 
@@ -310,10 +310,12 @@ void CalibrateHMC5XXX(uint8 s) {
 		SphereIterations = SphereFit(MagSample, MAG_CAL_SAMPLES, 200, 0.01f,
 				MagOrigin, &NV.MagCal.Magnitude);
 
-		NV.MagCal.CalSamples = MAG_CAL_SAMPLES;
-
 		for (a = X; a <= Z; a++)
 			NV.MagCal.Bias[a] = MagOrigin[a];
+
+
+		NV.MagCal.Calibrated = 1;
+		F.MagnetometerCalibrated = true;
 
 		NVChanged = true;
 		UpdateNV();
@@ -322,6 +324,7 @@ void CalibrateHMC5XXX(uint8 s) {
 
 		LEDsOff();
 
+		NV.MagCal.Calibrated = 1;
 		F.MagnetometerCalibrated = true;
 	}
 

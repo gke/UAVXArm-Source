@@ -22,9 +22,14 @@
 #ifndef _uavx_h
 #define _uavx_h
 
+//#define USE_CONSERVATIVE_DEF_PARAM_LOAD
+
+//#define USE_AUX3_PROBE_PIN // CAUTION DIAGNOSTIC ONLY: This disables use of Aux3 for WP Nav enable
+
 //#define BLACKBOX
 
-//#define USE_THERMALS
+#define USE_THERMALS
+#define HAVE_WIND_ESTIMATE
 
 #define MAX_BLHELI_ESCS 4
 
@@ -32,21 +37,20 @@
 
 //#define USE_ATT_BATT_COMP
 
+
 #define CHECK_INVERTED
 
 #define NAV_ENFORCE_ALTITUDE_CEILING		// limit all autonomous altitudes
 
 // Options
 
-//#define USE_WS2812
+#define USE_WS2812
 //#define USE_WS2812B
 
-//#define INC_DFT
 #define INC_STATS_TEL
 #define INC_RC_TEL
 
 #define INC_BARO_FULL_MATH
-
 #define VOLT_MEASUREMENT_ONBOARD
 
 //__________________
@@ -69,10 +73,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include "mpu6050.h"
-
-#include "mavlink/v1.1/common/mavlink.h"
-#include "mavlink/v1.1/mavlink_types.h"
-//#define MAVLINK_EXTERNAL_RX_BUFFER
 
 #define ADC_SCALE (1.0f/4096.0f)	// 12bit normalise to 1.0
 
@@ -115,7 +115,6 @@
 #include "leds.h"
 #include "mag.h"
 #include "magvar.h"
-#include "mavlink.h"
 #include "mission.h"
 #include "nav.h"
 #include "nv.h"
@@ -132,6 +131,7 @@
 #include "temp.h"
 #include "tests.h"
 #include "tune.h"
+#include "wind.h"
 
 #include "vcp/drivers/drv_usb.h"
 #include "vcp/drivers/drv_system.h"

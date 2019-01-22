@@ -63,7 +63,7 @@ uint8 DiscoveredRCChannels = 4; // used by PPM/CPPM
 
 real32 MaxCruiseThrottle, DesiredThrottle, IdleThrottle, InitialThrottle,
 		StickThrottle;
-real32 DesiredCamPitchTrim;
+real32 CamPitchTrim;
 real32 ThrLow, ThrHigh, ThrNeutral;
 real32 CurrMaxRollPitchStick;
 int8 RCStart;
@@ -475,31 +475,31 @@ void doSpektrumBinding(void) {
 void DoSpektrumBind(void) {
 	idx i;
 	PinDef p;
-/*
-	p.Port = SerialPorts[RCSerial].Port;
-	p.Pin = SerialPorts[RCSerial].RxPin;
-	p.Mode = GPIO_Mode_OUT;
-	p.OType = GPIO_OType_PP;
-	p.PuPd = GPIO_PuPd_UP;
+	/*
+	 p.Port = SerialPorts[RCSerial].Port;
+	 p.Pin = SerialPorts[RCSerial].RxPin;
+	 p.Mode = GPIO_Mode_OUT;
+	 p.OType = GPIO_OType_PP;
+	 p.PuPd = GPIO_PuPd_UP;
 
-	InitPin(&p);
-	// need to power the Rx off one of the pins so power up can be controlled.
-	DigitalWrite(&p, 1);
+	 InitPin(&p);
+	 // need to power the Rx off one of the pins so power up can be controlled.
+	 DigitalWrite(&p, 1);
 
-	Delay1mS(61); // let satellites settle after power up
+	 Delay1mS(61); // let satellites settle after power up
 
-	for (i = 0; i < MASTER_RX_PULSES; i++) {
-		DigitalWrite(&p, 0);
-		Delay1uS(120);
-		DigitalWrite(&p, 1);
-		Delay1uS(120);
-	}
+	 for (i = 0; i < MASTER_RX_PULSES; i++) {
+	 DigitalWrite(&p, 0);
+	 Delay1uS(120);
+	 DigitalWrite(&p, 1);
+	 Delay1uS(120);
+	 }
 
-	InitSerialPort(RCSerial, true, false);
+	 InitSerialPort(RCSerial, true, false);
 
-	while (!F.RCFrameReceived)
-		CheckSerialRx();
-*/
+	 while (!F.RCFrameReceived)
+	 CheckSerialRx();
+	 */
 } // DoSpektrumBind
 
 
@@ -516,12 +516,12 @@ void UpdateRCMap(void) {
 
 	Map[NavModeRC] = P(RxGearCh);
 	Map[AttitudeModeRC] = P(RxAux1Ch);
-	Map[NavGainRC] = P(RxAux2Ch);
-	Map[BypassRC] = P(RxAux3Ch);
+	Map[AHNavSensRC] = P(RxAux2Ch);
+	Map[PassThruRC] = P(RxAux3Ch);
 	Map[CamPitchRC] = P(RxAux4Ch);
 	Map[Unused10RC] = P(RxAux5Ch);
 	Map[TransitionRC] = P(RxAux6Ch);
-	Map[ArmRC] = P(RxAux7Ch);
+	Map[ArmAHWPNavRC] = P(RxAux7Ch);
 
 	//for (c = ThrottleRC; c < NullRC; c++)
 	//	Map[c] -= 1;
@@ -546,7 +546,7 @@ void InitRC(void) {
 
 	switch (CurrRxType) {
 	case ParallelPPMRx:
-		DiscoveredRCChannels = 7; //P(RCChannels);
+		DiscoveredRCChannels = P(RCChannels);
 		RxEnabled[RCSerial] = false;
 		break;
 	case FutabaSBusRx:
@@ -595,11 +595,11 @@ void InitRC(void) {
 		RC[c] = RCp[c] = RC_NEUTRAL;
 	RC[CamPitchRC] = RCp[CamPitchRC] = RC_NEUTRAL;
 
-	DesiredCamPitchTrim = 0;
+	CamPitchTrim = 0;
 	F.ReturnHome = F.Navigate = F.AltControlEnabled = false;
 
 	mS[StickChangeUpdate] = NowmS;
-	mSTimer(NowmS, RxFailsafeTimeout, RC_NO_CHANGE_TIMEOUT_MS);
+	mSTimer(RxFailsafeTimeout, RC_NO_CHANGE_TIMEOUT_MS);
 
 	DesiredThrottle = StickThrottle = 0.0f;
 
@@ -815,8 +815,8 @@ boolean ActiveCh(uint8 r) {
 	return DiscoveredRCChannels > Map[r];
 } // ActiveCh
 
-boolean Triggered(uint8 t, uint8 r) {
-	return ActiveCh(r) && (RC[r] > FromPercent(t));
+boolean Triggered(real32 t, uint8 r) {
+	return ActiveCh(r) && (RC[r] > t);
 } // Triggered
 
 void UpdateControls(void) {
@@ -849,7 +849,7 @@ void UpdateControls(void) {
 		StickThrottle = RC[ThrottleRC];
 		F.ThrottleOpen = StickThrottle >= RC_THRES_START_STICK;
 
-		F.Bypass = Triggered(70, BypassRC);
+		F.PassThru = Triggered(0.7f, PassThruRC);
 
 		if (ActiveCh(NavModeRC))
 			NavSwState = Limit((uint8)(RC[NavModeRC] * 3.0f), SwLow, SwHigh);
@@ -869,16 +869,42 @@ void UpdateControls(void) {
 			AttitudeMode = AngleMode;
 		F.UsingAngleControl = AttitudeMode == AngleMode;
 
-		Nav.Sensitivity = ActiveCh(NavGainRC) ? RC[NavGainRC] : 1.0f;
+		CamPitchTrim = ActiveCh(CamPitchRC) ? RC[CamPitchRC] - RC_NEUTRAL : 0;
 
-		DesiredCamPitchTrim = ActiveCh(CamPitchRC) ? RC[CamPitchRC]
-				- RC_NEUTRAL : 0;
+		// COMPLICATED switching for arming, AH WP nav etc ****************
 
-		F.UsingWPNavigation = F.OriginValid && (NV.Mission.NoOfWayPoints > 0);
+		if (ActiveCh(AHNavSensRC)) {
+			Nav.Sensitivity = Limit(RC[AHNavSensRC], 0, 1.0f);
+			F.AltControlEnabled = Triggered(NAV_ALT_THRESHOLD_STICK,
+					AHNavSensRC) && !F.UseManualAltHold;
+#if !defined(USE_AUX3_PROBE_PIN)
+			WPNavEnabled = !DigitalRead(
+					&GPIOPins[WPMissionOrProbeSel].P);
+#endif
+		} else {
+			Nav.Sensitivity = F.Emulation ? 0.5f : 1.0f;
+			if (ActiveCh(ArmAHWPNavRC)) {
 
-		TxSwitchArmed = Triggered(50, ArmRC);
+				// override arming pulldown value
 
-		VTOLMode = Triggered(50, TransitionRC) && (UAVXAirframe == VTOLAF) && !F.Bypass;
+				ArmingMethod = TxSwitchArming;
+				SetP(ArmingMode, TxSwitchArming);
+
+				TxSwitchArmed = Triggered(0.2f, ArmAHWPNavRC);
+				F.AltControlEnabled = Triggered(0.45f, ArmAHWPNavRC)
+						&& !F.UseManualAltHold;
+				WPNavEnabled = Triggered(0.7f, ArmAHWPNavRC);
+			} else {
+				TxSwitchArmed = false;
+				F.AltControlEnabled = !F.UseManualAltHold;
+				WPNavEnabled = false;
+			}
+		}
+
+		// END COMPLICATED switching for arming, AH WP nav etc ****************
+
+		VTOLMode = Triggered(0.5f, TransitionRC) && (UAVXAirframe == VTOLAF)
+				&& !F.PassThru;
 
 		//_________________________________________________________________________________________
 
@@ -898,19 +924,18 @@ void CheckThrottleMoved(void) {
 	timemS NowmS;
 
 	NowmS = mSClock();
-	if (NowmS < mS[ThrottleUpdate])
-		ThrNeutral = DesiredThrottle;
-	else {
+	if (mSTimeout(ThrottleUpdate)) {
 		ThrLow = ThrNeutral - THR_MIDDLE_WINDOW_STICK;
 		ThrLow = Max(ThrLow, THR_MIN_ALT_HOLD_STICK);
 		ThrHigh = ThrNeutral + THR_MIDDLE_WINDOW_STICK;
 
 		if ((DesiredThrottle <= ThrLow) || (DesiredThrottle >= ThrHigh)) {
-			mSTimer(NowmS, ThrottleUpdate, THR_UPDATE_MS);
+			mSTimer(ThrottleUpdate, THR_UPDATE_MS);
 			F.ThrottleMoving = true;
 		} else
 			F.ThrottleMoving = false;
-	}
+	} else
+		ThrNeutral = DesiredThrottle;
 } // CheckThrottleMoved
 
 

@@ -24,8 +24,11 @@ boolean FirstPass;
 boolean PreflightFail = false;
 uint8 ArmingMethod;
 
+
 void Probe(uint8 p) {
-	DigitalWrite(&GPIOPins[ProbeSel].P, p);
+#if defined(USE_AUX3_PROBE_PIN)
+	DigitalWrite(&GPIOPins[WPMissionOrProbeSel].P, p);
+#endif
 } // Probe
 
 void Marker(void) {
@@ -68,10 +71,10 @@ boolean Armed(void) {
 		SwitchP = ArmingSwitch;
 	}
 
-	if (ArmingMethod == SwitchArming)
-		IsArmed = ArmingSwitch;
-	else if (ArmingMethod == TxSwitchArming)
+	if (ArmingMethod == TxSwitchArming)
 		IsArmed = ArmingSwitch && TxSwitchArmed;
+	else if (ArmingMethod == SwitchArming)
+		IsArmed = ArmingSwitch;
 	else
 		IsArmed = ArmingSwitch && StickArmed;
 
@@ -91,20 +94,21 @@ boolean Armed(void) {
 boolean FailPreflight(void) {
 	boolean r;
 
-	r = !((UAVXAirframe == Instrumentation) || (UAVXAirframe == IREmulation) || ( //
+	r = !((UAVXAirframe == Instrumentation) || (UAVXAirframe == IREmulation)
+			|| ( //
 			F.Signal //
-		&& (RCStart <= 0) //
-		&& !(Armed() && FirstPass) //
-		&& !F.ThrottleOpen //
-		&& (RC[NavModeRC] <= FromPercent(20)) //
-		&& F.IMUActive //
-		&& F.IMUCalibrated //
-		&& (F.BaroActive || (busDev[baroSel].type == noBaro)) //
-		&& ((F.MagnetometerActive && F.MagnetometerCalibrated) //
-				|| ((busDev[magSel].type == noMag) //
-				|| F.IsFixedWing)) //
-		&& !(F.LowBatt || F.spiFatal || F.i2cFatal || F.ReturnHome || F.Navigate) //
-		));
+					&& (RCStart <= 0) //
+					&& !(Armed() && FirstPass) //
+					&& !F.ThrottleOpen //
+					&& (RC[NavModeRC] <= FromPercent(20)) //
+					&& F.IMUActive //
+					&& F.IMUCalibrated //
+					&& (F.BaroActive || (busDev[baroSel].type == noBaro)) //
+					&& ((F.MagnetometerActive && F.MagnetometerCalibrated) //
+							|| ((busDev[magSel].type == noMag) //
+									|| F.IsFixedWing)) //
+					&& !(F.LowBatt || F.sioFatal || F.ReturnHome || F.Navigate) //
+			));
 
 	PreflightFail = F.ReturnHome || F.Navigate || !F.Signal;
 
@@ -114,11 +118,12 @@ boolean FailPreflight(void) {
 
 
 void DoCalibrationAlarm(void) {
-	static timemS TimeoutmS = 0;
 
-	if (!F.IMUCalibrated || !((F.MagnetometerActive && F.MagnetometerCalibrated) || F.IsFixedWing)) {
-		if (mSClock() > TimeoutmS) {
-			TimeoutmS = mSClock() + 500;
+	if (!F.IMUCalibrated
+			|| !((F.MagnetometerActive && F.MagnetometerCalibrated)
+					|| F.IsFixedWing)) {
+		if (mSTimeout(CalibrationTimeout)) {
+			mSTimer(CalibrationTimeout, 500);
 			LEDToggle(ledYellowSel);
 		}
 	}
@@ -179,19 +184,19 @@ void CheckAlarms(void) {
 			BeeperOnTime = 125;
 		}
 
-		if (mSClock() > mS[BeeperUpdate]) {
+		if (mSTimeout(BeeperUpdate)) {
 			if (BeeperIsOn()) {
-				mSTimer(mSClock(), BeeperUpdate, BeeperOffTime);
+				mSTimer(BeeperUpdate, BeeperOffTime);
 				BeeperOff();
 				LEDOff(ledRedSel);
 			} else {
-				mSTimer(mSClock(), BeeperUpdate, BeeperOnTime);
+				mSTimer(BeeperUpdate, BeeperOnTime);
 				BeeperOn();
 				LEDOn(ledRedSel);
 			}
 		}
 	} else {
-		if (mSClock() > mS[BeeperTimeout])
+		if (mSTimeout(BeeperTimeout))
 			BeeperOff();
 	}
 
@@ -200,6 +205,7 @@ void CheckAlarms(void) {
 
 void Catastrophe(void) {
 
+	/*
 	StopDrives();
 	while (true) {
 		LEDsOn();
@@ -207,6 +213,10 @@ void Catastrophe(void) {
 		LEDsOff();
 		Delay1mS(500);
 	}
+	*/
+
+	systemReset(false);
+
 } // Catastrophe
 
 
@@ -216,11 +226,11 @@ boolean UpsideDownMulticopter(void) {
 	UpsideDown = false;
 
 	if (false) { //IsMulticopter) {
-		if (Abs(A[Roll].Angle) < CRASHED_ANGLE_RAD)
-			mSTimer(mSClock(), CrashedTimeout, CRASHED_TIMEOUT_MS);
+		if (Abs(Angle[Roll]) < CRASHED_ANGLE_RAD)
+			mSTimer(CrashedTimeout, CRASHED_TIMEOUT_MS);
 		else {
-			if ((mSClock() > mS[CrashedTimeout]) && (DesiredThrottle
-					> IdleThrottle) && F.UsingAngleControl)
+			if (mSTimeout(CrashedTimeout) && (DesiredThrottle > IdleThrottle)
+					&& F.UsingAngleControl)
 				UpsideDown = true;
 		}
 	}

@@ -26,12 +26,13 @@
 
 #define PARAMS_ADDR_NV		0		// code assumes zero!
 #define MAX_PARAMETERS		128		// parameters in EEPROM start at zero
-#define NO_OF_PARAM_SETS	4
+#define NO_OF_PARAM_SETS	8
 #define MAX_STATS			32 // x 16bit
 
 #define EEPROM_ID 0xa0
 
 typedef struct {
+	uint8 Calibrated; // exactly = 1 => calibrated
 	real32 TRef;
 	real32 Scale[3], Bias[3];
 }__attribute__((packed)) AccCalStruct;

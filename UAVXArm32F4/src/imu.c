@@ -35,7 +35,7 @@ const real32 GyroScale[] = { //
 uint8 CurrAttSensorType = UAVXArm32IMU;
 
 real32 GyroBias[3];
-real32 Acc[3], Rate[3];
+real32 Acc[3], Rate[3], Angle[3];
 real32 RateEnergySum;
 uint32 RateEnergySamples;
 
@@ -133,14 +133,14 @@ void ErectGyros(uint8 imuSel, int32 TS) {
 		}
 		RestoreLEDs();
 	} else {
-		 // leave MPU6xxx calibration alone
-			for (a = X; a <= Z; a++)
-				NV.GyroCal.C[a] = g[a];
-			NV.GyroCal.TRef = t;
-			NVChanged = true;
-			UpdateNV();
-			if (CurrTelType == UAVXTelemetry)
-				SendCalibrationPacket(TelemetrySerial);
+		// leave MPU6xxx calibration alone
+		for (a = X; a <= Z; a++)
+			NV.GyroCal.C[a] = g[a];
+		NV.GyroCal.TRef = t;
+		NVChanged = true;
+		UpdateNV();
+		if (CurrTelType == UAVXTelemetry)
+			SendCalibrationPacket(TelemetrySerial);
 	}
 
 	LEDOff(ledRedSel);
@@ -152,16 +152,16 @@ void InitIMU(uint8 imuSel) {
 	idx a;
 	boolean r;
 
+	memset(&Rate, 0, sizeof(Rate[3]));
+	memset(&Acc, 0, sizeof(Acc[3]));
+	Acc[Z] = -GRAVITY_MPS_S;
+
 	InitMPU6XXX(imuSel);
 
 	for (a = 0; a < MAX_NOISE_BANDS; a++)
 		Noise[a] = 0;
 
-	r = true;
-	for (a = X; a <= Y; a++)
-		r &= NV.AccCal.Bias[a] == 0.0f;
-
-	F.AccCalibrated = F.IMUCalibrated = !r;
+	F.AccCalibrated = F.IMUCalibrated = (NV.AccCal.Calibrated == 1);
 
 } // InitIMU
 

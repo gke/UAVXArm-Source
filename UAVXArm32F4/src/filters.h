@@ -77,16 +77,12 @@ real32 scaleRangef(real32 v, real32 srcMin, real32 srcMax, real32 destMin,
 //__________________________________________________________________________
 
 
-enum {RC1, RC2, KalynFastKF, FujinFastKF, NoOSF};
+//enum {RC1, RC2, KalynFastKF, FujinFastKF, NoOSF};
+//typedef real32 (*OSLPFPtr)(filterStruct *  F, real32 v, real32 dT);
 
-typedef real32 (*OSLPFPtr)(filterStruct *  F, real32 v, real32 dT);
-extern OSLPFPtr OSF;
-extern filterStruct AccF[3], GyroF[3], OSGyroF[3];
-extern filterStruct ROCLPF, FROCLPF, BaroLPF;
+extern filterStruct AccF[3], GyroF[3], ROCLPF, FROCLPF, BaroLPF, AccZLPF, SensorTempF;
 
-extern filterStruct SensorTempF;
-
-extern real32 CurrAccLPFHz, CurrGyroLPFHz, CurrYawLPFHz, CurrServoLPFHz, CurrOSLPFHz, CurrOSLPKFQ;
+extern real32 CurrAccLPFHz, CurrGyroLPFHz, CurrYawLPFHz, CurrServoLPFHz;
 extern boolean UsingPavelFilter;
 
 void InitSWFilters(void);

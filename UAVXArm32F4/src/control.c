@@ -24,13 +24,12 @@
 #define NAV_RTH_LOCKOUT_ANGLE_RAD DegreesToRadians(10)
 
 AxisStruct A[3];
+AltStruct Alt;
 
 real32 CameraAngle[3];
 real32 OrbitCamAngle = 0.0f;
 real32 TiltThrFF;
 real32 YawSense = 1.0f;
-
-uint8 CurrOSLPFType;
 
 idx AttitudeMode = AngleMode;
 real32 DesiredHeading, SavedHeading;
@@ -47,8 +46,6 @@ real32 CruiseThrottle = 0.5f;
 real32 CurrMaxTiltAngle = 0.0f;
 real32 TuneKpScale;
 int8 BeepTick = 0;
-
-AltStruct Alt;
 
 real32 FWRollPitchFFFrac, FWAileronDifferentialFrac, FWPitchThrottleFFFrac,
 		MaxAltHoldCompFrac, FWMaxClimbAngleRad, FWBoardPitchAngleRad,
@@ -203,7 +200,7 @@ void AltitudeControlFW(void) {
 			if (F.ThrottleMoving || (ROCTooHigh(1.0f) && !F.HoldingAlt)) {
 				F.HoldingAlt = false;
 				SetDesiredAltitude(Altitude);
-				AltComp = DecayX(AltComp, ALT_HOLD_DECAY_S, AltdT);
+				AltComp = 0.0f;
 			} else {
 				F.HoldingAlt = true;
 				TrackCruiseThrottle();
@@ -220,8 +217,9 @@ void AcquireAltitude(void) {
 	// Synchronised to baro intervals independent of active altitude source
 	real32 EffMinROCMPS;
 
-	EffMinROCMPS = (F.RapidDescentHazard || (NavState == ReturningHome)
-			|| (NavState == Transiting)) ? VRSDescentRateMPS : MinROCMPS;
+	EffMinROCMPS
+			= (F.RapidDescentHazard || (NavState == Transiting)) ? VRSDescentRateMPS
+					: MinROCMPS;
 
 	AltitudeHold(EffMinROCMPS, Alt.R.Max);
 
@@ -235,7 +233,7 @@ void AltitudeControl(void) {
 		if (F.ThrottleMoving || (ROCTooHigh(0.25f) && !F.HoldingAlt)) {
 			F.HoldingAlt = false;
 			SetDesiredAltitude(Altitude); // just track altitude
-			AltComp = DecayX(AltComp, ALT_HOLD_DECAY_S, AltdT);
+			AltComp = 0.0f;
 		} else {
 			F.HoldingAlt = true;
 			TrackCruiseThrottle();
@@ -264,7 +262,7 @@ void DoAltitudeControl(void) {
 		} else {
 			F.RapidDescentHazard = ROC < VRSDescentRateMPS;
 			SetDesiredAltitude(Altitude);
-			AltComp = DecayX(AltComp, ALT_HOLD_DECAY_S, AltdT);
+			AltComp = 0.0f;
 			Sl = DecayX(Sl, FWSpoilerDecayS, AltdT);
 			F.HoldingAlt = false;
 		}
@@ -303,6 +301,19 @@ void ZeroIntegrators(void) {
 		A[a].P.IntE = A[a].R.IntE = 0.0f;
 
 } // ZeroIntegrators
+
+
+void ConditionIntE(PIStruct *P, int8 * S, real32 dT) {
+
+	// tentative scheme - need to check around 180
+	if (Sign(P->Error) == *S) {
+		P->IntE += (P->Error * P->Ki * dT);
+		P->IntE = Limit1(P->IntE, P->IntLim);
+	} else {
+		P->IntE = 0.0f;
+		*S = Sign(P->Error);
+	}
+} // ConditionIntE
 
 
 void determineGainScale(void) {
@@ -351,7 +362,6 @@ void DoRateDampingControl(idx a) {
 	Stick = Threshold(A[a].Stick, StickDeadZone);
 
 	R->Error = -Rate[a];
-
 	R->PTerm = R->Error * R->Kp
 			* Limit(1.0f - Abs(Stick) * HorizonTransScale, 0.0f, 1.0f);
 
@@ -368,8 +378,7 @@ void DoAngleControl(idx a) {
 	if (F.IsFixedWing && (a == Pitch))
 		P->Desired += FWBoardPitchAngleRad;
 
-	P->Error = Limit1(P->Desired, P->Max) - A[a].Angle;
-
+	P->Error = Limit1(P->Desired, P->Max) - Angle[a];
 	P->PTerm = P->Error * P->Kp;
 
 	if (AttitudeMode == HorizonMode) {
@@ -424,12 +433,12 @@ static void DoYawControlFW(void) {
 } // DoYawControlFW
 
 
-void RefreshDesiredYawRate(void) {
+static void DoTurnControl(void) {
+	PIDStruct *R = &A[Yaw].R;
 	PIStruct *P = &A[Yaw].P;
-	real32 ErrorSignP = 1.0f;
+	int8 ErrorSignP = 1;
 
-	F.YawActive = F.Bypass || (Abs(A[Yaw].Stick) > StickDeadZone)
-			|| (F.IsFixedWing && (Abs(A[Roll].Stick) > StickDeadZone));
+	F.YawActive = F.PassThru || (Abs(A[Yaw].Stick) > StickDeadZone);
 
 	if (F.YawActive) {
 		DesiredHeading = SavedHeading = Heading;
@@ -437,67 +446,83 @@ void RefreshDesiredYawRate(void) {
 		A[Yaw].R.Desired = Threshold(A[Yaw].Stick, StickDeadZone)
 				* A[Yaw].R.Max;
 	} else {
-		if (F.IsFixedWing) {
-			if (F.Navigate || F.ReturnHome)
-				DesiredHeading = Nav.DesiredHeading;
-		} else if ((NavState != HoldingStation) && (F.OrbitingWP
+		if ((NavState != HoldingStation) && (F.OrbitingWP
 				|| F.RapidDescentHazard || F.UsingPOI || F.UsingTurnToWP))
 			DesiredHeading = Nav.DesiredHeading;
 
 		P->Error = Limit1(MinimumTurn(DesiredHeading), P->Max);
 		P->PTerm = P->Error * P->Kp;
 
-		// tentative scheme - need to check around 180
-		if (Sign(P->Error) == ErrorSignP) {
-			P->IntE += (P->Error * P->Ki * dT);
-			P->IntE = Limit1(P->IntE, P->IntLim);
-		} else {
-			P->IntE = 0.0f;
-			ErrorSignP = Sign(P->Error);
-		}
+		ConditionIntE(P, &ErrorSignP, dT);
 
 		P->ITerm = P->IntE;
 
-		A[Yaw].R.Desired = Limit1(P->PTerm + P->ITerm, Nav.MaxCompassRate); // redundant limit
+		A[Yaw].R.Desired = Limit1(P->PTerm + P->ITerm, Nav.MaxCompassRate);
 	}
-
-} // RefreshDesiredYawRate
-
-
-static void DoTurnControl(void) {
-	PIDStruct *R = &A[Yaw].R;
-
-	RefreshDesiredYawRate();
 
 	R->Error = Limit1(R->Desired, R->Max) - Rate[Yaw];
 
 	R->PTerm = R->Error * R->Kp;
 	R->DTerm = ComputeAttitudeRateDerivative(R) * R->Kd;
 
-	A[Yaw].Out = R->PTerm + R->DTerm;
-
-	// Simple minded version
-	if (F.IsFixedWing)
-#if defined(COORDINATED_TURN)
-	DoYawControlFW();
-#else
-	{
-		A[Roll].NavCorr
-				= F.Bypass ? 0.0f
-						: Limit1(R->Error * Airspeed * GRAVITY_MPS_S_R, Nav.MaxBankAngle);
-		A[Yaw].Out *= FWAileronRudderFFFrac;
-	}
-#endif
-
-	A[Yaw].Out = conditionOut(A[Yaw].Out);
+	A[Yaw].Out = conditionOut(R->PTerm + R->DTerm);
 
 } // DoTurnControl
+
+
+static void DoTurnControlFW(void) {
+	PIDStruct *R = &A[Yaw].R;
+	PIStruct *P = &A[Yaw].P;
+	int8 ErrorSignP = 1.0f;
+	real32 NewRollCorr;
+
+	F.YawActive = F.PassThru || (Abs(A[Yaw].Stick) > StickDeadZone)
+			|| (Abs(A[Roll].Stick) > StickDeadZone);
+
+	if (F.YawActive) {
+		DesiredHeading = SavedHeading = Heading;
+		P->Error = 0.0f;
+		R->Desired = Threshold(A[Yaw].Stick, StickDeadZone) * A[Yaw].R.Max;
+
+		R->Error = Limit1(R->Desired, R->Max) - Rate[Yaw];
+		R->PTerm = R->Error * R->Kp;
+		R->DTerm = 0.0f; //ComputeAttitudeRateDerivative(R) * R->Kd;
+
+		A[Yaw].Out = conditionOut(R->PTerm + R->DTerm);
+
+	} else {
+		if (F.Navigate || F.ReturnHome)
+			DesiredHeading = Nav.DesiredHeading;
+
+		P->Error = MinimumTurn(DesiredHeading);
+		P->Error = Limit1(P->Error, Nav.HeadingTurnout); // 150 30
+
+		P->PTerm = P->Error * P->Kp * 0.1f; //60deg * 20 * 0.1 * 0.8 -> 12
+		ConditionIntE(P, &ErrorSignP, dT);
+
+		P->ITerm = P->IntE;
+
+		R->Desired = Limit1(P->PTerm + P->ITerm, Nav.MaxCompassRate);
+
+		R->Error = Limit1(R->Desired, R->Max) - Rate[Yaw];
+		R->PTerm = R->Error * R->Kp;
+		R->DTerm = 0.0f; //ComputeAttitudeRateDerivative(R) * R->Kd;
+
+		A[Yaw].Out = conditionOut(R->PTerm + R->DTerm); // needs to be driven by LR acc
+
+		NewRollCorr = atanf(R->Desired * Airspeed * GRAVITY_MPS_S_R);
+		A[Roll].NavCorr = Limit1(NewRollCorr, Nav.MaxBankAngle);
+	}
+
+} // DoTurnControlFW
 
 
 void DoControl(void) {
 	idx a;
 
-	CurrMaxTiltAngle = Max(Abs(A[Roll].Angle), Abs(A[Pitch].Angle));
+	tickCountOn(ControlTick);
+
+	CurrMaxTiltAngle = Max(Abs(Angle[Roll]), Abs(Angle[Pitch]));
 	F.NearLevel = CurrMaxTiltAngle < NAV_RTH_LOCKOUT_ANGLE_RAD;
 
 	//CalcTiltThrFFComp();
@@ -505,10 +530,11 @@ void DoControl(void) {
 
 	determineGainScale(); // primitive gain scheduling
 
-	DoTurnControl(); // MUST BE BEFORE ROLL CONTROL
+	if (F.IsFixedWing) {
 
-	for (a = Pitch; a <= Roll; a++)
-		if (F.IsFixedWing)
+		DoTurnControlFW(); // MUST BE BEFORE ROLL CONTROL
+
+		for (a = Pitch; a <= Roll; a++)
 			switch (AttitudeMode) {
 			case AngleMode:
 				DoAngleControl(a);
@@ -518,7 +544,11 @@ void DoControl(void) {
 				DoRateDampingControl(a);
 				break;
 			} // switch
-		else
+	} else {
+
+		DoTurnControl();
+
+		for (a = Pitch; a <= Roll; a++)
 			switch (AttitudeMode) {
 			case AngleMode:
 			case HorizonMode:
@@ -528,27 +558,17 @@ void DoControl(void) {
 				DoRateControl(a);
 				break;
 			} // switch
+	}
 
-	// moved UpdateDrives() to start of cycle to reduce jitter
+	tickCountOff(ControlTick);
 
 } // DoControl
 
 
 void InitControl(void) {
-	idx a;
 
 	Sl = 0.0f;
 	ZeroThrottleCompensation();
-
-	for (a = Pitch; a <= Yaw; a++) {
-
-		A[a].P.IntE = A[a].R.IntE = 0.0f;
-
-		A[a].NavCorr = 0.0f;
-		A[a].Out = 0.0f;
-	}
-
-	Acc[Z] = -GRAVITY_MPS_S;
 
 } // InitControl
 

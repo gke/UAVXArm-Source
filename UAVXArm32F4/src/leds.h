@@ -44,7 +44,8 @@ boolean BeeperIsOn(void);
 
 #define MAX_WS2812_LEDS 12 // 240
 // circular PWM waveform buffer
-#define MAX_PWM_BUFFER_SIZE (MAX_WS2812_LEDS*24) // PWM waveform samples
+#define WS2812_COLOUR_FRAME_LEN 24
+#define MAX_PWM_BUFFER_SIZE (MAX_WS2812_LEDS*WS2812_COLOUR_FRAME_LEN+WS2812_COLOUR_FRAME_LEN) // PWM waveform samples
 typedef struct {
 	uint8 r :8;
 	uint8 g :8;
@@ -52,17 +53,21 @@ typedef struct {
 } WSLEDStruct;
 
 extern void InitWSLEDs(void);
-void UpdateWSLEDBuffer(uint16_t* buffer);
-void SetWSLEDColours(int i, uint8 R, uint8 G, uint8 B);
-void WSLEDColour(int i, const WSLEDStruct w);
+void UpdateWSLEDBuffer(void);
+void SetWSLEDColours(idx i, uint8 r, uint8 g, uint8 b);
+void WSLEDColour(idx i, const WSLEDStruct w);
 void WSLED(uint8 l);
 void UpdateWSLEDs(void);
+
 
 extern const WSLEDStruct WSLEDColours[];
 
 extern uint16 WSLEDPWMBuffer[];
 extern uint16 WSLEDBufferSize;
 extern uint8 CurrNoOfWSLEDs, NoOfWSLEDs, WSLEDGroupSize;
+extern uint8 CurrWSLED;
+extern boolean UsingWS28XXLEDs;
+extern boolean WSLEDChanged;
 
 
 

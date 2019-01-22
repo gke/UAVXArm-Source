@@ -34,7 +34,7 @@
 #define RC_GOOD_BUCKET_MAX 20
 #define RC_GOOD_RATIO 4
 
-#define RC_THRES_START	3
+#define RC_THRES_START	4 // zzz was 3
 #define RC_THRES_START_STICK FromPercent(RC_THRES_START)
 #define THR_MAXIMUM FromPercent(90)
 #define RC_FRAME_TIMEOUT_US 25000
@@ -144,6 +144,7 @@ void CaptureTrims(void);
 void CheckThrottleMoved(void);
 void ReceiverTest(uint8 s);
 void UpdateRCMap(void);
+boolean ActiveCh(uint8 r);
 
 // ISR
 
@@ -164,7 +165,7 @@ extern uint8 DiscoveredRCChannels;
 extern real32 MaxCruiseThrottle, DesiredThrottle, IdleThrottle,
 		InitialThrottle, StickThrottle;
 extern real32 CurrMaxRollPitchStick;
-extern real32 DesiredCamPitchTrim;
+extern real32 CamPitchTrim;
 extern real32 ThrLow, ThrHigh, ThrNeutral;
 extern uint8 NoOfControls;
 extern int8 RCStart;

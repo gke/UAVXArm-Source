@@ -223,7 +223,7 @@ enum GPIOSelectors {
 	LandingSel,
 	Aux1Sel,
 	Aux2Sel,
-	ProbeSel,
+	WPMissionOrProbeSel,
 	InverterSel,
 	MPU6XXXIntSel,
 	HMC5XXXRdySel,

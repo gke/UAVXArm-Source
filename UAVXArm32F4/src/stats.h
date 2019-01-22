@@ -53,7 +53,7 @@ enum Statistics {
 	MinhAccS,
 	MaxhAccS,
 	RCGlitchesS,
-	SPIFailS,
+	xxxSPIFailS,
 	GyroFailS,
 	RCFailsafesS,
 	SIOFailS,

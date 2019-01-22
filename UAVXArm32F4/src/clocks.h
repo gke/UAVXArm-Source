@@ -22,6 +22,16 @@
 #ifndef _clocks_h
 #define _clocks_h
 
+typedef struct {
+	uint64 Start;
+	uint64 Cumulative;
+} tickStruct;
+
+extern volatile timeuS uS[];
+extern volatile timemS mS[];
+extern volatile tickStruct ticks[];
+extern volatile boolean tickCountsEnabled;
+
 extern volatile timeuS TicksuS;
 
 void cycleCounterInit(void);
@@ -29,8 +39,12 @@ timeuS uSClock(void);
 void Delay1uS(uint16 DelayuS);
 timemS mSClock(void);
 void Delay1mS(uint16 DelaymS);
-real32 dTUpdate(timeuS NowuS, timeuS * LastUpdateuS);
-void mSTimer(timemS NowmS, uint8 t, timemS TimePeriodmS);
-void uSTimer(timeuS NowuS, uint8 t, timeuS TimePerioduS);
+real32 dTUpdate(timeuS * LastUpdateuS);
+void mSTimer(uint8 t, timemS TimePeriodmS);
+void uSTimer(uint8 t, timeuS TimePerioduS);
+boolean mSTimeout(uint8 t);
+boolean uSTimeout(uint8 t);
+void tickCountOn(uint8 t);
+void tickCountOff(uint8 t);
 
 #endif

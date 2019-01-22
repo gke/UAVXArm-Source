@@ -212,7 +212,6 @@ void InitRCPins(uint8 PPMInputs) {
 
 } // InitRCPins
 
-
 void InitWSPin(uint16 wsBufferSize) { // hard coded to PORTC Pin 6 Aux1
 	GPIO_InitTypeDef GPIO_InitStructure;
 	TIM_TimeBaseInitTypeDef TIM_TimeBase_InitStructure;
@@ -220,10 +219,10 @@ void InitWSPin(uint16 wsBufferSize) { // hard coded to PORTC Pin 6 Aux1
 	DMA_InitTypeDef DMA_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
 
-	PinDef * u;
+	PinDef * u = &WSPin;
 
-	//RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
-	//RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM8, ENABLE);
+	InitPORT_RCC_APB(u->P.Port);
+	InitTIM_RCC_APB(u->Timer.Tim);
 
 	GPIO_StructInit(&GPIO_InitStructure);
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
@@ -258,17 +257,15 @@ void InitWSPin(uint16 wsBufferSize) { // hard coded to PORTC Pin 6 Aux1
 
 	TIM_DMACmd(u->Timer.Tim, u->Timer.CC, ENABLE);
 
-	//DMA_DeInit(u->DMA.Stream);
-	//while (DMA_GetCmdStatus(u->DMA.Stream) != DISABLE) {
-	//};
+	//RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2, ENABLE);
 
-	DMA_ITConfig(u->DMA.Stream, DMA_IT_HT, ENABLE);
 	DMA_ITConfig(u->DMA.Stream, DMA_IT_TC, ENABLE);
 
 	DMA_StructInit(&DMA_InitStructure);
 	DMA_InitStructure.DMA_BufferSize = wsBufferSize;
 	DMA_InitStructure.DMA_Channel = u->DMA.Channel;
 	DMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToPeripheral;
+
 	DMA_InitStructure.DMA_FIFOMode = DMA_FIFOMode_Disable;
 	DMA_InitStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_HalfFull;
 	DMA_InitStructure.DMA_Memory0BaseAddr = (uint32) WSLEDPWMBuffer;
@@ -276,14 +273,15 @@ void InitWSPin(uint16 wsBufferSize) { // hard coded to PORTC Pin 6 Aux1
 	DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
 	DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
 	DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
-	DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32) &u->Timer.CCR;
+
+	DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32) u->Timer.CCR;
 	DMA_InitStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;
 	DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord;
 	DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
-	DMA_InitStructure.DMA_Priority = DMA_Priority_High; // Medium
+	DMA_InitStructure.DMA_Priority = DMA_Priority_Medium; // Medium
 	DMA_Init(u->DMA.Stream, &DMA_InitStructure);
-
 	DMA_Cmd(u->DMA.Stream, ENABLE);
+
 	TIM_DMACmd(u->Timer.Tim, u->Timer.CC, ENABLE);
 
 	NVIC_InitStructure.NVIC_IRQChannel = u->PinISR;
@@ -292,7 +290,7 @@ void InitWSPin(uint16 wsBufferSize) { // hard coded to PORTC Pin 6 Aux1
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 
-} // InitWSLedPin
+} // InitWSPin
 
 void InitI2C(uint8 i2cCurr) {
 	// Original source unknown but based on those in baseflight by TimeCop
@@ -309,7 +307,7 @@ void InitI2C(uint8 i2cCurr) {
 		GPIO_PinAFConfig(d->SDA.Port, d->SDA.PinSource, d->I2C_AF);
 
 		UnstickI2C(i2cCurr); // attempt to unfreeze slave(s) - initialises pins
-		if (F.i2cFatal)
+		if (F.sioFatal)
 			return;
 
 		I2C_DeInit(d->I2C);
@@ -395,7 +393,7 @@ void UnstickI2C(uint8 i2cCurr) {
 			while (!GPIO_ReadInputDataBit(d->SCL.Port, d->SCL.Pin)) {
 				Delay1uS(I2C_DELAY_US);
 				if (mSClock() > Timeout) {
-					F.i2cFatal = true;
+					F.sioFatal = true;
 					return;
 				}
 			}
@@ -788,7 +786,6 @@ void InitAnalogPorts(void) {
 		ADC_Cmd(ux->ADCx, ENABLE);
 
 		ADC_SoftwareStartConv(ux->ADCx);
-
 	}
 
 } // InitAnalog
@@ -910,9 +907,6 @@ void InitHarness(void) {
 		InitPin(&GPIOPins[i]);
 	BeeperOff();
 
-	// PPM RC
-	InitRCPins(CurrNoOfRCPins);
-	InitRC();
 
 	// Drives/Servos
 	for (i = 0; i < MAX_PWM_OUTPUTS; i++) { // switch off all (potential) motor output pins
@@ -924,6 +918,10 @@ void InitHarness(void) {
 		InitDrives();
 	else
 		DrivesInitialised = false;
+
+	// PPM RC
+	InitRCPins(CurrNoOfRCPins);
+	InitRC();
 
 	// I2C/SPI
 	for (i = 0; i < maxDevSel; i++)

@@ -109,7 +109,7 @@ boolean WriteBlockExtMem(uint32 a, uint16 l, int8 *v) {
 	uint8 bank;
 	i8u8u u;
 
-	while (uSClock() < uS[MemReady]) {
+	while (!uSTimeout(MemReady)) {
 		// BLOCKING
 	};
 	if (F.HaveExtMem) {
@@ -124,7 +124,7 @@ boolean WriteBlockExtMem(uint32 a, uint16 l, int8 *v) {
 		r &= I2CWriteBlock(busDev[memSel].busNo, EEPROM_ID | bank, 0xff, 2 + l, b);
 	} else
 	r = false;
-	uSTimer(uSClock(), MemReady, 5000);
+	uSTimer(MemReady, 5000);
 
 	return (r);
 

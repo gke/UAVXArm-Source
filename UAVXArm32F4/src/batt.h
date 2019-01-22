@@ -26,6 +26,7 @@
 
 extern void InitBattery(void);
 extern void CheckBatteries(void);
+extern void CaptureBatteryCurrentADCZero(void);
 extern void BatteryTest(uint8 s);
 
 extern real32 BatteryVolts, BatterySagR, BatteryCurrent, BatteryVoltsLimit, StartupVolts,

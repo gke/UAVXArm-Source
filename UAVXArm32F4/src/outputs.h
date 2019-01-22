@@ -100,12 +100,19 @@ enum PWMTagsAileron {
 	RightAileronC,
 	LeftAileronC,
 	ElevatorC,
-	LeftSpoilerC = 7, // only available for non-parallel Rx
+	RightSpoilerC = 7, // only available for non-parallel Rx
 	RudderC = 8,
-	RightSpoilerC = 9
+	LeftSpoilerC = 9
 };
 enum PWMTagsElevon {
 	RightElevonC = 1, LeftElevonC = 2
+};
+
+enum PWMTagsRudderElevator {
+	RE_RudderC = 1,
+	RE_ElevatorC = 2,
+	RE_RightSpoilerC = 3,
+	RE_LeftSpoilerC = 4,
 };
 
 enum PWMTagsVTOL {

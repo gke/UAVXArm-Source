@@ -172,7 +172,7 @@ void TxFrSkyHubAttitude(uint8 s) {
 	uint8 a;
 
 	for (a = Pitch; a <= Roll; a++)
-		TxFrSkyHubPacket(s, UAVX_ID_PITCH + a, RadiansToDegrees(A[a].Angle));
+		TxFrSkyHubPacket(s, UAVX_ID_PITCH + a, RadiansToDegrees(Angle[a]));
 
 } // TxFrSkyHubAttitude
 
@@ -649,7 +649,7 @@ void TxFrSkySPort(uint8 s) {
 				TxFrSkySPortPacket(s, appID, ROC * 100); // unknown given unit but requested in 100 = 1m/s
 			break;
 		case FSSP_ID_HEADING:
-			TxFrSkySPortPacket(s, appID, RadiansToDegrees(A[Yaw].Angle) * 10); // *10deg
+			TxFrSkySPortPacket(s, appID, RadiansToDegrees(Angle[Yaw]) * 10); // *10deg
 			break;
 		case FSSP_ID_ACCX:
 			TxFrSkySPortPacket(s, appID, Acc[X] * 100);
@@ -677,7 +677,7 @@ void TxFrSkySPort(uint8 s) {
 				tmpi += 10;
 			if (!F.UsingAngleControl)
 				tmpi += 20;
-			if (F.Bypass)
+			if (F.PassThru)
 				tmpi += 40;
 			if (F.MagnetometerActive)
 				tmpi += 100;
@@ -687,7 +687,7 @@ void TxFrSkySPort(uint8 s) {
 				tmpi += 400;
 			if (NavState == HoldingStation)
 				tmpi += 1000;
-			if (NavState == ReturningHome)
+			if (NavState == Transiting)
 				tmpi += 2000;
 			//if (FLIGHT_MODE(HEADFREE_MODE))
 			//tmpi += 4000;

@@ -344,7 +344,6 @@ void CalibrateAccSixPointSphere(uint8 s, uint8 imuSel) {
 
 	N = 0;
 	calDirCnt = 0;
-	F.AccCalibrated = false;
 
 	do {
 
@@ -407,10 +406,12 @@ void CalibrateAccSixPointSphere(uint8 s, uint8 imuSel) {
 
 	AccZBias = 0.0f;
 
+	NV.AccCal.Calibrated = 1;
+	F.AccCalibrated = true;
+
 	NVChanged = true;
 	UpdateNV();
 
-	F.AccCalibrated = true;
 
 	LEDsOff();
 	DoBeeps(2);
@@ -440,7 +441,6 @@ void CalibrateAccSixPoint(uint8 s, uint8 imuSel) {
 
 	calDirCnt = 0;
 	resetState(&calState);
-	F.AccCalibrated = false;
 
 	do {
 
@@ -511,10 +511,11 @@ void CalibrateAccSixPoint(uint8 s, uint8 imuSel) {
 
 	AccZBias = 0.0f;
 
+	NV.AccCal.Calibrated = 1;
+	F.AccCalibrated = true;
+
 	NVChanged = true;
 	UpdateNV();
-
-	F.AccCalibrated = true;
 
 	LEDsOff();
 	DoBeeps(2);

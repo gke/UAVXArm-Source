@@ -27,14 +27,6 @@ real32 Airspeed;
 //#define MS56XX_CYCLE_MS 	10
 //#define MS56XX_HZ			(1000.0f/MS56XX_CYCLE_MS)
 
-
-typedef struct {
-	uint8 Samples;
-	uint16 UpdateuS;
-	uint32 OSSMask;
-} ms56xxDefStruct;
-
-
 typedef const struct {
 	uint16 intervalmS;
 	real32 minAlt;
@@ -44,7 +36,6 @@ typedef const struct {
 extern uint8 CurrRFSensorType;
 
 extern RFStruct RF[];
-filterStruct AccZLPF;
 
 // Measurement Specialities Baro
 
@@ -89,7 +80,6 @@ extern real32 OriginAltitude, BaroAltitude;
 extern real32 ROC, ROCF;
 extern uint8 BaroType;
 extern real32 AltdT, AltdTR;
-extern real32 AltLPFHz;
 extern real32 AccZBias;
 extern uint16 ms56xx_ManufacturersData;
 extern real32 BaroRawAltitude, BaroRawAltitudeP; // fusion filter output

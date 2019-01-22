@@ -21,12 +21,13 @@
 #include "UAVX.h"
 
 Flags F;
-uint8 State;
+uint8 State, StateP;
+
 boolean FirstIMU;
+timeuS FlightTimemS = 0;
+
 timeuS CurrPIDCycleuS = PID_CYCLE_2000US;
 real32 CurrPIDCycleS;
-volatile timeuS uS[uSLastArrayEntry];
-volatile timemS mS[mSLastArrayEntry];
 
 uint8 ch;
 int8 i, m;
@@ -58,279 +59,19 @@ void DoHouseKeeping(void) {
 	DoCalibrationAlarm();
 
 	CheckTelemetry(TelemetrySerial);
-	UpdateWSLEDs();
 
 } // DoHousekeeping
 
-void CalculatedT(timeuS NowuS) {
-
-	dT = dTUpdate(NowuS, &LastInertialUpdateuS);
-	dTOn2 = 0.5f * dT;
-	dTR = 1.0f / dT;
-	dTROn2 = dTR * 0.5f;
-
-} // CalculatedT
-
 void ResetMainTimeouts(void) {
-	timemS NowmS;
 
-	NowmS = mSClock();
-	mSTimer(mSClock(), CrashedTimeout, CRASHED_TIMEOUT_MS);
-	mSTimer(NowmS, ArmedTimeout, ARMED_TIMEOUT_MS);
-	mSTimer(NowmS, RxFailsafeTimeout, RC_NO_CHANGE_TIMEOUT_MS);
+	mSTimer(CrashedTimeout, CRASHED_TIMEOUT_MS);
+	mSTimer(ArmedTimeout, ARMED_TIMEOUT_MS);
+	mSTimer(RxFailsafeTimeout, RC_NO_CHANGE_TIMEOUT_MS);
 
 } // ResetMainTimeouts
 
-void DoTesting(void) {
-	idx i, c;
-	int32 d;
-	static int16 MaxShadow[7];
-	static int16 MinShadow[7];
-	static int16 PrevShadow[7];
-	static int32 MaxDelta[7];
-	//#define COMMISSIONING_TEST
-	//#define TEMP_COMP_TESTING
-	//#define USB_TESTING
-	//#define KF_TESTING
-	//#define BARO_TESTING
-	//#define MAG_CAL_TESTING
-
-#if defined(TEMP_COMP_TESTING)
-
-	//CalibrateAccAndGyro(TelemetrySerial, imuSel);
-	LEDsOff();
-
-	for (i = 0; i < 7; i++) {
-		MaxShadow[i] = -32000;
-		MinShadow[i] = 32000;
-		MaxDelta[i] = 0;
-	}
-
-	c = 0;
-	while (true) {
-		Delay1mS(1);
-		ReadFilteredGyroAndAcc(imuSel);
-
-		for (i = 0; i < 7; i++) {
-			if (ShadowRawIMU[i] > MaxShadow[i])
-			MaxShadow[i] = ShadowRawIMU[i];
-			else if (ShadowRawIMU[i] < MinShadow[i])
-			MinShadow[i] = ShadowRawIMU[i];
-
-			MaxDelta[i] = ShadowRawIMU[i] - PrevShadow[i];
-			PrevShadow[i] = ShadowRawIMU[i];
-
-		}
-
-		if (++c >= 2)
-		{
-			c = 0;
-
-			/*
-			 * for (i = 0; i < 3; i++) {
-			 TxVal32(TelemetrySerial, ShadowRawIMU[i], 0, ',');
-			 TxVal32(TelemetrySerial, RawAcc[i] * 10.0f, 1, ',');
-			 TxVal32(TelemetrySerial, MinShadow[i], 0, ',');
-			 TxVal32(TelemetrySerial, MaxShadow[i], 0, ',');
-			 }
-			 */
-
-			for (i = 0; i < 3; i++) {
-				TxVal32(TelemetrySerial, ShadowRawIMU[i + 4], 0, ',');
-				//TxVal32(TelemetrySerial, RawGyro[i] * 10.0f, 1, ',');
-				//TxVal32(TelemetrySerial, MinShadow[i + 4], 0, ',');
-				//TxVal32(TelemetrySerial, MaxShadow[i + 4], 0, ',');
-				TxVal32(TelemetrySerial, MaxDelta[i + 4], 0, ',');
-			}
-
-			//TxVal32(TelemetrySerial, ShadowRawIMU[4], 0, ',');
-			//TxVal32(TelemetrySerial, MaxShadow[4], 0, ',');
-			//TxVal32(TelemetrySerial, MPU6XXXTemperature * 1000.0f, 3, ',');
-
-
-			TxNextLine(TelemetrySerial);
-			LEDToggle(ledGreenSel);
-		}
-	};
-
-#elif defined(USB_TESTING)
-
-	USBConnect();
-
-	LEDOn(ledGreenSel);
-
-	USBTxString("starting USB Test (! to force restart)\n");
-
-	while (true) {
-		if (SerialAvailable(USBSerial)) {
-			LEDToggle(ledYellowSel);
-			uint8 ch = RxChar(USBSerial);
-			if (ch == '!')
-			systemReset(false);
-			else
-			TxChar(USBSerial, ch);
-		}
-	}
-#elif defined(COMMISSIONING_TEST)
-
-	ReadBlockNV(0, sizeof(NV), (int8 *) (&NV));
-
-	NV.CurrPS = 0;
-	for (i = 0; i < MAX_PARAMETERS; i++)
-	SetP(DefaultParams[i].tag, DefaultParams[i].p[0]);
-
-	CommissioningTest(0);
-
-#elif defined(BARO_TESTING)
-
-	int16 kkk, cycles;
-	timeval start = uSClock();
-
-	for (kkk = 0; kkk < 256; kkk++)
-	LSBBaro[kkk] = 0;
-
-	cycles = 10;
-	for (kkk = 0; kkk < 3000; kkk++) {
-		while (!DEBUGNewBaro)
-		GetBaro();
-		DEBUGNewBaro = false;
-
-		LEDToggle(ledGreenSel);
-		if (cycles-- <= 0) {
-			cycles = 10;
-			TxVal32(TelemetrySerial, BaroTempVal, 0, ',');
-			TxVal32(TelemetrySerial, BaroPressVal, 0, ',');
-			TxVal32(TelemetrySerial, BaroTemperature * 1000, 3, ',');
-			TxVal32(TelemetrySerial, BaroPressure * 100, 2, ',');
-			TxVal32(TelemetrySerial, BaroRawAltitude * 1000, 3, ',');
-			TxVal32(TelemetrySerial, BaroAltitude * 1000, 3, ',');
-			TxNextLine(TelemetrySerial);
-		}
-		LSBBaro[BaroPressVal & 0xff]++;
-
-	}
-
-	TxVal32(TelemetrySerial, (uSClock() - start) / 3000, 3, ',');
-	TxNextLine(TelemetrySerial);
-
-	for (kkk = 0; kkk < 256; kkk++) {
-		TxVal32(TelemetrySerial, kkk, 0, ',');
-		TxVal32(TelemetrySerial, LSBBaro[kkk], 0, ',');
-		TxNextLine(TelemetrySerial);
-	}
-
-	LEDsOn();
-	while (true) {
-	};
-
-#elif defined(KF_TESTING)
-
-	const real32 qKF = 1000; // 400
-	const real32 rKF = 100; // 88
-
-	const real32 SampleHz = 8000.0f;
-	const real32 NyquistHz = 4000.0f;
-	const real32 PIDHz = 1000;
-	const real32 GyroHz = 100.0f;
-
-	real32 OverSampledT = 1.0f / SampleHz;
-	real32 PIDdT = 1.0f/ PIDHz;
-
-	filterStruct KalynF, FujinF, OSLPF, FinalLPF;
-	int kkk;
-	real32 Kalyn, Fujin, OSRC, RC, RN;
-
-	NowuS = uSClock();
-	timeval NextmS = mSClock();
-
-	timeval PrevuS = NowuS;
-
-	kkk = 0;
-
-	const real32 GyroSignalHz = 50.0f;
-	const real32 s2Hz = 7000.0f;
-	const real32 s3Hz = 23000.0f;
-	const real32 s4Hz = 33000.0f;
-
-	real32 TimeS = 0.0f;
-	real32 NextTimeS = 0.0f;
-
-	initKalynFastLPKF(&KalynF, qKF, rKF, NyquistHz); // 0.011? 0.025
-	initFujinFastLPKF(&FujinF, 300); //NyquistHz);
-	initLPFn(&OSLPF, 2, NyquistHz);
-	initLPFn(&FinalLPF, 1, GyroHz);
-
-	TxString(0, "TimemS, Noise, Raw, Kalyn, Fujin, RC, RC2");
-	TxNextLine(TelemetrySerial);
-	do {
-
-		// mix signals with offsets - could add some noise
-		RN = 1.0f * (real32) rand()/RAND_MAX;
-		real32 v =
-		sinf(TWO_PI * GyroSignalHz * TimeS)
-		+ sinf(TWO_PI * s2Hz * TimeS)
-		+ sinf(TWO_PI * s3Hz * TimeS) + sinf(TWO_PI * s4Hz * TimeS)
-		+ RN;
-
-		Kalyn = KalynFastLPKF(&KalynF, v, OverSampledT);
-		Fujin = FujinFastLPKF(&FujinF, v, OverSampledT);
-		OSRC = LPFn(&OSLPF, v, OverSampledT);
-
-		if (TimeS > NextTimeS) {
-			NextTimeS = TimeS + PIDdT;
-			RC = LPFn(&FinalLPF, OSRC, GyroHz);
-		}
-
-		TxVal32(TelemetrySerial, TimeS * 1000000, 3, ',');
-		TxVal32(TelemetrySerial, RN * 100, 2, ',');
-		TxVal32(TelemetrySerial, v * 100, 2, ',');
-		TxVal32(TelemetrySerial, Kalyn * 100, 2, ',');
-		TxVal32(TelemetrySerial, Fujin * 100, 2, ',');
-		TxVal32(TelemetrySerial, OSRC * 100, 2, ',');
-		TxVal32(TelemetrySerial, RC * 100, 2, ',');
-		TxNextLine(TelemetrySerial);
-
-		TimeS += OverSampledT;
-
-	}while (TimeS < 1.0f);
-
-	LEDsOn();
-	while (true) {
-	};
-#elif defined(MAG_CAL_TESTING)
-
-	int16 ii, jj;
-
-	CalibrateHMC5XXX(0);
-
-	for (ii = 0; ii < MAG_CAL_SAMPLES; ii++) {
-
-		TxVal32(TelemetrySerial, ii, 0, ',');
-
-		for (jj = 0; jj <= 2; jj++)
-			TxVal32(TelemetrySerial, MagSample[ii][jj], 0, ',');
-
-		TxNextLine(TelemetrySerial);
-	}
-
-	TxNextLine(TelemetrySerial);
-	for (jj = 0; jj <= 2; jj++)
-		TxVal32(TelemetrySerial, NV.MagCal.Bias[jj], 0, ',');
-	TxNextLine(TelemetrySerial);
-
-	while (1) {
-		Delay1mS(200);
-		LEDToggle(ledRedSel);
-	}
-#else
-	// NO TESTS
-#endif
-
-} // DoTesting
-
 
 int main() {
-	timeuS NowuS;
 	static timeuS LastUpdateuS = 0;
 
 	InitClocks();
@@ -340,6 +81,8 @@ int main() {
 
 	LoadParameters();
 	InitHarness();
+
+	SendDefAFNameNames(TelemetrySerial);
 
 	InitLEDs();
 	InitWSLEDs();
@@ -352,8 +95,7 @@ int main() {
 
 	InitIMU(imuSel);
 	InitMagnetometer();
-	InitMadgwick();
-
+	InitMadgwick(); // angle to zero and compute q0,q1,q2,q3;
 	InitBarometer();
 	InitTemperature();
 
@@ -366,17 +108,20 @@ int main() {
 
 	LEDsOff();
 
-	InitGPS();
+	if (GPSRxSerial != TelemetrySerial)
+		InitGPS();
 
 	EnableRC();
 
-	mSTimer(mSClock(), LastBattery, 0);
-	uSTimer(uSClock(), NextCycleUpdate, CurrPIDCycleuS);
+	uSTimer(NextCycleUpdate, CurrPIDCycleuS);
 
 	FirstPass = true;
-	State = Preflight;
+	State = StateP = Preflight;
 
 	while (true) {
+
+		tickCountsEnabled = State == InFlight;
+		tickCountOn(FlightTick);
 
 		if ((UAVXAirframe == Instrumentation) || (UAVXAirframe == IREmulation)) {
 
@@ -395,38 +140,18 @@ int main() {
 
 		}
 
-		if (UseGyroOS) {
-			FirstIMU = true;
-			do {
-				if (MPU6XXXReady(imuSel)) {
-					Probe(1);
-					if (FirstIMU)
-						ReadFilteredGyroAndAcc(imuSel);
-					else
-						ReadGyro(imuSel);
-					FirstIMU = false;
-					Probe(0);
-				}
-				NowuS = uSClock();
-			} while (NowuS < uS[NextCycleUpdate]);
-		} else
-			NowuS = uSClock();
+		if (uSTimeout(NextCycleUpdate)) {
+			uSTimer(NextCycleUpdate, CurrPIDCycleuS);
 
-		if (UseGyroOS || (NowuS >= uS[NextCycleUpdate])) {
+			Marker();
 
-			Probe(1);
+			dT = dTUpdate(&LastUpdateuS);
+			dTOn2 = 0.5f * dT;
+			dTR = 1.0f / dT;
+			dTROn2 = dTR * 0.5f;
 
 			UpdateDrives(); // from previous cycle - one cycle lag minimise jitter
-
-			//---------------
-			CalculatedT(NowuS);
 			UpdateInertial();
-			//---------------
-
-			uSTimer(NowuS, NextCycleUpdate, CurrPIDCycleuS);
-
-			uSTimer(NowuS, LastCycleTime, -LastUpdateuS);
-			LastUpdateuS = NowuS;
 
 			DoHouseKeeping();
 
@@ -449,7 +174,8 @@ int main() {
 
 					DoBeep(8, 2);
 
-					FirstPass = F.OriginValid = F.NavigationEnabled = false;
+					FirstPass = F.OriginValid = F.NavigationEnabled
+							= F.OffsetOriginValid = false;
 					AlarmState = NoAlarms;
 					InitialThrottle = StickThrottle;
 
@@ -473,7 +199,8 @@ int main() {
 
 				DoBeep(8, 2);
 
-				InitGPS();
+				if (GPSRxSerial == TelemetrySerial)
+					InitGPS();
 
 				DoBeep(8, 2);
 				InitBlackBox();
@@ -486,19 +213,18 @@ int main() {
 
 				ZeroStats();
 				F.IsArmed = true;
-				mSTimer(mSClock(), WarmupTimeout, WARMUP_TIMEOUT_MS);
+				mSTimer(WarmupTimeout, WARMUP_TIMEOUT_MS);
 
 				State = Warmup;
 
 				break;
 			case Warmup:
 
-				BatteryCurrentADCZero = LPF1(BatteryCurrentADCZero, analogRead(
-						BattCurrentAnalogSel), 0.5f);
+				CaptureBatteryCurrentADCZero();
 
 				ResetHeading();
 
-				if (mSClock() > mS[WarmupTimeout]) {
+				if (mSTimeout(WarmupTimeout)) {
 					UbxSaveConfig(GPSTxSerial); //does this save ephemeris stuff?
 
 					DoBeeps(3);
@@ -529,6 +255,9 @@ int main() {
 					if (UAVXAirframe == Instrumentation) {
 
 						CaptureHomePosition();
+
+						CaptureBatteryCurrentADCZero();
+
 						if (F.OriginValid) { // for now only works with GPS
 							LEDsOff();
 							UbxSaveConfig(GPSTxSerial);
@@ -538,7 +267,7 @@ int main() {
 
 					} else {
 
-						if (mSClock() > mS[ArmedTimeout])
+						if (mSTimeout(ArmedTimeout))
 							InitiateShutdown(ArmingTimeout);
 						else {
 
@@ -560,15 +289,15 @@ int main() {
 								LEDsOff();
 
 								F.DrivesArmed = true;
-								if (F.IsFixedWing && !F.Bypass) {
+								if (F.IsFixedWing && !F.PassThru) {
 									LaunchState = initLaunch;
 									State = Launching;
 								} else
 									State = InFlight;
 
-							} else {
+							} else { // continue in state "landed"
 
-								// continue in state "landed"
+								CaptureBatteryCurrentADCZero();
 
 							}
 						}
@@ -598,7 +327,7 @@ int main() {
 
 						ZeroNavCorrections();
 						if (NavState != Perching)
-							F.OriginValid = false;
+							F.OriginValid = F.OffsetOriginValid = false;
 
 						if (Tuning) {
 							// TODO: save tuning?
@@ -607,8 +336,8 @@ int main() {
 						UpdateNV(); // also captures stick programming
 
 						ResetMainTimeouts();
-						mSTimer(mSClock(), ThrottleIdleTimeout,
-								THR_LOW_DELAY_MS);
+
+						mSTimer(ThrottleIdleTimeout, THR_LOW_DELAY_MS);
 						LEDOn(ledGreenSel);
 
 						State = Landed;
@@ -635,7 +364,12 @@ int main() {
 				break;
 			case InFlight:
 				LEDChaser();
+
+				if (F.IsFixedWing && UsingOffsetHome)
+					CaptureOffsetHomePosition();
+
 				DoNavigation();
+
 				if (UAVXAirframe == Instrumentation) {
 
 					if (F.NavigationEnabled)
@@ -649,30 +383,26 @@ int main() {
 									&& !Armed()))) {
 
 						ZeroThrottleCompensation();
-						mSTimer(mSClock(), ThrottleIdleTimeout,
-								THR_LOW_DELAY_MS);
+						mSTimer(ThrottleIdleTimeout, THR_LOW_DELAY_MS);
 
 						State = Landing;
 
 					} else {
 
-						if (UpsideDownMulticopter()) {
+						if (UpsideDownMulticopter())
 							InitiateShutdown(UpsideDown);
-						} else {
+						else {
 
 							RateEnergySum
 									+= Sqr(Abs(Rate[X]) + Abs(Rate[Y]) + Abs(Rate[Z]));
 							RateEnergySamples++;
 
-#if defined(INC_DFT)
-							if (!UseGyroOS) // not enough time if OS
-							DFT8(RawAcc[X], DFT);
-#endif
-
 							DoAltitudeControl();
 						}
 					}
 				}
+				if (State != InFlight)
+					tickCountOff(FlightTick);
 				break;
 			case IREmulate:
 				if (!Armed())
@@ -680,19 +410,15 @@ int main() {
 				break;
 			} // switch state
 
-			setStat(UtilisationS, State == InFlight ? ((uSClock() - NowuS)
-					* 100.0f) / CurrPIDCycleuS : 0);
+			StateP = State;
 
-			Probe(0);
+			setStat(UtilisationS, State == InFlight ? ((uSClock()
+					- LastUpdateuS) * 100.0f) / CurrPIDCycleuS : 0);
 
-			if ((CurrTelType == UAVXFastRawIMUTelemetry) && (State == InFlight)) {
-
-				BlackBoxEnabled = true;
-				SendRawIMU(TelemetrySerial);
-				BlackBoxEnabled = false;
-
-			}
+			Marker();
 		}
+
+		tickCountOff(FlightTick);
 
 	} // while true
 

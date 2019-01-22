@@ -117,7 +117,7 @@ void InitASDiffPressureI2C(void) {
 void UpdateAirspeed(void) {
 
 	if (F.ASActive) {
-		if (mSClock() > NextASUpdatemS) { // use mS[]
+		if (mSTimeout(NextASUpdate)) { // use mS[]
 
 			NextASUpdatemS += 500; // make faster with filter and out of bound checks
 

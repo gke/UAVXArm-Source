@@ -56,8 +56,6 @@ timeuS NextBaroUpdateuS;
 real32 Airspeed;
 uint8 CurrRFSensorType;
 
-filterStruct AccZLPF;
-real32 AltLPFHz;
 real32 AccZBias;
 
 uint8 BaroType = ms5611Baro;
@@ -71,8 +69,7 @@ void UpdateAccZ(real32 AccZdT) {
 	AccZ = Limit1(GravityCompensatedAccZ(), GRAVITY_MPS_S * 2.0f);
 
 	if (State == InFlight) // assume average vertical acceleration is zero
-		AccZBias = AccZBias * K_ACC_BIAS
-				+ AccZ * (1.0 - K_ACC_BIAS);
+		AccZBias = AccZBias * K_ACC_BIAS + AccZ * (1.0 - K_ACC_BIAS);
 
 	AccZ = LPFn(&AccZLPF, AccZ, AccZdT) - AccZBias;
 
@@ -239,12 +236,17 @@ void StartBaro(boolean ReadPressure) {
 
 void GetBaro(void) {
 	static timeuS LastBaroUpdateuS = 0;
+	static real32 BaroPressureP = 0.0f;
 	real32 BarodT;
 	timeuS NowuS;
 	uint8 B[3];
 
 	if (F.BaroActive) {
+		NowuS = uSClock();
 		if (uSClock() > NextBaroUpdateuS) {
+
+			NextBaroUpdateuS = NowuS + ms56xxSampleIntervaluS[MS56XX_OSR_XXXX
+					>> 1];
 
 			SIOReadBlock(baroSel, 0, 3, B);
 			BaroVal = ((uint32) B[0] << 16) | ((uint32) B[1] << 8) | B[2];
@@ -258,7 +260,17 @@ void GetBaro(void) {
 
 				BaroPressure = CompensateBaro(BaroTempVal, BaroPressVal);
 
-				NowuS = uSClock(); // should be no jitter in SIOReadBlock?
+#if defined(UAVXF4V4)
+				// TODO: KLUDGE TO FIX "SOME" V4 BOARDS - NOT SIMPLE SIGN REVERSAL THOUGH?
+				if (BaroPressure < 0.0f) {
+					BaroPressure = BaroPressureP;
+					F.BaroFailure = true;
+				} else {
+					F.BaroFailure = false;
+					BaroPressureP = BaroPressure;
+				}
+#endif
+
 				BarodT = (NowuS - LastBaroUpdateuS) * 0.000001f;
 				LastBaroUpdateuS = NowuS;
 
@@ -282,9 +294,6 @@ void GetBaro(void) {
 
 			}
 			StartBaro(AcquiringPressure);
-
-			NextBaroUpdateuS = uSClock()
-					+ ms56xxSampleIntervaluS[MS56XX_OSR_XXXX >> 1];
 		}
 	} else
 		BaroAltitude = 0.0f;
@@ -470,9 +479,8 @@ void GetRangefinderAltitude(void) {
 
 	if (F.RangefinderActive) {
 
-		if (mSClock() >= mS[RangefinderUpdate]) {
-			mSTimer(mSClock(), RangefinderUpdate,
-					RF[CurrRFSensorType].intervalmS);
+		if (mSTimeout(RangefinderUpdate)) {
+			mSTimer(RangefinderUpdate, RF[CurrRFSensorType].intervalmS);
 
 			ReadRangefinder();
 
@@ -540,7 +548,7 @@ void InitRangefinder(void) {
 			F.RangefinderActive = false;
 			break;
 		} // switch
-		mSTimer(mSClock(), RangefinderUpdate, RF[CurrRFSensorType].intervalmS);
+		mSTimer(RangefinderUpdate, RF[CurrRFSensorType].intervalmS);
 	}
 
 	RangefinderAltitude = 0.0f;
@@ -557,6 +565,10 @@ void SetDesiredAltitude(real32 Desired) {
 	Alt.P.IntE = Alt.R.IntE = Sl = 0.0f;
 } //SetDesiredAltitude
 
+real32 CheckGPSAltitude(void) {
+	return F.UsingGPSAltitude && F.OriginValid ? GPS.altitude
+			- GPS.originAltitude : BaroAltitude - OriginAltitude;
+} // CheckGPSAltitude
 
 #define RETIRED_ALT_HOLD
 #if defined(RETIRED_ALT_HOLD)
@@ -589,8 +601,7 @@ void SelectAltitudeSensor(void) {
 					F.HoldingAlt = false;
 				WasUsingRF = true;
 			} else {
-				Altitude = F.UsingGPSAltitude && F.OriginValid ? GPS.altitude
-						- GPS.originAltitude : BaroAltitude - OriginAltitude;
+				Altitude = CheckGPSAltitude();
 				if (F.HoldingAlt && WasUsingRF)
 					F.HoldingAlt = false;
 				WasUsingRF = false;
@@ -615,8 +626,7 @@ void SelectAltitudeSensor(void) {
 							+ AltOffset) * (1.0f - RF_CF));
 				}
 			} else
-				Altitude = F.UsingGPSAltitude && F.OriginValid ? GPS.altitude
-						- GPS.originAltitude : BaroAltitude - OriginAltitude;
+				Altitude = CheckGPSAltitude();
 		}
 		break;
 	case Recapture: // solves cliff problem
@@ -631,8 +641,7 @@ void SelectAltitudeSensor(void) {
 					SetDesiredAltitude(Altitude);
 				WasUsingRF = true;
 			} else {
-				Altitude = F.UsingGPSAltitude && F.OriginValid ? GPS.altitude
-						- GPS.originAltitude : BaroAltitude - OriginAltitude;
+				Altitude = Altitude = CheckGPSAltitude();
 				if (F.HoldingAlt && WasUsingRF)
 					SetDesiredAltitude(Altitude);
 				WasUsingRF = false;
@@ -662,8 +671,7 @@ void SelectAltitudeSensor(void) {
 			}
 			WasUsingRF = true;
 		} else {
-			Altitude = F.UsingGPSAltitude && F.OriginValid ?
-			GPS.altitude - GPS.originAltitude : BaroAltitude - OriginAltitude;
+			Altitude = CheckGPSAltitude();
 			if (F.HoldingAlt && WasUsingRF) {
 				AltitudeP = Altitude;
 				F.HoldingAlt = false;
@@ -684,8 +692,8 @@ void UpdateAltitudeEstimates(void) {
 	GetRangefinderAltitude();
 
 	NowmS = mSClock();
-	if (NowmS > mS[AltUpdate]) { // 5 cycles @ 10mS -> 50mS or 20Hz
-		mSTimer(NowmS, AltUpdate, ALT_UPDATE_MS);
+	if (mSTimeout(AltUpdate)) { // 5 cycles @ 10mS -> 50mS or 20Hz
+		mSTimer(AltUpdate, ALT_UPDATE_MS);
 
 		AltdT = (NowmS - LastAltUpdatemS) * 0.001f;
 		AltdTR = 1.0f / AltdT;

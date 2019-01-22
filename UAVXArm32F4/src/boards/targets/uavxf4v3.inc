@@ -50,21 +50,40 @@ PinDef PWMPins[MAX_PWM_OUTPUTS] = {
 	{true, PA7, PWMPinConfig, PWMOut_3_2}, 
 	{true, PB0, PWMPinConfig, PWMOut_3_3},
 	{true, PB1, PWMPinConfig, PWMOut_3_4}
+
 };
 
 PinDef GPIOPins[MAX_GPIO_PINS] = { 	
 	{true, PA12, OutPinConfig,}, // Beeper 4? // USB
 	{true, PC10, InpPinConfig,}, // Armed
 	{true, PC9, InpPinConfig,}, // Landing
-#if defined(USE_WS2812) || defined(USE_WS2812B)
-	{false, }, // WSLEDs
-#else
+#if !(defined(USE_WS2812) || defined(USE_WS2812B))
 	{true, PC6, OutPinConfig,}, // Aux1
+#else
+	{false, }, // WSLEDs
 #endif	   
-	{true, PC7, OutPinConfig,}, // Aux2
-	{true, PC8, OutPinConfig,}, // Probe (Aux3)
+	{true, PC7, OutPinConfig,}, // Aux2 (GPSTxSerial for V3 and Parallel Rx)
+#if defined(USE_AUX3_PROBE_PIN)
+	{true, PC8, OutPinConfig,}, // Aux3 (Probe)
+#else
+	{true, PC8, InpPinConfig,}, // Aux3 (WPMissionEnable active low)
+#endif
 	{false, }, // MPU6XXXIntSel 
 	{false, } // HMC5XXXRdySel
+};
+
+#if defined(USE_WS2812) || defined(USE_WS2812B)
+PinDef WSPin = // Aux1 Pin
+	{true, PC6, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_NOPULL, 
+		{true, TIM8, TIM_Channel_1, TIM_DMA_CC1, &(TIM8->CCR1), GPIO_AF_TIM8 },
+		{true, DMA_Channel_0, DMA2_Stream2}, DMA2_Stream2_IRQn };
+#endif
+
+PinDef LEDPins[MAX_LED_PINS] = { 
+	{true, PB3, LEDPinConfig,}, // Yellow
+	{true, PB4, LEDPinConfig,}, // Red
+	{true, PC11, LEDPinConfig,}, // Blue
+	{true, PC12, LEDPinConfig,}, // Green
 };
 
 SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
@@ -84,21 +103,6 @@ AnalogPinDef AnalogPins[MAX_ANALOG_CHANNELS] = {
 	{true, ADC1, PC3, ADC_Channel_13, DMA2_0_0_noIRQn, 4}, // Roll
 	{true, ADC1, PC4, ADC_Channel_14, DMA2_0_0_noIRQn, 5}, // Pitch
 	{true, ADC1, PC5, ADC_Channel_15, DMA2_0_0_noIRQn, 6}, // Yaw
-};
-
-//PinDef WSPin = // Aux1 Pin for UAVXF4V3
-//	{true, PC6, PWMPinConfig, PWMOut_8_1CC, DMA2_0_2_IRQn};
-
-PinDef WSPin = // Aux1 Pin for UAVXF4V3
-	{true, PC6, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_NOPULL, 
-		{true, TIM8, TIM_Channel_1, TIM_DMA_CC1, &(TIM8->CCR1), GPIO_AF_TIM8 },
-		{true, DMA_Channel_0, DMA2_Stream2}, DMA2_Stream2_IRQn };
-		
-PinDef LEDPins[MAX_LED_PINS] = { 
-	{true, PB3, LEDPinConfig,}, // Yellow
-	{true, PB4, LEDPinConfig,}, // Red
-	{true, PC11, LEDPinConfig,}, // Blue
-	{true, PC12, LEDPinConfig,}, // Green
 };
 
 I2CPortDef I2CPorts[MAX_I2C_PORTS] = {
@@ -153,9 +157,9 @@ void InitTarget(void) {
 		break;
 	case ParallelPPMRx:
 		CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 6;
-		CurrNoOfRCPins = MAX_RC_INPUTS; //P(RCChannels);
+		CurrNoOfRCPins = P(RCChannels);
 		RxUsingSerial = false;
-		GPSRxSerial = Usart1;
+		GPSRxSerial = TelemetrySerial;
 		GPSTxSerial = SoftSerialTx;
 		break;
 	default:

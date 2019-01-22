@@ -107,7 +107,7 @@
 
 #define ALT_MAX_ROC_MPS 3.0f
 
-#define STICK_BYPASS_SCALE  (1.0f/3.0f)
+#define STICK_PASSTHRU_SCALE  (1.0f/3.0f)
 
 #define NAV_CEILING_M 120.0f // 400 feet
 #define NAV_DEFAULT_RTH_M 15.0f
@@ -122,11 +122,6 @@
 
 #define NAV_LAND_M 5.0f // altitude below which motor shutoff armed for autoland
 #define NAV_MIN_ALT_M 5.0f // minimum altitude after takeoff before going to next WP
-#define WING_PROXIMITY_RADIUS_M 	30.0f // was 20
-#define WING_PROXIMITY_ALTITUDE_M 	5.0f
-#define NAV_PROXIMITY_RADIUS_M 		5.0f
-#define NAV_PROXIMITY_ALTITUDE_M 	3.0f
-
 #define GPS_TIMEOUT_MS 2000 // mS.
 #define GPS_MIN_SATELLITES 6 // preferably > 5 for 3D fix
 #define GPS_MIN_HACC 5.0f

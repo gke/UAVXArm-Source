@@ -22,14 +22,12 @@
 
 #include "UAVX.h"
 
-WPStruct WP, HP, POI;
+WPStruct WP, HP, HomeWP, OffsetHomeWP, POI;
 uint8 CurrWPNo = 0;
 
 const char * NavComNames[] = { "Via", "Orbit", "Perch", "POI" };
 
 //  North, East, Altitude, Velocity, Loiter, OrbitRadius OrbitAltitude OrbitVelocity Action
-
-WPStruct HomeWP = { { 0, 0, 15 }, 3, 30, 0, 0, 0, 0 };
 
 MissionStruct NewNavMission;
 boolean NavMissionUpdated = true;
@@ -37,34 +35,24 @@ boolean NavMissionUpdated = true;
 void ClearNavMission(void) {
 
 	NV.Mission.NoOfWayPoints = 0;
-
-	if (F.IsFixedWing) {
-		NV.Mission.ProximityAltitude = WING_PROXIMITY_ALTITUDE_M;
-		NV.Mission.ProximityRadius = WING_PROXIMITY_RADIUS_M;
-	} else {
-		NV.Mission.ProximityAltitude = NAV_PROXIMITY_ALTITUDE_M;
-		NV.Mission.ProximityRadius = NAV_PROXIMITY_RADIUS_M;
-	}
-
 	NV.Mission.FenceRadius = NAV_DEFAULT_FENCE_M;
 
 } // ClearMission
 
 void GenerateHomeWP(void) {
 
-	HomeWP.Pos[NorthC] = 0.0f;
-	HomeWP.Pos[EastC] = 0.0f;
+	memset(&HomeWP, 0, sizeof(HomeWP));
+
 	HomeWP.Pos[DownC] = P(NavRTHAlt);
 	HomeWP.Velocity = Nav.MaxVelocity;
 	HomeWP.Loiter = (int16) P(DescentDelayS); // mS
 	HomeWP.Action = navLand;
 
 	HomeWP.OrbitAltitude = P(NavRTHAlt); // TODO: for camera height above ground
-	HomeWP.OrbitRadius = 0.0f;
-	HomeWP.OrbitVelocity = 0.0f;
 
-	memcpy(&HP, &HomeWP, sizeof(WPStruct));
-	HP.Action = navUnknown;
+	memcpy(&OffsetHomeWP, &HomeWP, sizeof(WPStruct));
+
+	F.OffsetOriginValid = false;
 
 } // GenerateHomeWP
 
@@ -77,6 +65,12 @@ void CaptureHomePosition(void) {
 		mS[LastGPS] = mSClock();
 
 		GPS.startTime = GPS.missionTime;
+
+		if (F.Emulation) {
+			GPS.C[NorthC].Raw = DEFAULT_HOME_LAT;
+			GPS.C[EastC].Raw = DEFAULT_HOME_LON;
+			GPS.longitudeCorrection = DEFAULT_LON_CORR;
+		}
 
 		GPS.C[NorthC].OriginRaw = GPS.C[NorthC].Raw;
 		GPS.C[EastC].OriginRaw = GPS.C[EastC].Raw;
@@ -107,6 +101,20 @@ void CaptureHomePosition(void) {
 	}
 } // CaptureHomePosition
 
+void CaptureOffsetHomePosition(void) {
+
+	if (!F.OffsetOriginValid) {
+
+		if (sqrtf(Sqr(GPS.C[NorthC].Pos) + Sqr(GPS.C[EastC].Pos))
+				> Nav.ProximityRadius) {// TODO: RTH or first PH
+			OffsetHomeWP.Pos[NorthC] = GPS.C[NorthC].Pos;
+			OffsetHomeWP.Pos[EastC] = GPS.C[EastC].Pos;
+			F.OffsetOriginValid = true;
+		}
+	}
+
+} // CaptureOffsetHomePosition
+
 
 boolean NavMissionSanityCheck(MissionStruct * M) {
 
@@ -117,21 +125,31 @@ boolean NavMissionSanityCheck(MissionStruct * M) {
 	return (true);
 } // NavMissionSanityCheck
 
-uint8 NextWPState(void) {
+void NextWP(void) {
 
 	CurrWPNo++;
-	RefreshNavWayPoint();
+	if (CurrWPNo > NV.Mission.NoOfWayPoints)
+		CurrWPNo = 0;
 
-	return (CurrWPNo == 0 ? ReturningHome : Transiting);
-} // NexWPState
+	NavState = Transiting;
+
+} // NextWP
+
+void SetWPHome(void) {
+	if (F.IsFixedWing && UsingOffsetHome && F.OffsetOriginValid)
+		memcpy(&WP, &OffsetHomeWP, sizeof(WPStruct));
+	else
+		memcpy(&WP, &HomeWP, sizeof(WPStruct));
+} // SetWPHome
 
 void RefreshNavWayPoint(void) {
 
 	GetNavWayPoint();
 	while (WP.Action == navPOI) {
+		F.UsingPOI = true;
 		POI.Pos[NorthC] = WP.Pos[NorthC];
 		POI.Pos[EastC] = WP.Pos[EastC];
-		CurrWPNo++;
+		NextWP();
 		GetNavWayPoint();
 	}
 
@@ -151,11 +169,10 @@ void GetNavWayPoint(void) {
 		if (CurrWPNo > NV.Mission.NoOfWayPoints)
 			CurrWPNo = 0;
 
-		if (CurrWPNo == 0) { // override mission wp 0 and force to Origin
+		if (CurrWPNo == 0) { // WP #0 is Origin
 
-			memcpy(&WP, &HomeWP, sizeof(WPStruct));
-			HP.Pos[NorthC] = HP.Pos[EastC] = 0.0f;
-
+			SetWPHome();
+			NavState = Transiting;
 			F.UsingPOI = false;
 
 		} else { // TODO: run time expansion - a little expensive!
@@ -170,18 +187,15 @@ void GetNavWayPoint(void) {
 			WP.Action = W->Action;
 			if (WP.Action == navPOI)
 				F.UsingPOI = true;
-
 			WP.OrbitRadius = (real32) W->OrbitRadius; // M
 			WP.OrbitAltitude = (real32) W->OrbitAltitude;
 			WP.OrbitVelocity = (real32) W->OrbitVelocitydMpS * 0.1f; // dM/S
 		}
-
-#ifdef NAV_ENFORCE_ALTITUDE_CEILING
+#if defined(NAV_ENFORCE_ALTITUDE_CEILING)
 		WP.Pos[DownC] = Limit(WP.Pos[DownC], 0, NAV_CEILING_M);
 		WP.OrbitAltitude = Limit(WP.OrbitAltitude, 0, NAV_CEILING_M);
 #endif // NAV_ENFORCE_ALTITUDE_CEILING
 	}
-
 } // GetNavWaypoint
 
 void UpdateNavMission(void) {

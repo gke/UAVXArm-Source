@@ -45,14 +45,13 @@ uint8 MPU6XXXDHPF = 0;
 uint8 DisableGyroDLPF = 1;
 uint8 DisableAccDLPF = 1;
 
-filterStruct SensorTempF;
 
 const real32 MPU6XXXRefTemperature = 21.0f;
 
 real32 MPU6XXXTemperature = 25.0f;
 int16 RawMPU6XXXTemperature;
 timeuS mpu6xxxLastUpdateuS = 0;
-boolean UseGyroOS = false;
+
 real32 RawAcc[3], RawGyro[3];
 real32 GyroSlewLimitFrac;
 uint32 Noise[MAX_NOISE_BANDS];
@@ -86,92 +85,32 @@ void UpdateMPU6XXXTemperature(uint8 imuSel, int16 T, real32 TempdT) {
 
 
 void ReadAccGyro(uint8 imuSel) {
-	static timeuS LastUpdateuS = 0;
-	real32 GyrodT, RateD;
-	timeuS NowuS;
 	int16 B[7];
+	int32 RateD;
 	idx a;
 
+	Probe(1);
 	SIOReadBlocki16vataddr(imuSel, MPU_RA_ACC_XOUT_H, 7, B, true);
+	Probe(0);
 
-	NowuS = uSClock();
-	GyrodT = (NowuS - LastUpdateuS) * 0.000001f;
-	LastUpdateuS = NowuS;
+	RotateSensor(&B[X], &B[Y], IMUQuadrant);
 
 	for (a = 0; a <= 6; a++)
 		ShadowRawIMU[a] = B[a];
 
-	RotateSensor(&B[X], &B[Y], IMUQuadrant);
-
-	for (a = X; a <= Z; a++)
-		RawAcc[a] = (real32) B[a];
-
-	RawMPU6XXXTemperature = B[3];
-
-	RotateSensor(&B[X + 4], &B[Y + 4], IMUQuadrant);
-
-#if !defined(INC_DFT)
 	for (a = X; a <= Z; a++) {
-		RateD = Abs((int32)B[a+4] - BP[a]);
+		RawAcc[a] = (real32) B[a];
+		RawGyro[a] = (real32) B[a + 4];
+
+		RateD = Abs((int32)B[a + 4] - BP[a]);
 		Band = Limit( (int16)(RateD * SlewBand), 0, (MAX_NOISE_BANDS-1));
 		Noise[Band]++;
 		BP[a] = B[a + 4];
 	}
-#endif
 
-	for (a = X; a <= Z; a++)
-		RawGyro[a] = OSF(&OSGyroF[a], (real32) B[a + 4], GyrodT);
+	RawMPU6XXXTemperature = B[3];
 
 } // ReadAccGyro
-
-void ReadGyro(uint8 imuSel) { // Roll Right +, Pitch Up +, Yaw ACW +
-	static timeuS LastUpdateuS = 0;
-	real32 GyrodT, RateD;
-	timeuS NowuS;
-	int16 B[3];
-	idx a;
-
-	SIOReadBlocki16vataddr(imuSel, MPU_RA_GYRO_XOUT_H, 3, B, true);
-
-	NowuS = uSClock();
-	GyrodT = (NowuS - LastUpdateuS) * 0.000001f;
-	LastUpdateuS = NowuS;
-
-	RotateSensor(&B[X], &B[Y], IMUQuadrant);
-
-#if !defined(INC_DFT)
-	for (a = X; a <= Z; a++) {
-		RateD = Abs((int32)B[a] - BP[a]);
-		Band = Limit( (int16)(RateD * SlewBand), 0, (MAX_NOISE_BANDS-1));
-		Noise[Band]++;
-		BP[a] = B[a];
-	}
-#endif
-
-	for (a = X; a <= Z; a++) {
-		ShadowRawIMU[a + 4] = B[a];
-		RawGyro[a] = OSF(&OSGyroF[a], (real32) B[a], GyrodT);
-	}
-
-} // ReadGyro
-
-
-void ReadAcc(uint8 imuSel) {
-	int16 B[4];
-	idx a;
-
-	SIOReadBlocki16vataddr(imuSel, MPU_RA_ACC_XOUT_H, 4, B, true);
-
-	RotateSensor(&B[0], &B[1], IMUQuadrant);
-
-	for (a = 0; a <= 2; a++) {
-		ShadowRawIMU[a] = B[a];
-		RawAcc[a] = (real32) B[a];
-	}
-
-	RawMPU6XXXTemperature = ShadowRawIMU[3] = B[3];
-
-} // ReadAcc
 
 
 void ReadFilteredGyroAndAcc(uint8 imuSel) {
@@ -184,16 +123,16 @@ void ReadFilteredGyroAndAcc(uint8 imuSel) {
 	dT = (NowuS - LastUpdateuS) * 0.000001f;
 	LastUpdateuS = NowuS;
 
-	ReadAcc(imuSel);
-	ReadGyro(imuSel);
+	ReadAccGyro(imuSel);
 
 	if (DisableAccDLPF == 1)
 		for (a = X; a <= Z; a++)
 			RawAcc[a] = LPFn(&AccF[a], RawAcc[a], dT);
 
-	if (DisableGyroDLPF == 1)
+	if (DisableGyroDLPF == 1) {
 		for (a = X; a <= Z; a++)
 			RawGyro[a] = LPFn(&GyroF[a], RawGyro[a], dT);
+	}
 
 	UpdateMPU6XXXTemperature(imuSel, RawMPU6XXXTemperature, dT);
 
@@ -270,6 +209,9 @@ void CalibrateAccAndGyro(uint8 s, uint8 imuSel) {
 
 	F.IMUCalibrated = Abs(TempDiff) < (RangeT * 2.0f); // check if too fast!!!
 	if (F.IMUCalibrated) {
+
+		NV.AccCal.Calibrated = 1;
+
 		NVChanged = true;
 		UpdateNV();
 		DoBeep(8, 1);

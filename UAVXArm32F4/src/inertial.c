@@ -92,11 +92,6 @@ real32 KpAcc;
 real32 KpMagBase = 5.0f;
 real32 KpMag;
 
-//#define gyroMeasError DegreesToRadians(5)  // gyroscope measurement error in rad/s (shown as 5 deg/s)
-//#define gyroMeasDrift DegreesToRadians(0.2) // gyroscope measurement error in rad/s/s (shown as 0.2f deg/s/s)
-//#define beta (sqrtf(0.75f)*gyroMeasError) // compute beta aka KpAccBase
-//#define zeta (sqrtf(0.75f)*gyroMeasDrift) // compute zeta aka KiAccBase not used
-
 real32 q0, q1, q2, q3;
 real32 q0q0, q0q1, q0q2, q0q3;
 real32 q1q1, q1q2, q1q3;
@@ -121,22 +116,22 @@ void ConvertQuaternionToEuler(void) {
 	bi21 = 2.0f * (q0q1 + q2q3); // roll gy
 	bi22 = q0q0 - q1q1 - q2q2 + q3q3; // yaw gz
 
-	A[Roll].Angle = atan2f(bi21, bi22);
-	A[Pitch].Angle = -asinf(bi20);
-	A[Yaw].Angle = atan2f(bi10, bi00);
+	Angle[Roll] = atan2f(bi21, bi22);
+	Angle[Pitch] = -asinf(bi20);
+	Angle[Yaw] = atan2f(bi10, bi00);
 
 } // ConvertQuaternionToEuler
 
 
-void ConvertEulerToQuaternion(real32 p, real32 r, real32 y) {
+void ConvertEulerToQuaternion(void) {
 	real32 t0, t1, t2, t3, t4, t5, normR;
 
-	t0 = cosf(y * 0.5f);
-	t1 = sinf(y * 0.5f);
-	t2 = cosf(r * 0.5f);
-	t3 = sinf(r * 0.5f);
-	t4 = cosf(p * 0.5f);
-	t5 = sinf(p * 0.5f);
+	t0 = cosf(Angle[Yaw] * 0.5f);
+	t1 = sinf(Angle[Yaw] * 0.5f);
+	t2 = cosf(Angle[Roll] * 0.5f);
+	t3 = sinf(Angle[Roll] * 0.5f);
+	t4 = cosf(Angle[Pitch] * 0.5f);
+	t5 = sinf(Angle[Pitch] * 0.5f);
 
 	q0 = t0 * t2 * t4 + t1 * t3 * t5;
 	q1 = t0 * t3 * t4 - t1 * t2 * t5;
@@ -158,6 +153,7 @@ real32 GravityCompensatedAccZ(void) {
 	return 2.0f * (q1q3 - q0q2) * Acc[X] + 2.0f * (q0q1 + q2q3) * Acc[Y]
 			+ (q0q0 - q1q1 - q2q2 + q3q3) * Acc[Z] + GRAVITY_MPS_S;
 } // GravityCompensatedAccZ
+
 
 real32 AttitudeCosine(void) { // for attitude throttle compensation
 
@@ -191,15 +187,22 @@ void VersanoCompensation(void) {
 
 void InitMadgwick(void) {
 
+
+#if defined(BETTER_MADGWICK_INIT)
+	ReadFilteredGyroAndAcc(imuSel);
+
 	real32 normR = 1.0f / sqrtf(Sqr(Acc[BF]) + Sqr(Acc[LR]) + Sqr(Acc[UD]));
 
-	A[Pitch].Angle = asinf(-Acc[BF] * normR);
-	A[Roll].Angle = asinf(Acc[LR] * normR);
+	Angle[Pitch] = asinf(-Acc[BF] * normR);
+	Angle[Roll] = asinf(Acc[LR] * normR);
 
-	CalculateInitialMagneticHeading();
-	A[Yaw].Angle = InitialMagHeading;
+	//CalculateInitialMagneticHeading();
+	//Angle[Yaw] = InitialMagHeading;
+#else
+	memset(&Angle, 0, sizeof(Angle[3]));
+#endif
 
-	ConvertEulerToQuaternion(A[Pitch].Angle, A[Roll].Angle, A[Yaw].Angle);
+	ConvertEulerToQuaternion();
 
 } // InitMadgwick
 
@@ -213,7 +216,7 @@ void UpdateHeading(void) {
 		Heading = Make2Pi(MagHeading + MagVariation);
 	} else {
 
-	    MagHeading = A[Yaw].Angle;
+		MagHeading = Angle[Yaw];
 		Heading = Make2Pi(MagHeading + MagVariation);
 
 		// override for FW aircraft
@@ -229,8 +232,8 @@ void UpdateHeading(void) {
 // Madgwick Quaternion version of Mahony et al.  Discrete Cosine Transform code
 // rewritten by Prof G.K. Egan
 
-void MadgwickUpdate(real32 gx, real32 gy, real32 gz, real32 ax,
-		real32 ay, real32 az, real32 mx, real32 my, real32 mz) {
+void MadgwickUpdate(real32 gx, real32 gy, real32 gz, real32 ax, real32 ay,
+		real32 az, real32 mx, real32 my, real32 mz) {
 
 	real32 AccMag;
 	real32 normR;
@@ -240,6 +243,8 @@ void MadgwickUpdate(real32 gx, real32 gy, real32 gz, real32 ax,
 	real32 bx, bz;
 	real32 vx, vy, vz;
 	real32 wx, wy, wz;
+
+	tickCountOn(MadgwickTick);
 
 	q0q0 = q0 * q0;
 	q0q1 = q0 * q1;
@@ -275,7 +280,7 @@ void MadgwickUpdate(real32 gx, real32 gy, real32 gz, real32 ax,
 	gy += (vz * ax - vx * az) * KpAcc;
 	gz += (vx * ay - vy * ax) * KpAcc;
 
-	if (F.NewMagValues) { // no compensation for latency
+	if (F.NewMagValues && !F.MagnetometerFailure) { // no compensation for latency
 		F.NewMagValues = false;
 
 		KpMag = CalculateMagConfidence();
@@ -326,19 +331,20 @@ void MadgwickUpdate(real32 gx, real32 gy, real32 gz, real32 ax,
 
 	ConvertQuaternionToEuler();
 
+	tickCountOff(MadgwickTick);
+
 } // MadgwickUpdate
 
 
 void TrackPitchAttitude(void) {
-	static timemS GlidingTimemS = 0;
 
 	if (F.IsFixedWing && (DesiredThrottle < IdleThrottle)
 			&& (State == InFlight)) {
-		if (mSClock() > GlidingTimemS)
-			FWGlideAngleOffsetRad = LPF1(FWGlideAngleOffsetRad, A[Pitch].Angle,
+		if (mSTimeout(GlidingTime))
+			FWGlideAngleOffsetRad = LPF1(FWGlideAngleOffsetRad, Angle[Pitch],
 					0.1f);
 	} else
-		GlidingTimemS = mSClock() + 5000;
+		mSTimer(GlidingTime, 5000);
 } // TrackPitchAttitude
 
 
@@ -348,16 +354,18 @@ void UpdateInertial(void) {
 	if (F.Emulation && ((State == InFlight) || (State == Launching)))
 		DoEmulation(); // produces ROC, Altitude etc.
 	else {
-		if (!UseGyroOS)
-			ReadFilteredGyroAndAcc(imuSel);
+		tickCountOn(IMUTick);
+		ReadFilteredGyroAndAcc(imuSel);
+		tickCountOff(IMUTick);
 
 		ScaleRateAndAcc(imuSel);
+
+		GetMagnetometer();
 	}
 
-	GetMagnetometer();
-
-	MadgwickUpdate(Rate[Roll], Rate[Pitch], Rate[Yaw], Acc[BF], Acc[LR],
-			Acc[UD], Mag[X], Mag[Y], Mag[Z]);
+	if (F.IMUCalibrated)
+		MadgwickUpdate(Rate[Roll], Rate[Pitch], Rate[Yaw], Acc[BF], Acc[LR],
+				Acc[UD], Mag[X], Mag[Y], Mag[Z]);
 
 	DoControl();
 
@@ -373,6 +381,7 @@ void UpdateInertial(void) {
 			Nav.C[a].Vel = GPS.C[a].Vel;
 		}
 
+		UpdateWindEstimator();
 		UpdateWhere();
 
 		F.NavigationEnabled = true;

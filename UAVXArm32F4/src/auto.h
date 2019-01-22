@@ -50,6 +50,8 @@ typedef struct {
 	real32 WPDistance, OriginalWPBearing, WPBearing;
 	real32 CrossTrackKp, CrossTrackE;
 
+	real32 ProximityAlt, ProximityRadius;
+
 	real32 FenceRadius;
 
 	real32 MaxVelocity;
@@ -81,8 +83,10 @@ enum NavStates {
 	AltitudeLimiting,
 	JustGliding,
 	RateControl, // not actually a nav state
-	BypassControl, // not actually a nav state
+	PassThruControl, // not actually a nav state
 	HorizonControl,
+	WPAltFail,
+	WPProximityFail,
 	NavStateUndefined
 };
 
@@ -103,7 +107,7 @@ typedef struct {
 } WPStruct;
 
 enum AlarmStates {
-	NoAlarms, Monitoring, BatteryLow, LostSignal, HitFenceRTH, UpsideDown, ForcedLanding, GPSSerialBypass,
+	NoAlarms, Monitoring, BatteryLow, LostSignal, HitFenceRTH, UpsideDown, ForcedLanding, GPSSerialPassThru,
 	ArmingTimeout
 };
 
@@ -128,6 +132,7 @@ extern void InitiateShutdown(uint8 s);
 
 extern uint8 NavState, NavSwState, NavSwStateP, AlarmState;
 extern real32 DesiredNavHeading;
+extern boolean WPNavEnabled;
 
 #endif
 

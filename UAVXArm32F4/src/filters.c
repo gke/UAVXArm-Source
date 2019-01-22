@@ -21,10 +21,10 @@
 #include "UAVX.h"
 
 void DFT8(real32 v, real32 *DFT) { // 137uS
-#if defined(INC_DFT)
 	const real32 mR = 0.125f;
 	static boolean Primed = false;
-	static real32 cosarg[MAX_NOISE_BANDS][MAX_NOISE_BANDS], sinarg[MAX_NOISE_BANDS][MAX_NOISE_BANDS];
+	static real32 cosarg[MAX_NOISE_BANDS][MAX_NOISE_BANDS],
+			sinarg[MAX_NOISE_BANDS][MAX_NOISE_BANDS];
 	static real32 inp[MAX_NOISE_BANDS];
 	long i, k;
 	double arg;
@@ -42,7 +42,7 @@ void DFT8(real32 v, real32 *DFT) { // 137uS
 		Primed = true;
 	} else {
 		for (i = 7; i > 0; i--)
-		inp[i] = inp[i - 1];
+			inp[i] = inp[i - 1];
 		inp[0] = v;
 	}
 
@@ -55,8 +55,8 @@ void DFT8(real32 v, real32 *DFT) { // 137uS
 	}
 
 	for (i = 0; i < MAX_NOISE_BANDS; i++)
-	DFT[i] = sqrtf(Sqr(x[i]) + Sqr(y[i])) * mR;
-#endif
+		DFT[i] = sqrtf(Sqr(x[i]) + Sqr(y[i])) * mR;
+
 } // DFT8
 
 
@@ -516,20 +516,14 @@ real32 scaleRangef(real32 v, real32 srcMin, real32 srcMax, real32 destMin,
 /// Initialise all SW filters in one place
 
 
-extern uint8 CurrOSLPFType;
-
 real32 CurrAccLPFHz = 20.0f;
 real32 CurrGyroLPFHz = 100.0f;
 real32 CurrYawLPFHz = 75.0f;
 real32 CurrServoLPFHz = 20.0f;
-real32 CurrOSLPFHz = 500.0f;
-real32 CurrOSLPKFQ = 500.0f;
 boolean UsingPavelFilter = false;
+real32 AltLPFHz;
 
-filterStruct AccF[3], GyroF[3], OSGyroF[3];
-OSLPFPtr OSF = NULL;
-
-filterStruct ROCLPF, FROCLPF, BaroLPF;
+filterStruct AccF[3], GyroF[3], ROCLPF, FROCLPF, BaroLPF, AccZLPF, SensorTempF;
 
 void InitSWFilters(void) {
 
@@ -547,13 +541,6 @@ void InitSWFilters(void) {
 
 	const real32 rKF = 88;
 
-	if (busDev[imuSel].useSPI)
-		SetP(OSLPFHz, Limit(P(OSLPFHz), 2, 40)); // 200-4000Hz sampling 8KHz
-	else
-		SetP(OSLPFHz, Limit(P(OSLPFHz), 2, 5)); // 200-500Hz sampling 1KHz limited by i2c
-	CurrOSLPKFQ = CurrOSLPFHz = (real32) P(OSLPFHz) * 100.0f;
-	CurrOSLPFType = P(OSLPFType);
-
 	CurrYawLPFHz = LimitP(YawLPFHz, 25, 255);
 	CurrServoLPFHz = LimitP(ServoLPFHz, 10, 100);
 
@@ -567,26 +554,6 @@ void InitSWFilters(void) {
 	CurrGyroLPFHz = MPUGyroLPFHz[CurrGyroLPFSel];
 
 	for (a = X; a <= Z; a++) {
-
-		switch (CurrOSLPFType) {
-		case KalynFastKF:
-			initKalynFastLPKF(&OSGyroF[a], CurrOSLPKFQ, rKF, CurrOSLPFHz); // 0.011? 0.025
-			OSF = KalynFastLPKF;
-			break;
-		case FujinFastKF:
-			initFujinFastLPKF(&OSGyroF[a], CurrOSLPFHz);
-			OSF = FujinFastLPKF;
-		case RC1:
-			// RC1
-			initLPFn(&OSGyroF[a], 1, CurrOSLPFHz);
-			OSF = LPFn;
-			break;
-		default:
-			// RC2
-			initLPFn(&OSGyroF[a], 2, CurrOSLPFHz);
-			OSF = LPFn;
-			break;
-		} // switch
 
 		initLPFn(&AccF[a], AccLPFOrder, CurrAccLPFHz);
 
@@ -614,7 +581,7 @@ void InitSWFilters(void) {
 	initLPFn(&ROCLPF, ROCLPFOrder, AltLPFHz);
 	initLPFn(&FROCLPF, ROCFLPFOrder, AltLPFHz * 0.25f);
 
-	initLPFn(&SensorTempF, 2, 0.5f); // TODO:
+	initLPFn(&SensorTempF, 2, 0.5f); // TODO: problem for SPI MPUxxx
 
 } // InitSWFilters
 

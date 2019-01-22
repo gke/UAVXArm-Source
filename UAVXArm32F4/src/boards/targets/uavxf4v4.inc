@@ -40,7 +40,9 @@ PinDef PWMPins[MAX_PWM_OUTPUTS] = {
 	{true, PB8, PWMPinConfig, PWMOut_4_3},
 	{true, PB7, PWMPinConfig, PWMOut_4_2},
 	{true, PB6, PWMPinConfig, PWMOut_4_1},
+#if !(defined(USE_WS2812) || defined(USE_WS2812B))
 	{true, PC6, PWMPinConfig, PWMOut_8_1}, // optionally WS2812
+#endif
 	{true, PC7, PWMPinConfig, PWMOut_8_2},
 
 	// Drives 4-8 for brushless
@@ -56,15 +58,21 @@ PinDef GPIOPins[MAX_GPIO_PINS] = {
 	{true, PC9, InpPinConfig,}, // Landing
 	{true, PA5, OutPinConfig,}, // Aux1
 	{true, PA15, OutPinConfig,}, // Aux2
-	{true, PC8, OutPinConfig,}, // Probe (Aux3)
+#if defined(USE_AUX3_PROBE_PIN)
+	{true, PC8, OutPinConfig,}, // Aux3 (Probe)
+#else
+	{true, PC8, InpPinConfig,}, // Aux3 (WPMissionEnable active low)
+#endif
 	{true, PC14, InpPinConfig,}, // MPU6XXXIntSel 
 	{true, PC15, InpPinConfig,} // HMC5XXXRdySel
 };
 
-PinDef WSPin = // Aux1 Pin for UAVXF4V3
+#if defined(USE_WS2812) || defined(USE_WS2812B)
+PinDef WSPin = // PWM5
 	{true, PC6, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_NOPULL, 
 		{true, TIM8, TIM_Channel_1, TIM_DMA_CC1, &(TIM8->CCR1), GPIO_AF_TIM8 },
 		{true, DMA_Channel_0, DMA2_Stream2}, DMA2_Stream2_IRQn };
+#endif
 
 PinDef LEDPins[MAX_LED_PINS] = { //
 	{true, PB3, LEDPinConfig,}, // Yellow

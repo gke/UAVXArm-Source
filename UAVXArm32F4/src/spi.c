@@ -42,6 +42,7 @@ const SPIDefStruct SPIDef[] = { { false, spi_21, spi_0_65625 }, // imu0sel
 		{ false, spi_10_5, spi_10_5 }, //
 		{ false, spi_10_5, spi_10_5 } };
 
+
 SPI_TypeDef * SPISetBaudRate(uint8 spiDev, boolean R) {
 	// It would be good if there was some consistency with SPI protocols!!!
 	// All of this for the HMC5983.
@@ -69,7 +70,6 @@ SPI_TypeDef * SPISetBaudRate(uint8 spiDev, boolean R) {
 					& SPI_CPHA_2Edge : SPI_CPOL_Low & SPI_CPHA_1Edge);
 
 			Delay1uS(5);
-
 		}
 
 		SPI_Cmd(SPIx, ENABLE);
