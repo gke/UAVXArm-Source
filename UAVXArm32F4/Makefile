@@ -17,7 +17,9 @@ INSTALL_DIR = "C:/Flight/gitHub/UAVXArm.git/UAVXArm/firmware"
 #BOARD= OMNIBUSF4NXT
 #BOARD= DISCOVERYF4
 #BOARD= UAVXF4V4
+#BOARD= UAVXF4V3BBFLASH
 BOARD= UAVXF4V3
+#BOARD= UAVXF4V2
 
 #-------------------------------------------------------------
  
@@ -118,8 +120,10 @@ MAIN_OBJS := $(wildcard obj/src/*/*/*/*/*/*/*.o) \
 	
 all: uavxarm
 	$(OBJCOPY) -O ihex "$(BIN_DIR)/$(TARGET).elf" "$(BIN_DIR)/$(TARGET).hex"
-	$(RM) $(OBJS) "$(BIN_DIR)/$(TARGET).elf" "$(BIN_DIR)/$(TARGET).map" \
-	"$(BIN_DIR)/src" "$(BIN_DIR)/lib"
+#	$(OBJCOPY) -O binary "$(BIN_DIR)/$(TARGET).elf" "$(BIN_DIR)/$(TARGET).bin"
+	$(RM) $(OBJS) "$(BIN_DIR)/$(TARGET).elf" 
+	$(RM) "$(BIN_DIR)/$(TARGET).map"
+	$(RM) "$(BIN_DIR)/src" "$(BIN_DIR)/lib"
 #	cp "$(BIN_DIR)/$(TARGET).hex" "$(INSTALL_DIR)/$(TARGET).hex"
 	
 svn: src/UAVXRevisionSVN.h

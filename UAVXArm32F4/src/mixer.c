@@ -399,7 +399,7 @@ void RescaledMultiMix(real32 CurrThrottlePW) {
 
 	if (F.Saturation) { // nothing left for yaw!
 
-		NV.Stats[SaturationS]++;
+		Config.Stats[SaturationS]++;
 
 		Scale = AvailableSwing / (DemandSwing - MIN_PRESERVED_YAW_PW);
 		Rl *= Scale;

@@ -61,8 +61,7 @@ real32 RC[RC_MAX_CHANNELS], RCp[RC_MAX_CHANNELS];
 
 uint8 DiscoveredRCChannels = 4; // used by PPM/CPPM
 
-real32 MaxCruiseThrottle, DesiredThrottle, IdleThrottle, InitialThrottle,
-		StickThrottle;
+real32 StickThrottle;
 real32 CamPitchTrim;
 real32 ThrLow, ThrHigh, ThrNeutral;
 real32 CurrMaxRollPitchStick;
@@ -601,7 +600,7 @@ void InitRC(void) {
 	mS[StickChangeUpdate] = NowmS;
 	mSTimer(RxFailsafeTimeout, RC_NO_CHANGE_TIMEOUT_MS);
 
-	DesiredThrottle = StickThrottle = 0.0f;
+	StickThrottle = 0.0f;
 
 	Channel = 0;
 	setStat(RCGlitchesS, 0);
@@ -858,48 +857,48 @@ void UpdateControls(void) {
 			F.ReturnHome = F.Navigate = F.NavigationEnabled = false;
 		}
 
-		UpdateRTHSwState();
-
-		if ((NavSwState == SwMiddle) || (NavSwState == SwHigh))
-			AttitudeMode = AngleMode;
-		else if (ActiveCh(AttitudeModeRC))
-			AttitudeMode
-					= Limit((uint8)(RC[AttitudeModeRC] * 3.0f), AngleMode, RateMode);
-		else
-			AttitudeMode = AngleMode;
-		F.UsingAngleControl = AttitudeMode == AngleMode;
-
 		CamPitchTrim = ActiveCh(CamPitchRC) ? RC[CamPitchRC] - RC_NEUTRAL : 0;
 
 		// COMPLICATED switching for arming, AH WP nav etc ****************
 
+		F.AltControlEnabled = (State == InFlight) && !(F.UseManualAltHold
+				|| (NavState == PIC) || F.PassThru);
 		if (ActiveCh(AHNavSensRC)) {
 			Nav.Sensitivity = Limit(RC[AHNavSensRC], 0, 1.0f);
-			F.AltControlEnabled = Triggered(NAV_ALT_THRESHOLD_STICK,
-					AHNavSensRC) && !F.UseManualAltHold;
+			F.AltControlEnabled = F.AltControlEnabled && Triggered(
+					NAV_ALT_THRESHOLD_STICK, AHNavSensRC);
 #if !defined(USE_AUX3_PROBE_PIN)
-			WPNavEnabled = !DigitalRead(
-					&GPIOPins[WPMissionOrProbeSel].P);
+			WPNavEnabled = !DigitalRead(&GPIOPins[WPMissionOrProbeSel].P);
 #endif
 		} else {
 			Nav.Sensitivity = F.Emulation ? 0.5f : 1.0f;
 			if (ActiveCh(ArmAHWPNavRC)) {
-
 				// override arming pulldown value
-
 				ArmingMethod = TxSwitchArming;
 				SetP(ArmingMode, TxSwitchArming);
 
 				TxSwitchArmed = Triggered(0.2f, ArmAHWPNavRC);
-				F.AltControlEnabled = Triggered(0.45f, ArmAHWPNavRC)
-						&& !F.UseManualAltHold;
+				F.AltControlEnabled = F.AltControlEnabled && Triggered(0.45f,
+						ArmAHWPNavRC);
 				WPNavEnabled = Triggered(0.7f, ArmAHWPNavRC);
 			} else {
 				TxSwitchArmed = false;
-				F.AltControlEnabled = !F.UseManualAltHold;
 				WPNavEnabled = false;
 			}
 		}
+
+		UpdateRTHSwState();
+
+		if (NavState != PIC)
+			AttitudeMode = AngleMode;
+		else if ((NavSwState == SwMiddle) || (NavSwState == SwHigh))
+			AttitudeMode = AngleMode;
+		else if (ActiveCh(AttitudeModeRC))
+			AttitudeMode
+					= Limit((uint8)(RC[AttitudeModeRC] * 3.0f), AngleMode, RateMode); // captures horizon mode
+		else
+			AttitudeMode = AngleMode;
+		F.UsingAngleControl = AttitudeMode == AngleMode;
 
 		// END COMPLICATED switching for arming, AH WP nav etc ****************
 
@@ -915,27 +914,26 @@ void UpdateControls(void) {
 		else
 			RCStart--;
 
+		LEDOff(ledGreenSel);
 		Tune();
 	}
 
 } // UpdateControls
 
-void CheckThrottleMoved(void) {
-	timemS NowmS;
 
-	NowmS = mSClock();
+void CheckThrottleMoved(void) {
 	if (mSTimeout(ThrottleUpdate)) {
 		ThrLow = ThrNeutral - THR_MIDDLE_WINDOW_STICK;
 		ThrLow = Max(ThrLow, THR_MIN_ALT_HOLD_STICK);
 		ThrHigh = ThrNeutral + THR_MIDDLE_WINDOW_STICK;
 
-		if ((DesiredThrottle <= ThrLow) || (DesiredThrottle >= ThrHigh)) {
+		if ((StickThrottle <= ThrLow) || (StickThrottle >= ThrHigh)) {
 			mSTimer(ThrottleUpdate, THR_UPDATE_MS);
 			F.ThrottleMoving = true;
 		} else
 			F.ThrottleMoving = false;
 	} else
-		ThrNeutral = DesiredThrottle;
+		ThrNeutral = StickThrottle;
 } // CheckThrottleMoved
 
 

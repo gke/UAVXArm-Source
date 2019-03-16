@@ -24,7 +24,15 @@
 
 #include "UAVX.h"
 
-#if defined(UAVXF4V3)
+#if defined(UAVXF4V2)
+#include "uavxf4v2.inc"
+//
+#elif defined(UAVXF4V3)
+#include "uavxf4v3.inc"
+//
+#elif defined(UAVXF4V3BBFLASH)
+#define UAVXF4V3
+#define USE_ARM_BLACKBOX_FLASH
 #include "uavxf4v3.inc"
 //
 #elif defined(UAVXF4V4)

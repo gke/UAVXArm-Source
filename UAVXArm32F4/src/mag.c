@@ -96,8 +96,8 @@ void GetMagnetometer(void) {
 			if (ReadMagnetometer()) {
 
 				if (F.InvertMagnetometer) {
-					Mag[BF] = (real32) RawMag[MX] * MagScale[MX]; // -
-					Mag[LR] = -(real32) RawMag[MY] * MagScale[MY];
+					Mag[BF] = -(real32) RawMag[MY] * MagScale[MY];
+					Mag[LR] = (real32) RawMag[MX] * MagScale[MX];
 					Mag[UD] = (real32) RawMag[MZ] * MagScale[MZ];
 				} else {
 					Mag[BF] = (real32) RawMag[MY] * MagScale[MY];
@@ -106,7 +106,7 @@ void GetMagnetometer(void) {
 				}
 
 				for (a = X; a <= Z; a++)
-					Mag[a] -= NV.MagCal.Bias[a];
+					Mag[a] -= Config.MagCal.Bias[a];
 
 				real32 NormR = invSqrt(Sqr(Mag[0]) + Sqr(Mag[1]) + Sqr(Mag[2]));
 				for (a = X; a <= Z; a++)
@@ -126,8 +126,9 @@ void CalculateInitialMagneticHeading(void) {
 	real32 xh, yh;
 	real32 cR, sR, cP, sP;
 
-	if (F.NewMagValues) {
-		F.NewMagValues = false;
+//	if (F.NewMagValues) {
+//		F.NewMagValues = false;
+	if (F.MagnetometerActive) {
 
 		cR = cosf(-Angle[Roll]);
 		sR = sinf(-Angle[Roll]);
@@ -230,7 +231,7 @@ void InitMagnetometer(void) {
 
 void CheckMagnetometerIsCalibrated(void) {
 
-	F.MagnetometerCalibrated = NV.MagCal.Calibrated == 1;
+	F.MagnetometerCalibrated = Config.MagCal.Calibrated == 1;
 
 } // CheckMagnetometerIsCalibrated
 
@@ -239,20 +240,20 @@ void InitMagnetometerBias(void) {
 
 	// Nominal x/y 766, z 660 @1Ga
 	for (a = X; a <= Z; a++)
-		NV.MagCal.Bias[a] = 0.0f;
+		Config.MagCal.Bias[a] = 0.0f;
 
-	NV.MagCal.Calibrated = 0xff;
+	Config.MagCal.Calibrated = 0xff;
 	F.MagnetometerCalibrated = false;
 
-	NVChanged = true;
+	ConfigChanged = true;
 
 } // InitMagnetometerBias
 
 void GetMagSample(int16 ss) {
 
 	if (F.InvertMagnetometer) {
-		MagSample[ss][BF] = (real32) RawMag[MX] * MagScale[MX]; // -
-		MagSample[ss][LR] = -(real32) RawMag[MY] * MagScale[MY];
+		MagSample[ss][BF] = -(real32) RawMag[MY] * MagScale[MY];
+		MagSample[ss][LR] = (real32) RawMag[MX] * MagScale[MX];
 		MagSample[ss][UD] = (real32) RawMag[MZ] * MagScale[MZ];
 	} else {
 		MagSample[ss][BF] = (real32) RawMag[MY] * MagScale[MY];
@@ -308,23 +309,23 @@ void CalibrateHMC5XXX(uint8 s) {
 
 		// Actually it will be an ellipsoid due to hard iron effects
 		SphereIterations = SphereFit(MagSample, MAG_CAL_SAMPLES, 200, 0.01f,
-				MagOrigin, &NV.MagCal.Magnitude);
+				MagOrigin, &Config.MagCal.Magnitude);
 
 		for (a = X; a <= Z; a++)
-			NV.MagCal.Bias[a] = MagOrigin[a];
+			Config.MagCal.Bias[a] = MagOrigin[a];
 
 
-		NV.MagCal.Calibrated = 1;
+		Config.MagCal.Calibrated = 1;
 		F.MagnetometerCalibrated = true;
 
-		NVChanged = true;
-		UpdateNV();
+		ConfigChanged = true;
+		UpdateConfig();
 
 		DoBeep(8, 1);
 
 		LEDsOff();
 
-		NV.MagCal.Calibrated = 1;
+		Config.MagCal.Calibrated = 1;
 		F.MagnetometerCalibrated = true;
 	}
 

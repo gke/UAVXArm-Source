@@ -267,7 +267,7 @@ enum {
 };
 
 enum {
-	i2cEEPROMMem, spiFlashMem, noMem
+	i2cEEPROMMem, spiFlashMem, ArmFlashMem, noMem
 };
 
 enum GPIOSelectorsBF {
@@ -432,6 +432,8 @@ void InitWSPin(uint16 wsBufferSize);
 void InitI2C(uint8 I2CCurr);
 void UnstickI2C(uint8 I2CCurr);
 void InitSPIGPIOPins(uint8 spiPort, boolean highClock);
+
+void WSPinDMAEnable(void);
 
 boolean DigitalRead(ConnectDef * d);
 void DigitalWrite(ConnectDef * d, uint8 m);

@@ -147,11 +147,11 @@ void uSTimer(uint8 t, timeuS TimePerioduS) {
 } // uSTimer
 
 boolean mSTimeout(uint8 t) {
-	return mSClock() > mS[t];
+	return mSClock() >= mS[t];
 } // mSTimeout
 
 boolean uSTimeout(uint8 t) {
-	return uSClock() > uS[t];
+	return uSClock() >= uS[t];
 } // mSTimeout
 
 void tickCountOn(uint8 t) {

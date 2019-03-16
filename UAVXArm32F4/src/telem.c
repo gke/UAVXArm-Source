@@ -47,8 +47,6 @@ uint16 RxCheckSumErrors = 0;
 uint8 TxPacketTag;
 uint8 CurrTelType = UAVXTelemetry;
 
-int16 ShadowRawIMU[7];
-
 void TxNextLine(uint8 s) {
 	TxChar(s, ASCII_CR);
 	TxChar(s, ASCII_LF);
@@ -202,9 +200,9 @@ void CheckTelemetry(uint8 s) {
 			}
 			break;
 			case 'v':
-			if (NVChanged) {
+			if (ConfigChanged) {
 				TxString(s, "UPDATING FLASH AND RESETING\n");
-				UpdateNV();
+				UpdateConfig();
 				systemReset(false);
 			} else
 			TxString(s, "PARAMETERS UNCHANGED\n ");
@@ -218,7 +216,7 @@ void CheckTelemetry(uint8 s) {
 			case 'h':
 			TxString(s, "THERE ARE NO CHECKS ON CLI PARAMETER CHANGE VALIDITY\n");
 			TxString(TelemetrySerial, "Revision ");
-			TxVal32(TelemetrySerial, NV.CurrRevisionNo,0,' ');
+			TxVal32(TelemetrySerial, Config.CurrRevisionNo,0,' ');
 			if (CheckSumFailNV()) TxString(TelemetrySerial, "NV Checksum FAIL\n");
 			TxString(s, "b enter bootloader\n");
 			TxString(s, "r reset\n");
@@ -578,20 +576,20 @@ void SendCalibrationPacket(uint8 s) {
 	TxESCu8(s, UAVXCalibrationPacketTag);
 	TxESCu8(s, 2 + 64);
 
-	TxESCi16(s, NV.GyroCal.TRef * 10.0f);
+	TxESCi16(s, Config.GyroCal.TRef * 10.0f);
 
 	for (a = X; a <= Z; a++) {
-		TxESCi16(s, RadiansToDegrees(NV.GyroCal.M[a])
+		TxESCi16(s, RadiansToDegrees(Config.GyroCal.M[a])
 				* GyroScale[CurrAttSensorType] * 1000.0f);
-		TxESCi16(s, RadiansToDegrees(NV.GyroCal.C[a])
+		TxESCi16(s, RadiansToDegrees(Config.GyroCal.C[a])
 				* GyroScale[CurrAttSensorType] * 1000.0f);
 
-		TxESCi16(s, NV.AccCal.Scale[a] * MPU_1G * GRAVITY_MPS_S_R * 1000.0f);
-		TxESCi16(s, NV.AccCal.Bias[a] * NV.AccCal.Scale[a] * GRAVITY_MPS_S_R
-				* 1000.0f);
+		TxESCi16(s, Config.AccCal.Scale[a] * MPU_1G * GRAVITY_MPS_S_R * 1000.0f);
+		TxESCi16(s, Config.AccCal.Bias[a] * Config.AccCal.Scale[a]
+				* GRAVITY_MPS_S_R * 1000.0f);
 
 		TxESCi16(s, MagScale[a] * 1000.0f);
-		TxESCi16(s, NV.MagCal.Bias[a] * 1000.0f);
+		TxESCi16(s, Config.MagCal.Bias[a] * 1000.0f);
 
 	}
 
@@ -646,7 +644,7 @@ void SendParamsPacket(uint8 s, uint8 GUIPS) {
 		if (GUIPS < NoOfDefParamSets)
 			UseDefaultParameters(GUIPS);
 
-		NV.CurrPS = 0;
+		Config.CurrPS = 0;
 
 		SendPacketHeader(s);
 
@@ -655,9 +653,9 @@ void SendParamsPacket(uint8 s, uint8 GUIPS) {
 		TxESCu8(s, UAVXParamPacketTag);
 		TxESCu8(s, 1 + MAX_PARAMETERS + len + 1);
 
-		TxESCu8(s, NV.CurrPS);
+		TxESCu8(s, Config.CurrPS);
 		for (p = 0; p < MAX_PARAMETERS; p++)
-			TxESCi8(s, NV.P[NV.CurrPS][p]);
+			TxESCi8(s, Config.P[Config.CurrPS][p]);
 
 		TxESCu8(s, len);
 
@@ -730,22 +728,58 @@ void SendBBPacket(uint8 s, int32 seqNo, uint8 l, int8 * B) {
 
 void SendNoisePacket(uint8 s) {
 	int32 m;
-	idx i;
+	real32 md, Samples[DFT_WINDOW_SIZE];
+	idx i, a, h;
 
+#if defined(USE_IMU_DFT)
+	//for (a = Roll; a <= Yaw; a++) {
+	a = 0;
+	{
+
+		h = hidx;
+		for (i = 0; i < DFT_WINDOW_SIZE; i++) {
+			Samples[i] = IMUSampleWindow[a][h];
+			h = (h + 1) & (DFT_WINDOW_SIZE - 1);
+		}
+		DFTn(&IMUDFT[0], Samples); // TODO: MAF
+
+		md = 0.0f;
+		IMUDFT[0] = 0.0f;
+
+		for (i = 0; i < DFT_WINDOW_SIZE; i++) {
+			md = Max(md, IMUDFT[i]);
+		}
+
+		SendPacketHeader(s);
+
+		TxESCu8(s, UAVXNoisePacketTag);
+		TxESCu8(s, 3 + DFT_WINDOW_SIZE * 2);
+
+		TxESCu8(s, a); // DFT
+		TxESCi16(s, 1000000/ CurrPIDCycleuS);
+		for (i = 0; i < DFT_WINDOW_SIZE; i++)
+			TxESCi16(s, (real32) IMUDFT[i] * 100.0f / md);
+
+		SendPacketTrailer(s);
+	}
+
+#else
 	SendPacketHeader(s);
 
 	TxESCu8(s, UAVXNoisePacketTag);
 	TxESCu8(s, 3 + MAX_NOISE_BANDS * 2);
 
 	m = 0;
+
 	for (i = 0; i < MAX_NOISE_BANDS; i++)
-		m = Max(m, Noise[i]);
-	TxESCu8(s, 1);
+	m = Max(m, Noise[i]);
+	TxESCu8(s, 3); // 3 Rate Delta NT USED 4 Acc Delta
 	TxESCi16(s, P(GyroSlewRate));
 	for (i = 0; i < MAX_NOISE_BANDS; i++)
-		TxESCi16(s, (real32) Noise[i] * 100.0f / (real32) m);
+	TxESCi16(s, (real32) Noise[i] * 100.0f / (real32) m);
 
 	SendPacketTrailer(s);
+#endif
 
 } // SendNoisePacket
 
@@ -834,7 +868,7 @@ void SendMinimOSDPacket(uint8 s) {
 void SendOriginPacket(uint8 s) {
 	MissionStruct * M;
 
-	M = &NV.Mission;
+	M = &Config.Mission;
 
 	SendPacketHeader(s);
 
@@ -903,12 +937,12 @@ void SendGuidancePacket(uint8 s) {
 void SendWPPacket(uint8 s, uint8 wp) {
 	MissionStruct * M;
 
-	M = &NV.Mission;
+	M = &Config.Mission;
 
 	SendPacketHeader(s);
 
 	TxESCu8(s, UAVXWPPacketTag);
-	TxESCu8(s, 22);
+	TxESCu8(s, 30);
 
 	TxESCu8(s, wp);
 	TxESCi32(s, M->WP[wp].LatitudeRaw); // 1e7/degree
@@ -919,6 +953,10 @@ void SendWPPacket(uint8 s, uint8 wp) {
 	TxESCi16(s, M->WP[wp].OrbitRadius);
 	TxESCi16(s, M->WP[wp].OrbitAltitude); // M relative to Origin
 	TxESCi16(s, M->WP[wp].OrbitVelocitydMpS); // dM/S
+
+	TxESCi32(s, M->WP[wp].PulseWidthmS); // mS
+	TxESCi32(s, M->WP[wp].PulsePeriodmS); // mS
+
 	TxESCu8(s, M->WP[wp].Action);
 
 	SendPacketTrailer(s);
@@ -929,7 +967,7 @@ void SendMission(uint8 s) {
 	uint8 wp;
 
 	SendNavPacket(s);
-	for (wp = 1; wp <= NV.Mission.NoOfWayPoints; wp++)
+	for (wp = 1; wp <= Config.Mission.NoOfWayPoints; wp++)
 		SendWPPacket(s, wp);
 
 	SendOriginPacket(s);
@@ -961,14 +999,14 @@ void ProcessParamsPacket(uint8 s) {
 
 	if ((State == Preflight) || (State == Ready)) { // not inflight
 
-		NV.CurrPS = 0;
+		Config.CurrPS = 0;
 
 		for (p = 0; p < MAX_PARAMETERS; p++)
 			SetP(p, UAVXPacketi8(p + 3));
 
-		NVChanged = true;
+		ConfigChanged = true;
 
-		UpdateNV();
+		UpdateConfig();
 
 		F.ParametersChanged = true;
 		UpdateParameters();
@@ -998,7 +1036,9 @@ void ProcessWPPacket(uint8 s) {
 	W->OrbitRadius = UAVXPacketi16(17);
 	W->OrbitAltitude = UAVXPacketi16(19);
 	W->OrbitVelocitydMpS = UAVXPacketi16(21);
-	W->Action = UAVXPacket[23];
+	W->PulseWidthmS = UAVXPacketi32(23);
+	W->PulsePeriodmS = UAVXPacketi32(27);
+	W->Action = UAVXPacket[31];
 
 } // ReceiveWPPacket
 
@@ -1240,9 +1280,6 @@ void UseUAVXTelemetry(uint8 s) {
 } // UseUAVXTelemetry
 
 void CheckTelemetry(uint8 s) {
-	// KLUDGE - MAVLink is only active when armed as we need UAVXGUI
-	// which uses UAVXTelemetry for reconfiguration.
-
 	tickCountOn(TelemetryTick);
 
 	timemS NowmS;

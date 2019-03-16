@@ -22,6 +22,7 @@
 #ifndef _navigate_h
 #define _navigate_h
 
+void UpdateWhere(void);
 real32 MinimumTurn(real32 Desired);
 void Navigate(WPStruct * W);
 real32 WPDistance(WPStruct * W);
@@ -29,6 +30,8 @@ timemS WPDistanceTimeout(void);
 timemS WPAltitudeTimeout(void);
 void ZeroNavCorrections(void);
 void DecayNavCorrections(void);
+
+boolean SavedPIOState;
 
 #endif
 

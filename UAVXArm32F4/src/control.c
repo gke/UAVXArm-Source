@@ -46,7 +46,7 @@ real32 CruiseThrottle = 0.5f;
 real32 CurrMaxTiltAngle = 0.0f;
 real32 TuneKpScale;
 int8 BeepTick = 0;
-
+real32 DesiredThrottle, IdleThrottle, InitialThrottle;
 real32 FWRollPitchFFFrac, FWAileronDifferentialFrac, FWPitchThrottleFFFrac,
 		MaxAltHoldCompFrac, FWMaxClimbAngleRad, FWBoardPitchAngleRad,
 		FWClimbThrottleFrac, FWSpoilerDecayS, FWAileronRudderFFFrac,
@@ -88,6 +88,18 @@ void CalcBattThrComp(void) {
 					: 1.0f;
 
 } // CalcBattThrComp
+
+
+void DisableNoFlightStuff(void) { // paranoid ;)
+
+	F.DrivesArmed = F.HoldingAlt = false;
+	DesiredThrottle = 0.0f;
+	ZeroIntegrators();
+	ZeroThrottleCompensation();
+	ZeroNavCorrections();
+	ResetHeading();
+
+} // DisableNoFlightStuff
 
 //______________________________________________________________________________
 
@@ -228,7 +240,7 @@ void AcquireAltitude(void) {
 
 void AltitudeControl(void) {
 
-	if (((NavState == HoldingStation) || (NavState == PIC)) && !F.ForcedLanding) { // Navigating - using CruiseThrottle
+	if (((NavState == PIC) || (NavState == HoldingStation)) && !F.ForcedLanding) {
 		CheckThrottleMoved();
 		if (F.ThrottleMoving || (ROCTooHigh(0.25f) && !F.HoldingAlt)) {
 			F.HoldingAlt = false;
@@ -243,6 +255,7 @@ void AltitudeControl(void) {
 		F.HoldingAlt = true;
 		AcquireAltitude();
 	}
+
 } // AltitudeControl
 
 

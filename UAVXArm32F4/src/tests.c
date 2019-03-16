@@ -20,6 +20,54 @@
 
 #include "UAVX.h"
 
+void ShowSIODeviceName(uint8 s, uint8 d) {
+
+	// could be a full table lookup?
+
+	TxChar(s, ' ');
+	switch (d) {
+	case MPU_0x68_ID:
+	case MPU_0x69_ID:
+		TxString(s, "Invensense Gyro/IMU");
+		break;
+	case HMC5XXX_ID:
+		TxString(s, "HMC5XXX Mag");
+		break;
+	case TMP100_ID:
+		TxString(s, "Temperature");
+		break;
+	case EEPROM_ID:
+		TxString(s, "EEPROM");
+		break;
+	default:
+		break;
+	} // switch
+	TxChar(s, ' ');
+
+} // ShowSIODeviceName
+
+uint8 ScanSIOBus(uint8 s) {
+	uint8 nd, d, v;
+
+	nd = 0;
+
+	for (d = 0x10; d <= 0xf6; d += 2) {
+		v = 0;
+		if (I2CReadBlock(2, d, 0, 1, &v)) {
+			nd++;
+			TxString(s, "\t0x");
+			TxValH(s, d);
+			TxChar(s, ' ');
+			TxVal32(s, v, 0, ' ');
+			ShowSIODeviceName(s, d);
+			TxNextLine(s);
+		}
+		Delay1mS(1);
+	}
+
+	return (nd);
+} // ScanSIOBus
+
 void DoTesting(void) {
 
 	//#define COMMISSIONING_TEST
@@ -30,6 +78,8 @@ void DoTesting(void) {
 	//#define BARO_RAW_TESTING
 	//#define MAG_CAL_TESTING
 	//#define CURRENT_TESTING
+	//#define EXTMEM_TESTING
+
 	idx i, c;
 	int32 d;
 	static int16 MaxShadow[7];
@@ -37,7 +87,16 @@ void DoTesting(void) {
 	static int16 PrevShadow[7];
 	static int32 MaxDelta[7];
 
-#if defined(TEMP_COMP_TESTING)
+#if defined(EXTMEM_TESTING)
+
+	for (i = 0; i < 100; i++) {
+		Delay1mS(2);
+		InitNVMem();
+	}
+	while (true) {
+	};
+
+#elif defined(TEMP_COMP_TESTING)
 
 	//CalibrateAccAndGyro(TelemetrySerial, imuSel);
 	LEDsOff();
@@ -69,7 +128,6 @@ void DoTesting(void) {
 		{
 			c = 0;
 
-
 			// for (i = 0; i < 3; i++) {
 			// TxVal32(TelemetrySerial, ShadowRawIMU[i], 0, ',');
 			// TxVal32(TelemetrySerial, RawAcc[i] * 10.0f, 1, ',');
@@ -79,14 +137,14 @@ void DoTesting(void) {
 
 
 			//for (i = 0; i < 3; i++) {
-				i = 0;
+			i = 0;
 			//}
-				TxVal32(TelemetrySerial, ShadowRawIMU[i + 4], 0, ',');
-				TxVal32(TelemetrySerial, RawGyroX[i] * 10.0f, 1, ',');
-				TxVal32(TelemetrySerial, RawGyro[i] * 10.0f, 1, ',');
-				//TxVal32(TelemetrySerial, MinShadow[i + 4], 0, ',');
-				//TxVal32(TelemetrySerial, MaxShadow[i + 4], 0, ',');
-				//TxVal32(TelemetrySerial, MaxDelta[i + 4], 0, ',');
+			TxVal32(TelemetrySerial, ShadowRawIMU[i + 4], 0, ',');
+			TxVal32(TelemetrySerial, RawGyroX[i] * 10.0f, 1, ',');
+			TxVal32(TelemetrySerial, RawGyro[i] * 10.0f, 1, ',');
+			//TxVal32(TelemetrySerial, MinShadow[i + 4], 0, ',');
+			//TxVal32(TelemetrySerial, MaxShadow[i + 4], 0, ',');
+			//TxVal32(TelemetrySerial, MaxDelta[i + 4], 0, ',');
 			//}
 
 			//TxVal32(TelemetrySerial, ShadowRawIMU[4], 0, ',');
@@ -121,7 +179,7 @@ void DoTesting(void) {
 
 	ReadBlockNV(0, sizeof(NV), (int8 *) (&NV));
 
-	NV.CurrPS = 0;
+	Config.CurrPS = 0;
 	for (i = 0; i < MAX_PARAMETERS; i++)
 	SetP(DefaultParams[i].tag, DefaultParams[i].p[0]);
 
@@ -174,7 +232,7 @@ void DoTesting(void) {
 
 	for (kkk = 0; kkk < 10000; kkk++) {
 		while (!DEBUGNewBaro)
-			GetBaro();
+		GetBaro();
 		DEBUGNewBaro = false;
 
 		LEDToggle(ledGreenSel);
@@ -188,7 +246,7 @@ void DoTesting(void) {
 	}
 
 	LEDsOn();
-	while(1){};
+	while(1) {};
 
 #elif defined(KF_TESTING)
 
@@ -282,7 +340,7 @@ void DoTesting(void) {
 
 	TxNextLine(TelemetrySerial);
 	for (jj = 0; jj <= 2; jj++)
-	TxVal32(TelemetrySerial, NV.MagCal.Bias[jj], 0, ',');
+	TxVal32(TelemetrySerial, Config.MagCal.Bias[jj], 0, ',');
 	TxNextLine(TelemetrySerial);
 
 	while (1) {
@@ -390,23 +448,23 @@ void CommissioningTest(uint8 s) {
 	TxNextLine(s);
 
 	TxString(s, "MEM:");
-	InitExtMem();
+	InitNVMem();
 
-	OK(s, F.HaveExtMem);
-	ShowStatusExtMem(s);
+	OK(s, F.HaveNVMem);
+	ShowStatusNVMem(s);
 
 	for (k = 0; k < 8; k++)
 	TxChar(s, 'A' + k);
 
 	for (k = 0; k < 8; k++)
 	pattern[k] = 'A' + k;
-	WriteBlockExtMem(0, 8, pattern);
+	WriteNVMemBlock(0, 8, pattern);
 	for (k = 0; k < 8; k++)
 	pattern[k] = '?';
 
 	TxString(s, "-> ");
 
-	ReadBlockExtMem(0, 8, pattern);
+	ReadBlockNVMem(0, 8, pattern);
 	for (k = 0; k < 8; k++)
 	TxChar(s, pattern[k]);
 
@@ -561,7 +619,7 @@ void CommissioningTest(uint8 s) {
 				TxChar(s, ',');
 
 				TxVal32(s, RawGyro[Y] * GyroScale[CurrAttSensorType] * 1000.0, 3, ',');
-				TxVal32(s, NV.GyroCal.Bias[i] * GyroScale[CurrAttSensorType] * 10000.0,
+				TxVal32(s, Config.GyroCal.Bias[i] * GyroScale[CurrAttSensorType] * 10000.0,
 						4, ',');
 				TxVal32(s, A[i].GyroADC * GyroScale[CurrAttSensorType] * 1000.0, 3, ',');
 			}
@@ -571,7 +629,7 @@ void CommissioningTest(uint8 s) {
 				TxChar(s, 'X' + i);
 				TxChar(s, ',');
 				TxVal32(s, RawAcc[i] * AccScale * 1000.0, 3, ',');
-				TxVal32(s, NV.AccCal.Bias[i] * AccScale * 10000.0, 4, ',');
+				TxVal32(s, Config.AccCal.Bias[i] * AccScale * 10000.0, 4, ',');
 				TxVal32(s, A[i].AccADC * AccScale * 1000.0, 3, ',');
 
 				TxVal32(s, A[i].Acc * 1000.0, 3, ',');
@@ -699,52 +757,6 @@ void SphereFitTest(void) {
 } // SphereFitTest
 
 
-void ShowSIODeviceName(uint8 s, uint8 d) {
-
-	// could be a full table lookup?
-
-	TxChar(s, ' ');
-	switch (d) {
-		case MPU_0x68_ID:
-		case MPU_0x69_ID:
-		TxString(s, "Invensense Gyro/IMU");
-		break;
-		case HMC5XXX_ID:
-		TxString(s, "HMC5XXX Mag");
-		break;
-		case TMP100_ID:
-		TxString(s, "Temperature");
-		break;
-		case EEPROM_ID:
-		TxString(s, "EEPROM");
-		break;
-		default:
-		break;
-	} // switch
-	TxChar(s, ' ');
-
-} // ShowSIODeviceName
-
-uint8 ScanSIOBus(uint8 s) {
-	uint8 nd, d;
-
-	nd = 0;
-
-	for (d = 0x10; d <= 0xf6; d += 2) {
-		if (SIOResponse(1, d)) {
-			nd++;
-			TxString(s, "\t0x");
-			TxValH(s, d);
-			ShowSIODeviceName(s, d);
-			TxNextLine(s);
-		}
-		Delay1mS(2);
-	}
-
-	return (nd);
-} // ScanSIOBus
-
-
 void MagnetometerTest(uint8 s) {
 	int32 a;
 	MagCalStruct * M;
@@ -770,12 +782,12 @@ void MagnetometerTest(uint8 s) {
 		TxString(s, "\r\nTemperature: ");
 		TxVal32(s, MagTemperature * 10.0f, 1, 'C');
 		TxString(s, "\r\nMagnitude: ");
-		TxVal32(s, NV.MagCal.Magnitude * 10.0f, 1, 0);
+		TxVal32(s, Config.MagCal.Magnitude * 10.0f, 1, 0);
 		TxString(s,
 				"\r\n\tRaw\tMag \tNeg \tPos \tBias \tScale \tBias2 \tScale2\r\n");
 
 		for (a = BF; a <= UD; a++) {
-			M = &NV.MagCal;
+			M = &Config.MagCal;
 			TxChar(s, ASCII_HT);
 			TxVal32(s, RawMag[a] * 10.0f, 1, ASCII_HT);
 			TxVal32(s, Mag[a] * 10.0f, 1, ASCII_HT);
@@ -931,7 +943,7 @@ void InertialTest(uint8 s) {
 	ReadFilteredGyroAndAcc(); ScaleRateAndAcc();
 
 	TxString(s, "\r\nMPU6XXX Acc. Cal. @ ");
-	TxVal32(s, (NV.AccCal.TRef) * 10.0f, 1, 0);
+	TxVal32(s, (Config.AccCal.TRef) * 10.0f, 1, 0);
 	TxChar(s, 'C');
 	if (!F.IMUCalibrated)
 	TxString(s, " NOT CALIBRATED");
@@ -941,15 +953,15 @@ void InertialTest(uint8 s) {
 		TxChar(s, 'X' + a);
 		TxChar(s, ASCII_HT);
 		TxVal32(s, RawAcc[a], 0, ASCII_HT);
-		TxVal32(s, NV.AccCal.Bias[a] * 10.0f, 1, ASCII_HT);
-		TxVal32(s, NV.AccCal.Scale[a] * 1000.0f, 3, 0);
+		TxVal32(s, Config.AccCal.Bias[a] * 10.0f, 1, ASCII_HT);
+		TxVal32(s, Config.AccCal.Scale[a] * 1000.0f, 3, 0);
 		TxNextLine(s);
 	}
 
 	TxString(s, "\r\n");
 	ShowAttSensorType(s, CurrAttSensorType);
 	TxString(s, " Gyro Cal. @ ");
-	TxVal32(s, (NV.GyroCal.TRef) * 10.0f, 1, 0);
+	TxVal32(s, (Config.GyroCal.TRef) * 10.0f, 1, 0);
 	TxString(s, "C\r\n\t\tRate\tComp\tBias\t/C\r\n");
 	for (a = X; a <= Z; a++) {
 		TxChar(s, ASCII_HT);
@@ -957,8 +969,8 @@ void InertialTest(uint8 s) {
 		TxChar(s, ASCII_HT);
 		TxVal32(s, RawGyro[a], 0, ASCII_HT);
 		TxVal32(s, GyroBias[a] * 10.0f, 1, ASCII_HT);
-		TxVal32(s, NV.GyroCal.C[a] * 10.0f, 1, ASCII_HT);
-		TxVal32(s, NV.GyroCal.M[a] * 1000.0f, 3, 0);
+		TxVal32(s, Config.GyroCal.C[a] * 10.0f, 1, ASCII_HT);
+		TxVal32(s, Config.GyroCal.M[a] * 1000.0f, 3, 0);
 		TxNextLine(s);
 	}
 

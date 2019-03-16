@@ -34,6 +34,7 @@ enum MiscComms {
 	miscBootLoader
 };
 
+
 enum PacketTags {
 	//Original NavLev Autopilot
 	UnknownPacketTag = 0,
@@ -114,8 +115,6 @@ void CheckTelemetry(uint8 s);
 void SetTelemetryBaudRate(uint8 s, uint32 b);
 
 extern uint8 CurrTelType;
-
-extern int16 ShadowRawIMU[7];
 
 #endif
 

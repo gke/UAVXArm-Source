@@ -1499,7 +1499,8 @@ void InitGPS(void) {
 	cc = 0;
 	memset(&GPS, 0, sizeof(GPS));
 
-	F.OriginValid = F.OffsetOriginValid = F.GPSValid = F.HaveGPS = F.GPSPacketReceived = false;
+	F.OriginValid = F.OffsetOriginValid = F.GPSValid = F.HaveGPS
+			= F.GPSPacketReceived = false;
 
 	LEDOn(ledBlueSel);
 

@@ -27,6 +27,7 @@ timeuS LastNavUpdateuS = 0;
 NavStruct Nav;
 real32 DesiredVel;
 real32 POIHeading = 0.0f;
+boolean SavedPIOState = false;
 real32 NorthP, EastP;
 uint8 PrevWPNo;
 real32 VelScale[2];
@@ -60,6 +61,16 @@ void RotateWPPath(real32 * nx, real32 * ny, real32 x, real32 y) {
 
 
 //_______________________________________________________________________________
+
+
+void UpdateWhere(void) {
+
+	Nav.Distance = sqrtf(Sqr(Nav.C[EastC].Pos) + Sqr(Nav.C[NorthC].Pos));
+	Nav.Bearing = Make2Pi(atan2f(Nav.C[EastC].Pos, Nav.C[NorthC].Pos));
+	Nav.Elevation = MakePi(atan2f(Altitude, Nav.Distance));
+	Nav.Hint = MakePi((Nav.Bearing - PI) - Heading);
+
+} // UpdateWhere
 
 void CaptureWPHeading(void) {
 
@@ -134,7 +145,8 @@ void ZeroNavCorrections(void) {
 			= F.WayPointAchieved = F.WayPointCentred = F.OrbitingWP
 					= F.RapidDescentHazard = false;
 
-	F.UsingPOI &= CurrWPNo != 0;
+	SavedPIOState = F.UsingPOI;
+	F.UsingPOI = false;
 
 	for (a = NorthC; a <= EastC; a++)
 		Nav.C[a].Corr = 0.0f;
@@ -236,7 +248,6 @@ void NavYaw(WPStruct * W) {
 					= (POIDistance > (Nav.ProximityRadius * 2.0f)) ? atan2f(
 							POIEastDiff, POINorthDiff) : Heading;
 		} else {
-
 			if (F.UsingTurnToWP) {
 				if (F.WayPointCentred) {
 					if (F.WayPointAchieved && (CurrWPNo == 0))
@@ -353,7 +364,8 @@ void InitNavigation(void) {
 	Nav.Elevation = Nav.Bearing = Nav.Distance = Nav.TakeoffBearing
 			= Nav.WPDistance = Nav.WPBearing = Nav.CrossTrackE = 0.0f;
 
-	F.OriginValid = F.OffsetOriginValid = F.NavigationEnabled = F.UsingPOI = false;
+	F.OriginValid = F.OffsetOriginValid = F.NavigationEnabled = F.UsingPOI
+			= false;
 
 	//GPS.C[NorthC].OriginRaw = GPS.C[NorthC].Raw = 0;
 	//GPS.C[EastC].OriginRaw = GPS.C[EastC].Raw = 0;
@@ -365,6 +377,7 @@ void InitNavigation(void) {
 
 	GenerateHomeWP();
 	memset(&POI, 0, sizeof(WPStruct));
+	memset(&NavPulse, 0, sizeof(NavPulseStruct));
 
 	RefreshNavWayPoint();
 	SetDesiredAltitude(0.0f);

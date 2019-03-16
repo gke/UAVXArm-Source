@@ -31,9 +31,7 @@ void LEDToggle(uint8 l);
 void LEDOn(uint8 l);
 void LEDOff(uint8 l);
 void LEDChaser(void);
-boolean LEDIsOn(uint8 l);
 
-void PowerOutput(uint8);
 void LEDsAndBuzzer(uint8 s);
 void InitLEDs(void);
 
@@ -56,7 +54,6 @@ extern void InitWSLEDs(void);
 void UpdateWSLEDBuffer(void);
 void SetWSLEDColours(idx i, uint8 r, uint8 g, uint8 b);
 void WSLEDColour(idx i, const WSLEDStruct w);
-void WSLED(uint8 l);
 void UpdateWSLEDs(void);
 
 
@@ -68,8 +65,8 @@ extern uint8 CurrNoOfWSLEDs, NoOfWSLEDs, WSLEDGroupSize;
 extern uint8 CurrWSLED;
 extern boolean UsingWS28XXLEDs;
 extern boolean WSLEDChanged;
-
-
+extern volatile boolean WSDMAInactive;
+extern uint8 CurrBeeperSel;
 
 #endif
 

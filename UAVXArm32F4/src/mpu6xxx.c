@@ -53,9 +53,16 @@ int16 RawMPU6XXXTemperature;
 timeuS mpu6xxxLastUpdateuS = 0;
 
 real32 RawAcc[3], RawGyro[3];
+
+#if defined(USE_IMU_DFT)
+idx hidx = 0;
+int16 IMUSampleWindow[3][DFT_WINDOW_SIZE];
+real32 IMUDFT[DFT_WINDOW_SIZE];
+#else
 real32 GyroSlewLimitFrac;
 uint32 Noise[MAX_NOISE_BANDS];
 idx Band;
+#endif
 
 real32 SlewBand;
 int32 BP[3] = { 0, };
@@ -87,26 +94,31 @@ void UpdateMPU6XXXTemperature(uint8 imuSel, int16 T, real32 TempdT) {
 void ReadAccGyro(uint8 imuSel) {
 	int16 B[7];
 	int32 RateD;
+
 	idx a;
 
-	Probe(1);
 	SIOReadBlocki16vataddr(imuSel, MPU_RA_ACC_XOUT_H, 7, B, true);
-	Probe(0);
 
 	RotateSensor(&B[X], &B[Y], IMUQuadrant);
 
-	for (a = 0; a <= 6; a++)
-		ShadowRawIMU[a] = B[a];
-
 	for (a = X; a <= Z; a++) {
 		RawAcc[a] = (real32) B[a];
-		RawGyro[a] = (real32) B[a + 4];
 
+#if defined(USE_IMU_DFT)
+		RawGyro[a] = (real32) B[a + 4];
+		IMUSampleWindow[a][hidx] = B[a + 4];
+#else
+		RawGyro[a] = (real32) B[a + 4];
 		RateD = Abs((int32)B[a + 4] - BP[a]);
 		Band = Limit( (int16)(RateD * SlewBand), 0, (MAX_NOISE_BANDS-1));
 		Noise[Band]++;
 		BP[a] = B[a + 4];
-	}
+#endif
+ }
+
+#if defined(USE_IMU_DFT)
+    hidx = (hidx + 1) & (DFT_WINDOW_SIZE - 1); // TODO: does not work - requires moving window
+#endif
 
 	RawMPU6XXXTemperature = B[3];
 
@@ -158,8 +170,8 @@ void CalibrateAccAndGyro(uint8 s, uint8 imuSel) {
 	for (c = X; c <= Z; c++) {
 		for (i = 0; i <= 1; i++)
 			a[i][c] = g[i][c] = t[i] = 0.0f;
-		NV.AccCal.Scale[c] = DEF_ACC_SCALE;
-		NV.AccCal.Bias[c] = NV.GyroCal.M[c] = NV.GyroCal.C[c] = 0.0f;
+		Config.AccCal.Scale[c] = DEF_ACC_SCALE;
+		Config.AccCal.Bias[c] = Config.GyroCal.M[c] = Config.GyroCal.C[c] = 0.0f;
 	}
 
 	ts = 0;
@@ -196,24 +208,24 @@ void CalibrateAccAndGyro(uint8 s, uint8 imuSel) {
 		t[ts] *= SamplesR;
 	}
 
-	NV.GyroCal.TRef = t[0];
+	Config.GyroCal.TRef = t[0];
 	TempDiff = t[1] - t[0];
 
 	for (c = X; c <= Z; c++) {
-		NV.AccCal.Scale[c] = DEF_ACC_SCALE;
-		NV.AccCal.Bias[c] = (a[1][c] + a[0][c]) * 0.5f;
+		Config.AccCal.Scale[c] = DEF_ACC_SCALE;
+		Config.AccCal.Bias[c] = (a[1][c] + a[0][c]) * 0.5f;
 
-		NV.GyroCal.M[c] = (g[1][c] - g[0][c]) / TempDiff;
-		NV.GyroCal.C[c] = g[0][c]; // use starting temperature
+		Config.GyroCal.M[c] = (g[1][c] - g[0][c]) / TempDiff;
+		Config.GyroCal.C[c] = g[0][c]; // use starting temperature
 	}
 
 	F.IMUCalibrated = Abs(TempDiff) < (RangeT * 2.0f); // check if too fast!!!
 	if (F.IMUCalibrated) {
 
-		NV.AccCal.Calibrated = 1;
+		Config.AccCal.Calibrated = 1;
 
-		NVChanged = true;
-		UpdateNV();
+		ConfigChanged = true;
+		UpdateConfig();
 		DoBeep(8, 1);
 		LEDOff(ledBlueSel);
 		SendAckPacket(s, UAVXMiscPacketTag, 1);
@@ -221,6 +233,8 @@ void CalibrateAccAndGyro(uint8 s, uint8 imuSel) {
 		Catastrophe();
 		SendAckPacket(s, UAVXMiscPacketTag, 255);
 	}
+
+	LEDOff(ledBlueSel);
 
 } // CalibrateAccAndGyro
 
@@ -230,10 +244,10 @@ void UpdateGyroTempComp(uint8 imuSel) {
 
 	for (a = X; a <= Z; a++)
 #if defined(UAVXF4V4) // SPI temperature "unreliable"
-		GyroBias[a] = NV.GyroCal.C[a];
+		GyroBias[a] = Config.GyroCal.C[a];
 #else
-		GyroBias[a] = NV.GyroCal.C[a] + NV.GyroCal.M[a] * (MPU6XXXTemperature
-				- NV.GyroCal.TRef);
+		GyroBias[a] = Config.GyroCal.C[a] + Config.GyroCal.M[a] * (MPU6XXXTemperature
+				- Config.GyroCal.TRef);
 #endif
 } // UpdateGyroTempComp
 

@@ -24,7 +24,6 @@ boolean FirstPass;
 boolean PreflightFail = false;
 uint8 ArmingMethod;
 
-
 void Probe(uint8 p) {
 #if defined(USE_AUX3_PROBE_PIN)
 	DigitalWrite(&GPIOPins[WPMissionOrProbeSel].P, p);
@@ -36,25 +35,25 @@ void Marker(void) {
 	Probe(0);
 } // Marker
 
-void CheckLandingSwitch(void) {
-	static uint8 Count = 5;
+void CheckLandingSwitch(void) { // sampled every PID cycle
+	static int16 Count = 100;
 	static boolean SwitchP = false;
 	boolean Switch;
 
 	if (F.Emulation)
-		F.AccZBump = F.LandingSwitch = Altitude < 0.1f;
+		F.AccZBump = F.LandingSwitch = (Altitude < 0.1f);
 	else {
 
-		Switch = DigitalRead(&GPIOPins[LandingSel].P); // active to ground
+		Switch = !DigitalRead(&GPIOPins[LandingSel].P); // active to ground
 
 		if (Switch != SwitchP)
-			if (Count == 0) {
+			if (Count <= 0) {
 				SwitchP = Switch;
-				Count = 5;
+				Count = 100;
 			} else
 				Count--;
 		else
-			Count = 5;
+			Count = 100;
 
 		F.LandingSwitch = SwitchP;
 	}
@@ -135,19 +134,15 @@ void DoBeep(uint8 t, uint8 d) {
 	timeuS TimeoutuS;
 
 	BeeperOn();
-	for (i = 0; i < (t * 100); i++) {
-		TimeoutuS = uSClock() + 500;
-		do {
-			GetBaro(); // hammer it to warm it up!
-		} while (uSClock() < TimeoutuS);
+	for (i = 0; i < (t * 50); i++) {
+		Delay1uS(1000);
+		GetBaro(); // hammer it to warm it up!
 	}
-	BeeperOff();
 
-	for (i = 0; i < (d * 100); i++) {
-		TimeoutuS = uSClock() + 500;
-		do {
-			GetBaro();
-		} while (uSClock() < TimeoutuS);
+	BeeperOff();
+	for (i = 0; i < (d * 50); i++) {
+		Delay1uS(1000);
+		GetBaro();
 	}
 } // DoBeep
 
@@ -164,8 +159,9 @@ int16 BeeperOnTime = 100;
 
 void CheckAlarms(void) {
 
-	F.BeeperInUse = PreflightFail || F.LowBatt || (State == Shutdown)
-			|| (NavState == Descending) || (State == Launching);
+	F.BeeperInUse = PreflightFail || F.LowBatt || (State == Shutdown) || (State
+			== ThrottleOpenCheck) || (NavState == Descending) || (State
+			== Launching);
 
 	//F.BeeperInUse = false;
 
@@ -206,14 +202,14 @@ void CheckAlarms(void) {
 void Catastrophe(void) {
 
 	/*
-	StopDrives();
-	while (true) {
-		LEDsOn();
-		Delay1mS(500);
-		LEDsOff();
-		Delay1mS(500);
-	}
-	*/
+	 StopDrives();
+	 while (true) {
+	 LEDsOn();
+	 Delay1mS(500);
+	 LEDsOff();
+	 Delay1mS(500);
+	 }
+	 */
 
 	systemReset(false);
 
@@ -221,11 +217,13 @@ void Catastrophe(void) {
 
 
 boolean UpsideDownMulticopter(void) {
+
 	static boolean UpsideDown;
 
 	UpsideDown = false;
+#if defined(CHECK_INVERTED)
 
-	if (false) { //IsMulticopter) {
+	if (IsMulticopter) {
 		if (Abs(Angle[Roll]) < CRASHED_ANGLE_RAD)
 			mSTimer(CrashedTimeout, CRASHED_TIMEOUT_MS);
 		else {
@@ -234,6 +232,7 @@ boolean UpsideDownMulticopter(void) {
 				UpsideDown = true;
 		}
 	}
+#endif
 
 	return (UpsideDown);
 

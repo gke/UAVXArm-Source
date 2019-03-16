@@ -95,6 +95,7 @@ enum mSTimes {
 	CalibrationTimeout,
 	MotorStart,
 	LastMAVHeartbeat,
+	NavPulseUpdate,
 	mSLastArrayEntry
 };
 
@@ -165,7 +166,7 @@ typedef union {
 
 				// 5
 				IsFixedWing :1,
-				WindEstValid :1,
+				ThrottleOpen :1,
 				MagnetometerCalibrated :1,
 				UsingUplink :1,
 				NewAltitudeValue :1,
@@ -188,14 +189,14 @@ typedef union {
 				HaveGPS :1,
 				RCNewValues :1,
 				NewNavUpdate :1,
-				HaveExtMem :1,
+				HaveNVMem :1,
 				UsingRapidDescent :1, // was MPU6050
 				UsingTurnToWP:1,
 				Glide:1,
 
 				// 8
 				NewMagValues :1, GPSToLaunchRequired :1, UsingAnalogGyros :1,
-				sioFatal :1, GPSPacketReceived :1, ThrottleOpen :1,
+				sioFatal :1, GPSPacketReceived :1, WindEstValid :1,
 				FenceAlarm :1,
 				NavigationEnabled :1,
 
@@ -223,6 +224,7 @@ enum FlightStates {
 	Preflight,
 	Ready,
 	Launching,
+	ThrottleOpenCheck,
 	UnknownFlightState
 };
 

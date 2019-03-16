@@ -31,11 +31,12 @@ const char * NavComNames[] = { "Via", "Orbit", "Perch", "POI" };
 
 MissionStruct NewNavMission;
 boolean NavMissionUpdated = true;
+NavPulseStruct NavPulse;
 
 void ClearNavMission(void) {
 
-	NV.Mission.NoOfWayPoints = 0;
-	NV.Mission.FenceRadius = NAV_DEFAULT_FENCE_M;
+	Config.Mission.NoOfWayPoints = 0;
+	Config.Mission.FenceRadius = NAV_DEFAULT_FENCE_M;
 
 } // ClearMission
 
@@ -128,7 +129,7 @@ boolean NavMissionSanityCheck(MissionStruct * M) {
 void NextWP(void) {
 
 	CurrWPNo++;
-	if (CurrWPNo > NV.Mission.NoOfWayPoints)
+	if (CurrWPNo > Config.Mission.NoOfWayPoints)
 		CurrWPNo = 0;
 
 	NavState = Transiting;
@@ -145,10 +146,17 @@ void SetWPHome(void) {
 void RefreshNavWayPoint(void) {
 
 	GetNavWayPoint();
-	while (WP.Action == navPOI) {
-		F.UsingPOI = true;
-		POI.Pos[NorthC] = WP.Pos[NorthC];
-		POI.Pos[EastC] = WP.Pos[EastC];
+	while ((WP.Action == navPOI) || (WP.Action == navPulse)) {
+		if (WP.Action == navPOI) {
+			F.UsingPOI = true;
+			POI.Pos[NorthC] = WP.Pos[NorthC];
+			POI.Pos[EastC] = WP.Pos[EastC];
+		} else {
+			NavPulse.State = false;
+			NavPulse.WidthmS = WP.PulseWidthmS;
+			NavPulse.PeriodmS = WP.PulsePeriodmS;
+			NavPulse.Active = NavPulse.WidthmS > 0;
+		}
 		NextWP();
 		GetNavWayPoint();
 	}
@@ -166,7 +174,7 @@ void GetNavWayPoint(void) {
 		NavMissionUpdated = false;
 		LastWPUpdated = CurrWPNo;
 
-		if (CurrWPNo > NV.Mission.NoOfWayPoints)
+		if (CurrWPNo > Config.Mission.NoOfWayPoints)
 			CurrWPNo = 0;
 
 		if (CurrWPNo == 0) { // WP #0 is Origin
@@ -177,7 +185,7 @@ void GetNavWayPoint(void) {
 
 		} else { // TODO: run time expansion - a little expensive!
 
-			W = &NV.Mission.WP[CurrWPNo];
+			W = &Config.Mission.WP[CurrWPNo];
 			WP.Pos[NorthC] = GPSToM(W->LatitudeRaw - GPS.C[NorthC].OriginRaw);
 			WP.Pos[EastC] = GPSToM(W->LongitudeRaw - GPS.C[EastC].OriginRaw)
 					* GPS.longitudeCorrection;
@@ -190,6 +198,9 @@ void GetNavWayPoint(void) {
 			WP.OrbitRadius = (real32) W->OrbitRadius; // M
 			WP.OrbitAltitude = (real32) W->OrbitAltitude;
 			WP.OrbitVelocity = (real32) W->OrbitVelocitydMpS * 0.1f; // dM/S
+
+			WP.PulseWidthmS = W->PulseWidthmS;
+			WP.PulsePeriodmS = W->PulsePeriodmS;
 		}
 #if defined(NAV_ENFORCE_ALTITUDE_CEILING)
 		WP.Pos[DownC] = Limit(WP.Pos[DownC], 0, NAV_CEILING_M);
@@ -202,15 +213,15 @@ void UpdateNavMission(void) {
 
 	if (NavMissionSanityCheck(&NewNavMission)) {
 		if (NewNavMission.NoOfWayPoints > 0)
-			memcpy(&NV.Mission, &NewNavMission, sizeof(MissionStruct));
+			memcpy(&Config.Mission, &NewNavMission, sizeof(MissionStruct));
 		else
 			ClearNavMission();
 
 		memset(&NewNavMission, 0, sizeof(MissionStruct));
 
 		if (State != InFlight) {
-			NVChanged = true;
-			UpdateNV();
+			ConfigChanged = true;
+			UpdateConfig();
 		}
 
 		NavMissionUpdated = true;

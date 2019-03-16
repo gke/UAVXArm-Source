@@ -18,66 +18,25 @@
 //    You should have received a copy of the GNU General Public License along with this program.  
 //    If not, see http://www.gnu.org/licenses/
 
-#include "UAVX.h"
 
-void incStat(uint8 s) {
-#if defined(INC_STATS_TEL)
-	Config.Stats[s]++;
+#ifndef _armflash_h
+#define _armflash_h
+
+
+#define CONFIG_FLASH_ADDR (0x8004000)
+#define CONFIG_FLASH_SIZE 0x4000 // 16K
+#define CONFIG_FLASH_SECTOR	FLASH_Sector_1
+
+
+
+#define BLACKBOX_FLASH_ADDR (0x8040000) // 128K
+#define BLACKBOX_FLASH_SIZE 0x20000
+#define BLACKBOX_FLASH_SECTOR	FLASH_Sector_6
+
+
+void ReadBlockArmFlash(uint32 a, uint32 l, uint8 * v);
+void EraseArmFlash(uint32 sector);
+boolean WriteBlockArmFlash(boolean erase, uint32 sector, uint32 a, uint32 l, uint8 * F);
+
 #endif
-} // incStats
-
-void setStat(uint8 s, int16 v) {
-#if defined(INC_STATS_TEL)
-	Config.Stats[s] = v;
-#endif
-} // setStats
-
-
-int16 currStat(uint8 s) {
-	return Config.Stats[s];
-} // currStats
-
-void ZeroStats(void) {
-	uint16 s;
-
-	for (s = 0; s < MAX_STATS; s++)
-		Config.Stats[s] = 0;
-
-	setStat(MinhAccS, INIT_MIN);
-	setStat(MaxhAccS, 0);
-	setStat(MinROCS, INIT_MIN);
-	setStat(MaxROCS, 0);
-	setStat(GPSMinSatsS, INIT_MIN);
-	setStat(GPSMaxSatsS, 0);
-
-} // ZeroStats
-
-void StatsMinMax(uint8 l, uint8 u, int16 v) {
-
-	if (v > currStat(u))
-		setStat(u, v);
-	else if (v < currStat(l))
-		setStat(l, v);
-
-} // StatsMaxMin
-
-void StatsMax(uint8 u, int16 v) {
-
-	if (v > currStat(u))
-		setStat(u, v);
-
-} // StatsMax
-
-void WriteStatsNV() {
-	//uint8 i;
-
-	//if (CurrESCType != ESCPWM)
-	//	for (i = 0; i < CurrMaxPWMOutputs; i++)
-	//		Config.Stats[ESCI2CFailS] += ESCI2CFail[i];
-
-	UpdateConfig();
-
-} // WriteStatsNV
-
-
 

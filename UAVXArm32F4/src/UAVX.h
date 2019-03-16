@@ -28,6 +28,9 @@
 
 //#define BLACKBOX
 
+//#define USE_IMU_DFT
+#define DFT_WINDOW_SIZE 8 // limit by packet size
+
 #define USE_THERMALS
 #define HAVE_WIND_ESTIMATE
 
@@ -38,13 +41,13 @@
 //#define USE_ATT_BATT_COMP
 
 
-#define CHECK_INVERTED
+#define CHECK_INVERTED // check multicopter upside down
 
 #define NAV_ENFORCE_ALTITUDE_CEILING		// limit all autonomous altitudes
 
 // Options
 
-#define USE_WS2812
+// ->#define USE_WS2812
 //#define USE_WS2812B
 
 #define INC_STATS_TEL
@@ -82,7 +85,6 @@
 #include "system_stm32f4xx.h"
 
 #include "misctypes.h"
-#include "config.h"
 
 #include "boards/harness.h"
 
@@ -95,6 +97,7 @@
 #include "filters.h"
 #include "alarms.h"
 #include "analog.h"
+#include "armflash.h"
 #include "as.h"
 #include "altitude.h"
 #include "launch.h"
@@ -112,12 +115,13 @@
 #include "mpu6xxx.h"
 #include "isr.h"
 #include "i2c.h"
+#include "i2ceeprom.h"
 #include "leds.h"
 #include "mag.h"
 #include "magvar.h"
 #include "mission.h"
 #include "nav.h"
-#include "nv.h"
+#include "nvmem.h"
 #include "mixer.h"
 #include "outputs.h"
 #include "params.h"

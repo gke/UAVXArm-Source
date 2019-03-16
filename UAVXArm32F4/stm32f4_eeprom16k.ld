@@ -44,8 +44,9 @@ MEMORY
 {
   
   VECTOR (rx) : ORIGIN = 0x8000000, LENGTH = 16K
-  SCRATCHFLASH (rx) : ORIGIN = 0x8004000, LENGTH = 16K
-  FLASH (rx)  : ORIGIN = 0x08008000, LENGTH = 1024K-32K
+  CONFIGFLASH (rx) : ORIGIN = 0x8004000, LENGTH = 16K
+  FLASH (rx)  : ORIGIN = 0x08008000, LENGTH = 1024K-32K-256K
+  BLACKBOXFLASH (rx) : ORIGIN = 0x8004000, LENGTH = 128K
   RAM (xrw)   : ORIGIN = 0x20000000, LENGTH = 128K
   MEMORY_B1 (rx)  : ORIGIN = 0x60000000, LENGTH = 0K
 }
@@ -62,12 +63,12 @@ SECTIONS
     . = ALIGN(4);
   } >VECTOR
 
-  .scratchflash :
+  .configflash :
   {
     . = ALIGN(4);
 	*(.scratchflash)
     . = ALIGN(4);
-  } >SCRATCHFLASH
+  } >CONFIGFLASH
 	
   /* The program code and other data goes into FLASH */
   .text :
@@ -95,6 +96,13 @@ SECTIONS
       *(.ARM.exidx*)
       __exidx_end = .;
     } >FLASH
+    
+  .blackboxflash :
+  {
+    . = ALIGN(4);
+	*(.scratchflash)
+    . = ALIGN(4);
+  } >BLACKBOXFLASH
 
   .preinit_array     :
   {

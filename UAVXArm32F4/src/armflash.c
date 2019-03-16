@@ -18,66 +18,56 @@
 //    You should have received a copy of the GNU General Public License along with this program.  
 //    If not, see http://www.gnu.org/licenses/
 
+
 #include "UAVX.h"
 
-void incStat(uint8 s) {
-#if defined(INC_STATS_TEL)
-	Config.Stats[s]++;
-#endif
-} // incStats
+__attribute__((__section__(".configflash")))     const int8 FlashNV[CONFIG_FLASH_SIZE];
+__attribute__((__section__(".blackboxflash")))     const int8 BlackBoxNV[BLACKBOX_FLASH_SIZE];
 
-void setStat(uint8 s, int16 v) {
-#if defined(INC_STATS_TEL)
-	Config.Stats[s] = v;
-#endif
-} // setStats
+void ReadBlockArmFlash(uint32 a, uint32 l, uint8 * v) {
+	uint32 i;
 
+	for (i = 0; i < l; i++)
+		v[i] = *(int8 *) (a + i);
 
-int16 currStat(uint8 s) {
-	return Config.Stats[s];
-} // currStats
+} // ReadBlockArmFlash
 
-void ZeroStats(void) {
-	uint16 s;
+void EraseArmFlash(uint32 sector) {
 
-	for (s = 0; s < MAX_STATS; s++)
-		Config.Stats[s] = 0;
+	FLASH_Unlock();
+	FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR
+			| FLASH_FLAG_PGAERR | FLASH_FLAG_PGPERR | FLASH_FLAG_PGSERR);
 
-	setStat(MinhAccS, INIT_MIN);
-	setStat(MaxhAccS, 0);
-	setStat(MinROCS, INIT_MIN);
-	setStat(MaxROCS, 0);
-	setStat(GPSMinSatsS, INIT_MIN);
-	setStat(GPSMaxSatsS, 0);
+	(FLASH_EraseSector(sector, VoltageRange_3) == FLASH_COMPLETE);
 
-} // ZeroStats
+	FLASH_Lock();
 
-void StatsMinMax(uint8 l, uint8 u, int16 v) {
+} // EraseArmFlash
 
-	if (v > currStat(u))
-		setStat(u, v);
-	else if (v < currStat(l))
-		setStat(l, v);
+boolean WriteBlockArmFlash(boolean erase, uint32 sector, uint32 a, uint32 l,
+		uint8 * v) {
+	uint32 i;
+	boolean r = true;
 
-} // StatsMaxMin
+	if (erase)
+		EraseArmFlash(sector);
 
-void StatsMax(uint8 u, int16 v) {
+	FLASH_Unlock();
+	FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR
+			| FLASH_FLAG_PGAERR | FLASH_FLAG_PGPERR | FLASH_FLAG_PGSERR);
 
-	if (v > currStat(u))
-		setStat(u, v);
+	if (r) {
+		for (i = 0; i < l; i += 4) {
+			r = FLASH_ProgramWord(a + i, *(uint32 *) ((uint8 *) v + i))
+					== FLASH_COMPLETE;
+			if (!r)
+				break;
+		}
+	}
+	FLASH_Lock();
 
-} // StatsMax
+	return (r);
 
-void WriteStatsNV() {
-	//uint8 i;
-
-	//if (CurrESCType != ESCPWM)
-	//	for (i = 0; i < CurrMaxPWMOutputs; i++)
-	//		Config.Stats[ESCI2CFailS] += ESCI2CFail[i];
-
-	UpdateConfig();
-
-} // WriteStatsNV
-
+} // WriteBlockArmFlash
 
 

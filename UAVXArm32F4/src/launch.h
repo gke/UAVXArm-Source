@@ -31,7 +31,6 @@ enum LaunchStates {
 extern uint8 LaunchState;
 
 void LaunchFW(void);
-void OverrideSticks(void);
 
 #endif
 

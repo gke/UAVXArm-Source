@@ -36,7 +36,7 @@ typedef struct {
 
 } filterStruct;
 
-void DFT8(real32 v, real32 *DFT);
+void DFTn(real32 *DFT, real32 * v);
 
 real32 kth_smallest(real32 a[], uint16 n, uint16 k);
 #define median(a,n) kth_smallest(a,n,(((n)&1)?((n)/2):(((n)/2)-1)))

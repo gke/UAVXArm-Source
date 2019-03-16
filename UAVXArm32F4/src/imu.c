@@ -60,9 +60,9 @@ void ScaleRateAndAcc(uint8 imuSel) {
 			// TODO: bias and scale from where? track max min with decay???
 
 		} else {
-			Acc[UD] = -(RawAcc[Y] - NV.AccCal.Bias[Y]) * NV.AccCal.Scale[Y];
-			Acc[LR] = (RawAcc[X] - NV.AccCal.Bias[X]) * NV.AccCal.Scale[X];
-			Acc[BF] = -(RawAcc[Z] - NV.AccCal.Bias[Z]) * NV.AccCal.Scale[Z]
+			Acc[UD] = -(RawAcc[Y] - Config.AccCal.Bias[Y]) * Config.AccCal.Scale[Y];
+			Acc[LR] = (RawAcc[X] - Config.AccCal.Bias[X]) * Config.AccCal.Scale[X];
+			Acc[BF] = -(RawAcc[Z] - Config.AccCal.Bias[Z]) * Config.AccCal.Scale[Z]
 					- 1.0f;
 		}
 	} else {
@@ -76,9 +76,9 @@ void ScaleRateAndAcc(uint8 imuSel) {
 			// TODO: bias and scale from where? track max min with decay???
 
 		} else {
-			Acc[BF] = (RawAcc[Y] - NV.AccCal.Bias[Y]) * NV.AccCal.Scale[Y];
-			Acc[LR] = (RawAcc[X] - NV.AccCal.Bias[X]) * NV.AccCal.Scale[X];
-			Acc[UD] = -(RawAcc[Z] - NV.AccCal.Bias[Z]) * NV.AccCal.Scale[Z];
+			Acc[BF] = (RawAcc[Y] - Config.AccCal.Bias[Y]) * Config.AccCal.Scale[Y];
+			Acc[LR] = (RawAcc[X] - Config.AccCal.Bias[X]) * Config.AccCal.Scale[X];
+			Acc[UD] = -(RawAcc[Z] - Config.AccCal.Bias[Z]) * Config.AccCal.Scale[Z];
 		}
 	}
 
@@ -93,8 +93,6 @@ void ErectGyros(uint8 imuSel, int32 TS) {
 	real32 SamplesR = 1.0f / Samples;
 	boolean Moving = false;
 
-	LEDOn(ledRedSel);
-
 	ReadFilteredGyroAndAcc(imuSel);
 
 	for (a = X; a <= Z; a++)
@@ -102,6 +100,7 @@ void ErectGyros(uint8 imuSel, int32 TS) {
 	t = 0.0f;
 
 	for (i = 1; i < Samples; i++) {
+
 		Delay1mS(IntervalmS);
 
 		ReadFilteredGyroAndAcc(imuSel);
@@ -135,15 +134,13 @@ void ErectGyros(uint8 imuSel, int32 TS) {
 	} else {
 		// leave MPU6xxx calibration alone
 		for (a = X; a <= Z; a++)
-			NV.GyroCal.C[a] = g[a];
-		NV.GyroCal.TRef = t;
-		NVChanged = true;
-		UpdateNV();
+			Config.GyroCal.C[a] = g[a];
+		Config.GyroCal.TRef = t;
+		ConfigChanged = true;
+		UpdateConfig();
 		if (CurrTelType == UAVXTelemetry)
 			SendCalibrationPacket(TelemetrySerial);
 	}
-
-	LEDOff(ledRedSel);
 
 } // ErectGyros
 
@@ -158,10 +155,14 @@ void InitIMU(uint8 imuSel) {
 
 	InitMPU6XXX(imuSel);
 
+#if defined(USE_IMU_DFT)
+
+#else
 	for (a = 0; a < MAX_NOISE_BANDS; a++)
 		Noise[a] = 0;
+#endif
 
-	F.AccCalibrated = F.IMUCalibrated = (NV.AccCal.Calibrated == 1);
+	F.AccCalibrated = F.IMUCalibrated = (Config.AccCal.Calibrated == 1);
 
 } // InitIMU
 

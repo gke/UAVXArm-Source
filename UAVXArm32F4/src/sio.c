@@ -22,24 +22,24 @@
 
 boolean SIOReadBlock(uint8 sioDev, uint8 reg, uint8 len, uint8 * data) {
 
-tickCountOn(SIOReadTick);
+	tickCountOn(SIOReadTick);
 	if (busDev[sioDev].useSPI)
 		return (SPIReadBlock(sioDev, reg, len, data));
 	else
 		return (I2CReadBlock(sioDev, busDev[sioDev].i2cId, reg, len, data));
-tickCountOff(SIOReadTick);
+	tickCountOff(SIOReadTick);
 
 } // SIOReadBlock
 
 
 boolean SIOWriteBlock(uint8 sioDev, uint8 reg, uint8 len, uint8 * data) {
 
-tickCountOn(SIOWriteTick);
+	tickCountOn(SIOWriteTick);
 	if (busDev[sioDev].useSPI)
 		return (SPIWriteBlock(sioDev, reg, len, data));
 	else
 		return (I2CWriteBlock(sioDev, busDev[sioDev].i2cId, reg, len, data));
-tickCountOff(SIOWriteTick);
+	tickCountOff(SIOWriteTick);
 
 } // SIOWriteBlock
 
@@ -71,13 +71,13 @@ uint8 SIOReadataddr(uint8 sioDev, uint8 a) {
 
 boolean SIOReadBlockataddr(uint8 sioDev, uint8 a, uint8 l, uint8 *S) {
 
-tickCountOn(SIOReadTick);
+	tickCountOn(SIOReadTick);
 	if (busDev[sioDev].useSPI)
 		return (SIOReadBlock(sioDev, a, l, S)); // d & 0xfe,
 	else
 		return (I2CReadBlock(busDev[sioDev].busNo, busDev[sioDev].i2cId & 0xfe,
 				a, l, S)); //
-tickCountOff(SIOReadTick);
+	tickCountOff(SIOReadTick);
 } // blockreadataddr
 
 

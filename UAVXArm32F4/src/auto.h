@@ -91,7 +91,7 @@ enum NavStates {
 };
 
 enum NavComs {
-	navVia, navOrbit, navPerch, navPOI, navGlide, navLand, navUnknown
+	navVia, navOrbit, navPerch, navPOI, navPulse, navGlide, navLand, navUnknown
 };
 
 extern const char * NavComNames[];
@@ -103,12 +103,14 @@ typedef struct {
 	real32 OrbitRadius;
 	real32 OrbitAltitude;
 	real32 OrbitVelocity;
+	int32 PulseWidthmS;
+	int32 PulsePeriodmS;
 	uint8 Action;
 } WPStruct;
 
 enum AlarmStates {
 	NoAlarms, Monitoring, BatteryLow, LostSignal, HitFenceRTH, UpsideDown, ForcedLanding, GPSSerialPassThru,
-	ArmingTimeout
+	ArmingTimeout, CloseThrottle
 };
 
 enum LandingStates {
@@ -117,6 +119,7 @@ enum LandingStates {
 
 enum MotorStopActions {landNoStop, landContactSw, landDescentRate, landAccZBump, landDescentRateAndAccZ};
 
+extern void DisableNoFlightStuff(void);
 extern void DoNavigation(void);
 extern void InitNavigation(void);
 
@@ -133,6 +136,7 @@ extern void InitiateShutdown(uint8 s);
 extern uint8 NavState, NavSwState, NavSwStateP, AlarmState;
 extern real32 DesiredNavHeading;
 extern boolean WPNavEnabled;
+extern boolean Navigating;
 
 #endif
 

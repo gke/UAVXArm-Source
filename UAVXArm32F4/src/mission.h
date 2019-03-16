@@ -22,7 +22,7 @@
 #ifndef _mission_h
 #define _mission_h
 
-#define NAV_MAX_WAYPOINTS 11
+#define NAV_MAX_WAYPOINTS 64
 
 typedef struct {
 	int32 LatitudeRaw; // 1e7/degree
@@ -33,6 +33,8 @@ typedef struct {
 	int16 OrbitRadius;
 	int16 OrbitAltitude; // relative to Origin
 	int16 OrbitVelocitydMpS;
+	int32 PulseWidthmS;
+	int32 PulsePeriodmS;
 	uint8 Action;
 }__attribute__((packed)) WPStructNV;
 
@@ -44,6 +46,13 @@ typedef struct {
     int32 OriginLongitude;
 	WPStructNV WP[NAV_MAX_WAYPOINTS];
 }__attribute__((packed)) MissionStruct;
+
+typedef struct {
+	int32 WidthmS;
+    int32 PeriodmS;
+    boolean Active;
+    boolean State;
+} NavPulseStruct;
 
 extern MissionStruct NewNavMission;
 
@@ -63,6 +72,7 @@ void SetWPHome(void);
 extern WPStruct WP, HP, HomeWP, OffsetHomeWP, POI;
 extern uint8 CurrWPNo, PrevWPNo;
 extern boolean NavMissionUpdated;
+extern NavPulseStruct NavPulse;
 
 #endif
 

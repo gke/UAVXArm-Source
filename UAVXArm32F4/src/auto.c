@@ -25,7 +25,7 @@
 real32 NavdT;
 
 uint8 NavState, AlarmState;
-
+boolean Navigating = false;
 uint8 LandingState = InitDescent;
 
 uint8 NavSwState = SwLow;
@@ -81,9 +81,7 @@ boolean DoLanding(void) {
 
 	HasLanded = false;
 
-	CheckLandingSwitch();
-
-	DesiredThrottle = F.IsFixedWing ? 0 : CruiseThrottle;
+	//	DesiredThrottle = F.IsFixedWing ? 0 : CruiseThrottle;
 	Alt.P.Desired = -100.0f; // TODO: redundant?
 
 	switch (LandingState) {
@@ -128,7 +126,7 @@ void InitiateShutdown(uint8 s) {
 	ZeroThrottleCompensation();
 	ZeroNavCorrections();
 	DesiredThrottle = 0.0f;
-	StopDrives();
+	F.DrivesArmed = false;
 	AlarmState = s;
 	State = Shutdown;
 } // InitiateShutdown
@@ -168,6 +166,7 @@ void CheckRapidDescentHazard(void) {
 
 } // CheckRapidDescentHazard
 
+
 void CapturePosition(void) {
 
 	if (F.OriginValid) {
@@ -176,6 +175,7 @@ void CapturePosition(void) {
 	}
 
 } // CapturePosition
+
 
 void InitiateRTH(void) {
 
@@ -188,6 +188,24 @@ void InitiateRTH(void) {
 	F.ReturnHome = true;
 
 } // InitiateRTH
+
+
+void InitiatePerch(void) {
+	idx a;
+
+	ZeroThrottleCompensation();
+	ZeroIntegrators();
+
+	for (a = NorthC; a <= EastC; a++)
+		Nav.C[a].Corr = 0.0f;
+
+	for (a = Pitch; a <= Yaw; a++)
+		A[a].NavCorr = A[a].NavCorrP = Nav.C[a].PosIntE = 0.0f;
+
+	mSTimer(NavStateTimeout, (timemS) WP.Loiter * 1000);
+	NavState = Perching;
+
+} // InitiatePerch
 
 void InitiatePH(void) {
 
@@ -234,6 +252,7 @@ void DoGliderStuff(void) {
 	}
 } // DoGliderStuff
 
+
 void UpdateRTHSwState(void) { // called in rc.c on every rx packet
 
 	if (State != Launching) {
@@ -266,8 +285,10 @@ void UpdateRTHSwState(void) { // called in rc.c on every rx packet
 				case SwMiddle:
 					if (F.OriginValid) {
 						InitiatePH();
-						F.UsingWPNavigation = (NV.Mission.NoOfWayPoints > 0)
-								&& WPNavEnabled;
+						F.UsingPOI = SavedPIOState;
+						F.UsingWPNavigation
+								= (Config.Mission.NoOfWayPoints > 0)
+										&& WPNavEnabled;
 					}
 					break;
 				case SwHigh:
@@ -287,39 +308,34 @@ void UpdateRTHSwState(void) { // called in rc.c on every rx packet
 
 				NavSwStateP = NavSwState;
 			}
-
-			// refresh even if switch not changed
-
-			if (F.ForcedLanding) { // override everything!
-
-				F.AltControlEnabled = true;
-				StickThrottle = CruiseThrottle;
-
-			} else {
-
-				F.AltControlEnabled = (Nav.Sensitivity
-						>= NAV_ALT_THRESHOLD_STICK) && !F.UseManualAltHold;
-
-				if (!(F.HoldingAlt || F.Navigate || F.ReturnHome))
-					SetDesiredAltitude(Altitude);
-
-				if (F.AltControlEnabled && !((NavState == HoldingStation)
-						|| (NavState == PIC) || (NavState == Touchdown)))
-					StickThrottle = CruiseThrottle;
-			}
 		}
 
-		DesiredThrottle = StickThrottle;
-	}
+		if (F.ForcedLanding) { // override everything!
+			F.AltControlEnabled = true;
+			DesiredThrottle = CruiseThrottle;
+		} else if ((NavState == Perching) || (NavState == Touchdown)) {
+			ZeroThrottleCompensation();
+			ZeroIntegrators();
+			F.AltControlEnabled = false;
+			DesiredThrottle = 0.0f;
+		} else if (F.AltControlEnabled && !((NavState == HoldingStation)
+				|| (NavState == PIC)))
+			DesiredThrottle = CruiseThrottle;
+		else
+			DesiredThrottle = StickThrottle;
 
+	}
 } // UpdateRTHSwState
 
 
 void DoNavigation(void) {
 
-	if ((NavState != PIC) && F.NavigationEnabled
-			&& (F.Navigate || F.ReturnHome) && !((!F.UsingAngleControl)
-			|| F.PassThru)) {
+	//Navigating = F.NavigationEnabled && !(F.PassThru || (State == PIC));
+
+	Navigating = F.NavigationEnabled && (F.Navigate || F.ReturnHome)
+			&& !((NavState == PIC) || F.PassThru);
+
+	if (Navigating) {
 
 		if (F.NewNavUpdate) {
 			F.NewNavUpdate = false;
@@ -329,7 +345,6 @@ void DoNavigation(void) {
 			switch (NavState) {
 			case AltitudeLimiting:
 				// don't do hold as we may need to escape thermal
-
 				if (Altitude < AltMaxM) { //set best glide pitch
 					Sl = 0.0f;
 					NavState = JustGliding;
@@ -343,39 +358,32 @@ void DoNavigation(void) {
 				break;
 			case JustGliding:
 			case UsingThermal:
-
 				DoGliderStuff();
-
 				break;
 			case Takeoff:
 				RefreshNavWayPoint();
 				Navigate(&WP);
 
-				if (Altitude > NAV_MIN_ALT_M)
+				if ((Altitude > NAV_MIN_ALT_M) || (Altitude >= WP.Pos[DownC]))
 					NextWP();
 				break;
 			case Perching:
 				if (mSTimeout(NavStateTimeout)) {
 					SetDesiredAltitude(WP.Pos[DownC]);
 					NavState = Takeoff;
-				} else {
-					A[Pitch].NavCorr = A[Roll].NavCorr = 0.0f; //TODO: Why?
-					SetDesiredAltitude(-100.0f); // override WP altitude
 				}
 				break;
 			case Touchdown:
 				if (WP.Action == navPerch)
-					NavState = Perching;
+					InitiatePerch();
 				break;
 			case Descending:
 				RefreshNavWayPoint();
 				Navigate(&WP);
 
 				if (WP.Action == navPerch) {
-					if (DoLanding()) {
-						mSTimer(NavStateTimeout, (timemS) WP.Loiter * 1000);
-						NavState = Perching;
-					}
+					if (DoLanding())
+						InitiatePerch();
 				} else
 					DoAutoLanding();
 				break;
@@ -386,6 +394,7 @@ void DoNavigation(void) {
 						&& mSTimeout(NavStateTimeout)) {
 					F.RapidDescentHazard = false;
 					if (F.IsFixedWing) {
+						// just orbit
 					} else
 						InitiateDescent();
 				}
@@ -411,6 +420,7 @@ void DoNavigation(void) {
 						break;
 					default:
 						NavState = OrbitingPOI;
+						break;
 					} // switch
 					F.RapidDescentHazard = false;
 				}
@@ -440,7 +450,6 @@ void DoNavigation(void) {
 					NextWP();
 
 				break;
-
 			case Transiting:
 				RefreshNavWayPoint();
 				Navigate(&WP);

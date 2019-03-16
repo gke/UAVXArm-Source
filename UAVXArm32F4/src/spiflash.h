@@ -29,22 +29,22 @@
 
 #define FLAG_EPE			5
 
-boolean FLASHInit(void);
-boolean FLASHConfig256(uint8 devSel);
-void FLASHReset(uint8 devSel);
-uint8 FLASHReadStatus(uint8 devSel);
-boolean FLASHFlagSet(uint8 devSel, uint8 fb);
-boolean FLASHDeviceInfoValid(uint8 devSel);
-void FLASHShowStatus(uint8 s);
+boolean InitSPIFlash(void);
+boolean Config256SPIFlash(uint8 devSel);
+void ResetSPIFlash(uint8 devSel);
+uint8 ReadStatusSPIFlash(uint8 devSel);
+boolean FlagSetSPIFlash(uint8 devSel, uint8 fb);
+boolean DeviceInfoValidSPIFlash(uint8 devSel);
+void ShowStatusSPIFlash(uint8 s);
 
-boolean FLASHErasePage(uint8 devSel, uint32 a);
-boolean FLASHEraseBlock(uint8 devSel, uint32 a);
-boolean FLASHErase(uint8 devSel);
+boolean EraseSPIFlashPage(uint8 devSel, uint32 a);
+boolean ErasePageSPIFlashPage(uint8 devSel, uint32 a);
+boolean EraseSPIFlash(void);
 
-boolean FLASHReadPage(uint8 devSel, uint32 FLASHAddr, uint32 len, int8 *data);
-boolean FLASHReadModifyWrite(uint8 devSel, uint32 a, uint32 len, int8 *data);
+boolean ReadSPIFlashPage(uint8 devSel, uint32 Addr, uint32 len, int8 *data);
+boolean ReadModifyWriteSPIFlash(uint8 devSel, uint32 a, uint32 len, int8 *data);
 
-extern uint8 FLASHInfo[];
-extern uint16 FLASHLastStatus;
+extern uint8 SInfoSPIFlash[];
+extern uint16 LastStatusSPIFlash;
 
 #endif

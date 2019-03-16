@@ -162,8 +162,7 @@ extern uint8 Map[], RMap[];
 extern real32 RC[], RCp[];
 
 extern uint8 DiscoveredRCChannels;
-extern real32 MaxCruiseThrottle, DesiredThrottle, IdleThrottle,
-		InitialThrottle, StickThrottle;
+extern real32 StickThrottle;
 extern real32 CurrMaxRollPitchStick;
 extern real32 CamPitchTrim;
 extern real32 ThrLow, ThrHigh, ThrNeutral;

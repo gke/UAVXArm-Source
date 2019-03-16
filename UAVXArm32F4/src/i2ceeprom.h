@@ -19,37 +19,14 @@
 //    If not, see http://www.gnu.org/licenses/
 
 
-#ifndef _inertial_h
-#define _inertial_h
+#ifndef _i2ceeprom_h
+#define _i2ceeprom_h
 
-extern uint8 CurrIMUOption;
+#define EEPROM_ID 0xa0
 
-enum IMUOptions {
-	useIMU0, useIMU1, useBothIMUs, unknownIMUOption
-};
-
-void InitMadgwick(void);
-void UpdateInertial(void);
-
-void ScaleIMU(void);
-
-void CheckNavEnable(void);
-
-void ShowIMUType(uint8 s);
-
-real32 GravityCompensatedAccZ(void);
-real32 AttitudeCosine(void);
-
-extern const char * IMUName[];
-
-extern real32 AccConfidenceSDevR, AccConfidence;
-extern real32 KpAccBase, KpMagBase;
-
-extern HistStruct AccZF;
-extern real32 AccZ;
-extern real32 AltLPFHz;
-
-extern timeuS LastInertialUpdateuS;
+boolean WriteI2CEEPROMBlock(uint32 a, uint16 l, int8 *v);
+void ReadI2CEEPROMBlock(uint32 a, uint16 l, int8 * v);
+boolean EraseI2CEEPROM(void);
 
 #endif
 

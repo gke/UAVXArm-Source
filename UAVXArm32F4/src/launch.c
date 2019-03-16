@@ -64,15 +64,6 @@ boolean LaunchDetected(timemS NowmS) { // main contribution from iNav
 } // updateFWLaunchDetector
 
 
-void OverrideSticks(void) {
-
-	AttitudeMode = AngleMode;
-	F.UsingAngleControl = true;
-	A[Pitch].Stick = FWMaxClimbAngleRad / A[Pitch].P.Max;
-
-} // OverrideSticks
-
-
 real32 ThrottleUp(timemS TimemS) {
 	real32 Thr;
 
@@ -89,11 +80,9 @@ real32 ThrottleUp(timemS TimemS) {
 
 void LaunchFW(void) {
 
-	if (F.PassThru) {
-		F.DrivesArmed = true;
-		DesiredThrottle = StickThrottle;
-		LaunchState = finishedLaunch;
-	}
+	AttitudeMode = AngleMode;
+	F.UsingAngleControl = true;
+	A[Pitch].Stick = FWMaxClimbAngleRad / A[Pitch].P.Max;
 
 	switch (LaunchState) {
 	case initLaunch:
@@ -108,7 +97,7 @@ void LaunchFW(void) {
 		DesiredThrottle = Max(IdleThrottle, Launch.idlethrottle);
 
 		if (mSTimeout(NavStateTimeout)) { // 3Sec
-			StopDrives();
+			F.DrivesArmed = false;
 			LaunchState = finishedLaunch;
 		} else {
 			if (LaunchDetected(mSClock())) { // 40mS
@@ -128,6 +117,7 @@ void LaunchFW(void) {
 		}
 		break;
 	case finishedLaunch:
+		State = InFlight;
 	default:
 		break;
 	} // switch

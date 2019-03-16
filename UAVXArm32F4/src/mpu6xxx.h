@@ -45,6 +45,7 @@ extern real32 MPU6XXXTemperature;
 void CalibrateAccAndGyro(uint8 s, uint8 imuSel);
 void InitMPU6XXX(uint8 imuSel);
 void CheckMPU6XXXActive(uint8 imuSel);
+void ReadAccGyro(uint8 imuSel);
 void ReadFilteredGyroAndAcc(uint8 imuSel);
 void UpdateGyroTempComp(uint8 imuSel);
 boolean MPU6XXXReady(uint8 imuSel);
@@ -55,8 +56,14 @@ extern uint8 MPU0_ID, MPU1_ID;
 extern timeuS mpu6xxxLastUpdateuS;
 extern real32 RawAcc[], RawGyro[];
 
+#if defined(USE_IMU_DFT)
+idx hidx;
+extern int16 IMUSampleWindow[][DFT_WINDOW_SIZE];
+extern real32 IMUDFT[DFT_WINDOW_SIZE];
+#else
 extern uint32 Noise[];
 extern real32 GyroSlewLimitFrac;
+#endif
 
 #endif
 

@@ -53,7 +53,7 @@ PinDef PWMPins[MAX_PWM_OUTPUTS] = {
 
 };
 
-PinDef GPIOPins[MAX_GPIO_PINS] = { 	
+PinDef GPIOPins[MAX_GPIO_PINS] = { 
 	{true, PA12, OutPinConfig,}, // Beeper 4? // USB
 	{true, PC10, InpPinConfig,}, // Armed
 	{true, PC9, InpPinConfig,}, // Landing
@@ -61,7 +61,7 @@ PinDef GPIOPins[MAX_GPIO_PINS] = {
 	{true, PC6, OutPinConfig,}, // Aux1
 #else
 	{false, }, // WSLEDs
-#endif	   
+#endif   
 	{true, PC7, OutPinConfig,}, // Aux2 (GPSTxSerial for V3 and Parallel Rx)
 #if defined(USE_AUX3_PROBE_PIN)
 	{true, PC8, OutPinConfig,}, // Aux3 (Probe)
@@ -126,7 +126,11 @@ DevDef busDev[maxDevSel] = {
 	{false, imu1Sel, },  
 	{true, baroSel, ms5611Baro, false, 2, MS56XX_ID,},
 	{true, magSel, hmc5xxxMag, false, 2, HMC5XXX_ID,},
-	{true, memSel, i2cEEPROMMem, false, 2, EEPROM_ID,},
+#if defined(USE_ARM_BLACKBOX_FLASH)
+	{false, memSel, ArmFlashMem, }, // does not use either SPI or I2C
+#else
+	{true, memSel, i2cEEPROMMem, false, 2, EEPROM_ID,},	
+#endif
 	{false, gpsSel, },
 	{false, rfSel, },
 	{false, asSel, },

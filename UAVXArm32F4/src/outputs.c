@@ -279,11 +279,6 @@ void UpdateDrives(void) {
 } // UpdateDrives
 
 
-void StopDrives(void) {
-	F.DrivesArmed = false;
-} // StopDrives
-
-
 void InitDrives(void) {
 	idx m, nd;
 

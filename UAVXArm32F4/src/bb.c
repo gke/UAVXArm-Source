@@ -22,11 +22,13 @@
 
 #include "UAVX.h"
 
-#define BUFFER_SIZE 2048
-#define BUFFER_MASK (BUFFER_SIZE-1)
-uint32 CurrExtMemAddr;
-uint32 LastExtMemAddr = MEM_SIZE;
-int8 BBQ[BUFFER_SIZE];
+#define BBQ_BUFFER_SIZE 2048
+#define BBQ_BUFFER_MASK (BBQ_BUFFER_SIZE-1)
+
+uint32 CurrBBMemAddr;
+uint32 MaxBBMemAddrUsed;
+
+int8 BBQ[BBQ_BUFFER_SIZE];
 volatile uint16 BBQHead;
 volatile uint16 BBQTail;
 volatile uint16 BBQEntries;
@@ -34,22 +36,23 @@ boolean BlackBoxEnabled = false;
 uint8 BBReplaySpeed = 1;
 
 void UpdateBlackBox(void) {
-	int8 B[MEM_BLOCK_SIZE];
-	uint16 i;
+	uint32 i;
 
-	if (F.HaveExtMem)
-		if ((uSClock() >= uS[MemReady]) && (BBQEntries >= MEM_BLOCK_SIZE)) {
+	if (F.HaveNVMem)
+		if ((uSClock() >= uS[MemReady]) && (BBQEntries >= NVMemBlockSize)) {
 
-			for (i = 0; i < MEM_BLOCK_SIZE; i++) {
-				BBQHead = (BBQHead + 1) & BUFFER_MASK;
-				B[i] = BBQ[BBQHead];
+			for (i = 0; i < NVMemBlockSize; i++) {
+				BBQHead = (BBQHead + 1) & BBQ_BUFFER_MASK;
+				NVMemBuffer[i] = BBQ[BBQHead];
 			}
-			WriteBlockExtMem(CurrExtMemAddr, MEM_BLOCK_SIZE, B);
-			BBQEntries -= MEM_BLOCK_SIZE;
+			WriteNVMemBlock(CurrBBMemAddr, NVMemBlockSize, NVMemBuffer);
+			BBQEntries -= NVMemBlockSize;
 
-			CurrExtMemAddr += MEM_BLOCK_SIZE;
-			if (CurrExtMemAddr > LastExtMemAddr) // wrap around to capture end of flight
-				CurrExtMemAddr = 0;
+			CurrBBMemAddr += NVMemBlockSize;
+			MaxBBMemAddrUsed = CurrBBMemAddr;
+
+			if (CurrBBMemAddr >= NVMemSize) // wrap around to capture end of flight
+				CurrBBMemAddr = 0;
 
 		}
 } // UpdateBlackBox
@@ -59,7 +62,7 @@ void BlackBox(uint8 ch) {
 	uint16 NewTail;
 
 	if (BlackBoxEnabled) {
-		NewTail = (BBQTail + 1) & BUFFER_MASK;
+		NewTail = (BBQTail + 1) & BBQ_BUFFER_MASK;
 		BBQ[NewTail] = ch;
 		BBQTail = NewTail;
 		BBQEntries++;
@@ -71,44 +74,35 @@ void DumpBlackBox(uint8 s) {
 	int32 seqNo;
 	int32 a;
 	uint32 MaxMemoryUsed;
-	int8 B[MEM_BLOCK_SIZE];
 	uint16 i;
 	boolean Finish;
-
-#if defined(UAVXF4V4)
-	MaxMemoryUsed = MEM_SIZE; // Read32ExtMem(0);
-	a = MEM_BLOCK_SIZE;
-#else
-	MaxMemoryUsed = MEM_SIZE;
-	a = 0;
-#endif
 
 	F.DumpingBlackBox = true;
 
 	seqNo = 0;
 
-	if (F.HaveExtMem) {
+	if (F.HaveNVMem) {
 
 		for (i = 0; i < 10; i++)
 			SendFlightPacket(s);
 
 		do {
-			ReadBlockExtMem(a, MEM_BLOCK_SIZE, B);
+			ReadBlockNVMem(a, NVMemBlockSize, NVMemBuffer);
 			Finish = true;
-			for (i = 0; i < MEM_BLOCK_SIZE; i++)
-				Finish &= B[i] == -1;
+			for (i = 0; i < NVMemBlockSize; i++)
+				Finish &= NVMemBuffer[i] == -1;
 			if (!Finish) {
-				if (MEM_BLOCK_SIZE > 128) {
-					SendBBPacket(s, seqNo++, 128, &B[0]);
-					SendBBPacket(s, seqNo++, MEM_BLOCK_SIZE - 128, &B[128]);
+				if (NVMemBlockSize > 128) {
+					SendBBPacket(s, seqNo++, 128, &NVMemBuffer[0]);
+					SendBBPacket(s, seqNo++, NVMemBlockSize - 128, &NVMemBuffer[128]);
 				} else
-					SendBBPacket(s, seqNo++, (uint8) MEM_BLOCK_SIZE, &B[0]);
-				a += MEM_BLOCK_SIZE;
+					SendBBPacket(s, seqNo++, (uint8) NVMemBlockSize, &NVMemBuffer[0]);
+				a += NVMemBlockSize;
 			}
-		} while ((a < MaxMemoryUsed) && !Finish);
+		} while ((a < MaxBBMemAddrUsed) && !Finish);
 
-		B[0] = 0;
-		SendBBPacket(s, -1, 1, B);
+		NVMemBuffer[0] = 0;
+		SendBBPacket(s, -1, 1, NVMemBuffer);
 	}
 
 	F.DumpingBlackBox = false;
@@ -119,6 +113,7 @@ void DumpBlackBox(uint8 s) {
 void InitBlackBox(void) {
 
 	BBQHead = BBQTail = BBQEntries = 0;
-	CurrExtMemAddr = 0;
+	MaxBBMemAddrUsed = 0;
+	CurrBBMemAddr = 0;
 
 } // InitBlackBox

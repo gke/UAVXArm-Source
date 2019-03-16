@@ -400,17 +400,17 @@ void CalibrateAccSixPointSphere(uint8 s, uint8 imuSel) {
 			&SphereRadius);
 
 	for (a = X; a <= Z; a++) {
-		NV.AccCal.Scale[a] = SphereRadius * DEF_ACC_SCALE;
-		NV.AccCal.Bias[a] = SphereOrigin[a];
+		Config.AccCal.Scale[a] = SphereRadius * DEF_ACC_SCALE;
+		Config.AccCal.Bias[a] = SphereOrigin[a];
 	}
 
 	AccZBias = 0.0f;
 
-	NV.AccCal.Calibrated = 1;
+	Config.AccCal.Calibrated = 1;
 	F.AccCalibrated = true;
 
-	NVChanged = true;
-	UpdateNV();
+	ConfigChanged = true;
+	UpdateConfig();
 
 
 	LEDsOff();
@@ -492,30 +492,30 @@ void CalibrateAccSixPoint(uint8 s, uint8 imuSel) {
 
 	LEDsOff();
 
-	solveBias(&calState, NV.AccCal.Bias);
+	solveBias(&calState, Config.AccCal.Bias);
 
 	resetState(&calState);
 
 	for (d = 0; d < 6; d++) {
 		for (a = X; a <= Z; a++)
 			sensorSample[a] = sensorSamples[d][a] / (real32) ACC_CAL_CYCLES
-					- NV.AccCal.Scale[a];
+					- Config.AccCal.Scale[a];
 
 		pushForScaleCalc(&calState, d >> 1, sensorSample, (real32) MPU_1G);
 	}
 
-	solveScale(&calState, NV.AccCal.Scale);
+	solveScale(&calState, Config.AccCal.Scale);
 
 	for (a = X; a <= Z; a++)
-		NV.AccCal.Scale[a] *= DEF_ACC_SCALE;
+		Config.AccCal.Scale[a] *= DEF_ACC_SCALE;
 
 	AccZBias = 0.0f;
 
-	NV.AccCal.Calibrated = 1;
+	Config.AccCal.Calibrated = 1;
 	F.AccCalibrated = true;
 
-	NVChanged = true;
-	UpdateNV();
+	ConfigChanged = true;
+	UpdateConfig();
 
 	LEDsOff();
 	DoBeeps(2);

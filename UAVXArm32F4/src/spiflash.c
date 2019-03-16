@@ -20,6 +20,10 @@
 
 #include "UAVX.h"
 
+#define SPIFLASH_SIZE 16777216
+#define SPIFLASH_PAGE_SIZE 256
+#define SPIFLASH_BUFFER_SIZE 256
+
 // CAUTION: Flash does not follow SPI "convention" where MSB signifies a read operation
 
 // TODO: (IntAdr + len) < buffersize
@@ -63,54 +67,54 @@
 #define STATUS_FL			0xd7
 
 uint8 oxo;
-uint8 FLASHInfo[5] = { 0xff };
-uint8 FLASHStatus1, FLASHStatus2;
+uint8 SPIFlashInfo[5] = { 0xff };
+uint8 SPIFlashStatus1, SPIFlashStatus2;
 
-boolean FLASHInit(void) {
+boolean InitSPIFlash(void) {
 	boolean r;
 
-	FLASHReset(memSel);
-	r = FLASHDeviceInfoValid(memSel);
-	r &= FLASHConfig256(memSel); // MEM_PAGE_SIZE
+	ResetSPIFlash(memSel);
+	r = DeviceInfoValidSPIFlash(memSel);
+	r &= Config256SPIFlash(memSel); // SPIFLASH_PAGE_SIZE
 
 	return(r);
-} // FLASHInit
+} // InitSPIFlash
 
 
-void FLASHShowStatus(uint8 s) {
+void ShowSPIFlashStatus(uint8 s) {
 	idx i;
 
 	TxString(s, "0x");
-	TxValH(s, FLASHStatus1);
+	TxValH(s, SPIFlashStatus1);
 	TxChar(s, ' ');
 	for (i = 0; i < 5; i++) {
 		TxString(s, "0x");
-		TxValH(s, FLASHInfo[i]);
+		TxValH(s, SPIFlashInfo[i]);
 		TxChar(s, ' ');
 	}
 
-} // FLASHShowStatus
+} // ShowStatusSPIFlash
 
 
-boolean FLASHFlagSet(uint8 devSel, uint8 fb) {
+boolean FlagSetSPIFlash(uint8 devSel, uint8 fb) {
 
-	return ((FLASHReadStatus(devSel) & (1 << fb)) != 0);
+	return ((ReadStatusSPIFlash(devSel) & (1 << fb)) != 0);
 
-} // FLASHFlagSet
+} // FlagSetSPIFlash
 
 
-void FLASHSendAddress(SPI_TypeDef * s, uint32 a) {
+void SendSPIFlashAddress(SPI_TypeDef * s, uint32 a) {
 	oxo = SPITransfer(s, (uint8) (a >> 16));
 	oxo = SPITransfer(s, (uint8) (a >> 8));
 	oxo = SPITransfer(s, (uint8) a);
-} // FLASHPageAddress
+} // SendSPIFlashAddress
 
 //___________________________________________________________________
 
 // READ
 
 
-uint8 FLASHReadStatus(uint8 devSel) {
+uint8 ReadStatusSPIFlash(uint8 devSel) {
 	SPI_TypeDef * s;
 
 	while (uSClock() < uS[MemReady]) {
@@ -121,15 +125,15 @@ uint8 FLASHReadStatus(uint8 devSel) {
 
 	SPISelect(devSel, true);
 	oxo = SPITransfer(s, STATUS_FL);
-	FLASHStatus1 = SPITransfer(s, 0);
+	SPIFlashStatus1 = SPITransfer(s, 0);
 	//FLASHStatus2 = SPITransfer(s, 0);
 	SPISelect(devSel, false);
 
-	return(FLASHStatus1);
+	return(SPIFlashStatus1);
 
-} // FLASHReadStatus
+} // ReadStatusSPIFlash
 
-boolean FLASHDeviceInfoValid(uint8 devSel) {
+boolean DeviceInfoValidSPIFlash(uint8 devSel) {
 	const uint8 expFLASHInfo[5] = { 0x1f, 0x28, 0x00, 0x01, 0x00 };
 	idx i;
 	SPI_TypeDef * s;
@@ -144,19 +148,19 @@ boolean FLASHDeviceInfoValid(uint8 devSel) {
 	SPISelect(devSel, true);
 	oxo = SPITransfer(s, DEV_FL);
 	for (i = 0; i < 5; i++)
-		FLASHInfo[i] = SPITransfer(s, 0);
+		SPIFlashInfo[i] = SPITransfer(s, 0);
 	SPISelect(devSel, false);
 
 	r = true;
 	for (i = 0; i < 5; i++)
-		r &= FLASHInfo[i] == expFLASHInfo[i];
+		r &= SPIFlashInfo[i] == expFLASHInfo[i];
 
 	return (r);
 
-} // FLASHDeviceInfoValid
+} // DeviceInfoValidSPIFlash
 
 
-void FLASHReset(uint8 devSel) {
+void ResetSPIFlash(uint8 devSel) {
 	SPI_TypeDef * s;
 
 	while (uSClock() < uS[MemReady]) {
@@ -174,10 +178,10 @@ void FLASHReset(uint8 devSel) {
 
 	uSTimer(MemReady, 35);
 
-} // FLASHReset
+} // ResetSPIFlash
 
 
-boolean FLASHReadPage(uint8 devSel, uint32 a, uint32 len, int8 * data) {
+boolean ReadSPIFlashPage(uint8 devSel, uint32 a, uint32 len, int8 * data) {
 	uint32 i;
 	SPI_TypeDef * s;
 	uint32 r;
@@ -192,7 +196,7 @@ boolean FLASHReadPage(uint8 devSel, uint32 a, uint32 len, int8 * data) {
 
 	SPISelect(devSel, true);
 	oxo = SPITransfer(s, RD_FL);
-	FLASHSendAddress(s, a);
+	SendSPIFlashAddress(s, a);
 	oxo = SPITransfer(s, 0); // dummy to allow setup
 	oxo = SPITransfer(s, 0);
 	oxo = SPITransfer(s, 0);
@@ -203,14 +207,14 @@ boolean FLASHReadPage(uint8 devSel, uint32 a, uint32 len, int8 * data) {
 
 	return (r == spiErrors);
 
-} // FLASHReadPage
+} // ReadSPIFlashPage
 
 //____________________________________________________________________________
 
 // WRITE
 
 
-boolean FLASHConfig256(uint8 devSel) {
+boolean Config256SPIFlash(uint8 devSel) {
 	SPI_TypeDef * s;
 
 	while (uSClock() < uS[MemReady]) {
@@ -228,12 +232,12 @@ boolean FLASHConfig256(uint8 devSel) {
 
 	uSTimer(MemReady, 35000);
 
-	return(FLASHFlagSet(devSel, FLAG_256));
+	return(FlagSetSPIFlash(devSel, FLAG_256));
 
-} // FLASHConfig256
+} // Config256SPIFlash
 
 
-boolean FLASHReadModifyWrite(uint8 devSel, uint32 a, uint32 len, int8 *data) {
+boolean ReadModifyWriteSPIFlash(uint8 devSel, uint32 a, uint32 len, int8 *data) {
 	uint32 i;
 	SPI_TypeDef * s;
 	uint32 r;
@@ -248,7 +252,7 @@ boolean FLASHReadModifyWrite(uint8 devSel, uint32 a, uint32 len, int8 *data) {
 
 	SPISelect(devSel, true);
 	oxo = SPITransfer(s, RD_MOD_WR_B1_FL);
-	FLASHSendAddress(s, a);
+	SendSPIFlashAddress(s, a);
 	for (i = 0; i < len; i++)
 		oxo = SPITransfer(s, data[i]);
 	SPISelect(devSel, false);
@@ -257,13 +261,13 @@ boolean FLASHReadModifyWrite(uint8 devSel, uint32 a, uint32 len, int8 *data) {
 
 	return (r == spiErrors);
 
-} // FLASHReadModifyWrite
+} // ReadModifyWriteSPIFlash
 
 //____________________________________________________________________________
 
 // ERASE operations
 
-boolean FLASHErasePage(uint8 devSel, uint32 a) {
+boolean EraseSPIFlashPage(uint8 devSel, uint32 a) {
 	SPI_TypeDef * s;
 	uint32 r;
 
@@ -277,16 +281,16 @@ boolean FLASHErasePage(uint8 devSel, uint32 a) {
 
 	SPISelect(devSel, true);
 	oxo = SPITransfer(s, ERASE_PAGE_FL);
-	FLASHSendAddress(s, a);
+	SendSPIFlashAddress(s, a);
 	SPISelect(devSel, false);
 
 	uSTimer(MemReady, 35000);
 
 	return (r == spiErrors);
 
-} // FLASHErasePage
+} // EraseSPIFlashPage
 
-boolean FLASHEraseSector(uint8 devSel, uint32 a) {
+boolean EraseSPIFlashSector(uint8 devSel, uint32 a) {
 	SPI_TypeDef * s;
 	uint32 r;
 
@@ -301,7 +305,7 @@ boolean FLASHEraseSector(uint8 devSel, uint32 a) {
 	SPISelect(devSel, true);
 
 	oxo = SPITransfer(s, ERASE_SECTOR_FL);
-	FLASHSendAddress(s, a);
+	SendSPIFlashAddress(s, a);
 
 	SPISelect(devSel, false);
 
@@ -309,14 +313,12 @@ boolean FLASHEraseSector(uint8 devSel, uint32 a) {
 
 	return (r == spiErrors);
 
-} // FLASHEraseSector
+} // EraseSPIFlashSector
 
 
-boolean FLASHErase(uint8 devSel) {
+boolean EraseSPIFlashXXX(uint8 devSel) {
 	SPI_TypeDef * s;
 	uint32 r;
-
-
 
 	while (uSClock() < uS[MemReady]) {
 		// BLOCKING
@@ -337,4 +339,51 @@ boolean FLASHErase(uint8 devSel) {
 
 	return (r == spiErrors);
 
-} // FLASHErase
+} // Erase
+
+boolean EraseSPIFlash(void) {
+	uint16 i;
+	boolean r = true;
+#if defined(USE_EXT_MEM_ERASE)
+	uint32 p;
+	uint32 a;
+	uint8 d;
+	int8 v[256];
+#endif
+
+#if defined(USE_EXT_MEM_ERASE)
+
+	if (F.HaveNVMem) {
+
+		for (p = 0; p < (SPIFLASH_SIZE) / SPIFLASH_PAGE_SIZE; p++) {
+			a = p * SPIFLASH_PAGE_SIZE;
+			// THIS CAN TAKE A VERY LONG TIME ~200Sec.
+			SPIFlashReadPage(memSel, a, SPIFLASH_PAGE_SIZE, v);
+			d = v[0];
+			for (i = 1; i < SPIFLASH_PAGE_SIZE; i++)
+			d &= v[i];
+
+			if (d != 0xff) {
+				TxChar(0,'*');
+				r &= ErasePageSPIFlash(memSel, a);
+
+				LEDToggle(ledBlueSel);
+				LEDToggle(ledYellowSel);
+			} else {
+				uSTimer(uSClock(), MemReady, 0);
+			}
+		}
+	}
+
+#else
+
+	for (i = 0; i < 10; i++) {
+		Delay1mS(100);
+		LEDToggle(ledBlueSel);
+		LEDToggle(ledYellowSel);
+	}
+
+#endif
+
+	return (r);
+} // EraseSPIFlash

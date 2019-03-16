@@ -20,44 +20,39 @@
 
 #include "UAVX.h"
 
-void DFT8(real32 v, real32 *DFT) { // 137uS
-	const real32 mR = 0.125f;
+void DFTn(real32 *DFT, real32 * v) {
+	const real32 mR = 1.0f / (real32)DFT_WINDOW_SIZE;
 	static boolean Primed = false;
-	static real32 cosarg[MAX_NOISE_BANDS][MAX_NOISE_BANDS],
-			sinarg[MAX_NOISE_BANDS][MAX_NOISE_BANDS];
-	static real32 inp[MAX_NOISE_BANDS];
+	static real32 cosarg[DFT_WINDOW_SIZE][DFT_WINDOW_SIZE],
+			sinarg[DFT_WINDOW_SIZE][DFT_WINDOW_SIZE];
+	static real32 inp[DFT_WINDOW_SIZE];
 	long i, k;
 	double arg;
-	double x[MAX_NOISE_BANDS], y[MAX_NOISE_BANDS];
+	double x[DFT_WINDOW_SIZE], y[DFT_WINDOW_SIZE];
 
 	if (!Primed) {
-		for (i = 0; i < MAX_NOISE_BANDS; i++) {
-			inp[i] = v;
+		for (i = 0; i < DFT_WINDOW_SIZE; i++) {
 			arg = -2.0 * PI * (real32) i * mR;
-			for (k = 0; k < MAX_NOISE_BANDS; k++) {
+			for (k = 0; k < DFT_WINDOW_SIZE; k++) {
 				cosarg[i][k] = cosf(arg * (real32) k);
 				sinarg[i][k] = sinf(arg * (real32) k);
 			}
 		}
 		Primed = true;
-	} else {
-		for (i = 7; i > 0; i--)
-			inp[i] = inp[i - 1];
-		inp[0] = v;
 	}
 
-	for (i = 0; i < MAX_NOISE_BANDS; i++) {
+	for (i = 0; i < DFT_WINDOW_SIZE; i++) {
 		x[i] = y[i] = 0.0;
-		for (k = 0; k < MAX_NOISE_BANDS; k++) {
-			x[i] += inp[k] * cosarg[i][k];
-			y[i] += inp[k] * sinarg[i][k];
+		for (k = 0; k < DFT_WINDOW_SIZE; k++) {
+			x[i] += v[k] * cosarg[i][k];
+			y[i] += v[k] * sinarg[i][k];
 		}
 	}
 
-	for (i = 0; i < MAX_NOISE_BANDS; i++)
+	for (i = 0; i < DFT_WINDOW_SIZE; i++)
 		DFT[i] = sqrtf(Sqr(x[i]) + Sqr(y[i])) * mR;
 
-} // DFT8
+} // DFT
 
 
 void LMSQFit(real32 * M, real32 * C, real32 X[], real32 Y[], uint16 Samples) {

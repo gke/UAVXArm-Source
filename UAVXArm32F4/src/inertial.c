@@ -187,20 +187,11 @@ void VersanoCompensation(void) {
 
 void InitMadgwick(void) {
 
+	Angle[Roll] = asinf(Acc[LR]);
+	Angle[Pitch] = asinf(-Acc[BF]);
 
-#if defined(BETTER_MADGWICK_INIT)
-	ReadFilteredGyroAndAcc(imuSel);
-
-	real32 normR = 1.0f / sqrtf(Sqr(Acc[BF]) + Sqr(Acc[LR]) + Sqr(Acc[UD]));
-
-	Angle[Pitch] = asinf(-Acc[BF] * normR);
-	Angle[Roll] = asinf(Acc[LR] * normR);
-
-	//CalculateInitialMagneticHeading();
-	//Angle[Yaw] = InitialMagHeading;
-#else
-	memset(&Angle, 0, sizeof(Angle[3]));
-#endif
+	CalculateInitialMagneticHeading();
+	Angle[Yaw] = InitialMagHeading;
 
 	ConvertEulerToQuaternion();
 
@@ -398,16 +389,6 @@ void UpdateInertial(void) {
 }// UpdateInertial
 
 
-//____________________________________________________________________________
 
-
-void UpdateWhere(void) {
-
-	Nav.Distance = sqrtf(Sqr(Nav.C[EastC].Pos) + Sqr(Nav.C[NorthC].Pos));
-	Nav.Bearing = Make2Pi(atan2f(Nav.C[EastC].Pos, Nav.C[NorthC].Pos));
-	Nav.Elevation = MakePi(atan2f(Altitude, Nav.Distance));
-	Nav.Hint = MakePi((Nav.Bearing - PI) - Heading);
-
-} // UpdateWhere
 
 

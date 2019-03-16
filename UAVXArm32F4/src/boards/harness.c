@@ -212,6 +212,18 @@ void InitRCPins(uint8 PPMInputs) {
 
 } // InitRCPins
 
+
+void WSPinDMAEnable(void) {
+
+	DMA_SetCurrDataCounter(WSPin.DMA.Stream, WSLEDBufferSize
+			+ WS2812_COLOUR_FRAME_LEN);
+	TIM_SetCounter(WSPin.Timer.Tim, 0);
+	TIM_Cmd(WSPin.Timer.Tim, ENABLE);
+	DMA_Cmd(WSPin.DMA.Stream, ENABLE);
+
+} // WSPinDMAEnable
+
+
 void InitWSPin(uint16 wsBufferSize) { // hard coded to PORTC Pin 6 Aux1
 	GPIO_InitTypeDef GPIO_InitStructure;
 	TIM_TimeBaseInitTypeDef TIM_TimeBase_InitStructure;
@@ -272,16 +284,15 @@ void InitWSPin(uint16 wsBufferSize) { // hard coded to PORTC Pin 6 Aux1
 	DMA_InitStructure.DMA_MemoryBurst = DMA_MemoryBurst_Single;
 	DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
 	DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
-	DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
-
+	DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
 	DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32) u->Timer.CCR;
 	DMA_InitStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;
 	DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord;
 	DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
 	DMA_InitStructure.DMA_Priority = DMA_Priority_Medium; // Medium
 	DMA_Init(u->DMA.Stream, &DMA_InitStructure);
-	DMA_Cmd(u->DMA.Stream, ENABLE);
 
+	DMA_Cmd(u->DMA.Stream, ENABLE);
 	TIM_DMACmd(u->Timer.Tim, u->Timer.CC, ENABLE);
 
 	NVIC_InitStructure.NVIC_IRQChannel = u->PinISR;

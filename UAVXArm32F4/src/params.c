@@ -34,21 +34,45 @@ boolean IsMulticopter;
 boolean UsingGliderStrategy, UsingFastStart, UsingBLHeliPrograming, UsingHWLPF,
 		UsingOffsetHome;
 
+boolean ConfigChanged = false;
 uint8 CurrConfig1, CurrConfig2;
 uint8 CurrUAVXAirframe;
 uint8 CurrMotorStopSel;
 boolean CurrUsingUplink;
 
-NVStruct NV;
+ConfigStruct Config;
+
+boolean ConfigUninitialised(void) {
+
+	return ((Config.P[0][0] == Config.P[0][1])); // UNLIKELY
+
+} // ConfigUninitialised
+
+
+boolean UpdateConfig(void) {
+	uint16 i;
+	boolean r = true;
+
+	//for (i = 0; i < l; i++) // TODO: optimise to word compares
+	//	r &= v[i] == FlashNV[a + i]; //*(int8 *) (FLASH_SCRATCH_ADDR + a + i);
+
+	if (ConfigChanged) {
+		WriteBlockArmFlash(true, CONFIG_FLASH_SECTOR, CONFIG_FLASH_ADDR + 0,
+				sizeof(Config), (uint8 *) &Config);
+		ConfigChanged = false;
+	}
+
+	return (r);
+} // UpdateConfig
 
 uint8 P(uint8 i) {
-	return (NV.P[NV.CurrPS][i]);
+	return (Config.P[Config.CurrPS][i]);
 } // P
 
 void SetP(uint8 i, uint8 v) {
 	if (P(i) != v) {
-		NV.P[NV.CurrPS][i] = v;
-		NVChanged = true;
+		Config.P[Config.CurrPS][i] = v;
+		ConfigChanged = true;
 	}
 } // SetP
 
@@ -119,8 +143,7 @@ void InitPIDStructs(void) {
 	Nav.MaxCompassRate = DegreesToRadians(P(MaxCompassYawRate) * 10.0f);
 	Nav.MaxBankAngle
 			= DegreesToRadians(LimitP(NavMaxAngle, 10, P(MaxRollAngle)));
-	Nav.HeadingTurnout
-				= DegreesToRadians(LimitP(NavHeadingTurnout, 10, 90));
+	Nav.HeadingTurnout = DegreesToRadians(LimitP(NavHeadingTurnout, 10, 90));
 
 	Nav.VelKp = (real32) P(NavVelKp) * 0.06f; // 20 -> 1.2f; // @45deg max
 	Nav.MaxVelocity = P(NavPosIntLimit);
@@ -294,8 +317,12 @@ void UpdateParameters(void) {
 
 		// Attitude
 
+#if defined(USE_IMU_DFT)
+
+#else
 		GyroSlewLimitFrac = FromPercent(Limit(P(GyroSlewRate), 1, 200));
 		SlewBand = MAX_NOISE_BANDS / (GyroSlewLimitFrac * 16384.0f);
+#endif
 
 		StickDeadZone = FromPercent(LimitP(StickHysteresis, 1, 5));
 
@@ -362,8 +389,8 @@ static uint8 StickPattern = 0;
 
 void AccTrimStickAdjust(real32 BFTrim, real32 LRTrim) {
 
-	NV.AccCal.Bias[Y] += BFTrim;
-	NV.AccCal.Bias[X] += LRTrim;
+	Config.AccCal.Bias[Y] += BFTrim;
+	Config.AccCal.Bias[X] += LRTrim;
 
 } // AccTrimStickAdjust
 
@@ -435,7 +462,7 @@ void DoStickProgramming(void) {
 				SticksState = MonitorSticks;
 				LEDOff(ledBlueSel);
 			} else {
-				NewCurrPS = NV.CurrPS;
+				NewCurrPS = Config.CurrPS;
 				switch (StickPattern) {
 				case THR_LO | YAW_HI | PIT_LO | ROL_CE: // TopRight
 					if (++NewCurrPS >= NO_OF_PARAM_SETS)
@@ -449,10 +476,10 @@ void DoStickProgramming(void) {
 					break;
 				} // switch
 
-				if (NewCurrPS != NV.CurrPS) {
+				if (NewCurrPS != Config.CurrPS) {
 					LEDOn(ledBlueSel);
-					// IGNORE	NV.CurrPS = NewCurrPS;
-					DoBeeps(NV.CurrPS + 1);
+					// IGNORE	Config.CurrPS = NewCurrPS;
+					DoBeeps(Config.CurrPS + 1);
 					F.ParametersChanged = true;
 					LEDOff(ledBlueSel);
 				}
@@ -498,10 +525,10 @@ void DoStickProgramming(void) {
 
 				if (Changed) {
 
-					NVChanged = true;
+					ConfigChanged = true;
 
 					AccTrimStickAdjust(BFTrim, LRTrim);
-					// updated in Landing or disarm UpdateNV();
+					// updated in Landing or disarm UpdateConfig();
 
 					UpdateGyroTempComp(imuSel);
 					DoBeep(1, 0);
@@ -515,6 +542,7 @@ void DoStickProgramming(void) {
 		}
 	}
 
+	LEDOff(ledBlueSel);
 	UpdateParameters();
 
 } // DoStickProgramming
@@ -525,23 +553,23 @@ void UseDefaultParameters(uint8 DefaultPS) {
 
 #if defined(USE_CONSERVATIVE_DEF_PARAM_LOAD)
 
-	if (NV.CurrRevisionNo != RevisionNo)
-	memset(&NV, 0, sizeof(NV)); // forces acc/mag recalibration
+	if (Config.CurrRevisionNo != RevisionNo)
+	memset(&Config, 0, sizeof(Config)); // forces acc/mag recalibration
 
 #endif
 
-	NV.CurrPS = 0;
-	NV.CurrRevisionNo = RevisionNo;
+	Config.CurrPS = 0;
+	Config.CurrRevisionNo = RevisionNo;
 
 	for (i = 0; i < MAX_PARAMETERS; i++)
 		SetP(i, DefaultParams[DefaultPS].P[i]);
 
-	if (Abs(NV.Mission.NoOfWayPoints) >= NAV_MAX_WAYPOINTS)
-		memset(&NV.Mission, 0, sizeof(NV.Mission));
-	memset(&NV.Stats, 0, sizeof(NV.Stats));
+	if (Abs(Config.Mission.NoOfWayPoints) >= NAV_MAX_WAYPOINTS)
+		memset(&Config.Mission, 0, sizeof(Config.Mission));
+	memset(&Config.Stats, 0, sizeof(Config.Stats));
 
-	NVChanged = true;
-	UpdateNV();
+	ConfigChanged = true;
+	UpdateConfig();
 
 } // UseDefaultParameters
 
@@ -578,11 +606,21 @@ void ConditionParameters(void) {
 		CurrESCType = PWMDAC;
 	}
 
+	if (P(RxType) == ParallelPPMRx)
+		CurrBeeperSel = BeeperSel;
+	else
+		CurrBeeperSel = ((P(Config2Bits) & UseAux2BeeperMask) != 0) ? Aux2Sel
+				: BeeperSel;
+
 	F.UsingAnalogGyros = (CurrAttSensorType != UAVXArm32IMU)
 			&& (CurrAttSensorType != FreeIMU);
 
 	CurrNoOfWSLEDs = LimitP(WS2812Leds, 0, MAX_WS2812_LEDS);
+#if (defined(USE_WS2812) || defined(USE_WS2812B))
 	UsingWS28XXLEDs = CurrNoOfWSLEDs != 0;
+#else
+	UsingWS28XXLEDs = false;
+#endif
 
 	F.ParametersChanged = true;
 	UpdateParameters();
@@ -592,10 +630,10 @@ void ConditionParameters(void) {
 
 void LoadParameters(void) {
 
-	ReadBlockNV(0, sizeof(NV), (int8 *) (&NV));
+	ReadBlockArmFlash(CONFIG_FLASH_ADDR + 0, sizeof(Config), (int8 *) (&Config));
 
-	//if ((NV.CurrRevisionNo != RevisionNo))
-	if (NVUninitialised())
+	//if ((Config.CurrRevisionNo != RevisionNo))
+	if (ConfigUninitialised())
 		UseDefaultParameters(0);
 
 	ConditionParameters();
