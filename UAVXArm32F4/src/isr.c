@@ -181,9 +181,11 @@ void DMA2_Stream2_IRQHandler(void) {
 
 #if (defined(USE_WS2812) || defined(USE_WS2812B))
 
+	if (UsingWS28XXLEDs) {
 	if (DMA_GetITStatus(DMA2_Stream2, DMA_IT_TCIF2)) {
 		DMA_ClearITPendingBit(DMA2_Stream2, DMA_IT_TCIF2);
 		WSDMAInactive = true;
+	}
 	}
 #endif
 

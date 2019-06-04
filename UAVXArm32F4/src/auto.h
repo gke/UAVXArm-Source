@@ -119,19 +119,19 @@ enum LandingStates {
 
 enum MotorStopActions {landNoStop, landContactSw, landDescentRate, landAccZBump, landDescentRateAndAccZ};
 
-extern void DisableNoFlightStuff(void);
-extern void DoNavigation(void);
-extern void InitNavigation(void);
+void DisableFlightStuff(void );
+void DoNavigation(void );
+void InitNavigation(void );
 
-extern void UpdateRTHSwState(void);
-extern void CheckProximity(real32 V, real32 H);
-extern void InitiateRTH(void);
-extern void InitiatePH(void);
-extern void CapturePosition(void);
-extern void CheckRapidDescentHazard(void);
+void UpdateRTHSwState(void );
+void CheckProximity(real32 V, real32 H);
+void InitiateRTH(void );
+void InitiatePH(void );
+void CapturePosition(void );
+void CheckRapidDescentHazard(void );
 
-extern void DecayPosCorr(void);
-extern void InitiateShutdown(uint8 s);
+void DecayPosCorr(void );
+void InitiateShutdown(uint8 s);
 
 extern uint8 NavState, NavSwState, NavSwStateP, AlarmState;
 extern real32 DesiredNavHeading;

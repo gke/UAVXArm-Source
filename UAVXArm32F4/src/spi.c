@@ -22,7 +22,7 @@
 
 uint32 spiErrors = 0;
 
-// imu0Sel,imu1Sel,baroSel,magSel,memSel,gpsSel,rfSel,asSel,flowSel,escSel
+// imu0Sel,imu1Sel,baroSel,magSel,memSel,gpsSel,rfSel,asSel,flowSel,escSPISel,escI2CSel
 // 20 20 20 8 20 20 unused MBaud
 
 #define SPI_CLOCK_SLOW          128 //00.65625 MHz
@@ -36,10 +36,13 @@ const SPIDefStruct SPIDef[] = { { false, spi_21, spi_0_65625 }, // imu0sel
 		{ false, spi_21, spi_0_65625 }, // imu1sel
 		{ false, spi_10_5, spi_10_5 }, // baroSel
 		{ true, spi_10_5, spi_10_5 }, // magSel
-		{ false, spi_10_5, spi_10_5 }, //
-		{ false, spi_10_5, spi_10_5 }, //
-		{ false, spi_10_5, spi_10_5 }, //
-		{ false, spi_10_5, spi_10_5 }, //
+		{ false, spi_10_5, spi_10_5 }, // memSel
+		{ false, spi_10_5, spi_10_5 }, // gpsSel
+		{ false, spi_10_5, spi_10_5 }, // rfSel
+		{ false, spi_10_5, spi_10_5 }, // asSel
+		{ false, spi_10_5, spi_10_5 }, // flowSel
+		{ false, spi_10_5, spi_10_5 }, // escSPISel
+		{ false, spi_10_5, spi_10_5 }, // escI2CSel
 		{ false, spi_10_5, spi_10_5 } };
 
 

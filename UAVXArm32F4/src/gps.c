@@ -50,6 +50,7 @@ real32 GPSLag = 1.0f; // MTK 0.5 for UBlox
 real32 GPSMinhAcc = GPS_MIN_HACC;
 
 timemS LastGPSUpdatemS = 0;
+timemS NavGPSTimeoutmS;
 
 uint8 nll, cc, lo, hi, ll, ss, tt, GPSCheckSumChar;
 uint8 GPSTxCheckSum, RxCheckSum;
@@ -1432,6 +1433,10 @@ void RxNMEAPacket(void) {
 	}
 } // RxNMEAPacket
 
+boolean GPSOK(void) {
+	return F.GPSValid && (F.OriginValid || (F.IsFixedWing && F.OffsetOriginValid));
+} // GPSOK
+
 void UpdateGPS(void) {
 	timemS NowmS;
 
@@ -1474,17 +1479,16 @@ void UpdateGPS(void) {
 
 			ProcessGPSSentence();
 
-			F.NewGPSPosition = F.GPSValid && F.OriginValid;
+			F.NewGPSPosition = GPSOK();
 			if (F.NewGPSPosition)
-				mSTimer(GPSTimeout, GPS_TIMEOUT_MS);
+				mSTimer(GPSTimeout, NavGPSTimeoutmS);
 		}
 
 	} else {
 		if (mSTimeout(GPSTimeout)) {
 
-			F.NavigationEnabled = false;
 			ZeroNavCorrections();
-			NavState = PIC;
+			F.GPSValid = F.NavigationEnabled = false;
 
 			LEDOff(ledBlueSel);
 			LEDOn(ledRedSel);

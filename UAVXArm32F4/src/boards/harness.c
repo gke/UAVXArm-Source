@@ -918,17 +918,17 @@ void InitHarness(void) {
 		InitPin(&GPIOPins[i]);
 	BeeperOff();
 
-
 	// Drives/Servos
-	for (i = 0; i < MAX_PWM_OUTPUTS; i++) { // switch off all (potential) motor output pins
-		InitOutputPin(&PWMPins[i]);
-		DigitalWrite(&PWMPins[i].P, 0);
-	}
+	for (i = 0; i < MAX_PWM_OUTPUTS; i++)
+		if (PWMPins[i].Used) { // switch off all (potential) motor output pins
+			InitOutputPin(&PWMPins[i]);
+			DigitalWrite(&PWMPins[i].P, 0);
+		}
 
-	if ((CurrESCType != ESCUnknown) && (UAVXAirframe != AFUnknown))
-		InitDrives();
-	else
+	if ((CurrESCType == ESCUnknown) || (UAVXAirframe == AFUnknown))
 		DrivesInitialised = false;
+	else
+		InitDrives();
 
 	// PPM RC
 	InitRCPins(CurrNoOfRCPins);

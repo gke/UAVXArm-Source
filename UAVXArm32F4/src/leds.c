@@ -230,8 +230,8 @@ void UpdateWSLEDBuffer(void) {
 	uint16 *WSPWMptr;
 	uint16 i;
 
-	if (WSLEDChanged && WSDMAInactive) { // 9.25uS @ 168MHz
-		Probe(1);
+	if (UsingWS28XXLEDs && WSLEDChanged && WSDMAInactive) { // 9.25uS @ 168MHz
+	//	Probe(1);
 		CurrWSLED = 0;
 		for (i = 0; i < WSLEDBufferSize; i += WS2812_COLOUR_FRAME_LEN) {
 			WSLEDptr = &WSLEDs[CurrWSLED];
@@ -245,7 +245,7 @@ void UpdateWSLEDBuffer(void) {
 		}
 		WSLEDChanged = WSDMAInactive = false;
 		WSPinDMAEnable();
-		Probe(0);
+		//Probe(0);
 	}
 } // UpdateWSLEDBuffer
 

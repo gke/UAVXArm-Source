@@ -62,8 +62,8 @@
 
 #define MAG_CAL_SAMPLES (8*50) // must be divisible by 8
 
-#define ALT_UPDATE_HZ 20
-#define ALT_UPDATE_MS (1000/ALT_UPDATE_HZ)
+#define ALT_UPDATE_HZ 100
+#define ALT_UPDATE_US (1000000/ALT_UPDATE_HZ)
 #define ALT_LPF_MAX_HZ		(3.0f)
 #define ALT_MAX_SLEW_M			(20.0f) // TODO: zzz too high
 #define ALT_SANITY_SLEW_M		(ALT_MAX_SLEW_M * 2.0f ) // 0.75f)
@@ -106,7 +106,7 @@
 #define MAX_ANGLE_RAD DegreesToRadians(MAX_ANGLE_DEG)
 #define CRASHED_ANGLE_RAD (MAX_ANGLE_RAD+DegreesToRadians(10))
 
-#define ALT_MAX_ROC_MPS 3.0f
+#define ALT_MAX_ROC_MPS 5.0f
 
 #define STICK_PASSTHRU_SCALE  (1.0f/3.0f)
 
@@ -123,7 +123,7 @@
 
 #define NAV_LAND_M 5.0f // altitude below which motor shutoff armed for autoland
 #define NAV_MIN_ALT_M 5.0f // minimum altitude after takeoff before going to next WP
-#define GPS_TIMEOUT_MS 2000 // mS.
+#define GPS_TIMEOUT_MS 2000 // mS. TODO: too short for forced landing trigger?
 #define GPS_MIN_SATELLITES 6 // preferably > 5 for 3D fix
 #define GPS_MIN_HACC 5.0f
 #define GPS_MIN_SACC 1.0f
@@ -146,6 +146,7 @@
 #define UAVX_PID_TEL_INTERVAL_MS 20 // mS. high rate tuning telemetry
 #define ARDU_TEL_INTERVAL_MS 200 // mS. alternating 1:5
 #define FRSKY_TEL_INTERVAL_MS 200 // mS.
+#define FUSION_TEL_INTERVAL_MS 20 // mS. high rate tuning telemetry
 #define UAVX_MINIMOSD_TEL_INTERVAL_MS 200 // modified minimOSD for FPV
 
 extern const real32 OKp, OIL, IKp, IKd;
@@ -338,15 +339,15 @@ enum Params { // MAX 128
 	AltVelKi, // 102
 	AltHoldBand, // 103
 	VRSDescentRate, // 104
-	Unused105, // 105
-	Unused106, // 106
+	KFAccZVar, // 105
+	NavGPSTimeoutS, // 106
 	NavProxAltM, // 107
 	NavProxRadiusM, // 108
 	CurrentSensorFS, // 109
 	VoltageSensorFS, // 110
 
-	Unused111, // 111
-	Unused112, // 112
+	KFBaroVar, // 111
+	TrackKFAccZVar, // 112
 	Unused113, // 113
 	Unused114, // 114
 	Unused115, // 115
@@ -383,7 +384,7 @@ enum Params { // MAX 128
 #define UseGliderStrategyMask	(1<<3) // bit32CheckBox 74_4
 #define UseAux2BeeperMask		(1<<4) // bit42CheckBox
 #define	UseTurnToWPMask			(1<<5)
-#define	UnusedUseHWLPFMask		(1<<6) // bit32CheckBox 74_7
+#define	UseNavBeepMask			(1<<6) // bit32CheckBox 74_7
 
 // bit 7 unusable in UAVPSet
 
@@ -400,7 +401,7 @@ extern int8 CP[];
 
 extern const real32 AFOrientation[];
 extern uint8 UAVXAirframe;
-extern boolean IsMulticopter, UsingFastStart, UsingBLHeliPrograming,
+extern boolean IsMulticopter, UsingNavBeep, UsingFastStart, UsingBLHeliPrograming,
 		UsingGliderStrategy, UsingOffsetHome;
 extern uint8 CurrMotorStopSel;
 

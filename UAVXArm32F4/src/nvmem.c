@@ -209,10 +209,13 @@ void InitNVMem(void) {
 			F.HaveNVMem = true;
 			break;
 		default:
+			NVMemSize = 0;
 			F.HaveNVMem = false;
 		}
-	} else
+	} else {
+		NVMemSize =
 		F.HaveNVMem = false;
+	}
 
 } // InitNVMem
 

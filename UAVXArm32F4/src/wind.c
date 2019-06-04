@@ -107,5 +107,5 @@ void UpdateWindEstimator(void) {
 			memcpy(gVelP, gVel, sizeof(gVelP));
 		}
 	}
-}
+} // UpdateWindEstimator
 

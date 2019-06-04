@@ -26,7 +26,6 @@
 #define BBQ_BUFFER_MASK (BBQ_BUFFER_SIZE-1)
 
 uint32 CurrBBMemAddr;
-uint32 MaxBBMemAddrUsed;
 
 int8 BBQ[BBQ_BUFFER_SIZE];
 volatile uint16 BBQHead;
@@ -49,7 +48,6 @@ void UpdateBlackBox(void) {
 			BBQEntries -= NVMemBlockSize;
 
 			CurrBBMemAddr += NVMemBlockSize;
-			MaxBBMemAddrUsed = CurrBBMemAddr;
 
 			if (CurrBBMemAddr >= NVMemSize) // wrap around to capture end of flight
 				CurrBBMemAddr = 0;
@@ -99,7 +97,7 @@ void DumpBlackBox(uint8 s) {
 					SendBBPacket(s, seqNo++, (uint8) NVMemBlockSize, &NVMemBuffer[0]);
 				a += NVMemBlockSize;
 			}
-		} while ((a < MaxBBMemAddrUsed) && !Finish);
+		} while ((a < NVMemSize) && !Finish);
 
 		NVMemBuffer[0] = 0;
 		SendBBPacket(s, -1, 1, NVMemBuffer);
@@ -113,7 +111,6 @@ void DumpBlackBox(uint8 s) {
 void InitBlackBox(void) {
 
 	BBQHead = BBQTail = BBQEntries = 0;
-	MaxBBMemAddrUsed = 0;
 	CurrBBMemAddr = 0;
 
 } // InitBlackBox

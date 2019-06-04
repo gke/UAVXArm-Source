@@ -64,6 +64,7 @@ void ScaleRateAndAcc(uint8 imuSel) {
 			Acc[LR] = (RawAcc[X] - Config.AccCal.Bias[X]) * Config.AccCal.Scale[X];
 			Acc[BF] = -(RawAcc[Z] - Config.AccCal.Bias[Z]) * Config.AccCal.Scale[Z]
 					- 1.0f;
+
 		}
 	} else {
 
@@ -144,10 +145,67 @@ void ErectGyros(uint8 imuSel, int32 TS) {
 
 } // ErectGyros
 
+/// Initialise all inertial filters in one place
+
+
+real32 CurrAccLPFHz = 20.0f;
+real32 CurrGyroLPFHz = 100.0f;
+real32 CurrYawLPFHz = 75.0f;
+real32 CurrServoLPFHz = 20.0f;
+boolean UsingPavelFilter = false;
+real32 AltLPFHz;
+
+filterStruct AccF[3], GyroF[3], ROCLPF, FROCLPF, AltitudeLPF,
+		AccZBumpLPF, SensorTempF;
+
+void InitInertialFilters(void) {
+
+	const idx GyroLPFOrder = 2;
+	const idx YawLPFOrder = 2;
+	const idx AccLPFOrder = 2;
+
+	const idx DerivLPFOrder = 1;
+
+	idx a;
+
+	const real32 rKF = 88;
+
+	LPF1DriveK = initLPF1Coefficient(CurrGyroLPFHz, CurrPIDCycleS);
+	LPF1ServoK = initLPF1Coefficient(CurrServoLPFHz, CurrPIDCycleS);
+
+	CurrAccLPFHz = MPUAccLPFHz[CurrAccLPFSel];
+	CurrGyroLPFHz = MPUGyroLPFHz[CurrGyroLPFSel];
+
+	for (a = X; a <= Z; a++) {
+
+		initLPFn(&AccF[a], AccLPFOrder, CurrAccLPFHz);
+
+		if (a != Z) {
+			initLPFn(&GyroF[a], GyroLPFOrder, CurrGyroLPFHz);
+			initLPFn(&A[a].R.RateF, DerivLPFOrder, CurrGyroLPFHz * 0.6f); // derivative
+		} else {
+			initLPFn(&GyroF[a], GyroLPFOrder, CurrYawLPFHz);
+			initLPFn(&A[a].R.RateF, DerivLPFOrder, CurrYawLPFHz * 0.6f); // derivative
+		}
+
+		// Pavel Holoborodko, see http://www.holoborodko.com/pavel/numerical-methods/
+		// numerical-derivative/smooth-low-noise-differentiators/
+		const real32 C[] = { 0.375f, 0.5f, -0.5f, -0.75, 0.125f, 0.25f };
+		if (UsingPavelFilter)
+			initFIRF(&A[a].R.RateDF, 6, C);
+		else
+			initMAF(&A[a].R.RateDF, 4);
+	}
+
+	initLPFn(&SensorTempF, 2, 0.5f); // TODO: problem for SPI MPUxxx
+
+} // InitInertialFilters
 
 void InitIMU(uint8 imuSel) {
 	idx a;
 	boolean r;
+
+	InitInertialFilters();
 
 	memset(&Rate, 0, sizeof(Rate[3]));
 	memset(&Acc, 0, sizeof(Acc[3]));

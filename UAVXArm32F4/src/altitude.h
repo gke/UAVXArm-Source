@@ -47,8 +47,8 @@ real32 CompensateBaro(uint32 ut, uint32 up);
 void StartBaro(boolean ReadPressure);
 boolean BaroCheckCRC(void);
 void GetBaro(void);
-void GetDensityAltitude(void);
-void InitBarometer(void);
+real32 GetBaroVariance(void);
+void InitBaro(void);
 
 #define MAXSONAR_ID 0xe0
 #define SRFSONAR_ID 0xe0
@@ -58,8 +58,8 @@ enum RangeFinders {
 };
 
 extern const char * TelemetryName[];
-extern void GetRangefinderAltitude(void);
-extern void InitRangefinder(void);
+void GetRangefinderAltitude(void);
+void InitRangefinder(void);
 
 extern real32 RangefinderAltitude, RangefinderROC;
 
@@ -68,21 +68,25 @@ void UpdateAltitudeEstimates(void);
 extern uint16 ms56xx_c[];
 
 void SetDesiredAltitude(real32 Desired);
+void ZeroAltitude(void);
 void UpdateAltitudeAndROC(void);
+void SelectAltitudeSensor(void);
+void TrackOriginAltitude(void);
 void BaroTest(uint8 s);
 
 extern boolean DEBUGNewBaro;
 
+extern timeuS BaroUpdateTimeuS;
+extern real32 BaroOddsEvensFrac;
 extern uint32 BaroTempVal, BaroPressVal, BaroVal;
 extern real32 BaroPressure, BaroTemperature, CompensatedBaroPressure;
 extern boolean AcquiringPressure;
-extern real32 OriginAltitude, BaroAltitude;
+extern real32 BaroVariance, OriginAltitude, RawAlt, RawDensityAltitude, DensityAltitude, SensorAltitude, SensorAltitudeP;
 extern real32 ROC, ROCF;
 extern uint8 BaroType;
-extern real32 AltdT, AltdTR;
-extern real32 AccZBias;
+extern real32 AltdT;
+extern timeuS AltitudeuS;
 extern uint16 ms56xx_ManufacturersData;
-extern real32 BaroRawAltitude, BaroRawAltitudeP; // fusion filter output
 
 extern uint32 LSBBaro[];
 

@@ -122,7 +122,7 @@ void GetMagnetometer(void) {
 } // GetMagnetometer
 
 
-void CalculateInitialMagneticHeading(void) {
+real32 CalculateMagneticHeading(void) {
 	real32 xh, yh;
 	real32 cR, sR, cP, sP;
 
@@ -138,11 +138,11 @@ void CalculateInitialMagneticHeading(void) {
 		xh = Mag[BF] * cP + sP * (Mag[UD] * cR - Mag[LR] * sR);
 		yh = Mag[LR] * cR + Mag[UD] * sR;
 
-		InitialMagHeading = -atan2f(yh, xh);
+		return -atan2f(yh, xh);
 	} else
-		InitialMagHeading = 0.0f;
+		return 0.0f;
 
-} // CalculateInitialMagneticHeading
+} // CalculateMagneticHeading
 
 
 #define HMC58X3_R_CONFA 0
@@ -215,7 +215,7 @@ void InitMagnetometer(void) {
 			GetMagnetometer();
 		} while (!F.NewMagValues);
 
-		CalculateInitialMagneticHeading();
+		InitialMagHeading = CalculateMagneticHeading();
 
 		CheckMagnetometerIsCalibrated();
 

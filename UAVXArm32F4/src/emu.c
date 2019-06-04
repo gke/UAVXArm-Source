@@ -43,6 +43,8 @@ typedef struct {
 	real32 Acc;
 } EmStruct;
 
+uint32 BINGO = 100000;
+
 EmStruct Aircraft[3];
 
 real32 NorthHP, EastHP;
@@ -108,29 +110,28 @@ void DoEmulation(void) {
 		ROC += Thermal(Nav.C[EastC].Pos, Nav.C[NorthC].Pos);
 #endif
 	} else {
-		Thrust = (DesiredThrottle + AltComp) * EM_MAX_THRUST;
+		Thrust = (DesiredThrottle + AltComp) * EM_MAX_THRUST * AttitudeCosine();
 		Accel = (Thrust - EM_MASS * GRAVITY_MPS_S - Drag(ROC)) * EM_MASS_R;
 		ROC += Accel * dT;
 	}
 
 	ROCF = LPFn(&FROCLPF, ROC, AltdT); // used for landing and cruise throttle tracking
 
-	if (((State != InFlight) && (State != Launching)) || ((Altitude <= 0.05f)
+	if ((State != InFlight) || ((Altitude <= 0.05f)
 			&& (ROC <= 0.0f)))
-		FakeAltitude = ROC = 0.0f;
+		FakeAltitude = ROC = OriginAltitude = 0.0f;
 	else
 		FakeAltitude += ROC * dT;
 
-	GPS.altitude = BaroAltitude = FakeAltitude + OriginAltitude;
+	GPS.altitude = DensityAltitude = FakeAltitude + OriginAltitude;
 	Altitude = FakeAltitude;
 	F.BaroActive = true;
 
 	NowmS = mSClock();
-	if (mSTimeout(AltUpdate)) { // 5 cycles @ 10mS -> 50mS or 20Hz
-		mSTimer(AltUpdate, ALT_UPDATE_MS);
+	if (mSTimeout(EmuAltUpdate)) { // 5 cycles @ 10mS -> 50mS or 20Hz
+		mSTimer(EmuAltUpdate, 50);
 
 		AltdT = (NowmS - LastAltUpdatemS) * 0.001f;
-		AltdTR = 1.0f / AltdT;
 		LastAltUpdatemS = NowmS;
 		F.NewAltitudeValue = true;
 	}
@@ -204,7 +205,7 @@ void GPSEmulation(void) {
 	while (SerialAvailable(GPSRxSerial))
 		RxChar(GPSRxSerial); // flush
 
-	if (mSTimeout(FakeGPSUpdate)) {
+	if (mSTimeout(FakeGPSUpdate)) { // && ((mSClock() < BINGO) || (mSClock() > BINGO + 10000))) {
 		GPS.lastPosUpdatemS = GPS.lastVelUpdatemS = mSClock();
 		mSTimer(FakeGPSUpdate, FAKE_GPS_DT_MS);
 
@@ -238,7 +239,7 @@ void InitEmulation(void) {
 
 		mS[FakeGPSUpdate] = 0;
 
-		Altitude = RangefinderAltitude = FakeAltitude = ROC = 0.0f;
+		Altitude = OriginAltitude = RangefinderAltitude = FakeAltitude = ROC = 0.0f;
 
 		SetDesiredAltitude(0.0f);
 	}

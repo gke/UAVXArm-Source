@@ -88,7 +88,8 @@ enum TelemetryTypes {
 	UAVXMinTelemetry,
 	FrSkyV1Telemetry,
 	FrSkyFPortTelemetry,
-	CleanflightBBTelemetry
+	CleanflightBBTelemetry,
+	FusionTelemetry
 };
 
 void TxString(uint8 s, const char *);
@@ -109,6 +110,7 @@ void SendFlightPacket(uint8 s);
 void SendCalibrationPacket(uint8 s);
 void SendAckPacket(uint8 s, uint8 Tag, uint8 Reason);
 void SendMinPacket(uint8 s);
+void SendFusionPacket(uint8 s);
 
 void CheckTelemetry(uint8 s);
 

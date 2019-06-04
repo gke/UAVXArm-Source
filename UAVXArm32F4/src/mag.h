@@ -38,7 +38,7 @@ extern real32 MagSample[][3];
 
 boolean ReadMagnetometer(void);
 void GetMagnetometer(void);
-void CalculateInitialMagneticHeading(void);
+real32 CalculateMagneticHeading(void);
 
 void CalibrateHMC5XXX(uint8 s);
 void CalibrateMagnetometer(uint8 s);

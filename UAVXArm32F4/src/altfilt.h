@@ -19,19 +19,21 @@
 //    If not, see http://www.gnu.org/licenses/
 
 
-#ifndef _autoh
-#define _autoh
+#ifndef _altfilt_h
+#define _altfilt_h
 
-#include "UAVX.h"
 
-enum LaunchStates {
-	initLaunch, waitLaunch, doingLaunch, abortedLaunch, finishedLaunch
-};
+void InitAltitudeFilters(void);
 
-extern uint8 LaunchState;
+void AltitudeSimpleLPF(real32 Alt, real32 AccZ, real32 dT);
+void AltitudeCF(real32 Alt, real32 AccZ, real32 dT);
+void AltitudeKF(real32 Alt, real32 AccZ, real32 dT);
+void AltitudeFreeIMUCF(real32 Alt, real32 AccZ, real32 dT);
 
-void LaunchFW(void);
+void InitAltitudeKF3V(real32 zMeasVariance, real32 zAccelVariance, real32 zAccelBiasVariance, real32 zInitial, real32 vInitial, real32 aBiasInitial);
+void AltitudeKF3V(real32 z, real32 a, real32 dt);
 
+const real32 AccZBiasVariance;
+extern real32 BaroVariance, AccZVariance, AccZSDevN, TrackAccZVariance;
 #endif
-
 

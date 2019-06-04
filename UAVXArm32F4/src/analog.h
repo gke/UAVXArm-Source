@@ -22,7 +22,7 @@
 #ifndef _analog_h
 #define _analog_h
 
-extern void InitAnalog(void);
+void InitAnalog(void);
 extern real32 analogRead(uint8 c);
 
 extern volatile uint16 ADCValues[];

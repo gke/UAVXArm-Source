@@ -31,6 +31,7 @@ uint8 LandingState = InitDescent;
 uint8 NavSwState = SwLow;
 uint8 NavSwStateP = SwUnknown;
 boolean WPNavEnabled = false;
+real32 SavedDesiredAltitude;
 
 boolean NotDescending(void) {
 
@@ -45,7 +46,6 @@ boolean NotDescending(void) {
 void InitiateDescent(void) {
 
 	LandingState = InitDescent;
-	NavState = Descending;
 	F.AccZBump = false;
 
 } // InitiateDescent
@@ -81,7 +81,6 @@ boolean DoLanding(void) {
 
 	HasLanded = false;
 
-	//	DesiredThrottle = F.IsFixedWing ? 0 : CruiseThrottle;
 	Alt.P.Desired = -100.0f; // TODO: redundant?
 
 	switch (LandingState) {
@@ -143,6 +142,15 @@ void DoAutoLanding(void) {
 
 void DoForcedLanding(void) {
 
+	if (IsMulticopter) {
+		ZeroNavCorrections();
+		CheckRapidDescentHazard();
+		//	if (F.RapidDescentHazard)
+		//		A[Pitch].NavCorr = DegreesToRadians(1);
+	} else {
+		ZeroNavCorrections();
+		Nav.DesiredHeading = Make2Pi(Heading + Nav.HeadingTurnout);
+	}
 	AlarmState = ForcedLanding;
 
 	if (DoLanding())
@@ -167,6 +175,18 @@ void CheckRapidDescentHazard(void) {
 } // CheckRapidDescentHazard
 
 
+void CheckFailsafes(void) {
+
+	if ((State == InFlight) && (F.Navigate || F.ReturnHome)) { // TODO: battery etc.
+		if (!F.ForcedLanding) {
+			SavedDesiredAltitude = Alt.P.Desired;
+			F.ForcedLanding = true;
+			InitiateDescent();
+		}
+	} else
+		F.ForcedLanding = false;
+
+} // CheckFailsafes
 void CapturePosition(void) {
 
 	if (F.OriginValid) {
@@ -255,87 +275,67 @@ void DoGliderStuff(void) {
 
 void UpdateRTHSwState(void) { // called in rc.c on every rx packet
 
-	if (State != Launching) {
+	if (F.PassThru || (State != InFlight)) {
 
-		if (F.PassThru || (State != InFlight)) {
+		NavSwState = SwLow;
+		NavSwStateP = SwUnknown;
 
-			NavSwState = SwLow;
-			NavSwStateP = SwUnknown;
+		F.ForcedLanding = F.Navigate = F.ReturnHome = F.AltControlEnabled
+				= F.HoldingAlt = F.Glide = false;
+		SetDesiredAltitude(Altitude);
+		ZeroThrottleCompensation();
+		ZeroNavCorrections();
 
-			F.ForcedLanding = F.AltControlEnabled = F.HoldingAlt = false;
-			SetDesiredAltitude(Altitude);
-			ZeroThrottleCompensation();
-			ZeroNavCorrections();
+		if (F.OriginValid)
+			CapturePosition();
 
-			if (F.OriginValid)
+		NavState = PIC;
+
+	} else {
+
+		if (NavSwState != NavSwStateP) {
+			F.Glide = F.Navigate = F.ReturnHome = false;
+			switch (NavSwState) {
+			case SwLow:
+				F.ForcedLanding = false;
+				ZeroNavCorrections();
 				CapturePosition();
+				NavState = PIC;
+				break;
+			case SwMiddle:
+				F.ForcedLanding = false;
+				if (F.OriginValid) {
+					InitiatePH();
+					F.UsingPOI = SavedPIOState;
+					F.UsingWPNavigation = (Config.Mission.NoOfWayPoints > 0)
+							&& WPNavEnabled;
+				}
+				break;
+			case SwHigh:
+				if (F.OriginValid)
+					InitiateRTH();
+				break;
+			} // switch
 
-			NavState = PIC;
-
-		} else {
-
-			if (NavSwState != NavSwStateP) {
-				F.ForcedLanding = F.Glide = F.Navigate = F.ReturnHome = false;
-				switch (NavSwState) {
-				case SwLow:
-					ZeroNavCorrections();
-					CapturePosition();
-					NavState = PIC;
-					break;
-				case SwMiddle:
-					if (F.OriginValid) {
-						InitiatePH();
-						F.UsingPOI = SavedPIOState;
-						F.UsingWPNavigation
-								= (Config.Mission.NoOfWayPoints > 0)
-										&& WPNavEnabled;
-					}
-					break;
-				case SwHigh:
-					if (F.OriginValid)
-						InitiateRTH();
-					else if (!F.ForcedLanding) { // TODO: battery at least for 1s brushed
-						SetDesiredAltitude(-100.0f);
-						F.ForcedLanding = true;
-						// assume we are close to a hover in case cruise has not been captured yet.
-						if (NavState == PIC)
-							CruiseThrottle = StickThrottle;
-						LandingState = InitDescent;
-						F.AccZBump = false;
-					}
-					break;
-				} // switch
-
-				NavSwStateP = NavSwState;
-			}
+			NavSwStateP = NavSwState;
 		}
-
-		if (F.ForcedLanding) { // override everything!
-			F.AltControlEnabled = true;
-			DesiredThrottle = CruiseThrottle;
-		} else if ((NavState == Perching) || (NavState == Touchdown)) {
-			ZeroThrottleCompensation();
-			ZeroIntegrators();
-			F.AltControlEnabled = false;
-			DesiredThrottle = 0.0f;
-		} else if (F.AltControlEnabled && !((NavState == HoldingStation)
-				|| (NavState == PIC)))
-			DesiredThrottle = CruiseThrottle;
-		else
-			DesiredThrottle = StickThrottle;
-
 	}
+
 } // UpdateRTHSwState
 
 
 void DoNavigation(void) {
 
-	//Navigating = F.NavigationEnabled && !(F.PassThru || (State == PIC));
-
 	Navigating = F.NavigationEnabled && (F.Navigate || F.ReturnHome)
 			&& !((NavState == PIC) || F.PassThru);
 
 	if (Navigating) {
+
+		if (F.ForcedLanding) { // recover from GPS loss
+			F.ForcedLanding = false;
+			AlarmState = NoAlarms;
+			SetDesiredAltitude(SavedDesiredAltitude);
+		}
 
 		if (F.NewNavUpdate) {
 			F.NewNavUpdate = false;
@@ -376,6 +376,9 @@ void DoNavigation(void) {
 			case Touchdown:
 				if (WP.Action == navPerch)
 					InitiatePerch();
+				else
+					NavPulse.Active = UsingSurveyPulse = false;
+
 				break;
 			case Descending:
 				RefreshNavWayPoint();
@@ -395,8 +398,10 @@ void DoNavigation(void) {
 					F.RapidDescentHazard = false;
 					if (F.IsFixedWing) {
 						// just orbit
-					} else
+					} else {
 						InitiateDescent();
+						NavState = Descending;
+					}
 				}
 				break;
 			case AcquiringAltitude:
@@ -406,22 +411,34 @@ void DoNavigation(void) {
 				CheckRapidDescentHazard();
 
 				// need check for already on the ground
+				timemS LoitermS = (timemS) WP.Loiter * 1000;
 
 				if (F.WayPointAchieved) {
-
-					mSTimer(NavStateTimeout, (timemS) WP.Loiter * 1000);
-
+					if (UsingNavBeep)
+						ScheduleBeeper(200);
 					switch (WP.Action) {
 					case navLand:
 						NavState = AtHome;
 						break;
 					case navPerch:
 						InitiateDescent();
+						NavState = Descending;
+						break;
+					case navVia:
+						if (WP.Loiter > 0)
+							if ((NavPulse.WidthmS < LoitermS)
+									&& !UsingSurveyPulse)
+								ScheduleNavPulse(&NavPulse, WP.PulseWidthmS,
+										WP.PulsePeriodmS);
+						NavState = OrbitingPOI;
 						break;
 					default:
 						NavState = OrbitingPOI;
 						break;
 					} // switch
+
+					mSTimer(NavStateTimeout, LoitermS);
+
 					F.RapidDescentHazard = false;
 				}
 				break;
@@ -440,6 +457,9 @@ void DoNavigation(void) {
 					OrbitCamAngle = Limit(OrbitCamAngle, 0.0f, HALF_PI);
 					break;
 				case navVia:
+					if (mSTimeout(NavStateTimeout) && !UsingSurveyPulse)
+						NavPulse.Active = false;
+					break;
 				case navPerch: // fixed wing just orbits
 				default:
 					OrbitCamAngle = 0.0f;
@@ -487,10 +507,12 @@ void DoNavigation(void) {
 		}
 	} else { // PIC
 
-		NavState = PIC;
+		CheckFailsafes();
 
 		if (F.ForcedLanding)
 			DoForcedLanding();
+		else
+			AlarmState = NoAlarms;
 
 		if (F.NewNavUpdate)
 			F.NewNavUpdate = false;

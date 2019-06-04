@@ -21,7 +21,7 @@
 #include "UAVX.h"
 
 Flags F;
-uint8 State, StateP;
+uint8 State;
 
 boolean FirstIMU;
 timeuS FlightTimemS = 0;
@@ -46,41 +46,14 @@ void InitMisc(void) {
 	for (i = 0; i < uSLastArrayEntry; i++)
 		uS[i] = 0;
 
-	DesiredThrottle = 0.0f;
+	DesiredThrottle = StickThrottle = 0.0f;
 	InitialThrottle = ThrNeutral = ThrLow = ThrHigh = 1.0f;
 	IdleThrottle = FromPercent(10);
 
 } // InitMisc
 
-void CheckNavPulse(void) {
-
-	if (NavPulse.Active && mSTimeout(NavPulseUpdate)) {
-		if (Navigating) {
-			NavPulse.State = !NavPulse.State;
-#if defined(UAVXF4V3)|| defined(UAVXF4V3BBFLASH)
-			if (!UsingWS28XXLEDs)
-			DigitalWrite(&GPIOPins[Aux1Sel].P, NavPulse.State ? 1 : 0);
-#endif
-			if (NavPulse.State)
-				mSTimer(NavPulseUpdate, NavPulse.WidthmS);
-			else
-				mSTimer(NavPulseUpdate, NavPulse.PeriodmS - NavPulse.WidthmS);
-
-		} else {
-			mSTimer(NavPulseUpdate, 0);
-			NavPulse.State = false;
-#if defined(UAVXF4V3)|| defined(UAVXF4V3BBFLASH)
-			if (!UsingWS28XXLEDs)
-			DigitalWrite(&GPIOPins[Aux1Sel].P, 0);
-#endif
-		}
-	}
-} // CheckNavPulse
-
 
 void DoHouseKeeping(void) {
-
-
 
 	CheckLandingSwitch();
 	CheckBatteries();
@@ -89,8 +62,9 @@ void DoHouseKeeping(void) {
 
 	if (UsingWS28XXLEDs)
 		UpdateWSLEDBuffer();
-
+#if !defined(DEBUG_BARO) && !defined(DEBUG_BARO_2)
 	CheckTelemetry(TelemetrySerial);
+#endif
 
 } // DoHousekeeping
 
@@ -123,12 +97,14 @@ int main() {
 	InitPollRxPacket();
 	SPIClearSelects();
 
-	//CheckBLHeli();
+	CheckBLHeli();
 
 	InitIMU(imuSel); // 0.504mS
 	InitMagnetometer(); // 1574mS
 	InitMadgwick(); // 0.00353mS
-	InitBarometer(); // 1032mS
+
+	InitAltitudeFilters();
+	InitBaro(); // 1032mS
 
 	InitNVMem();
 
@@ -151,7 +127,7 @@ int main() {
 	uSTimer(NextCycleUpdate, CurrPIDCycleuS);
 
 	FirstPass = true;
-	State = StateP = Preflight;
+	State = Preflight;
 
 	while (true) {
 
@@ -164,7 +140,6 @@ int main() {
 			RCStart = 0;
 			//F.ThrottleOpen = F.Navigate = F.ReturnHome = false;
 		} else {
-			CheckNavPulse();
 			CheckRCLoopback();
 			UpdateControls(); // avoid loop sync delay
 		}
@@ -172,7 +147,7 @@ int main() {
 		if (uSTimeout(NextCycleUpdate)) {
 			uSTimer(NextCycleUpdate, CurrPIDCycleuS);
 
-			Marker();
+			//Marker();
 
 			dT = dTUpdate(&LastUpdateuS);
 			dTOn2 = 0.5f * dT;
@@ -188,7 +163,7 @@ int main() {
 			case Preflight:
 				F.IsArmed = false;
 
-				DisableNoFlightStuff();
+				DisableFlightStuff();
 
 				if (FailPreflight()) {
 					LEDOn(ledRedSel);
@@ -211,7 +186,7 @@ int main() {
 				break;
 			case Ready:
 
-				DisableNoFlightStuff();
+				DisableFlightStuff();
 
 				if (Armed() || (UAVXAirframe == Instrumentation)) {
 					LEDOn(ledYellowSel);
@@ -223,7 +198,7 @@ int main() {
 				break;
 			case Starting:
 
-				DisableNoFlightStuff();
+				DisableFlightStuff();
 
 				DoBeep(8, 2);
 
@@ -247,7 +222,7 @@ int main() {
 				break;
 			case Warmup:
 
-				DisableNoFlightStuff();
+				DisableFlightStuff();
 
 				CaptureBatteryCurrentADCZero();
 
@@ -266,7 +241,7 @@ int main() {
 				break;
 			case ThrottleOpenCheck:
 
-				DisableNoFlightStuff();
+				DisableFlightStuff();
 
 				if (F.ThrottleOpen) {
 					LEDsOff();
@@ -282,31 +257,32 @@ int main() {
 				break;
 			case Landed:
 
-				DisableNoFlightStuff();
+				DisableFlightStuff();
+				TrackOriginAltitude();
+				F.DrivesArmed = false;
 
-				if (Armed() || (UAVXAirframe == Instrumentation)) {
-
-					if (CurrESCType == DCMotorsWithIdle) {
-						F.DrivesArmed = true;
-						DesiredThrottle = IdleThrottle;
-					}
+				if (UAVXAirframe == Instrumentation) {
 
 					DoStickProgramming();
+					CaptureHomePosition();
+					CaptureBatteryCurrentADCZero();
 
-					if (UAVXAirframe == Instrumentation) {
+					if (F.OriginValid) { // for now only works with GPS
+						LEDsOff();
+						UbxSaveConfig(GPSTxSerial);
+						State = InFlight;
+					}
 
-						CaptureHomePosition();
+				} else {
+					if (Armed()) {
 
-						CaptureBatteryCurrentADCZero();
+						if (CurrESCType == DCMotorsWithIdle) {
+							F.DrivesArmed = true;
+							DesiredThrottle = IdleThrottle;
+						} else
+							CaptureBatteryCurrentADCZero();
 
-						if (F.OriginValid) { // for now only works with GPS
-							LEDsOff();
-							UbxSaveConfig(GPSTxSerial);
-							F.DrivesArmed = false;
-							State = InFlight;
-						}
-
-					} else {
+						DoStickProgramming();
 
 						if (mSTimeout(ArmedTimeout))
 							InitiateShutdown(ArmingTimeout);
@@ -324,41 +300,35 @@ int main() {
 								RateEnergySum = 0.0f;
 								RateEnergySamples = 0;
 
-								UbxSaveConfig(GPSTxSerial);
+							//	UbxSaveConfig(GPSTxSerial);
 								UpdateConfig(); // also captures stick programming
 
 								F.DrivesArmed = true;
-								if (F.IsFixedWing && !F.PassThru) {
-									LaunchState = initLaunch;
-									State = Launching;
-								} else
-									State = InFlight;
 
-							} else { // continue in state "landed"
+								mS[StartTime] = mSClock();
 
-								CaptureBatteryCurrentADCZero();
+								State = InFlight;
 
 							}
 						}
-					}
-				} else
-					// became disarmed mid state change
-					State = Preflight;
+					} else
+						// became disarmed mid state change
+						State = Preflight;
+				}
 				break;
 			case Landing:
 				if (StickThrottle > IdleThrottle) {
 
-					mS[StartTime] = mSClock();
 					DesiredThrottle = 0.0f;
 					ResetMainTimeouts();
-					F.DrivesArmed = true;
 
+					mS[StartTime] = mSClock();
 					State = InFlight;
 
 				} else {
-					if (mSClock() < mS[ThrottleIdleTimeout])
-						DesiredThrottle = IdleThrottle;
-					else {
+					if (mSTimeout(ThrottleIdleTimeout)) {
+
+						DesiredThrottle = 0.0f;
 
 						if (NavState != Perching)
 							F.OriginValid = F.OffsetOriginValid = false;
@@ -367,6 +337,9 @@ int main() {
 							// TODO: save tuning?
 						}
 
+						SetP(KFBaroVar, Limit(BaroVariance, 0.05f, 1.0f) * 100.0f);
+						SetP(TrackKFAccZVar, Limit(TrackAccZVariance, 0.01f, 2.0f) * 100.0f);
+
 						UpdateConfig(); // also captures stick programming
 
 						ResetMainTimeouts();
@@ -374,13 +347,17 @@ int main() {
 						mSTimer(ThrottleIdleTimeout, THR_LOW_DELAY_MS);
 						LEDOn(ledGreenSel);
 
+						F.DrivesArmed = false;
+
 						State = Landed;
-					}
+					} else
+						DesiredThrottle = IdleThrottle;
+
 				}
 				break;
 			case Shutdown:
-				if ((StickThrottle < IdleThrottle) && !(F.ReturnHome
-						|| F.Navigate)) {
+
+				if (StickThrottle < IdleThrottle) {
 					TxSwitchArmed = StickArmed = false;
 					FirstPass = true; // should force fail preprocess with arming switch
 
@@ -388,12 +365,6 @@ int main() {
 
 				} else
 					LEDsOff();
-				break;
-			case Launching:
-				if (F.PassThru)
-					State = InFlight;
-				else
-					LaunchFW();
 				break;
 			case InFlight:
 
@@ -409,7 +380,9 @@ int main() {
 
 				} else { // no exit for fixed wing when using roll/yaw stick arming
 
-					if ((StickThrottle < IdleThrottle) && (IsMulticopter
+					CheckNavPulse(&NavPulse);
+
+					if ((StickThrottle < RC_THRES_START_STICK) && (IsMulticopter
 							|| (((ArmingMethod == SwitchArming)
 									|| (ArmingMethod == TxSwitchArming))
 									&& !Armed()))) {
@@ -419,6 +392,8 @@ int main() {
 						State = Landing;
 
 					} else {
+
+						DetermineInFlightThrottle();
 
 						if (UpsideDownMulticopter())
 							InitiateShutdown(UpsideDown);
@@ -441,8 +416,6 @@ int main() {
 				break;
 			} // switch state
 
-			StateP = State;
-
 			setStat(UtilisationS, State == InFlight ? ((uSClock()
 					- LastUpdateuS) * 100.0f) / CurrPIDCycleuS : 0);
 
@@ -455,6 +428,7 @@ int main() {
 
 	return (0);
 
-} // loop
+}
+// loop
 
 

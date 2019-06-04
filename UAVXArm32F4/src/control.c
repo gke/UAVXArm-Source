@@ -90,16 +90,40 @@ void CalcBattThrComp(void) {
 } // CalcBattThrComp
 
 
-void DisableNoFlightStuff(void) { // paranoid ;)
+void DisableFlightStuff(void) { // paranoid ;)
 
-	F.DrivesArmed = F.HoldingAlt = false;
+	F.HoldingAlt = false;
 	DesiredThrottle = 0.0f;
 	ZeroIntegrators();
 	ZeroThrottleCompensation();
 	ZeroNavCorrections();
 	ResetHeading();
 
-} // DisableNoFlightStuff
+} // DisableFlightStuff
+
+void DetermineInFlightThrottle(void) {
+
+	if (F.PassThru)
+		DesiredThrottle = StickThrottle;
+	else {
+		if (F.ForcedLanding) { // override everything!
+			F.AltControlEnabled = F.HoldingAlt = true;
+			DesiredThrottle = CruiseThrottle;
+		} else {
+			if (Navigating) {
+				if (NavState == HoldingStation)
+					DesiredThrottle = StickThrottle;
+				else {
+					if ((NavState == Perching) || (NavState == Touchdown))
+						DisableFlightStuff(); // suppresses alt. hold etc.
+					else
+						DesiredThrottle = CruiseThrottle;
+				}
+			} else
+				DesiredThrottle = StickThrottle;
+		}
+	}
+} // DetermineDesiredThrottle
 
 //______________________________________________________________________________
 
@@ -107,15 +131,13 @@ void DisableNoFlightStuff(void) { // paranoid ;)
 
 void TrackCruiseThrottle(void) {
 
-	if (F.Emulation)
-		CruiseThrottle = F.IsFixedWing ? THR_DEFAULT_CRUISE_FW_STICK
-				: THR_DEFAULT_CRUISE_STICK;
-	else {
+	if (!F.Emulation) {
 		if ((Abs(ROCF) < ALT_HOLD_MAX_ROC_MPS) && (DesiredThrottle
 				> THR_MIN_ALT_HOLD_STICK)) {
-			CruiseThrottle
-					+= (((DesiredThrottle + AltComp) > CruiseThrottle) ? 0.002f
-							: -0.002f) * AltdT;
+
+			CruiseThrottle += ((CruiseThrottle < DesiredThrottle) ? 0.02f
+					: -0.01f) * AltdT; // was 0.004 -0.002f
+
 			CruiseThrottle
 					= Limit(CruiseThrottle, THR_MIN_ALT_HOLD_STICK, THR_MAX_ALT_HOLD_STICK);
 			SetP(EstCruiseThr, CruiseThrottle * 100.0f);
@@ -126,18 +148,13 @@ void TrackCruiseThrottle(void) {
 void DoROCControl(real32 DesiredROC, real32 CurrMinROCMPS, real32 CurrMaxROCMPS) {
 	PIDStruct *R = &Alt.R;
 
-	R->Error = Limit(DesiredROC, CurrMinROCMPS, CurrMaxROCMPS) - ROC;
+	R->Error = DesiredROC - ROC;
 
 	R->PTerm = R->Error * R->Kp;
 
-	//R->IntE += (R->Error * R->Ki/(-MinROCMPS) * AltdT);
-	R->IntE += (R->Error * R->Ki * AltdT);
-	R->IntE = Limit1(R->IntE, R->IntLim);
-	R->ITerm = R->IntE;
+		R->DTerm = 0.0f; //Limit1(AccZ * R->Kd, 0.2f);
 
-	R->DTerm = AltAccComp = Limit1(AccZ * R->Kd, 0.2f);
-
-	AltComp = Limit1(R->PTerm + R->ITerm + R->DTerm, R->IntLim);
+	AltComp = Limit1(R->PTerm + R->DTerm, R->IntLim);
 
 } // DoROCControl
 
@@ -147,12 +164,7 @@ void AltitudeHold(real32 CurrMinROCMPS, real32 CurrMaxROCMPS) {
 
 	P->Error = Limit1(P->Desired - Altitude, P->Max);
 
-	P->PTerm = P->Error * P->Kp;
-	P->IntE += (P->Error * P->Ki * AltdT);
-	P->IntE = Limit1(P->IntE, P->IntLim);
-	P->ITerm = P->IntE;
-
-	Alt.R.Desired = P->PTerm + P->ITerm;
+	Alt.R.Desired = P->PTerm = P->Error * P->Kp;
 
 	DoROCControl(Alt.R.Desired, CurrMinROCMPS, CurrMaxROCMPS);
 
@@ -190,33 +202,37 @@ boolean ROCTooHigh(real32 Window) {
 
 void AltitudeControlFW(void) {
 
-	if (F.Glide && F.NavigationEnabled) {
-		if (NavState == BoostClimb) {
-			F.HoldingAlt = true;
-			Sl = 0.0f;
-			DoROCControl(MaxROCMPS, 0.0, MaxROCMPS);
-		} else {
-			//Sl = (NavState == AltitudeLimiting) ? Limit(Abs(Altitude - AltMaxM) * 0.05f, 0.0f, 1.0f)
-			//				: 0.0f; // TODO: slew
-			DeploySpoilers(Abs(Altitude - AltMaxM));
-			F.HoldingAlt = false;
-			AltComp = -1.0f;
-		}
+	if (F.ForcedLanding) {
+		F.HoldingAlt = true;
+		AcquireAltitudeFW();
 	} else {
-		if ((State == Launching) || ((NavState != HoldingStation) && (NavState
-				!= PIC))) { // Navigating - using CruiseThrottle
-			F.HoldingAlt = true;
-			AcquireAltitudeFW();
-		} else {
-			CheckThrottleMoved();
-			if (F.ThrottleMoving || (ROCTooHigh(1.0f) && !F.HoldingAlt)) {
-				F.HoldingAlt = false;
-				SetDesiredAltitude(Altitude);
-				AltComp = 0.0f;
-			} else {
+		if (F.Glide && F.NavigationEnabled) {
+			if (NavState == BoostClimb) {
 				F.HoldingAlt = true;
-				TrackCruiseThrottle();
-				AcquireAltitudeFW(); // using Stick Throttle NOT cruise throttle
+				Sl = 0.0f;
+				DoROCControl(MaxROCMPS, 0.0, MaxROCMPS);
+			} else {
+				//Sl = (NavState == AltitudeLimiting) ? Limit(Abs(Altitude - AltMaxM) * 0.05f, 0.0f, 1.0f)
+				//				: 0.0f; // TODO: slew
+				DeploySpoilers(Abs(Altitude - AltMaxM));
+				F.HoldingAlt = false;
+				AltComp = -1.0f;
+			}
+		} else {
+			if (Navigating) { // Navigating - using CruiseThrottle
+				F.HoldingAlt = true;
+				AcquireAltitudeFW();
+			} else {
+				CheckThrottleMoved();
+				if (F.ThrottleMoving || (ROCTooHigh(1.0f) && !F.HoldingAlt)) {
+					F.HoldingAlt = false;
+					SetDesiredAltitude(Altitude);
+					AltComp = 0.0f;
+				} else {
+					F.HoldingAlt = true;
+					TrackCruiseThrottle();
+					AcquireAltitudeFW(); // using Stick Throttle NOT cruise throttle
+				}
 			}
 		}
 	}
@@ -240,7 +256,10 @@ void AcquireAltitude(void) {
 
 void AltitudeControl(void) {
 
-	if (((NavState == PIC) || (NavState == HoldingStation)) && !F.ForcedLanding) {
+	if (F.ForcedLanding || Navigating) { // autonomous
+		F.HoldingAlt = true;
+		AcquireAltitude();
+	} else {
 		CheckThrottleMoved();
 		if (F.ThrottleMoving || (ROCTooHigh(0.25f) && !F.HoldingAlt)) {
 			F.HoldingAlt = false;
@@ -251,9 +270,6 @@ void AltitudeControl(void) {
 			TrackCruiseThrottle();
 			AcquireAltitude(); // using Stick Throttle NOT cruise throttle
 		}
-	} else { // autonomous
-		F.HoldingAlt = true;
-		AcquireAltitude();
 	}
 
 } // AltitudeControl
@@ -261,7 +277,7 @@ void AltitudeControl(void) {
 
 void DoAltitudeControl(void) {
 
-	if (F.NewAltitudeValue) { // every AltdT
+	if (F.NewAltitudeValue) { // every 
 		F.NewAltitudeValue = false;
 
 		if (F.IsFixedWing)

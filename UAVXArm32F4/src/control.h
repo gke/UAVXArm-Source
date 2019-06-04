@@ -77,6 +77,7 @@ typedef struct {
 
 AltStruct Alt;
 
+void DetermineInFlightThrottle(void);
 void ZeroThrottleCompensation(void);
 void ResetHeading(void);
 void DoAltitudeControl(void);
@@ -101,7 +102,6 @@ extern real32 Altitude;
 extern real32 AltComp, ROC, MinROCMPS;
 extern real32 DesiredThrottle, CruiseThrottle, IdleThrottle, InitialThrottle;
 extern real32 BattThrFFComp, TiltThrFFComp;
-extern real32 AltAccComp;
 extern real32 HorizonTransScale;
 extern real32 StickDeadZone;
 extern real32 OrientationRad, OrientS, OrientC;

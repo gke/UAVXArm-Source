@@ -862,7 +862,7 @@ void UpdateControls(void) {
 		// COMPLICATED switching for arming, AH WP nav etc ****************
 
 		F.AltControlEnabled = (State == InFlight) && !(F.UseManualAltHold
-				|| (NavState == PIC) || F.PassThru);
+				|| F.PassThru);
 		if (ActiveCh(AHNavSensRC)) {
 			Nav.Sensitivity = Limit(RC[AHNavSensRC], 0, 1.0f);
 			F.AltControlEnabled = F.AltControlEnabled && Triggered(
@@ -904,6 +904,7 @@ void UpdateControls(void) {
 
 		VTOLMode = Triggered(0.5f, TransitionRC) && (UAVXAirframe == VTOLAF)
 				&& !F.PassThru;
+
 
 		//_________________________________________________________________________________________
 

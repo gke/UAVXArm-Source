@@ -22,14 +22,19 @@
 #ifndef _uavx_h
 #define _uavx_h
 
-//#define USE_CONSERVATIVE_DEF_PARAM_LOAD
 
 //#define USE_AUX3_PROBE_PIN // CAUTION DIAGNOSTIC ONLY: This disables use of Aux3 for WP Nav enable
 
+//#define USE_CONSERVATIVE_DEF_PARAM_LOAD
+
 //#define BLACKBOX
+
+//#define USE_SPI_ESC
 
 //#define USE_IMU_DFT
 #define DFT_WINDOW_SIZE 8 // limit by packet size
+
+//#define USE_MAG_DIRECT
 
 #define USE_THERMALS
 #define HAVE_WIND_ESTIMATE
@@ -47,7 +52,7 @@
 
 // Options
 
-// ->#define USE_WS2812
+#define USE_WS2812 // shared with Aux1 pulse
 //#define USE_WS2812B
 
 #define INC_STATS_TEL
@@ -99,8 +104,8 @@
 #include "analog.h"
 #include "armflash.h"
 #include "as.h"
+#include "altfilt.h"
 #include "altitude.h"
-#include "launch.h"
 #include "batt.h"
 #include "bb.h"
 #include "calib.h"

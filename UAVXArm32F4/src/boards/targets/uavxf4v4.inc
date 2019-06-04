@@ -105,9 +105,9 @@ I2CPortDef I2CPorts[MAX_I2C_PORTS] = {
 
 SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
 	{false, 0, }, // notionally SPI0
-	{true, SPI1, {PA5, PA6, PA7}}, //
+	{true, SPI1, {PA5, PA6, PA7}}, // Aux1, RC5, RC6
 	{true, SPI2, {PB13, PB14, PB15}}, //
-	{true, SPI3, {PC10, PC11, PC12}}
+	{true, SPI3, {PC10, PC11, PC12}} // Arming, LED3, LED2
 };
 
 PinDef USBDisconnectPin = { false, 0, };
@@ -129,8 +129,13 @@ DevDef busDev[maxDevSel] = {
 	{false, gpsSel, },
 	{false, rfSel, },
 	{false, asSel, },
-	{false, flowSel, },
-	{false, escSel, }
+	{false, flowSel, }, 
+#if defined(USE_SPI_ESC)
+	{true, escSPISel, ESCSPI, true, 1, 0, PC13}, // PC13 NC no select required
+#else
+	{false, escSPISel, }, // PC13 not connected
+#endif
+	{true, escI2CSel, ESCI2C, false, 2, ESCI2C_ID, }
 };
 
 const uint8 IMUQuadrant = 0;
@@ -149,19 +154,19 @@ void InitTarget(void) {
 
 	switch (CurrRxType) {
 	case CPPMRx:
-		CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 10;
+		CurrMaxPWMOutputs = (UsingDCMotors || (CurrESCType == ESCSPI)) ? 4 : 10;
 		CurrNoOfRCPins = 1;
 		RxUsingSerial = false;
 		break;
 	/* Ken does not use V4 SPI boards
 	case ParallelPPMRx:
-		CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 6;
+		CurrMaxPWMOutputs = (UsingDCMotors || (CurrESCType == ESCSPI)) ? 4 : 6;
 		CurrNoOfRCPins = MAX_RC_INPUTS; //P(RCChannels);
 		RxUsingSerial = false;
 		break;
 	 */
 	default:
-		CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 10;
+		CurrMaxPWMOutputs = (UsingDCMotors || (CurrESCType == ESCSPI)) ? 4 : 10;
 		CurrNoOfRCPins = 0;
 		RxUsingSerial = true;
 		RCSerial = Usart2;

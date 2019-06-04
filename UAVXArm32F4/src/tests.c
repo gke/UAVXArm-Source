@@ -188,10 +188,11 @@ void DoTesting(void) {
 #elif defined(BARO_TESTING)
 
 	int16 kkk, cycles;
-	timeval start = uSClock();
+	timeuS start = uSClock();
 
 	for (kkk = 0; kkk < 256; kkk++)
 	LSBBaro[kkk] = 0;
+	LEDsOff();
 
 	cycles = 10;
 	for (kkk = 0; kkk < 3000; kkk++) {
@@ -199,15 +200,16 @@ void DoTesting(void) {
 		GetBaro();
 		DEBUGNewBaro = false;
 
-		LEDToggle(ledGreenSel);
+
 		if (cycles-- <= 0) {
+			LEDToggle(ledGreenSel);
 			cycles = 10;
 			TxVal32(TelemetrySerial, BaroTempVal, 0, ',');
 			TxVal32(TelemetrySerial, BaroPressVal, 0, ',');
 			TxVal32(TelemetrySerial, BaroTemperature * 1000, 3, ',');
 			TxVal32(TelemetrySerial, BaroPressure * 100, 2, ',');
-			TxVal32(TelemetrySerial, BaroRawAltitude * 1000, 3, ',');
-			TxVal32(TelemetrySerial, BaroAltitude * 1000, 3, ',');
+			TxVal32(TelemetrySerial, DensityRawAltitude * 1000, 3, ',');
+			TxVal32(TelemetrySerial, DensityAltitude * 1000, 3, ',');
 			TxNextLine(TelemetrySerial);
 		}
 		LSBBaro[BaroPressVal & 0xff]++;
@@ -235,7 +237,7 @@ void DoTesting(void) {
 		GetBaro();
 		DEBUGNewBaro = false;
 
-		LEDToggle(ledGreenSel);
+		LEDToggle(ledRedSel);
 
 		//TxVal32(TelemetrySerial, BaroTempVal, 0, ',');
 		TxVal32(TelemetrySerial, BaroPressVal, 0, ',');
@@ -245,8 +247,10 @@ void DoTesting(void) {
 
 	}
 
-	LEDsOn();
+	LEDOn(ledGreenSel);
+
 	while(1) {};
+
 
 #elif defined(KF_TESTING)
 
@@ -503,7 +507,7 @@ void CommissioningTest(uint8 s) {
 	TxVal32(s, ms56xx_cal[i], 0, ' ');
 	TxString(s, "} ");
 	TxVal32(s, BaroPressure, 2, ' ');
-	TxVal32(s, BaroAltitude * 10.0f, 1, 'M');
+	TxVal32(s, RawDensityAltitude * 10.0f, 1, 'M');
 	TxNextLine(s);
 
 	TxNextLine(s);
@@ -537,7 +541,7 @@ void CommissioningTest(uint8 s) {
 			TxVal32(s, BaroTemperature * 10.0, 1, 'C');
 			TxChar(s, ' ');
 			TxVal32(s, BaroPressure, 2, ' ');
-			TxVal32(s, BaroAltitude * 10.0f, 1, ' ');
+			TxVal32(s, RawDensityAltitude * 10.0f, 1, ' ');
 
 			TxString(s, "M:");
 			OK(s, F.MagnetometerActive);
@@ -835,7 +839,7 @@ void BaroTest(uint8 s) {
 	if (F.BaroActive) {
 		F.NewBaroValue = false;
 		while (!F.NewBaroValue)
-		GetDensityAltitude();
+		GetBaro();
 
 		TxString(s, "\r\nBaro. Temp.: ");
 		TxVal32(s, (int32) BaroTemperature * 100, 2, ' ');
@@ -848,8 +852,8 @@ void BaroTest(uint8 s) {
 		TxVal32(s, OriginAltitude * 100.0f, 2, ' ');
 		TxString(s, "M\r\n");
 
-		TxString(s, "Rel. Density Alt.: ");
-		TxVal32(s, BaroAltitude * 100.0f, 2, ' ');
+		TxString(s, "Abs.Density Alt.: ");
+		TxVal32(s, RawDensityAltitude * 100.0f, 2, ' ');
 		TxString(s, "M\r\n");
 
 		TxString(s, "ROC: ");

@@ -141,7 +141,9 @@ void CheckProximity(real32 V, real32 H) {
 void ZeroNavCorrections(void) {
 	idx a;
 
-	F.Glide = F.Navigate = F.ReturnHome = F.CrossTrackActive
+	F.Glide =
+			//F.Navigate = F.ReturnHome =
+			F.CrossTrackActive
 			= F.WayPointAchieved = F.WayPointCentred = F.OrbitingWP
 					= F.RapidDescentHazard = false;
 
@@ -376,9 +378,10 @@ void InitNavigation(void) {
 	NorthP = EastP = 0.0f; // origin
 
 	GenerateHomeWP();
+	UsingSurveyPulse = false;
 	memset(&POI, 0, sizeof(WPStruct));
 	memset(&NavPulse, 0, sizeof(NavPulseStruct));
-
+	memset(&SavedNavPulse, 0, sizeof(NavPulseStruct));
 	RefreshNavWayPoint();
 	SetDesiredAltitude(0.0f);
 

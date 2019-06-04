@@ -30,6 +30,9 @@ enum IMUOptions {
 
 void InitMadgwick(void);
 void UpdateInertial(void);
+void UpdateAccZVariance(real32 AccZ);
+void UpdateAccZ(real32 dT);
+real32 ConditionAccZ(real32 dT);
 
 void ScaleIMU(void);
 
@@ -42,11 +45,15 @@ real32 AttitudeCosine(void);
 
 extern const char * IMUName[];
 
+extern const real32 AccZSDevConf;
+
 extern real32 AccConfidenceSDevR, AccConfidence;
 extern real32 KpAccBase, KpMagBase;
 
 extern HistStruct AccZF;
-extern real32 AccZ;
+extern real32 AccZ, RawAccZ, AccZBias, RawAccZSum;
+extern uint32 AccZSamples;
+extern real32 AccZMF[];
 extern real32 AltLPFHz;
 
 extern timeuS LastInertialUpdateuS;

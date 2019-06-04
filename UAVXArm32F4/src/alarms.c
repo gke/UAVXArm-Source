@@ -134,16 +134,13 @@ void DoBeep(uint8 t, uint8 d) {
 	timeuS TimeoutuS;
 
 	BeeperOn();
-	for (i = 0; i < (t * 50); i++) {
-		Delay1uS(1000);
-		GetBaro(); // hammer it to warm it up!
-	}
+	for (i = 0; i < (t * 500); i++)
+		Delay1uS(100);
 
 	BeeperOff();
-	for (i = 0; i < (d * 50); i++) {
-		Delay1uS(1000);
-		GetBaro();
-	}
+	for (i = 0; i < (d * 500); i++)
+		Delay1uS(100);
+
 } // DoBeep
 
 void DoBeeps(uint8 b) {
@@ -154,16 +151,23 @@ void DoBeeps(uint8 b) {
 
 } // DoStartingBeeps
 
-int16 BeeperOffTime = 100;
-int16 BeeperOnTime = 100;
+void ScheduleBeeper(timemS w) {
+
+	if (!F.BeeperInUse) {
+		BeeperOn();
+		mSTimer(BeeperTimeout, w);
+	}
+
+} // ScheduleNavBeeper
+
 
 void CheckAlarms(void) {
 
-	F.BeeperInUse = PreflightFail || F.LowBatt || (State == Shutdown) || (State
-			== ThrottleOpenCheck) || (NavState == Descending) || (State
-			== Launching);
+	static timemS BeeperOffTime = 100;
+	static timemS BeeperOnTime = 100;
 
-	//F.BeeperInUse = false;
+	F.BeeperInUse = PreflightFail || F.LowBatt || (State == Shutdown) || (State
+			== ThrottleOpenCheck) || (NavState == Descending);
 
 	if (F.BeeperInUse) {
 		if (F.LowBatt) {
@@ -172,9 +176,6 @@ void CheckAlarms(void) {
 		} else if (State == Shutdown) {
 			BeeperOffTime = 4750;
 			BeeperOnTime = 250;
-		} else if (State == Launching) {
-			BeeperOffTime = 875;
-			BeeperOnTime = 125;
 		} else { //default
 			BeeperOffTime = 125;
 			BeeperOnTime = 125;
@@ -218,7 +219,7 @@ void Catastrophe(void) {
 
 boolean UpsideDownMulticopter(void) {
 
-	static boolean UpsideDown;
+	boolean UpsideDown;
 
 	UpsideDown = false;
 #if defined(CHECK_INVERTED)
@@ -230,6 +231,7 @@ boolean UpsideDownMulticopter(void) {
 			if (mSTimeout(CrashedTimeout) && (DesiredThrottle > IdleThrottle)
 					&& F.UsingAngleControl)
 				UpsideDown = true;
+			UpsideDown = false;
 		}
 	}
 #endif

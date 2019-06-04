@@ -24,10 +24,10 @@
 
 #define BATTERY_UPDATE_MS 200 // 1000
 
-extern void InitBattery(void);
-extern void CheckBatteries(void);
-extern void CaptureBatteryCurrentADCZero(void);
-extern void BatteryTest(uint8 s);
+void InitBattery(void);
+void CheckBatteries(void);
+void CaptureBatteryCurrentADCZero(void);
+void BatteryTest(uint8 s);
 
 extern real32 BatteryVolts, BatterySagR, BatteryCurrent, BatteryVoltsLimit, StartupVolts,
 		BatteryChargeUsedmAH, BatteryCapacitymAH;

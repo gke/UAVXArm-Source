@@ -816,27 +816,20 @@ boolean DoMSPCmds(uint8_t s) {
 
 void DoBLHeliSuite(uint8_t s) {
 
-	uint32_t Timeout = mSClock() + 5000;
+	mSTimer(BLHeliTimeout, 5000);
 
 	LEDOn(ledYellowSel);
 
-	while ((mSClock() < Timeout) && !SerialAvailable(s)) {
+	while (!(mSTimeout(BLHeliTimeout) || SerialAvailable(s))) {
 	};
 
-	if (mSClock() < Timeout) {
-
+	if (SerialAvailable(s)) {
 		BLHeliSuiteActive = true;
-
 		escCount = esc4wayInit();
-
 		DoMSPCmds(s);
-
 		esc4wayProcess(s);
-
 		esc4wayRelease();
-
 		BLHeliSuiteActive = false;
-
 	}
 
 	LEDsOff();

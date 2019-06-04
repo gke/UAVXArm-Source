@@ -179,7 +179,7 @@ void TxFrSkyHubAttitude(uint8 s) {
 void TxFrSkyHubBaro(uint8 s) {
 
 	TxFrSkyHubPacketPair(s, FSHUB_ID_BARO_ALT_BP, FSHUB_ID_BARO_ALT_AP,
-			BaroAltitude - OriginAltitude, 10);
+			DensityAltitude - OriginAltitude, 10);
 } //  TxFrSkyHubBaro
 
 void TxFrSkyHubVario(uint8 s) {
@@ -617,7 +617,7 @@ void TxFrSkySPort(uint8 s) {
 			//case FSSP_ID_RPM        :
 		case FSSP_ID_ALTITUDE:
 			if (F.BaroActive)
-				TxFrSkySPortPacket(s, appID, BaroAltitude);
+				TxFrSkySPortPacket(s, appID, DensityAltitude);
 			break;
 		case FSSP_ID_FUEL:
 			TxFrSkySPortPacket(s, appID, Limit(100 * ( 1.0f - BatteryChargeUsedmAH / BatteryCapacitymAH), 0, 100)); //%?

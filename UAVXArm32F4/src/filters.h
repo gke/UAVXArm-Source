@@ -36,22 +36,27 @@ typedef struct {
 
 } filterStruct;
 
+real32 CalculateVariance(real32 *x, uint16 n);
+
 void DFTn(real32 *DFT, real32 * v);
 
-real32 kth_smallest(real32 a[], uint16 n, uint16 k);
+real32 kth_smallest(real32 a[], const uint16 n, const uint16 k);
 #define median(a,n) kth_smallest(a,n,(((n)&1)?((n)/2):(((n)/2)-1)))
 
 real32 PavelDifferentiator(filterStruct *F, real32 v);
 
+void initFIRF(filterStruct *F, const idx order, const real32 * C);
 real32 FIRF(filterStruct *F, real32 v);
+void initMAF(filterStruct * F, const idx order);
 real32 MAF(filterStruct *F, real32 v);
 
 real32 Smoothr32xn(filterStruct * F, real32 v);
 
+real32 initLPF1Coefficient(real32 CutHz, real32 dT);
 real32 LPF1(real32 O, real32 N, const real32 K);
-real32 LPF1Coefficient(real32 CutHz, real32 dT);
 
 void initLPFn(filterStruct * F, const idx order, const real32 CutHz);
+void setLPFn(filterStruct * F, real32 v);
 real32 LPFn(filterStruct * F, real32 v, real32 dT);
 void initKalynFastLPKF(filterStruct *F, real32 Q, real32 R, real32 CutHz);
 real32 KalynFastLPKF(filterStruct *F, real32 v, real32 dT);
@@ -80,7 +85,7 @@ real32 scaleRangef(real32 v, real32 srcMin, real32 srcMax, real32 destMin,
 //enum {RC1, RC2, KalynFastKF, FujinFastKF, NoOSF};
 //typedef real32 (*OSLPFPtr)(filterStruct *  F, real32 v, real32 dT);
 
-extern filterStruct AccF[3], GyroF[3], ROCLPF, FROCLPF, BaroLPF, AccZLPF, SensorTempF;
+extern filterStruct AccF[3], GyroF[3], ROCLPF, FROCLPF, AltitudeLPF, AccZBumpLPF, SensorTempF;
 
 extern real32 CurrAccLPFHz, CurrGyroLPFHz, CurrYawLPFHz, CurrServoLPFHz;
 extern boolean UsingPavelFilter;

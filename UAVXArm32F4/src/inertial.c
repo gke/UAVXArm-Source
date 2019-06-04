@@ -21,13 +21,23 @@
 
 #include "UAVX.h"
 
+const real32 AccZSDevConf = 3.0f; // maybe 2?
+
 #define MAX_MAG_YAW_RATE_RADPS DegreesToRadians(60) // TODO: 180 may be too high - above this rate AHRS compensation of heading is zero
 real32 dT, dTR, dTOn2, dTROn2;
 timeuS LastInertialUpdateuS = 0;
 real32 AccConfidenceSDevR = 5.0f;
 real32 AccConfidence;
-real32 AccZ;
-real32 MagConfidence;
+
+real32 AccZ = 0.0f;
+real32 AccZMF[32];
+real32 RawAccZ, AccZBias, RawAccZSum;
+uint32 AccZSamples = 0;
+
+HistStruct AccZF;
+
+real32 AltLPFHz;
+
 real32 EstMagHeading = 0.0f;
 
 uint8 CurrIMUOption = unknownIMUOption;
@@ -151,7 +161,7 @@ void ConvertEulerToQuaternion(void) {
 real32 GravityCompensatedAccZ(void) {
 
 	return 2.0f * (q1q3 - q0q2) * Acc[X] + 2.0f * (q0q1 + q2q3) * Acc[Y]
-			+ (q0q0 - q1q1 - q2q2 + q3q3) * Acc[Z] + GRAVITY_MPS_S;
+			+ (q0q0 - q1q1 - q2q2 + q3q3) * Acc[Z];
 } // GravityCompensatedAccZ
 
 
@@ -161,25 +171,53 @@ real32 AttitudeCosine(void) { // for attitude throttle compensation
 
 } // AttitudeCosine
 
+void UpdateAccZVariance(real32 AccZ) {
+	const real32 AccZ_K = 0.99f;
+	static real32 A[128];
+	static uint16 i = 0;
 
-void VersanoCompensation(void) {
-#if defined(USE_VERSANO_GRAVITY_COMP)
-	// http://www.varesano.net/blog/fabio/simple-gravity-compensation-9-dom-imus
-	// compensate the accelerometer readings from gravity.
+	//	if (State != InFlight) {
+	A[i++] = AccZ;
 
-	real32 cx, cy, cz;
+	if (i >= 128) {
+		TrackAccZVariance = TrackAccZVariance * AccZ_K + CalculateVariance(A,
+				128) * (1.0f - AccZ_K);
+		i = 0;
+	}
+	//	}
 
-	// get expected direction of gravity from previous iteration!
-	cx = 2.0f * (q1q3 - q0q2);
-	cy = 2.0f * (q0q1 + q2q3);
-	cz = q0q0 - q1q1 - q2q2 + q3q3;
+} // UpdateAccZVariance
 
-	ax -= cx;
-	ay -= cy;
-	az -= cz;
+real32 ConditionAccZ(real32 dT) {
+	real32 NewAccZ;
 
-#endif
-} // VersanoCompensation
+	NewAccZ = (AccZSamples > 0) ? median(AccZMF, AccZSamples): 0.0f; // 2.43uS
+	AccZSamples = 0;
+
+	if (State != InFlight)
+		AccZBias = AccZBias * (1.0f - AccZBiasVariance) + NewAccZ
+				* AccZBiasVariance;
+	NewAccZ -= AccZBias;
+
+	UpdateAccZVariance(NewAccZ);
+
+	F.AccZBump = LPFn(&AccZBumpLPF, NewAccZ, dT) > ACCZ_LANDING_MPS_S;
+
+	return (NewAccZ < (AccZ - AccZSDevN)) ? AccZ - AccZSDevN : ((NewAccZ
+			> (AccZ + AccZSDevN)) ? AccZ + AccZSDevN : NewAccZ);
+
+} // ConditionAccZ
+
+void UpdateAccZ(real32 AccZdT) {
+
+	// AccZ is already filtered to CurrAccLPFHz ~20Hz.
+	RawAccZ
+			= -Limit1(GravityCompensatedAccZ() + GRAVITY_MPS_S, GRAVITY_MPS_S * 1.0f); // +/- 1g
+
+	if (AccZSamples < 32)
+		AccZMF[AccZSamples++] = RawAccZ;
+
+} // UpdateAccZ
 
 
 // REVISED MADGWICK
@@ -190,10 +228,12 @@ void InitMadgwick(void) {
 	Angle[Roll] = asinf(Acc[LR]);
 	Angle[Pitch] = asinf(-Acc[BF]);
 
-	CalculateInitialMagneticHeading();
+	InitialMagHeading = CalculateMagneticHeading();
 	Angle[Yaw] = InitialMagHeading;
 
 	ConvertEulerToQuaternion();
+
+	AccZBias = 0.0f;
 
 } // InitMadgwick
 
@@ -207,7 +247,11 @@ void UpdateHeading(void) {
 		Heading = Make2Pi(MagHeading + MagVariation);
 	} else {
 
+#if defined(USE_MAG_DIRECT)
+		Angle[Yaw] = MagHeading = CalculateMagneticHeading();
+#else
 		MagHeading = Angle[Yaw];
+#endif
 		Heading = Make2Pi(MagHeading + MagVariation);
 
 		// override for FW aircraft
@@ -256,6 +300,7 @@ void MadgwickUpdate(real32 gx, real32 gy, real32 gz, real32 ax, real32 ay,
 	// error is sum of cross product between reference direction
 	// of fields and direction measured by sensors
 
+
 	AccMag = sqrtf(Sqr(ax) + Sqr(ay) + Sqr(az));
 	AccConfidence = CalculateAccConfidence(AccMag);
 
@@ -274,6 +319,7 @@ void MadgwickUpdate(real32 gx, real32 gy, real32 gz, real32 ax, real32 ay,
 	if (F.NewMagValues && !F.MagnetometerFailure) { // no compensation for latency
 		F.NewMagValues = false;
 
+#if !defined(USE_MAG_DIRECT)
 		KpMag = CalculateMagConfidence();
 
 		normR = invSqrt(Sqr(mx) + Sqr(my) + Sqr(mz));
@@ -300,6 +346,7 @@ void MadgwickUpdate(real32 gx, real32 gy, real32 gz, real32 ax, real32 ay,
 		gx += (my * wz - mz * wy) * KpMag;
 		gy += (mz * wx - mx * wz) * KpMag;
 		gz += (mx * wy - my * wx) * KpMag;
+#endif
 	}
 
 	// integrate quaternion rate
@@ -342,7 +389,7 @@ void TrackPitchAttitude(void) {
 void UpdateInertial(void) {
 	int32 a;
 
-	if (F.Emulation && ((State == InFlight) || (State == Launching)))
+	if (F.Emulation && (State == InFlight))
 		DoEmulation(); // produces ROC, Altitude etc.
 	else {
 		tickCountOn(IMUTick);
@@ -350,6 +397,8 @@ void UpdateInertial(void) {
 		tickCountOff(IMUTick);
 
 		ScaleRateAndAcc(imuSel);
+
+		UpdateAccZ(dT);
 
 		GetMagnetometer();
 	}
@@ -380,6 +429,7 @@ void UpdateInertial(void) {
 	}
 
 	if (!F.Emulation) {
+
 		UpdateAltitudeEstimates();
 		UpdateAirspeed();
 	}
@@ -387,8 +437,5 @@ void UpdateInertial(void) {
 	TrackPitchAttitude();
 
 }// UpdateInertial
-
-
-
 
 

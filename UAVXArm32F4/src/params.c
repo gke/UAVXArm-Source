@@ -32,7 +32,7 @@ volatile boolean TxSwitchArmed = false;
 uint8 UAVXAirframe = AFUnknown;
 boolean IsMulticopter;
 boolean UsingGliderStrategy, UsingFastStart, UsingBLHeliPrograming, UsingHWLPF,
-		UsingOffsetHome;
+		UsingOffsetHome, UsingNavBeep;
 
 boolean ConfigChanged = false;
 uint8 CurrConfig1, CurrConfig2;
@@ -123,6 +123,7 @@ void DoConfigBits(void) {
 	UsingBLHeliPrograming = (P(Config2Bits) & UseBLHeliMask) != 0;
 	UsingGliderStrategy = ((P(Config2Bits) & UseGliderStrategyMask) != 0)
 			&& F.IsFixedWing;
+	UsingNavBeep = (P(Config2Bits) & UseNavBeepMask) != 0;
 
 	F.UsingTurnToWP = (P(Config2Bits) & UseTurnToWPMask) != 0;
 
@@ -220,11 +221,9 @@ void InitPIDStructs(void) {
 
 	memset(&Alt, 0, sizeof(Alt));
 
-	Alt.P.Kp = (real32) P(AltPosKp) * 0.018f;
-	Alt.P.Ki = (real32) P(AltPosKi) * 0.0074f;
-	Alt.P.IntLim = (real32) P(AltPosIntLimit) * 0.035; // 0.35 0.15f;
-	Alt.P.Max = (real32) P(AltHoldBand) * 1.0f;
+	Alt.P.Kp = (real32) P(AltPosKp) * 0.018f; // 0.65->36, 1.3->71
 
+	Alt.P.Max = (real32) P(AltHoldBand) * 1.0f;
 	Alt.R.Max = Alt.P.Max * Alt.P.Kp; // default
 
 	SetP(MaxROC, Limit(Alt.R.Max, 1, ALT_MAX_ROC_MPS) * 10);
@@ -232,10 +231,8 @@ void InitPIDStructs(void) {
 
 	VRSDescentRateMPS = -P(VRSDescentRate) * 0.1f;
 
-	Alt.R.Kp = (real32) P(AltVelKp) * 0.0026f;
-	Alt.R.IntLim = (real32) P(AltVelIntLimit) * 0.01f;
-	//Alt.R.Ki = (real32) P(AltVelKi) * 0.2f * Alt.R.IntLim;
-	Alt.R.Ki = (real32) P(AltVelKi) * 0.001f;
+	Alt.R.Kp = (real32) P(AltVelKp) * 0.0026f; // 0.065->25, 0.13->50
+	Alt.R.IntLim = FromPercent((real32) P(AltVelIntLimit)); // 0.3 max throttle compensation
 
 	Alt.R.Kd = (real32) P(AltVelKd) * 0.00016f;
 
@@ -260,6 +257,21 @@ void SetPIDPeriod(void) {
 
 } // SetPIDPeriod
 
+boolean AltFiltersChanged(void) {
+
+	return  (AltLPFHz != P(AltLPF));
+
+} // AltFiltersChanged
+
+boolean InertialFiltersChanged(void) {
+
+	return (
+			CurrAccLPFSel != P(AccLPFSel)) //
+			|| (CurrGyroLPFSel != P(GyroLPFSel)) //
+			|| (CurrYawLPFHz != P(YawLPFHz)) //
+			|| (CurrServoLPFHz != P(ServoLPFHz));
+
+} // InertialFiltersChanged
 
 void UpdateParameters(void) {
 	// overkill if only a single parameter has changed but not in flight loop
@@ -288,8 +300,8 @@ void UpdateParameters(void) {
 					|| (UAVXAirframe != P(AFType)) //
 					|| (CurrRFSensorType != P(RFSensorType)) //
 					|| (CurrASSensorType != P(ASSensorType)) //
-					//	|| (CurrGyroLPFSel != P(GyroLPFSel)) //
-					//	|| (CurrAccLPFSel != P(AccLPFSel)) //
+					|| InertialFiltersChanged() //
+					|| AltFiltersChanged() //
 					|| (CurrGPSType != P(GPSProtocol)) //
 					|| (CurrMotorStopSel != P(MotorStopSel)) //
 					|| (CurrNoOfWSLEDs != P(WS2812Leds)))
@@ -297,11 +309,9 @@ void UpdateParameters(void) {
 
 		DoConfigBits();
 		InitPIDStructs();
-		InitSWFilters();
 
 		// Throttle
-		IdleThrottlePW = IdleThrottle
-				= FromPercent(LimitP(PercentIdleThr, RC_THRES_START + 1, 20));
+		IdleThrottlePW = IdleThrottle = FromPercent(LimitP(PercentIdleThr, RC_THRES_START + 1, 20));
 
 		FWPitchThrottleFFFrac = FromPercent(P(FWPitchThrottleFF));
 		TiltThrFFFrac = FromPercent(P(TiltThrottleFF));
@@ -313,7 +323,11 @@ void UpdateParameters(void) {
 					: THR_DEFAULT_CRUISE_STICK;
 			SetP(EstCruiseThr, CruiseThrottle * 100.0f);
 		}
-		CruiseThrottle = FromPercent(P(EstCruiseThr));
+		if (F.Emulation)
+			CruiseThrottle = F.IsFixedWing ? THR_DEFAULT_CRUISE_FW_STICK
+					: THR_DEFAULT_CRUISE_STICK;
+		else
+			CruiseThrottle = FromPercent(P(EstCruiseThr));
 
 		// Attitude
 
@@ -346,12 +360,17 @@ void UpdateParameters(void) {
 
 		MinROCMPS = -(real32) P(MaxDescentRateDmpS) * 0.1f;
 
+		AccZVariance = (real32) (LimitP(KFAccZVar, 1, 200)) * 0.01f;
+		AccZSDevN = sqrtf(AccZVariance) * AccZSDevConf;
+
 		FWAileronRudderFFFrac = FromPercent(P(FWAileronRudderMix));
 		FWAltSpoilerFFFrac = FromPercent(P(FWAltSpoilerFF));
 		FWSpoilerDecayS = P(FWSpoilerDecayTime) * 0.1f;
 
 		// Nav
 
+		LimitP(NavGPSTimeoutS, 2, 30);
+		NavGPSTimeoutmS = P(NavGPSTimeoutS) * 1000;
 		MagVariation = DegreesToRadians((real32)P(NavMagVar) * 0.1f);
 
 		GPSMinhAcc = GPS_MIN_HACC; // not set in GUI LimitP(MinhAcc, 10, GPS_MIN_HACC * 10) * 0.1f;
@@ -596,6 +615,13 @@ void ConditionParameters(void) {
 	CurrMotorStopSel = P(MotorStopSel);
 	CurrRFSensorType = P(RFSensorType);
 	CurrASSensorType = P(ASSensorType);
+
+	CurrAccLPFSel = LimitP(AccLPFSel, 1, 5);
+	CurrGyroLPFSel = LimitP(GyroLPFSel, 1, 4);
+	CurrYawLPFHz = LimitP(YawLPFHz, 25, 255);
+	CurrServoLPFHz = LimitP(ServoLPFHz, 10, 100);
+
+	AltLPFHz = LimitP(AltLPF, 2, 10);
 
 	DoConfigBits();
 

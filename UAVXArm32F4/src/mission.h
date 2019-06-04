@@ -69,10 +69,14 @@ void UpdateNavMission(void);
 void GenerateHomeWP(void);
 void SetWPHome(void);
 
+void ScheduleNavPulse(NavPulseStruct * n, timemS w, timemS p);
+void CheckNavPulse(NavPulseStruct * n);
+
 extern WPStruct WP, HP, HomeWP, OffsetHomeWP, POI;
 extern uint8 CurrWPNo, PrevWPNo;
 extern boolean NavMissionUpdated;
-extern NavPulseStruct NavPulse;
+extern NavPulseStruct NavPulse, SavedNavPulse;
+extern boolean UsingSurveyPulse;
 
 #endif
 

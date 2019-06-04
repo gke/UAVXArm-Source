@@ -56,24 +56,24 @@ typedef struct {
 
 
 
-extern boolean UpdateConfig(void);
-extern int8 ReadConfig(uint32 a);
-extern boolean ConfigUninitialised(void);
+boolean UpdateConfig(void);
+int8 ReadConfig(uint32 a);
+boolean ConfigUninitialised(void);
 
-extern boolean EraseNVMem(void);
+boolean EraseNVMem(void);
 
-extern void ReadBlockNVMem(uint32 a, uint16 l, int8 * v);
+void ReadBlockNVMem(uint32 a, uint16 l, int8 * v);
 boolean WriteNVMemBlock(uint32 a, uint16 l, int8 *v);
-extern void InitNVMem();
+void InitNVMem();
 
-extern void ShowStatusNVMem(uint8 s);
+void ShowStatusNVMem(uint8 s);
 
-extern int8 ReadNVMem(uint32 a);
-extern int16 Read16NVMem(uint32 a);
-extern int32 Read32NVMem(uint32 a);
-extern boolean WriteNVMem(uint32 a, int8 d);
-extern boolean Write16NVMem(uint32 a, int16 d);
-extern boolean Write32NVMem(uint32 a, int32 d);
+int8 ReadNVMem(uint32 a);
+int16 Read16NVMem(uint32 a);
+int32 Read32NVMem(uint32 a);
+boolean WriteNVMem(uint32 a, int8 d);
+boolean Write16NVMem(uint32 a, int16 d);
+boolean Write32NVMem(uint32 a, int32 d);
 
 extern uint32 NVMemBlockSize;
 extern uint8 NVMemBuffer[];

@@ -31,7 +31,8 @@ const char * NavComNames[] = { "Via", "Orbit", "Perch", "POI" };
 
 MissionStruct NewNavMission;
 boolean NavMissionUpdated = true;
-NavPulseStruct NavPulse;
+NavPulseStruct NavPulse, SavedNavPulse;
+boolean UsingSurveyPulse;
 
 void ClearNavMission(void) {
 
@@ -52,6 +53,7 @@ void GenerateHomeWP(void) {
 	HomeWP.OrbitAltitude = P(NavRTHAlt); // TODO: for camera height above ground
 
 	memcpy(&OffsetHomeWP, &HomeWP, sizeof(WPStruct));
+	memcpy(&HP, &HomeWP, sizeof(WPStruct));
 
 	F.OffsetOriginValid = false;
 
@@ -95,10 +97,8 @@ void CaptureHomePosition(void) {
 			Delay1mS(500);
 			DoBeep(2, 2);
 			DoBeep(6, 2);
-		} else {
-			mS[BeeperTimeout] = mSClock() + 1500;
-			BeeperOn();
-		}
+		} else
+			ScheduleBeeper(1500);
 	}
 } // CaptureHomePosition
 
@@ -110,6 +110,7 @@ void CaptureOffsetHomePosition(void) {
 				> Nav.ProximityRadius) {// TODO: RTH or first PH
 			OffsetHomeWP.Pos[NorthC] = GPS.C[NorthC].Pos;
 			OffsetHomeWP.Pos[EastC] = GPS.C[EastC].Pos;
+			CapturePosition();
 			F.OffsetOriginValid = true;
 		}
 	}
@@ -125,6 +126,47 @@ boolean NavMissionSanityCheck(MissionStruct * M) {
 
 	return (true);
 } // NavMissionSanityCheck
+
+
+void ScheduleNavPulse(NavPulseStruct * n, timemS w, timemS p) {
+	n->State = false;
+	n->WidthmS = w;
+	n->PeriodmS = p;
+	n->Active = w > 0;
+	mSTimer(NavPulseUpdate, 0);
+} // ScheduleNavPulse
+
+
+void UpdateNavPulse(boolean v) {
+#if defined(UAVXF4V3)|| defined(UAVXF4V3BBFLASH)
+	if (Navigating && !UsingWS28XXLEDs)
+	DigitalWrite(&GPIOPins[Aux1Sel].P, v ? 1 : 0);
+#endif
+} // DoNavPulse
+
+void CheckNavPulse(NavPulseStruct * n) {
+
+	if (mSTimeout(NavPulseUpdate)) {
+		switch (n->State) {
+		case false:
+			if (Navigating && n->Active || UsingSurveyPulse) {
+				UpdateNavPulse(true);
+				mSTimer(NavPulseUpdate, n->WidthmS);
+			}
+			break;
+		case true:
+			UpdateNavPulse(false);
+			if ((n->PeriodmS <= n->WidthmS)) { // oneshot
+				n->Active = UsingSurveyPulse = false;
+			} else
+				mSTimer(NavPulseUpdate, n->PeriodmS - n->WidthmS);
+			break;
+		} // switch
+		n->State = !n->State;
+	}
+
+} // CheckNavPulse
+
 
 void NextWP(void) {
 
@@ -152,10 +194,8 @@ void RefreshNavWayPoint(void) {
 			POI.Pos[NorthC] = WP.Pos[NorthC];
 			POI.Pos[EastC] = WP.Pos[EastC];
 		} else {
-			NavPulse.State = false;
-			NavPulse.WidthmS = WP.PulseWidthmS;
-			NavPulse.PeriodmS = WP.PulsePeriodmS;
-			NavPulse.Active = NavPulse.WidthmS > 0;
+			ScheduleNavPulse(&NavPulse, WP.PulseWidthmS, WP.PulsePeriodmS);
+			UsingSurveyPulse = NavPulse.Active;
 		}
 		NextWP();
 		GetNavWayPoint();
@@ -201,6 +241,7 @@ void GetNavWayPoint(void) {
 
 			WP.PulseWidthmS = W->PulseWidthmS;
 			WP.PulsePeriodmS = W->PulsePeriodmS;
+
 		}
 #if defined(NAV_ENFORCE_ALTITUDE_CEILING)
 		WP.Pos[DownC] = Limit(WP.Pos[DownC], 0, NAV_CEILING_M);

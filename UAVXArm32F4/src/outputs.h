@@ -22,6 +22,8 @@
 #ifndef _outputs_h
 #define _outputs_h
 
+#define ESCI2C_ID 0x52
+
 #define PWServoFilter		MediumFilter
 
 void InitPWM(void);

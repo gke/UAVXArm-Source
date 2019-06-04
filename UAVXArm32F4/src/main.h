@@ -49,7 +49,7 @@ enum tickCounts {
 };
 
 enum uSTimes {
-	NextCycleUpdate, MemReady, LastCycleTime, NextGyroUpdate, uSLastArrayEntry
+	NextCycleUpdate, MemReady, LastCycleTime, NextGyroUpdate, NextBaroUpdate, NextAltUpdate, uSLastArrayEntry
 };
 
 
@@ -81,6 +81,7 @@ enum mSTimes {
 	ThrottleUpdate,
 	BaroUpdate,
 	AltUpdate,
+	EmuAltUpdate,
 	NextASUpdate,
 	FakeGPSUpdate,
 	GyroTempUpdate,
@@ -96,6 +97,7 @@ enum mSTimes {
 	MotorStart,
 	LastMAVHeartbeat,
 	NavPulseUpdate,
+	BLHeliTimeout,
 	mSLastArrayEntry
 };
 
@@ -223,7 +225,6 @@ enum FlightStates {
 	IREmulate,
 	Preflight,
 	Ready,
-	Launching,
 	ThrottleOpenCheck,
 	UnknownFlightState
 };

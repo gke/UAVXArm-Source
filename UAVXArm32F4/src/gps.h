@@ -97,6 +97,7 @@ void ParseGPSSentence(void);
 void RxGPSPacket(uint8);
 void UpdateGPS(void);
 void ShowGPSStatus(uint8 s);
+boolean GPSOK(void);
 void InitGPS(void);
 
 #define MAXTAGINDEX 4
@@ -119,6 +120,7 @@ extern const uint8 NMEATags[MAX_NMEA_SENTENCES][5];
 extern uint8 GPSPacketTag;
 extern real32 GPSdT, GPSdTR;
 extern timemS LastGPSUpdatemS;
+extern timemS NavGPSTimeoutmS;
 extern uint8 nll, cc, lo, hi;
 extern boolean EmptyField;
 extern real32 GPSLag;

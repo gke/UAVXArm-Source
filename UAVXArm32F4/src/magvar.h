@@ -22,8 +22,8 @@
 #ifndef _magvar_h
 #define _magvar_h
 
-extern real32 ComputeMagVar(void);
-extern real32 SGMagVar(real64 lat, real64 lon, real64 h, int32 dat,
+real32 ComputeMagVar(void);
+real32 SGMagVar(real64 lat, real64 lon, real64 h, int32 dat,
 		real32 * field);
 
 #endif

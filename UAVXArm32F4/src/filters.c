@@ -20,8 +20,29 @@
 
 #include "UAVX.h"
 
+
+real32 CalculateVariance(real32 *x, uint16 n) {
+
+	uint16 i;
+	real32 average, variance, std_deviation, sum = 0.0f, sum1 = 0.0f;
+
+	for (i = 0; i < n; i++)
+		sum = sum + x[i];
+	average = sum / (real32) n;
+
+	for (i = 0; i < n; i++)
+		sum1 = sum1 + pow((x[i] - average), 2);
+
+	variance = sum1 / (real32) n;
+	std_deviation = sqrt(variance);
+
+	return variance;
+
+} // CalculateVariance
+
+
 void DFTn(real32 *DFT, real32 * v) {
-	const real32 mR = 1.0f / (real32)DFT_WINDOW_SIZE;
+	const real32 mR = 1.0f / (real32) DFT_WINDOW_SIZE;
 	static boolean Primed = false;
 	static real32 cosarg[DFT_WINDOW_SIZE][DFT_WINDOW_SIZE],
 			sinarg[DFT_WINDOW_SIZE][DFT_WINDOW_SIZE];
@@ -106,7 +127,7 @@ typedef real32 elem_type;
 
  ---------------------------------------------------------------------------*/
 
-real32 kth_smallest(real32 a[], uint16 n, uint16 k) {
+real32 kth_smallest(real32 a[], const uint16 n, const uint16 k) {
 	uint16 i, j, l, m;
 	real32 x;
 
@@ -135,7 +156,6 @@ real32 kth_smallest(real32 a[], uint16 n, uint16 k) {
 	return a[k];
 } // kth_smallest
 
-//#define median(a,n) kth_smallest(a,n,(((n)&1)?((n)/2):(((n)/2)-1)))
 
 real32 LeadFilter(real32 Pos, real32 VelP, real32 Vel, real32 Lag) {
 
@@ -143,7 +163,7 @@ real32 LeadFilter(real32 Pos, real32 VelP, real32 Vel, real32 Lag) {
 } // LeadFilter
 
 
-void initMA(filterStruct * F, uint8 order) {
+void initMAF(filterStruct * F, const idx order) {
 	idx i;
 
 	F->order = order;
@@ -173,7 +193,7 @@ real32 MAF(filterStruct * F, real32 v) {
 } // FIRF
 
 
-real32 initFIRF(filterStruct *F, uint8 order, const real32 * C) {
+void initFIRF(filterStruct *F, const idx order, const real32 * C) {
 	// Pavel Holoborodko, see http://www.holoborodko.com/pavel/numerical-methods/
 	// numerical-derivative/smooth-low-noise-differentiators/
 
@@ -211,6 +231,7 @@ real32 initLPF1Coefficient(real32 CutHz, real32 dT) {
 	return (dT / ((1.0f / (TWO_PI * CutHz)) + dT));
 } // initLPF1Coefficient
 
+
 real32 LPF1(real32 O, real32 N, const real32 K) {
 
 	return (O + (N - O) * K);
@@ -231,6 +252,14 @@ void initLPFn(filterStruct * F, const idx order, const real32 CutHz) {
 	F->tau = 1.0f / (TWO_PI * CutHz * ScaleF[F->order - 1]);
 
 } // initLPFn
+
+void setLPFn(filterStruct * F, real32 v) {
+	idx n;
+
+	for (n = 1; n <= F->order; n++)
+		F->h[n] = v;
+
+} // setLPFn
 
 real32 LPFn(filterStruct * F, real32 v, real32 dT) {
 	idx n;
@@ -506,77 +535,6 @@ real32 scaleRangef(real32 v, real32 srcMin, real32 srcMax, real32 destMin,
 	return ((a / b) + destMin);
 } // scaleRangef
 
-//____________________________________________________________________________
-
-/// Initialise all SW filters in one place
 
 
-real32 CurrAccLPFHz = 20.0f;
-real32 CurrGyroLPFHz = 100.0f;
-real32 CurrYawLPFHz = 75.0f;
-real32 CurrServoLPFHz = 20.0f;
-boolean UsingPavelFilter = false;
-real32 AltLPFHz;
-
-filterStruct AccF[3], GyroF[3], ROCLPF, FROCLPF, BaroLPF, AccZLPF, SensorTempF;
-
-void InitSWFilters(void) {
-
-	const idx GyroLPFOrder = 2;
-	const idx YawLPFOrder = 2;
-	const idx AccLPFOrder = 2;
-
-	const idx DerivLPFOrder = 1;
-
-	const uint8 AltLPFOrder = 1;
-	const uint8 ROCLPFOrder = 2;
-	const uint8 ROCFLPFOrder = 2;
-
-	idx a;
-
-	const real32 rKF = 88;
-
-	CurrYawLPFHz = LimitP(YawLPFHz, 25, 255);
-	CurrServoLPFHz = LimitP(ServoLPFHz, 10, 100);
-
-	LPF1DriveK = initLPF1Coefficient(CurrGyroLPFHz, CurrPIDCycleS);
-	LPF1ServoK = initLPF1Coefficient(CurrServoLPFHz, CurrPIDCycleS);
-
-	CurrAccLPFSel = LimitP(AccLPFSel, 3, 5);
-	CurrAccLPFHz = MPUAccLPFHz[CurrAccLPFSel];
-
-	CurrGyroLPFSel = LimitP(GyroLPFSel, 1, 4);
-	CurrGyroLPFHz = MPUGyroLPFHz[CurrGyroLPFSel];
-
-	for (a = X; a <= Z; a++) {
-
-		initLPFn(&AccF[a], AccLPFOrder, CurrAccLPFHz);
-
-		if (a != Z) {
-			initLPFn(&GyroF[a], GyroLPFOrder, CurrGyroLPFHz);
-			initLPFn(&A[a].R.RateF, DerivLPFOrder, CurrGyroLPFHz * 0.6f); // derivative
-		} else {
-			initLPFn(&GyroF[a], GyroLPFOrder, CurrYawLPFHz);
-			initLPFn(&A[a].R.RateF, DerivLPFOrder, CurrYawLPFHz * 0.6f); // derivative
-		}
-
-		// Pavel Holoborodko, see http://www.holoborodko.com/pavel/numerical-methods/
-		// numerical-derivative/smooth-low-noise-differentiators/
-		const real32 C[] = { 0.375f, 0.5f, -0.5f, -0.75, 0.125f, 0.25f };
-		if (UsingPavelFilter)
-			initFIRF(&A[a].R.RateDF, 6, C);
-		else
-			initMA(&A[a].R.RateDF, 4);
-	}
-
-	AltLPFHz = LimitP(AltLPF, 1, 50) * 0.1f; // apply to Baro and Zacc
-	initLPFn(&AccZLPF, AltLPFOrder, AltLPFHz);
-
-	initLPFn(&BaroLPF, AltLPFOrder, AltLPFHz);
-	initLPFn(&ROCLPF, ROCLPFOrder, AltLPFHz);
-	initLPFn(&FROCLPF, ROCFLPFOrder, AltLPFHz * 0.25f);
-
-	initLPFn(&SensorTempF, 2, 0.5f); // TODO: problem for SPI MPUxxx
-
-} // InitSWFilters
 

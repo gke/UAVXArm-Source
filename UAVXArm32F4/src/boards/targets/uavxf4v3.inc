@@ -57,11 +57,11 @@ PinDef GPIOPins[MAX_GPIO_PINS] = {
 	{true, PA12, OutPinConfig,}, // Beeper 4? // USB
 	{true, PC10, InpPinConfig,}, // Armed
 	{true, PC9, InpPinConfig,}, // Landing
-#if !(defined(USE_WS2812) || defined(USE_WS2812B))
+//#if !(defined(USE_WS2812) || defined(USE_WS2812B))
 	{true, PC6, OutPinConfig,}, // Aux1
-#else
-	{false, }, // WSLEDs
-#endif   
+//#else
+//	{false, }, // WSLEDs
+//#endif   
 	{true, PC7, OutPinConfig,}, // Aux2 (GPSTxSerial for V3 and Parallel Rx)
 #if defined(USE_AUX3_PROBE_PIN)
 	{true, PC8, OutPinConfig,}, // Aux3 (Probe)
@@ -114,9 +114,9 @@ I2CPortDef I2CPorts[MAX_I2C_PORTS] = {
 
 SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
 	{false, 0, }, // notionally SPI0
-	{true, SPI1, {PA5, PA6, PA7}}, //
+	{true, SPI1, {PA5, PA6, PA7}}, // Aux1, RC5, RC6
 	{true, SPI2, {PB13, PB14, PB15}}, //
-	{true, SPI3, {PC10, PC11, PC12}}
+	{true, SPI3, {PC10, PC11, PC12}} // Arming, LED3, LED2
 };
 
 PinDef USBDisconnectPin = {false, 0, };
@@ -135,7 +135,13 @@ DevDef busDev[maxDevSel] = {
 	{false, rfSel, },
 	{false, asSel, },
 	{false, flowSel, },
-	{false, escSel, },
+#if defined(USE_SPI_ESC)	 
+	{true, escSPISel, ESCSPI, true, 1, 0, PC13}, // PC13 NC no select required
+#else
+	{false, escSPISel, },
+#endif
+	{true, escI2CSel, ESCI2C, false, 2, ESCI2C_ID, }
+
 };
 
 const uint8 IMUQuadrant = 0;

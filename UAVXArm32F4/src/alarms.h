@@ -30,6 +30,7 @@ void CheckLandingSwitch(void);
 boolean FailPreflight(void);
 void DoBeep(uint8, uint8);
 void DoBeeps(uint8);
+void ScheduleBeeper(timemS w);
 void DoCalibrationAlarm(void);
 void CheckAlarms(void);
 void Catastrophe(void);

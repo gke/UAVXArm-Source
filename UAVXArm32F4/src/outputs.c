@@ -53,11 +53,19 @@ const idx DM[10] = { 3, 2, 1, 0, // TIM4 ROBERT needs reordering for MW conventi
 		4, 5 }; // TIM1 V4 TIM8  camera servo channels always last
 #endif
 
+#define SPI_MAX 2048
+enum spicommands {spiResetCmd, spiWriteCmd, spiReadCmd, spiExtendedCmd};
+
 typedef struct {
-	unsigned int cmd :1;
-	unsigned int c :3;
-	unsigned int v :12;
-}__attribute__((packed)) SPIESCChannelStruct_t;
+	uint8 cmd :2;
+	uint8 c :3; // 8 motors
+	uint16 v :11; // SPI_MAX
+}__attribute__((packed)) SPIESCChanStruct_t;
+
+typedef struct {
+	SPIESCChanStruct_t ch[4];
+	uint16 cs;
+}__attribute__((packed)) SPIESCFrameStruct_t;
 
 boolean UsingPWMSync = false;
 boolean UsingDCMotors = false;
@@ -73,7 +81,7 @@ real32 PWp[MAX_PWM_OUTPUTS];
 idx NoOfDrives = 4;
 real32 NoOfDrivesR;
 uint32 ESCI2CFail[256] = { 0 };
-SPIESCChannelStruct_t SPIESCFrame[MAX_PWM_OUTPUTS];
+SPIESCFrameStruct_t SPIESCFrame;
 
 real32 Rl, Pl, Yl, Sl;
 real32 I2CESCMax;
@@ -93,7 +101,7 @@ void ShowESCType(uint8 s) {
 void driveWrite(idx channel, real32 v) {
 
 	if (DM[channel] < CurrMaxPWMOutputs) {
-		v = Limit((int16)((v + 1.0f) * 1000.0f), PWM_MIN, PWM_MAX);
+		v = Limit((int16)((v + 1.0f) * 0.5f * PWM_MAX), PWM_MIN, PWM_MAX);
 		*PWMPins[DM[channel]].Timer.CCR = v;
 	}
 } // driveWrite
@@ -143,31 +151,82 @@ void driveSyncStart(uint8 drives) {
 
 } // driveSyncStart
 
+#define NO_OF_I2C_ESCS 4
+#define OUT_HOLGER_MAXIMUM	225
+#define OUT_YGEI2C_MAXIMUM	240
+#define OUT_X3D_MAXIMUM		200
 
-void driveI2CWrite(idx channel, real32 v) {
-	/*
-	 if (channel < CurrMaxPWMOutputs)
-	 //ESCI2CFail[channel] =
-	 SIOWrite(SIOESC, 0x52 + channel * 2, 0, Limit(
-	 (uint16)(v * 225.0f),0, 225));
-	 */
-} // driveI2CWrite
+void DoI2CESCs_HISTORICAL_RETIRED(void) {
+	// i2c at 100KHz probably OK at 500Hz cycle
+	enum i2cESCTypes {
+		ESCX3D, ESCHolger, ESCYGEI2C
+	};
+	const uint8 i2cESCType = ESCX3D;
 
-void driveSPIWrite(idx channel, real32 v) {
+	uint8 i2cP[NO_OF_I2C_ESCS];
+	static uint8 m;
+	uint8 p, n;
 
-	if (channel < CurrMaxPWMOutputs) {
-		SPIESCFrame[channel].cmd = false;
-		SPIESCFrame[channel].c = channel;
-		SPIESCFrame[channel].v = Limit((int16)(v * 2048.0f), -2048, 2047);
+	// in X3D and Holger-Mode, K2 (left motor) is SDA, K3 (right) is SCL.
+	// ACK (r) not checked as no recovery is possible.
+	// Octocopters may have ESCs paired with common address so ACK is meaningless.
+	// All motors driven with fourth motor ignored for Tricopter.
+
+	switch (i2cESCType) {
+	case ESCX3D:
+		for (m = 0; m < NO_OF_I2C_ESCS; m++)
+			i2cP[m]
+					= Limit((PW[m] + 1.0f) * OUT_X3D_MAXIMUM, 0, OUT_X3D_MAXIMUM);
+		I2CWriteBlock(escI2CSel, 0x10, i2cP[0], NO_OF_I2C_ESCS - 1, &i2cP[1]);
+		break;
+	case ESCYGEI2C:
+		for (m = 0; m < NO_OF_I2C_ESCS; m++) {
+			p
+					= Limit((PW[m] + 1.0f) * 0.5f * OUT_YGEI2C_MAXIMUM, 0, OUT_YGEI2C_MAXIMUM);
+			p = p >> 1;
+			I2CWriteBlock(escI2CSel, 0x62 + (m * 2), p, 0, 0);
+		}
+		break;
+	case ESCHolger: // 100KHz 0.209mS/Motor or ~0.85mS per cycle for a quad
+		for (m = 0; m < NO_OF_I2C_ESCS; m++) {
+			p
+					= Limit((PW[m] + 1.0f) * 0.5f * OUT_HOLGER_MAXIMUM, 0, OUT_HOLGER_MAXIMUM);
+			I2CWriteBlock(escI2CSel, 0x52 + (m * 2), p, 0, 0);
+		}
+		break;
+	default:
+		break;
+	} // switch
+
+} // DoI2CESCs
+
+void driveI2CWrite(idx m, real32 v) {
+	uint8 r;
+
+	if (m < CurrMaxPWMOutputs) {
+		r = Limit((v + 1.0f) * 0.5f * OUT_HOLGER_MAXIMUM, 0, OUT_HOLGER_MAXIMUM);
+		I2CWriteBlock(escI2CSel, ESCI2C_ID + (m * 2), r, 0, 0);
+	}
+
+} // driveI2CWrite_HISTORICAL_RETIRED
+
+
+void driveSPIWrite(idx m, real32 v) {
+
+	if (m < CurrMaxPWMOutputs) { // TODO: max 4
+		SPIESCFrame.ch[m].cmd = spiWriteCmd;
+		SPIESCFrame.ch[m].c = m;
+		SPIESCFrame.ch[m].v = Limit((v + 1.0f) * 0.5f * SPI_MAX, 0, SPI_MAX);
 	}
 
 } // driveSPIWrite
 
 void driveSPISyncStart(uint8 drives) {
-
-	//SIOWrite(SIOESC, 0x52 + channel * 2, 0, Limit(
-	//		(uint16)(v * 225.0f),0, 225));
-
+#if defined(USE_SPI_ESC)
+	// TODO: generate checksum here
+	SIOWriteBlock(escSPISel, 0, sizeof(SPIESCFrameStruct_t),
+			(uint8 *) (&SPIESCFrame));
+#endif
 } // driveSPISync
 
 
@@ -178,6 +237,7 @@ void driveDCWrite(idx channel, real32 v) {
 		*PWMPins[DM[channel]].Timer.CCR = v;
 	}
 } // driveDCWrite
+
 
 typedef void (*driveWriteFuncPtr)(idx channel, real32 value);
 static driveWriteFuncPtr driveWritePtr = NULL;
@@ -198,7 +258,7 @@ const struct {
 		{ driveI2CWrite, 0, 0, 0, 225 }, // ESCI2C
 		{ driveDCWrite, PWM_PS_DC, PWM_PERIOD_DC, PWM_MIN_DC, PWM_MAX_DC }, // DCMotors
 		{ driveDCWrite, PWM_PS_DC, PWM_PERIOD_DC, PWM_MIN_DC, PWM_MAX_DC }, // DCMotorsWithIdle
-		{ driveSPIWrite, 0, 0, 0, 1023 }, // ESCSPI
+		{ driveSPIWrite, 0, 0, 0, SPI_MAX }, // ESCSPI
 		{ driveDCWrite, PWM_PS_DC, PWM_PERIOD_DC, PWM_MIN_DC, PWM_MAX_DC }, // ADC Angle
 		};
 
@@ -210,8 +270,8 @@ void UpdateDrives(void) {
 
 			PW[IRRollC] = OUT_NEUTRAL + PWSense[IRRollC] * sinf(Angle[Roll])
 					* OUT_NEUTRAL;
-			PW[IRPitchC] = OUT_NEUTRAL + PWSense[IRPitchC] * sinf(
-					Angle[Pitch]) * OUT_NEUTRAL;
+			PW[IRPitchC] = OUT_NEUTRAL + PWSense[IRPitchC] * sinf(Angle[Pitch])
+					* OUT_NEUTRAL;
 			PW[IRZC] = OUT_NEUTRAL + PWSense[IRZC] * 0.0f; // TODO:
 
 			for (m = 0; m < NoOfDrives; m++)
