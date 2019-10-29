@@ -45,11 +45,12 @@ GPSRec GPS;
 const uint32 GPSBaud = 115200;
 const uint32 UBXGPSBaud = 115200; //230400;
 
-real32 GPSdT, GPSdTR;
+real32 GPSdT;
 real32 GPSLag = 1.0f; // MTK 0.5 for UBlox
 real32 GPSMinhAcc = GPS_MIN_HACC;
+real32 GPSMinvAcc = GPS_MIN_VACC;
 
-timemS LastGPSUpdatemS = 0;
+timemS GPSPosUpdatemSP = 0;
 timemS NavGPSTimeoutmS;
 
 uint8 nll, cc, lo, hi, ll, ss, tt, GPSCheckSumChar;
@@ -646,7 +647,7 @@ void ParseUbxPacket(void) {
 		switch (ubx.id) {
 		case UBX_NAV_PVT:
 			GPS.missionTime = GPS.lastPosUpdatemS = GPS.lastVelUpdatemS
-					= ubx.payload.pvt.iTOW;
+					= mSClock(); //ubx.payload.pvt.iTOW;
 			// = ubx.payload.pvt.year;
 			// = ubx.payload.pvt.month;
 			// = ubx.payload.pvt.day;
@@ -681,7 +682,7 @@ void ParseUbxPacket(void) {
 			// = ubx.payload.pvt.reserved3;
 			// = ubx.payload.pvt.headVeh; // (ubx8+ only) Heading of vehicle (2-D) [1e-5 deg]
 			// = ubx.payload.pvt.reserved4; // (ubx8+ only)
-			F.ValidGPSPos = F.ValidGPSVel = true;
+			//F.ValidGPSPos = F.ValidGPSVel = true;
 			break;
 		case UBX_NAV_STATUS:
 			// time
@@ -716,13 +717,13 @@ void ParseUbxPacket(void) {
 			// res2
 			break;
 		case UBX_NAV_POSLLH:
-			GPS.missionTime = GPS.lastPosUpdatemS = ubx.payload.posllh.iTOW;
+			GPS.missionTime = GPS.lastPosUpdatemS = mSClock(); //ubx.payload.posllh.iTOW;
 			GPS.lat = GPS.C[NorthC].Raw = (real64) ubx.payload.posllh.lat;
 			GPS.lon = GPS.C[EastC].Raw = (real64) ubx.payload.posllh.lon;
 			GPS.height = GPS.altitude = ubx.payload.posllh.hMSL * 0.001f; // mm => m
 			GPS.hAcc = ubx.payload.posllh.hAcc * 0.001f; // mm => m
 			GPS.vAcc = ubx.payload.posllh.vAcc * 0.001f; // mm => m
-			F.ValidGPSPos = true;
+			//F.ValidGPSPos = true;
 			break;
 		case UBX_NAV_VELNED:
 			GPS.lastVelUpdatemS = ubx.payload.valned.iTOW;
@@ -733,7 +734,7 @@ void ParseUbxPacket(void) {
 			GPS.heading = DegreesToRadians(ubx.payload.valned.heading * 1e-5f);
 			GPS.sAcc = ubx.payload.valned.sAcc * 0.01f; // cm/s => m/s
 			GPS.cAcc = ubx.payload.valned.cAcc * 1e-5f;
-			F.ValidGPSVel = true;
+			//F.ValidGPSVel = true;
 			break;
 		case UBX_NAV_DOP:
 			GPS.pDOP = ubx.payload.dop.pDOP * 0.01f;
@@ -762,7 +763,6 @@ void ParseUbxPacket(void) {
 
 			break;
 		case UBX_NAV_SBAS:
-
 			// zzz use field names direct??
 			// UbxEnableMessage(GPSTxSerial, UBX_NAV_CLASS, UBX_NAV_SBAS, 0); // disable message
 			break;
@@ -790,6 +790,8 @@ void ParseUbxPacket(void) {
 		default:
 			break;
 		}
+	default:
+		break;
 	}
 
 	GPS.lastMessage = uSClock() * 0.000001f;
@@ -863,15 +865,15 @@ void RxUbxPacket(void) {
 } // RxUbxPacket
 
 
-boolean WaitUbxAck(uint8 class, uint8 id) {
-	uint32 Timeout;
+void WaitUbxAck(uint8 class, uint8 id) {
+	timemS TimeoutmS;
 
-	Timeout = mSClock() + 500;
+	TimeoutmS = mSClock() + 500;
 	do {
-		RxUbxPacket();
-	} while ((mSClock() < Timeout) && ((ubx.class != class) || (ubx.id != id)));
-
-	return ((ubx.class == class) && (ubx.id == id));
+		CheckGPS();
+	} while ((mSClock() < TimeoutmS)
+			&& ((ubx.class != class) || (ubx.id != id)) && !F.GPSPacketReceived);
+	F.GPSPacketReceived = false;
 
 } // WaitUbxAck
 
@@ -900,14 +902,13 @@ void InitUbxGPS(uint8 s) {
 
 	if (CurrGPSType == UBXBinGPSInit) {
 
-		SaveLEDs();
 		for (i = 0; i < DEFAULT_BAUD_RATES; i++) {
 			SetBaudRate(s, DefaultBaud[i]);
 			UbxInitPort(s); // yell at it twice!
 			UbxInitPort(s);
-			LEDToggle(ledRedSel);
+			LEDToggle(ledBlueSel);
 		}
-		RestoreLEDs();
+		LEDOff(ledBlueSel);
 
 		SetBaudRate(s, UBXGPSBaud);
 
@@ -1027,13 +1028,13 @@ void ParseMTKPacket(void) {
 	GPS.heading = DegreesToRadians(MTKBuffer.msg.ground_course);
 	GPS.noofsats = MTKBuffer.msg.satellites;
 	GPS.fix = MTKBuffer.msg.fixtype;
-	GPS.lastVelUpdatemS = GPS.lastPosUpdatemS = MTKBuffer.msg.utc_time;
+	GPS.lastVelUpdatemS = GPS.lastPosUpdatemS = mSClock(); //MTKBuffer.msg.utc_time;
 
 	GPS.hDOP = MTKBuffer.msg.hdop * 0.01f;
 	GPS.hAcc = GPS.vAcc = GPS.hDOP * GPS_HDOP_TO_HACC; // TODO: kludge
 	GPS.sAcc = GPS_MIN_SACC;
 
-	F.ValidGPSVel = F.ValidGPSPos = true;
+	//F.ValidGPSVel = F.ValidGPSPos = true;
 
 } // ParseMTKPacket
 
@@ -1320,11 +1321,6 @@ void ProcessGPSSentence(void) {
 
 	if (F.GPSValid && GPSSanityCheck()) {
 
-		GPSdT = (real32) (GPS.lastPosUpdatemS - LastGPSUpdatemS) * 0.001f;
-		//zzz GPSdT = Limit(GPSdT, 0.2, 0.5f);
-		GPSdTR = 1.0f / GPSdT;
-		LastGPSUpdatemS = GPS.lastPosUpdatemS;
-
 		if (F.OriginValid) {
 			if (!F.Emulation) {
 				GPS.C[NorthC].Pos = GPSToM(GPS.C[NorthC].Raw
@@ -1366,6 +1362,7 @@ void RxNMEAPacket(void) {
 
 	while (SerialAvailable(GPSRxSerial) && !F.GPSPacketReceived) {
 		c = RxChar(GPSRxSerial);
+
 		switch (RxState) {
 		case WaitSentinel:
 			if (c == '$') {
@@ -1434,108 +1431,123 @@ void RxNMEAPacket(void) {
 } // RxNMEAPacket
 
 boolean GPSOK(void) {
-	return F.GPSValid && (F.OriginValid || (F.IsFixedWing && F.OffsetOriginValid));
+	return F.GPSValid && (F.OriginValid || (F.IsFixedWing
+			&& F.OffsetOriginValid));
 } // GPSOK
 
-void UpdateGPS(void) {
-	timemS NowmS;
+
+void CheckGPSTimeouts(void) {
 
 	if (F.Emulation) {
-
 		if ((ArmingMethod != SwitchArming) || (Armed()))
 			GPSEmulation(); // real GPS preferably unplugged
 	} else {
-		if ((GPSRxSerial != TelemetrySerial) || Armed()) {
-			switch (CurrGPSType) {
-			case UBXBinGPS:
-			case UBXBinGPSInit:
-				RxUbxPacket();
-				break;
-			case MTKBinGPS:
-				RxMTKPacket();
-				break;
-			case MTKNMEAGPS:
-			case NMEAGPS:
-				RxNMEAPacket();
-				break;
-			case NoGPS:
-			default:
-				// Rx disabled elsewhere
-				break;
-			} // switch
+
+		if ((mSClock() - GPS.lastPosUpdatemS) > 1000)
+			F.GPSValid = false; // stale
+
+		if (mSTimeout(GPSTimeout)) {
+			ZeroNavCorrections();
+			F.GPSValid = F.NewGPSPosition = F.NavigationEnabled = false;
+
+			LEDOff(ledBlueSel);
+			LEDOff(ledYellowSel);
+			mSTimer(GPSTimeout, NavGPSTimeoutmS);
 		}
 	}
 
-	NowmS = mSClock();
-	if (F.GPSPacketReceived) {
-		F.GPSPacketReceived = false;
+} // CheckGPSTimeouts
 
-		if (GPS.lastPosUpdatemS > LastGPSUpdatemS) {
 
-			F.HaveGPS = true;
+void CheckGPS(void) {
 
-			LEDOff(ledRedSel);
-			LEDToggle(ledBlueSel);
+	if (!F.Emulation) {
+		switch (CurrGPSType) {
+		case UBXBinGPS:
+		case UBXBinGPSInit:
+			RxUbxPacket();
+			break;
+		case MTKBinGPS:
+			RxMTKPacket();
+			break;
+		case MTKNMEAGPS:
+		case NMEAGPS:
+			RxNMEAPacket();
+			break;
+		case NoGPS:
+		default:
+			// Rx disabled elsewhere
+			break;
+		} // switch
+
+		if (F.GPSPacketReceived) {
+			F.GPSPacketReceived = false;
 
 			ProcessGPSSentence();
 
-			F.NewGPSPosition = GPSOK();
-			if (F.NewGPSPosition)
+			if (F.GPSValid) {
+
+				GPSdT = (real32) (GPS.lastPosUpdatemS - GPSPosUpdatemSP)
+						* 0.001f;
+				GPSPosUpdatemSP = GPS.lastPosUpdatemS;
+
+				F.NewGPSPosition = GPSOK();
+
+				if ((State == Ready) || (State == Landed)) {
+					LEDOn(ledBlueSel);
+					if (F.NewGPSPosition)
+						LEDOff(ledYellowSel);
+					else
+						LEDToggle(ledYellowSel);
+				}
 				mSTimer(GPSTimeout, NavGPSTimeoutmS);
-		}
-
-	} else {
-		if (mSTimeout(GPSTimeout)) {
-
-			ZeroNavCorrections();
-			F.GPSValid = F.NavigationEnabled = false;
-
-			LEDOff(ledBlueSel);
-			LEDOn(ledRedSel);
+			}
 		}
 	}
 
-} // UpdateGPS
+	CheckGPSTimeouts();
+
+} // CheckGPS
 
 
 void InitGPS(void) {
 
 	cc = 0;
-	memset(&GPS, 0, sizeof(GPS));
+	F.OriginValid = F.OffsetOriginValid = F.GPSValid = F.GPSPacketReceived
+			= false;
 
-	F.OriginValid = F.OffsetOriginValid = F.GPSValid = F.HaveGPS
-			= F.GPSPacketReceived = false;
+	if (CurrGPSType == NoGPS)
+		F.HaveGPS = false;
+	else {
 
-	LEDOn(ledBlueSel);
+		LEDOn(ledYellowSel);
 
-	RxEnabled[GPSRxSerial] = false;
+		RxEnabled[GPSRxSerial] = false;
 
-	switch (CurrGPSType) {
-	case UBXBinGPSInit:
-	case UBXBinGPS:
-		InitUbxGPS(GPSTxSerial);
-		break;
-	case MTKBinGPS:
-		InitMTKGPS(GPSTxSerial, false);
-		break;
-	case MTKNMEAGPS:
-		InitMTKGPS(GPSTxSerial, true);
-		break;
-	case NMEAGPS:
-		SetBaudRate(GPSRxSerial, GPSBaud);
-	case NoGPS:
-		// Hmmmmm!
-		break;
-	default:
-		InitUbxGPS(GPSTxSerial);
-		break;
-	} // switch
+		switch (CurrGPSType) {
+		case UBXBinGPSInit:
+		case UBXBinGPS:
+			InitUbxGPS(GPSTxSerial);
+			break;
+		case MTKBinGPS:
+			InitMTKGPS(GPSTxSerial, false);
+			break;
+		case MTKNMEAGPS:
+			InitMTKGPS(GPSTxSerial, true);
+			break;
+		case NMEAGPS:
+			SetBaudRate(GPSRxSerial, GPSBaud);
+		default:
+			InitUbxGPS(GPSTxSerial);
+			break;
+		} // switch
 
-	LEDOff(ledBlueSel);
+		LEDOff(ledYellowSel);
 
-	F.GPSPacketReceived = false;
-	RxState = WaitSentinel;
-	RxEnabled[GPSRxSerial] = true;
+		RxState = WaitSentinel;
+		RxEnabled[GPSRxSerial] = true;
+		F.HaveGPS = true;
+	}
 
 } // InitGPS
 

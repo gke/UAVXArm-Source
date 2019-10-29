@@ -36,10 +36,7 @@ real32 SavedDesiredAltitude;
 boolean NotDescending(void) {
 
 	//TODO:
-
-	//return (Abs(ROCF) < ALT_MIN_DESCENT_MPS);
-	return ((AltComp < -(Alt.R.IntLim * 0.75f)) && (Abs(ROCF) < 1.0f));
-	//return false;
+	return ((AltComp < -(Alt.R.IntLim * 0.75f)) && (ROCF > 0.2f));
 
 } // NotDescending
 
@@ -187,6 +184,8 @@ void CheckFailsafes(void) {
 		F.ForcedLanding = false;
 
 } // CheckFailsafes
+
+
 void CapturePosition(void) {
 
 	if (F.OriginValid) {
@@ -274,6 +273,7 @@ void DoGliderStuff(void) {
 
 
 void UpdateRTHSwState(void) { // called in rc.c on every rx packet
+
 
 	if (F.PassThru || (State != InFlight)) {
 
@@ -418,6 +418,7 @@ void DoNavigation(void) {
 						ScheduleBeeper(200);
 					switch (WP.Action) {
 					case navLand:
+						ScheduleBeeper(500);
 						NavState = AtHome;
 						break;
 					case navPerch:

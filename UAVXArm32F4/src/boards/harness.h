@@ -149,34 +149,21 @@
 #define OutPinConfig GPIO_Mode_OUT,GPIO_OType_PP,GPIO_PuPd_UP // ???
 #define InpPinConfig GPIO_Mode_IN,GPIO_OType_PP,GPIO_PuPd_UP
 
-#define USART1Config GPIO_AF_USART1,true,USART1_IRQn
-#define USART2Config GPIO_AF_USART2,true,USART2_IRQn
-#define USART3Config GPIO_AF_USART3,true,USART3_IRQn
-#define UART4Config GPIO_AF_UART4,true,UART4_IRQn
+#define USART1Config GPIO_AF_USART1,USART1_IRQn,DMA_Channel_4,DMA2_Stream7,DMA2_Stream7_IRQn,DMA2_Stream5
+#define USART2Config GPIO_AF_USART2,USART2_IRQn,DMA_Channel_4,DMA1_Stream6,DMA1_Stream6_IRQn,DMA1_Stream5
+
+#define USART3Config GPIO_AF_USART3,USART3_IRQn,DMA_Channel_4,DMA1_Stream3,DMA1_Stream3_IRQn,DMA1_Stream1
+#define UART4Config  GPIO_AF_UART4, UART4_IRQn, DMA_Channel_4,DMA1_Stream4,DMA1_Stream4_IRQn,DMA1_Stream2
 
 // More thought needed!
 #define DMA2_0_0_noIRQn {true,DMA_Channel_0,DMA2_Stream0}
-
-#define DMA1_4_3_IRQn DMA_Channel_4,DMA1_Stream3,DMA1_Stream3_IRQn
-
-#define DMA2_0_2_IRQn {true,DMA_Channel_0,DMA2_Stream2},DMA2_Stream2_IRQn
-
-
-//Leftovers
-/*
-	{true, USART1, PA9, PA10, 115200, USART1Config,
-		false, DMA_Channel_4, DMA2_Stream7, DMA2_Stream7_IRQn, DMA2_Stream5},
-	{true, USART2, PA2, PA3, 9600, GPIO_AF_USART2, true, USART2_IRQn,
-		false, DMA_Channel_4, DMA1_Stream6, DMA1_Stream6_IRQn, DMA1_Stream5},
-	{true, USART3, PB10, PB11, 115200, GPIO_AF_USART3, true, USART3_IRQn,
-		false, DMA1_4_3_IRQn, DMA1_Stream1},
-*/
+//#define DMA1_4_3_IRQn DMA_Channel_4,DMA1_Stream3,DMA1_Stream3_IRQn
+//#define DMA2_0_2_IRQn {true,DMA_Channel_0,DMA2_Stream2},DMA2_Stream2_IRQn
 
 #define MAX_RC_INPUTS 8
 #define MAX_PWM_OUTPUTS 10
 
 // Drives
-
 #define PWM_PS 					TIMER_PS	// 1MHz
 #define PWM_WIDTH				1000 // 1ms pulse width
 #define PWM_MIN					PWM_WIDTH
@@ -249,6 +236,7 @@ enum BusDevSelectors {
 	rfSel,
 	asSel,
 	flowSel,
+	oledSel,
 	escSPISel,
 	escI2CSel,
 	maxDevSel
@@ -269,6 +257,10 @@ enum {
 
 enum {
 	i2cEEPROMMem, spiFlashMem, ArmFlashMem, noMem
+};
+
+enum {
+	oledDisplay, noDisplay
 };
 
 enum GPIOSelectorsBF {
@@ -335,10 +327,10 @@ typedef const struct {
 	USART_TypeDef* USART;
 	ConnectDef Tx, Rx;
 	uint32 Baud;
-	uint8 USART_AF;
 	boolean InterruptsUsed;
-	IRQn_Type ISR;
 	boolean DMAUsed;
+	uint8 USART_AF;
+	IRQn_Type ISR;
 	uint32 DMAChannel;
 	DMA_Stream_TypeDef * TxStream;
 	IRQn_Type TxDMAISR;
@@ -434,10 +426,10 @@ void InitI2C(uint8 I2CCurr);
 void UnstickI2C(uint8 I2CCurr);
 void InitSPIGPIOPins(uint8 spiPort, boolean highClock);
 
-void WSPinDMAEnable(void);
+void WSPinDMAEnable(uint16 wsBufferSize);
 
 boolean DigitalRead(ConnectDef * d);
-void DigitalWrite(ConnectDef * d, uint8 m);
+void DigitalWrite(ConnectDef * d, boolean m);
 void DigitalToggle(ConnectDef * d);
 
 #endif

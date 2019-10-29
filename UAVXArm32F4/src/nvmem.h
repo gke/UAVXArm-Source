@@ -31,7 +31,7 @@
 
 
 typedef struct {
-	uint8 Calibrated; // exactly = 1 => calibrated
+	uint8 Calibrated; // exactly = 1 => calibrated because FLASH is initialised to 0xff
 	real32 TRef;
 	real32 Scale[3], Bias[3];
 }__attribute__((packed)) AccCalStruct;
@@ -42,10 +42,16 @@ typedef struct {
 }__attribute__((packed)) GyroCalStruct;
 
 typedef struct {
+	uint8 Calibrated; // exactly = 1 => calibrated because FLASH is initialised to 0xff
+	real32 Magnitude; // retained for field strength measure - maybe used for gain setting
+	real32 Bias[3];
+} MagCalStruct;
+
+typedef struct {
 	uint16 CurrRevisionNo;
 	uint8 CurrPS;
 	int8 P[NO_OF_PARAM_SETS][MAX_PARAMETERS];
-	int16 Stats[MAX_STATS];
+	int16 Stats[MAX_STATS]; // TODO: redundant?
 	MagCalStruct MagCal;
 	AccCalStruct AccCal;
 	GyroCalStruct GyroCal;
@@ -53,8 +59,6 @@ typedef struct {
 	MissionStruct Mission;
 	uint8 CheckSum;
 }__attribute__((packed)) ConfigStruct;
-
-
 
 boolean UpdateConfig(void);
 int8 ReadConfig(uint32 a);

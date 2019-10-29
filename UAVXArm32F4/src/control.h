@@ -110,9 +110,10 @@ extern real32 FWRollPitchFFFrac, FWAileronDifferentialFrac,
 		FWPitchThrottleFFFrac, FWMaxClimbAngleRad, FWClimbThrottleFrac,
 		MaxRollAngleRad, FWGlideAngleOffsetRad, FWBoardPitchAngleRad,
 		FWSpoilerDecayS, FWAileronRudderFFFrac,
-		FWAltSpoilerFFFrac, MaxROCMPS, VRSDescentRateMPS;
+		FWAltSpoilerFFFrac, MaxROCMPS, VRSDescentRateMPS, FWRollControlPitchLimitRad;
 extern real32 MaxControlGainReduction;
 extern real32 GS;
+extern boolean AltHoldAlarmActive;
 
 #endif
 

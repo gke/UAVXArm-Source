@@ -106,39 +106,15 @@ const AnalogPinDef AnalogPins[MAX_ANALOG_CHANNELS] = {
 		{ false, 0, }, // Yaw
 		};
 
-const SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
-		//
-				{ false, }, // notional Usart0 but mapped to USBSerial
-				{ true, USART1, GPIO_AF_USART1, GPIOA, GPIO_Pin_9,
-						GPIO_PinSource9, GPIO_Pin_10,
-						GPIO_PinSource10, //
-						true,
-						USART1_IRQn, //
-						false, DMA_Channel_4, DMA2_Stream7, DMA2_Stream7_IRQn,
-						DMA2_Stream5, 115200 }, //
-				{ true, USART2, GPIO_AF_USART2, GPIOA, GPIO_Pin_2,
-						GPIO_PinSource2, GPIO_Pin_3,
-						GPIO_PinSource3, //
-						true,
-						USART2_IRQn, //
-						false, DMA_Channel_4, DMA1_Stream6, DMA1_Stream6_IRQn,
-						DMA1_Stream5, 9600 }, //
-				{ true, USART3, GPIO_AF_USART3, GPIOD, GPIO_Pin_8,
-						GPIO_PinSource8, GPIO_Pin_9,
-						GPIO_PinSource9, //
-						true,
-						USART3_IRQn, //
-						false, DMA_Channel_4, DMA1_Stream3, DMA1_Stream3_IRQn,
-						DMA1_Stream1, 115200 }, //
-				{ true, UART4, GPIO_AF_UART4, GPIOC, GPIO_Pin_10,
-						GPIO_PinSource10, GPIO_Pin_11,
-						GPIO_PinSource11, //
-						true,
-						UART4_IRQn, //
-						false, DMA_Channel_4, DMA1_Stream4, DMA1_Stream4_IRQn,
-						DMA1_Stream2, 115200 }, //
-				{ false, 0 } // softSerial
-		};
+	
+SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
+	{false, }, // mapped to USBSerial
+	{true, USART1, PA9, PA10, 115200, true, false, USART1Config},
+	{true, USART2, PA2, PA3, 9600, true, false, USART2Config},
+	{true, USART3, PD8, PD9, 115200, true, false, USART3Config},
+	{false, UART4, PC10, PC11, 115200, true, false, UART4Config},
+	{false, 0 } // SoftSerial
+};
 
 const PinDef USBDisconnectPin = { true, GPIOD, GPIO_Pin_11, GPIO_PinSource11,
 		GPIO_Mode_OUT, GPIO_OType_OD, GPIO_PuPd_NOPULL, false, { 0, }, 0, };

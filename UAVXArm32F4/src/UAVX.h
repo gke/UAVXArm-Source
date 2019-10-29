@@ -22,8 +22,11 @@
 #ifndef _uavx_h
 #define _uavx_h
 
+//#define USE_OLED
 
 //#define USE_AUX3_PROBE_PIN // CAUTION DIAGNOSTIC ONLY: This disables use of Aux3 for WP Nav enable
+
+//#define BROKEN_USE_THR_RATE
 
 //#define USE_CONSERVATIVE_DEF_PARAM_LOAD
 
@@ -44,7 +47,6 @@
 #define CLASSIC_6_POINT_ACC_CAL
 
 //#define USE_ATT_BATT_COMP
-
 
 #define CHECK_INVERTED // check multicopter upside down
 
@@ -97,6 +99,7 @@
 #include "escprog/serial_4way.h"
 #include "escprog/serial_4way_stk.h"
 #include "escprog/serial_4way_avr.h"
+#include "oled/SSD1X06.h"
 
 #include "main.h"
 #include "filters.h"

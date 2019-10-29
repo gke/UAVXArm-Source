@@ -31,7 +31,7 @@ boolean DigitalRead(ConnectDef * d) {
 	return GPIO_ReadInputDataBit(d->Port, d->Pin);
 } // DigitalRead
 
-void DigitalWrite(ConnectDef * d, uint8 m) {
+void DigitalWrite(ConnectDef * d, boolean m) {
 
 	if (m)
 		d->Port->BSRRL = d->Pin;
@@ -156,18 +156,18 @@ void InitPORT_RCC_APB(GPIO_TypeDef* Port) {
 		RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOE, ENABLE);
 } // InitPort_RCC_APB
 
-void InitRCPins(uint8 PPMInputs) {
+void InitRCPins(uint8 NoOfRCPins) {
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure = { 0, };
 	NVIC_InitTypeDef NVIC_InitStructure;
 	TIM_OCInitTypeDef TIM_OCInitStructure;
-	uint8 i;
 	PinDef * u;
+	uint8 p;
 
-	for (i = 0; i < MAX_RC_INPUTS; i++)
-		if (RCPins[i].Used) {
-			TIM_CtrlPWMOutputs(RCPins[i].Timer.Tim, DISABLE);
+	for (p = 0; p < MAX_RC_INPUTS; p++)
+		if (RCPins[p].Used) {
+			TIM_CtrlPWMOutputs(RCPins[p].Timer.Tim, DISABLE);
 			//TIM_DeInit(RCPins[i].Timer.Tim);
-			InitTIM_RCC_APB(RCPins[i].Timer.Tim);
+			InitTIM_RCC_APB(RCPins[p].Timer.Tim);
 		}
 
 	TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
@@ -184,9 +184,10 @@ void InitRCPins(uint8 PPMInputs) {
 	TIM_TimeBaseStructure.TIM_Prescaler = (TIMER_PS >> 1) - 1;
 
 	// Pin specific
-	for (i = 0; i < PPMInputs; i++)
-		if (RCPins[i].Used) {
-			u = &RCPins[i];
+
+	for (p = 0; p < NoOfRCPins; p++)
+		if (RCPins[p].Used) {
+			u = &RCPins[p];
 
 			InitPin(u);
 
@@ -204,20 +205,21 @@ void InitRCPins(uint8 PPMInputs) {
 
 			//u->Timer.Tim->DIER |= u->Timer.CC; // TIM_ITConfig ENABLE Channel
 			TIM_ITConfig(u->Timer.Tim, u->Timer.CC, ENABLE);
-
 		}
-	for (i = 0; i < PPMInputs; i++)
-		if (RCPins[i].Used)
-			TIM_Cmd(RCPins[i].Timer.Tim, ENABLE);
+
+	for (p = 0; p < NoOfRCPins; p++)
+		if (RCPins[p].Used)
+			TIM_Cmd(RCPins[p].Timer.Tim, ENABLE);
 
 } // InitRCPins
 
 
-void WSPinDMAEnable(void) {
+void WSPinDMAEnable(uint16 wsBufferSize) {
 
-	DMA_SetCurrDataCounter(WSPin.DMA.Stream, WSLEDBufferSize
-			+ WS2812_COLOUR_FRAME_LEN);
+	DMA_SetCurrDataCounter(WSPin.DMA.Stream, wsBufferSize + WS2812_RESET_LEN);
 	TIM_SetCounter(WSPin.Timer.Tim, 0);
+
+	//TIM_DMACmd(WSPin.Timer.Tim, WSPin.Timer.CC, ENABLE);
 	TIM_Cmd(WSPin.Timer.Tim, ENABLE);
 	DMA_Cmd(WSPin.DMA.Stream, ENABLE);
 
@@ -249,7 +251,7 @@ void InitWSPin(uint16 wsBufferSize) { // hard coded to PORTC Pin 6 Aux1
 	TIM_TimeBase_InitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
 	TIM_TimeBase_InitStructure.TIM_CounterMode = TIM_CounterMode_Up;
 
-	TIM_TimeBase_InitStructure.TIM_Period = 41; //210;
+	TIM_TimeBase_InitStructure.TIM_Period = 41; // 41 210;
 	TIM_TimeBase_InitStructure.TIM_Prescaler = 4; // 0 TODO:
 
 	TIM_TimeBaseInit(u->Timer.Tim, &TIM_TimeBase_InitStructure);
@@ -274,7 +276,7 @@ void InitWSPin(uint16 wsBufferSize) { // hard coded to PORTC Pin 6 Aux1
 	DMA_ITConfig(u->DMA.Stream, DMA_IT_TC, ENABLE);
 
 	DMA_StructInit(&DMA_InitStructure);
-	DMA_InitStructure.DMA_BufferSize = wsBufferSize;
+	DMA_InitStructure.DMA_BufferSize = wsBufferSize + WS2812_RESET_LEN;
 	DMA_InitStructure.DMA_Channel = u->DMA.Channel;
 	DMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToPeripheral;
 
@@ -452,7 +454,7 @@ void InitSPISelectPin(uint8 spiSel) {
 		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 		GPIO_Init(busDev[spiSel].P.Port, &GPIO_InitStructure);
 
-		DigitalWrite(&busDev[spiSel].P, 1);
+		DigitalWrite(&busDev[spiSel].P, true);
 	}
 
 } // InitSPISelectPin
@@ -614,12 +616,14 @@ void SetBaudRate(uint8 s, uint32 BaudRate) {
 		break;
 	default:
 		u = &SerialPorts[s];
-		USART_Cmd(u->USART, DISABLE);
-		USART_StructInit(&USART_InitStructure);
-		USART_InitStructure.USART_Parity = USART_Parity_No;
-		USART_InitStructure.USART_BaudRate = BaudRate;
-		USART_Init(u->USART, &USART_InitStructure);
-		USART_Cmd(u->USART, ENABLE);
+		if (u->Used) {
+			USART_Cmd(u->USART, DISABLE);
+			USART_StructInit(&USART_InitStructure);
+			USART_InitStructure.USART_Parity = USART_Parity_No;
+			USART_InitStructure.USART_BaudRate = BaudRate;
+			USART_Init(u->USART, &USART_InitStructure);
+			USART_Cmd(u->USART, ENABLE);
+		}
 		break;
 	} // switch
 } // SetBaudRate
@@ -650,6 +654,8 @@ void InitSerialPort(uint8 s, boolean Enable, boolean SBusConfig) {
 			break;
 		case 4:
 			RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART4, ENABLE);
+			break;
+		default:
 			break;
 		} // switch
 
@@ -922,7 +928,7 @@ void InitHarness(void) {
 	for (i = 0; i < MAX_PWM_OUTPUTS; i++)
 		if (PWMPins[i].Used) { // switch off all (potential) motor output pins
 			InitOutputPin(&PWMPins[i]);
-			DigitalWrite(&PWMPins[i].P, 0);
+			DigitalWrite(&PWMPins[i].P, false);
 		}
 
 	if ((CurrESCType == ESCUnknown) || (UAVXAirframe == AFUnknown))
@@ -932,6 +938,7 @@ void InitHarness(void) {
 
 	// PPM RC
 	InitRCPins(CurrNoOfRCPins);
+
 	InitRC();
 
 	// I2C/SPI
@@ -947,7 +954,7 @@ void InitHarness(void) {
 	InitAnalogPorts();
 	Delay1mS(10);
 
-	DigitalWrite(&GPIOPins[Aux2Sel].P, 1); // soft USART Tx
+	DigitalWrite(&GPIOPins[Aux2Sel].P, true); // soft USART Tx
 
 } // InitHarness
 

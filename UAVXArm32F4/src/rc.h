@@ -144,7 +144,6 @@ void CaptureTrims(void);
 void CheckThrottleMoved(void);
 void ReceiverTest(uint8 s);
 void UpdateRCMap(void);
-boolean ActiveCh(uint8 r);
 
 // ISR
 
@@ -158,6 +157,7 @@ extern timeuS RCSyncWidthuS;
 extern timeuS RCFrameIntervaluS;
 extern uint8 Channel;
 extern int8 SignalCount;
+extern uint32 RCNavFrames;
 extern uint8 Map[], RMap[];
 extern real32 RC[], RCp[];
 
@@ -169,6 +169,7 @@ extern real32 ThrLow, ThrHigh, ThrNeutral;
 extern uint8 NoOfControls;
 extern int8 RCStart;
 extern timemS NextNavSwUpdatemS;
+extern real32 AHThrottleWindow;
 
 extern boolean RxLoopbackEnabled;
 

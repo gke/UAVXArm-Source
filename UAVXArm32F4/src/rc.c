@@ -33,6 +33,9 @@ uint8 SpekFrameSize = 16;
 uint16 LostFrameCount = 0;
 uint8 SpekFrameNo = 0;
 
+uint32 RCNavFrames = 0;
+uint32 RC1CaptureFrames = 0;
+
 // Futaba SBus
 
 
@@ -48,6 +51,7 @@ uint8 RSSI;
 // Common
 
 RCInpDefStruct_t RCInp[RC_MAX_CHANNELS];
+RCInpDefStruct_t RCCaptureInp;
 
 timeuS RCLastFrameuS = 0;
 timeuS RCSyncWidthuS = 0;
@@ -67,6 +71,8 @@ real32 ThrLow, ThrHigh, ThrNeutral;
 real32 CurrMaxRollPitchStick;
 int8 RCStart;
 timemS NextNavSwUpdatemS = 0;
+real32 AHThrottleWindow;
+
 
 boolean RxLoopbackEnabled = false;
 
@@ -74,7 +80,7 @@ uint8 CurrRxType = UnknownRx;
 
 void EnableRC(void) {
 
-	if (CurrRxType != ParallelPPMRx)
+	if ((CurrRxType != ParallelPPMRx)&& (CurrRxType != CPPMRx))
 		RxEnabled[RCSerial] = true;
 
 } // EnableRC
@@ -143,6 +149,7 @@ void RCParallelISR(TIM_TypeDef *tim) {
 
 		if ((u->Tim == tim) && (TIM_GetITStatus(tim, u->CC) == SET)) {
 
+			//TimerVal = TIM_GetCapture2(u->Tim);
 			TIM_ClearITPendingBit(u->Tim, u->CC);
 			switch (u->Channel) {
 			case TIM_Channel_1:
@@ -158,8 +165,6 @@ void RCParallelISR(TIM_TypeDef *tim) {
 				TimerVal = TIM_GetCapture4(u->Tim);
 				break;
 			} // switch
-
-			// hard coded param DiscoveredRCChannels = Max(DiscoveredRCChannels, c+1);
 
 			RCPtr = &RCInp[c];
 
@@ -212,6 +217,7 @@ void RCParallelISR(TIM_TypeDef *tim) {
 
 } // RCParallelISR
 
+
 // Futaba SBus
 
 
@@ -249,7 +255,7 @@ void DoSBus(void) {
 
 } // DoSBus
 
-void CheckSBusFlags(timeuS NowuS) {
+void CheckSBusFrame(timeuS NowuS) {
 
 	SBusSignalLost = (RCFrame.u.b[22] & SBUS_SIGNALLOST_MASK) != 0;
 	SBusFailsafe = (RCFrame.u.b[22] & SBUS_FAILSAFE_MASK) != 0;
@@ -265,10 +271,13 @@ void CheckSBusFlags(timeuS NowuS) {
 		incStat(RCGlitchesS);
 	}
 
+	if (SBusFailsafe)
+		incStat(RCGlitchesS);
+
 	SignalCount = Limit1(SignalCount, RC_GOOD_BUCKET_MAX);
 	F.Signal = SignalCount > 0;
 
-} // CheckSBusFlags
+} // CheckSBusFrame
 
 void RCUSARTISR(uint8 v) { // based on MultiWii
 
@@ -279,7 +288,7 @@ void RCUSARTISR(uint8 v) { // based on MultiWii
 	timeuS IntervaluS, NowuS;
 
 	NowuS = uSClock();
-	IntervaluS = NowuS - RCFrame.lastByteReceiveduS; // uS clock wraps every 71 minutes - ignore
+	IntervaluS = NowuS - RCFrame.lastByteReceiveduS;
 	RCFrame.lastByteReceiveduS = NowuS;
 
 	switch (CurrRxType) {
@@ -292,7 +301,7 @@ void RCUSARTISR(uint8 v) { // based on MultiWii
 
 				RSSI = RCFrame.u.b[23];
 
-				CheckSBusFlags(NowuS);
+				CheckSBusFrame(NowuS);
 
 			} else {
 				if (FrSkyPacketTag == 1) {
@@ -324,19 +333,16 @@ void RCUSARTISR(uint8 v) { // based on MultiWii
 				RCFrame.state = SBusWaitEnd;
 			break;
 		case SBusWaitEnd:
-
-			CheckSBusFlags(NowuS);
-
+			CheckSBusFrame(NowuS);
 			RCFrame.index = 0;
 			RCFrame.state = SBusWaitSentinel;
-
 			break;
 		}
 		break;
 	case Deltang1024Rx:
 	case Spektrum1024Rx:
 	case Spektrum2048Rx:
-		if (IntervaluS > (uint32) MIN_SPEK_SYNC_PAUSE_US) {
+		if (IntervaluS > (timeuS) MIN_SPEK_SYNC_PAUSE_US) {
 			RCSyncWidthuS = IntervaluS;
 			RCFrame.index = 0;
 		}
@@ -437,7 +443,7 @@ void CheckSerialRC(void) {
 #define SPEK_BIND_PULSES 4
 #endif
 
-#if defined(BIND)
+#if defined(SPEK_BIND)
 
 void doSpektrumBinding(void) {
 	uint8 pulse;
@@ -466,7 +472,7 @@ void doSpektrumBinding(void) {
 	}
 } // checkSpektrumBinding
 
-#endif // BIND
+#endif // SPEK_BIND
 // Number of low pulses sent to satellite receivers for binding
 #define MASTER_RX_PULSES 		5
 #define SLAVE_RX_PULSES 		6
@@ -483,14 +489,14 @@ void DoSpektrumBind(void) {
 
 	 InitPin(&p);
 	 // need to power the Rx off one of the pins so power up can be controlled.
-	 DigitalWrite(&p, 1);
+	 DigitalWrite(&p, true);
 
 	 Delay1mS(61); // let satellites settle after power up
 
 	 for (i = 0; i < MASTER_RX_PULSES; i++) {
-	 DigitalWrite(&p, 0);
+	 DigitalWrite(&p, false);
 	 Delay1uS(120);
-	 DigitalWrite(&p, 1);
+	 DigitalWrite(&p, true);
 	 Delay1uS(120);
 	 }
 
@@ -582,6 +588,10 @@ void InitRC(void) {
 
 	UpdateRCMap();
 
+	R = &RCCaptureInp;
+	R->State = true;
+	R->PrevEdge = R->Raw = R->FallingEdge = R->RisingEdge = 0;
+
 	for (c = 0; c < RC_MAX_CHANNELS; c++) {
 		R = &RCInp[c];
 
@@ -590,6 +600,7 @@ void InitRC(void) {
 
 		RC[c] = RCp[c] = 0;
 	}
+
 	for (c = RollRC; c <= YawRC; c++)
 		RC[c] = RCp[c] = RC_NEUTRAL;
 	RC[CamPitchRC] = RCp[CamPitchRC] = RC_NEUTRAL;
@@ -624,17 +635,6 @@ void MapRC(void) { // re-maps captured PPM to Rx channel sequence
 	}
 } // MapRC
 
-void MapRCNewBROKEN(void) { // re-maps captured PPM to Rx channel sequence
-	uint8 c;
-
-	for (c = 0; c < RC_MAX_CHANNELS; c++)
-		RC[RMap[c]] = (RCInp[c].Raw - 1000) * 0.001;
-
-	// 22.5mS standard, 18mS FrSky and 9mS SBus
-	for (c = ThrottleRC; c <= YawRC; c++)
-		RCp[c] = RC[c] = LPF1(RCp[c], RC[c], 0.75f);
-
-} // MapRC
 
 void CheckRC(void) {
 
@@ -810,11 +810,11 @@ void CheckRCLoopback(void) {
 
 } // CheckRCLoopback
 
-boolean ActiveCh(uint8 r) {
-	return DiscoveredRCChannels > Map[r];
+inline boolean ActiveCh(uint8 c) {
+	return DiscoveredRCChannels > Map[c];
 } // ActiveCh
 
-boolean Triggered(real32 t, uint8 r) {
+inline boolean Triggered(real32 t, uint8 r) {
 	return ActiveCh(r) && (RC[r] > t);
 } // Triggered
 
@@ -823,8 +823,6 @@ void UpdateControls(void) {
 	CheckRC();
 	if (F.RCNewValues) {
 		F.RCNewValues = false;
-
-		LEDOn(ledGreenSel);
 
 		MapRC(); // re-map channel order for specific Tx
 
@@ -850,9 +848,11 @@ void UpdateControls(void) {
 
 		F.PassThru = Triggered(0.7f, PassThruRC);
 
-		if (ActiveCh(NavModeRC))
+		if (ActiveCh(NavModeRC)) {
 			NavSwState = Limit((uint8)(RC[NavModeRC] * 3.0f), SwLow, SwHigh);
-		else {
+			if (NavSwState >= SwMiddle)
+				RCNavFrames++;
+		} else {
 			NavSwState = SwLow;
 			F.ReturnHome = F.Navigate = F.NavigationEnabled = false;
 		}
@@ -905,7 +905,6 @@ void UpdateControls(void) {
 		VTOLMode = Triggered(0.5f, TransitionRC) && (UAVXAirframe == VTOLAF)
 				&& !F.PassThru;
 
-
 		//_________________________________________________________________________________________
 
 		// Rx has gone to failsafe
@@ -915,7 +914,6 @@ void UpdateControls(void) {
 		else
 			RCStart--;
 
-		LEDOff(ledGreenSel);
 		Tune();
 	}
 
@@ -924,12 +922,12 @@ void UpdateControls(void) {
 
 void CheckThrottleMoved(void) {
 	if (mSTimeout(ThrottleUpdate)) {
-		ThrLow = ThrNeutral - THR_MIDDLE_WINDOW_STICK;
+		ThrLow = ThrNeutral - AHThrottleWindow;
 		ThrLow = Max(ThrLow, THR_MIN_ALT_HOLD_STICK);
-		ThrHigh = ThrNeutral + THR_MIDDLE_WINDOW_STICK;
+		ThrHigh = ThrNeutral + AHThrottleWindow;
 
 		if ((StickThrottle <= ThrLow) || (StickThrottle >= ThrHigh)) {
-			mSTimer(ThrottleUpdate, THR_UPDATE_MS);
+			mSTimer(ThrottleUpdate, AH_THR_UPDATE_MS);
 			F.ThrottleMoving = true;
 		} else
 			F.ThrottleMoving = false;

@@ -85,7 +85,7 @@ extern real32 BaroVariance, OriginAltitude, RawAlt, RawDensityAltitude, DensityA
 extern real32 ROC, ROCF;
 extern uint8 BaroType;
 extern real32 AltdT;
-extern timeuS AltitudeuS;
+extern timemS AltitudemS;
 extern uint16 ms56xx_ManufacturersData;
 
 extern uint32 LSBBaro[];

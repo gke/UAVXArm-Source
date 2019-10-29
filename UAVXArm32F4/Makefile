@@ -31,7 +31,8 @@ LINK_SCRIPT=stm32f4_eeprom16k.ld
 # System configuration - UNCOMMENT AS DESIRED
 
 TCHAIN="C:\gcc\bin\"
-OPT = -O3
+OPT = -O3 
+
 #OPT = -Os
 
 CC = $(TCHAIN)arm-none-eabi-gcc

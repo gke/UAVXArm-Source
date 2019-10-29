@@ -219,18 +219,18 @@ void CalibrateAccAndGyro(uint8 s, uint8 imuSel) {
 		Config.GyroCal.C[c] = g[0][c]; // use starting temperature
 	}
 
-	F.IMUCalibrated = Abs(TempDiff) < (RangeT * 2.0f); // check if too fast!!!
+	F.IMUCalibrated =  Abs(TempDiff) < (RangeT * 2.0f); // check if too fast!!!
 	if (F.IMUCalibrated) {
 
 		Config.AccCal.Calibrated = 1;
 
-		ConfigChanged = true;
 		UpdateConfig();
 		DoBeep(8, 1);
 		LEDOff(ledBlueSel);
 		SendAckPacket(s, UAVXMiscPacketTag, 1);
 	} else {
 		Catastrophe();
+		Config.AccCal.Calibrated = 0xff;
 		SendAckPacket(s, UAVXMiscPacketTag, 255);
 	}
 

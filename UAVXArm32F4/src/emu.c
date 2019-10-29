@@ -113,30 +113,21 @@ void DoEmulation(void) {
 		Thrust = (DesiredThrottle + AltComp) * EM_MAX_THRUST * AttitudeCosine();
 		Accel = (Thrust - EM_MASS * GRAVITY_MPS_S - Drag(ROC)) * EM_MASS_R;
 		ROC += Accel * dT;
+#if defined(USE_THERMALS)
+		ROC += Thermal(Nav.C[EastC].Pos, Nav.C[NorthC].Pos) * 0.01f;
+#endif
 	}
+
+	ROC += 0.05f * (((real64) rand() / (real64) RAND_MAX) - 0.5f);
 
 	ROCF = LPFn(&FROCLPF, ROC, AltdT); // used for landing and cruise throttle tracking
 
-	if ((State != InFlight) || ((Altitude <= 0.05f)
-			&& (ROC <= 0.0f)))
-		FakeAltitude = ROC = OriginAltitude = 0.0f;
+	if ((State != InFlight) || ((Altitude <= 0.05f) && (ROC <= 0.0f)))
+		FakeAltitude = ROC = 0.0f;
 	else
 		FakeAltitude += ROC * dT;
 
-	GPS.altitude = DensityAltitude = FakeAltitude + OriginAltitude;
-	Altitude = FakeAltitude;
-	F.BaroActive = true;
-
-	NowmS = mSClock();
-	if (mSTimeout(EmuAltUpdate)) { // 5 cycles @ 10mS -> 50mS or 20Hz
-		mSTimer(EmuAltUpdate, 50);
-
-		AltdT = (NowmS - LastAltUpdatemS) * 0.001f;
-		LastAltUpdatemS = NowmS;
-		F.NewAltitudeValue = true;
-	}
-
-	if (FakeAltitude <= 0.2f) { // was 0.05
+	if (FakeAltitude <= 0.05f) {
 		for (a = Pitch; a <= Yaw; a++)
 			Aircraft[a].Vel = Aircraft[a].Acc = GPS.C[a].Vel = Rate[a] = Acc[a]
 					= Angle[a] = A[a].Out = 0.0f;
@@ -184,10 +175,13 @@ void DoEmulation(void) {
 			GPS.C[a].Vel += EmulatedWind[a];
 			GPS.C[a].Pos += GPS.C[a].Vel * dT;
 		}
-		GPS.C[DownC].Vel = - ROC;
+		GPS.C[DownC].Vel = -ROC;
+
 	}
 
 	Acc[UD] = -GRAVITY_MPS_S;
+
+	GPS.altitude = FakeAltitude;
 
 	GPS.C[EastC].Raw = DEFAULT_HOME_LON + MToGPS(GPS.C[EastC].Pos)
 			/ GPS.longitudeCorrection;
@@ -216,8 +210,8 @@ void GPSEmulation(void) {
 		GPS.fix = 3;
 		GPS.noofsats = 10;
 		GPS.hDOP = 0.9f;
-		GPS.hAcc = GPS.hDOP * GPS_HDOP_TO_HACC;
-		GPS.vAcc = 1.5f;
+		GPS.hAcc = GPSMinhAcc * 0.25f;
+		GPS.vAcc = GPSMinvAcc * 0.25f;
 		GPS.sAcc = 1.0f;
 		F.GPSValid = F.GPSPacketReceived = F.NewGPSPosition = true;
 	}
@@ -239,7 +233,8 @@ void InitEmulation(void) {
 
 		mS[FakeGPSUpdate] = 0;
 
-		Altitude = OriginAltitude = RangefinderAltitude = FakeAltitude = ROC = 0.0f;
+		Altitude = OriginAltitude = RangefinderAltitude = FakeAltitude = ROC
+				= 0.0f;
 
 		SetDesiredAltitude(0.0f);
 	}

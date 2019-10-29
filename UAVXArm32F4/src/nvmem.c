@@ -94,9 +94,7 @@ int8 ReadNVMem(uint32 a) {
 boolean EraseNVMem(void) {
 	boolean v;
 
-	SaveLEDs();
-	LEDsOff();
-	LEDOn(ledBlueSel);
+	LEDsOffExcept(ledBlueSel);
 
 	switch (busDev[memSel].type) {
 	case i2cEEPROMMem:
@@ -109,8 +107,6 @@ boolean EraseNVMem(void) {
 		v = false;
 		break;
 	}
-
-	RestoreLEDs();
 
 	return v;
 } // EraseNVMem

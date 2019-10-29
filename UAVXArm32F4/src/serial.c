@@ -25,18 +25,18 @@
 // Rewritten from AQ original Copyright © 2011 Bill Nesbitt
 
 volatile uint8 TxQ[MAX_SERIAL_PORTS][SERIAL_BUFFER_SIZE] __attribute__((aligned(4)));
-volatile int16 TxQTail[MAX_SERIAL_PORTS]= {0,};
-volatile int16 TxQHead[MAX_SERIAL_PORTS]= {0,};
-volatile int16 TxQNewHead[MAX_SERIAL_PORTS]= {0,};
+volatile int16 TxQTail[MAX_SERIAL_PORTS] = { 0, };
+volatile int16 TxQHead[MAX_SERIAL_PORTS] = { 0, };
+volatile int16 TxQNewHead[MAX_SERIAL_PORTS] = { 0, };
 
 volatile uint8 RxQ[MAX_SERIAL_PORTS][SERIAL_BUFFER_SIZE] __attribute__((aligned(4)));
-volatile int16 RxQTail[MAX_SERIAL_PORTS] = {0,};
-volatile int16 RxQHead[MAX_SERIAL_PORTS] = {0,};
-volatile int16 RxQNewHead[MAX_SERIAL_PORTS] = {0,};
-volatile boolean RxEnabled[MAX_SERIAL_PORTS] = {false, };
-volatile boolean RxCTS[MAX_SERIAL_PORTS] = {false, };
+volatile int16 RxQTail[MAX_SERIAL_PORTS] = { 0, };
+volatile int16 RxQHead[MAX_SERIAL_PORTS] = { 0, };
+volatile int16 RxQNewHead[MAX_SERIAL_PORTS] = { 0, };
+volatile boolean RxEnabled[MAX_SERIAL_PORTS] = { false, };
+volatile boolean RxCTS[MAX_SERIAL_PORTS] = { false, };
 
-volatile uint32 RxDMAPos[MAX_SERIAL_PORTS] = {0, };
+volatile uint32 RxDMAPos[MAX_SERIAL_PORTS] = { 0, };
 
 uint8 TxCheckSum[MAX_SERIAL_PORTS];
 uint32 SoftUSARTBaudRate = 115200;
@@ -47,8 +47,7 @@ void SerialTxDMA(uint8 s) {
 	SerialPorts[s].TxStream->M0AR = (uint32) &TxQ[s][TxQHead[s]];
 
 	if (TxQTail[s] > TxQHead[s]) { // Tail not wrapped around yet
-		DMA_SetCurrDataCounter(SerialPorts[s].TxStream, TxQTail[s]
-				- TxQHead[s]);
+		DMA_SetCurrDataCounter(SerialPorts[s].TxStream, TxQTail[s] - TxQHead[s]);
 		TxQNewHead[s] = TxQTail[s];
 	} else {// Tail has wrapped do balance from Head to end of Buffer
 		DMA_SetCurrDataCounter(SerialPorts[s].TxStream, SERIAL_BUFFER_SIZE
@@ -186,7 +185,7 @@ void SerialISR(uint8 s) {
 		ch = USART_ReceiveData(SerialPorts[s].USART);
 		if (RxEnabled[s]) {
 			if ((s == RCSerial) && RxUsingSerial)
-				RCUSARTISR(ch);
+				RCUSARTISR(ch); // longish interrupt service time - could reduce?
 			else {
 				RxQ[s][RxQTail[s]] = ch;
 				RxQTail[s] = (RxQTail[s] + 1) & (SERIAL_BUFFER_SIZE - 1);
@@ -212,19 +211,18 @@ void SerialISR(uint8 s) {
 
 void SoftTxChar(uint8 ch) {
 	uint8 b;
-	uint16 d;
+	const uint16 d = (uint16) (1000000.0f / SoftUSARTBaudRate + 0.5f);
 
 	if (!Armed()) { // MUST NOT BE USED IN FLIGHT
-		d = (uint16) (1000000.0f / SoftUSARTBaudRate + 0.5f); // expensive!
 
-		DigitalWrite(&GPIOPins[Aux2Sel].P, 0);
+		DigitalWrite(&GPIOPins[Aux2Sel].P, false);
 		Delay1uS(d);
 		for (b = 0; b < 8; b++) {
 			DigitalWrite(&GPIOPins[Aux2Sel].P, (ch & 1) != 0);
 			Delay1uS(d);
 			ch = ch >> 1;
 		}
-		DigitalWrite(&GPIOPins[Aux2Sel].P, 1);
+		DigitalWrite(&GPIOPins[Aux2Sel].P, true);
 		Delay1uS(d);
 	}
 } // SoftTxChar

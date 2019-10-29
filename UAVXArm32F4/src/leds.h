@@ -30,6 +30,7 @@ void LEDsOff(void);
 void LEDToggle(uint8 l);
 void LEDOn(uint8 l);
 void LEDOff(uint8 l);
+void LEDsOffExcept(uint8 l);
 void LEDChaser(void);
 
 void LEDsAndBuzzer(uint8 s);
@@ -42,8 +43,10 @@ boolean BeeperIsOn(void);
 
 #define MAX_WS2812_LEDS 12 // 240
 // circular PWM waveform buffer
+
 #define WS2812_COLOUR_FRAME_LEN 24
-#define MAX_PWM_BUFFER_SIZE (MAX_WS2812_LEDS*WS2812_COLOUR_FRAME_LEN+WS2812_COLOUR_FRAME_LEN) // PWM waveform samples
+#define WS2812_RESET_LEN (WS2812_COLOUR_FRAME_LEN*2) // ~50uS
+#define MAX_PWM_BUFFER_SIZE (MAX_WS2812_LEDS*WS2812_COLOUR_FRAME_LEN+WS2812_RESET_LEN) // pulse widths
 typedef struct {
 	uint8 r :8;
 	uint8 g :8;
@@ -65,8 +68,8 @@ extern uint8 CurrNoOfWSLEDs, NoOfWSLEDs, WSLEDGroupSize;
 extern uint8 CurrWSLED;
 extern boolean UsingWS28XXLEDs;
 extern boolean WSLEDChanged;
-extern volatile boolean WSDMAInactive;
 extern uint8 CurrBeeperSel;
+volatile boolean WSDMAInactive;
 
 #endif
 

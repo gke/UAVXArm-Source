@@ -71,6 +71,7 @@ boolean UsingPWMSync = false;
 boolean UsingDCMotors = false;
 boolean DrivesInitialised = false;
 
+real32 FWStickScaleFrac = 0.33f;
 real32 LPF1DriveK, LPF1ServoK;
 uint8 CurrESCType = ESCUnknown;
 real32 PWSum[MAX_PWM_OUTPUTS];
@@ -311,9 +312,9 @@ void UpdateDrives(void) {
 		} else {
 
 			if (F.PassThru) {
-				Rl = -A[Roll].Stick * STICK_PASSTHRU_SCALE;
-				Pl = -A[Pitch].Stick * STICK_PASSTHRU_SCALE;
-				Yl = A[Yaw].Stick * STICK_PASSTHRU_SCALE;
+				Rl = Limit1(-A[Roll].Stick * FWStickScaleFrac, OUT_NEUTRAL);
+				Pl = Limit1(-A[Pitch].Stick * FWStickScaleFrac, OUT_NEUTRAL);
+				Yl = Limit1(A[Yaw].Stick * FWStickScaleFrac, OUT_NEUTRAL);
 				Sl = 0.0f; //zzz
 			} else {
 				Rl = Limit1(A[Roll].Out, OUT_NEUTRAL);

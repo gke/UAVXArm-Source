@@ -43,6 +43,7 @@ boolean PacketReceived, RxPacketError, CheckSumError;
 uint8 UAVXPacket[256];
 uint16 RxLengthErrors = 0;
 uint16 RxCheckSumErrors = 0;
+uint32 TrackGPSInvalid = 0;
 
 uint8 TxPacketTag;
 uint8 CurrTelType = UAVXTelemetry;
@@ -200,12 +201,9 @@ void CheckTelemetry(uint8 s) {
 			}
 			break;
 			case 'v':
-			if (ConfigChanged) {
-				TxString(s, "UPDATING FLASH AND RESETING\n");
-				UpdateConfig();
-				systemReset(false);
-			} else
-			TxString(s, "PARAMETERS UNCHANGED\n ");
+			TxString(s, "UPDATING FLASH AND RESETING\n");
+			UpdateConfig();
+			systemReset(false);
 			break;
 			case 'r':
 			TxString(s, "RESET\n");
@@ -377,6 +375,17 @@ void ShowAttitude(uint8 s) {
 
 } // ShowAttitude
 
+void SendNavState(uint8 s) {
+
+	if (F.PassThru)
+		TxESCu8(s, PassThruControl);
+	else if (AttitudeMode == HorizonMode)
+		TxESCu8(s, HorizonControl);
+	else if (AttitudeMode == RateMode)
+		TxESCu8(s, RateControl);
+	else
+		TxESCu8(s, NavState);
+} // SendNavState
 
 void SendFlightPacket(uint8 s) {
 	uint8 b;
@@ -384,8 +393,8 @@ void SendFlightPacket(uint8 s) {
 	SendPacketHeader(s);
 
 	TxESCu8(s, UAVXFlightPacketTag);
-	TxESCu8(s, TELEMETRY_FLAG_BYTES + 11 + 3 * 10  + 36 + 4 + 4 + CurrMaxPWMOutputs
-			* 3 + 3);
+	TxESCu8(s, TELEMETRY_FLAG_BYTES + 11 + 3 * 10 + 36 + 4 + 4 + 1
+			+ CurrMaxPWMOutputs * 3 + 3);
 	for (b = 0; b < TELEMETRY_FLAG_BYTES; b++)
 		TxESCu8(s, F.AllFlags[b]);
 
@@ -429,8 +438,12 @@ void SendFlightPacket(uint8 s) {
 
 	TxESCi16(s, MPU6XXXTemperature * 10.0f); // 0.1C
 
-	TxESCi16(s, Limit((100.0 * RateEnergySum) / (real32) RateEnergySamples, 0, 32000));
+	TxESCi16(
+			s,
+			Limit((100.0 * RateEnergySum) / (real32) RateEnergySamples, 0, 32000));
 	TxESCi16(s, RadiansToDegrees(FWGlideAngleOffsetRad) * 10.0f);
+
+	SendNavState(s);
 
 	ShowDrives(s);
 
@@ -439,17 +452,6 @@ void SendFlightPacket(uint8 s) {
 	SendPacketTrailer(s);
 } // SendFlightPacket
 
-void SendNavState(uint8 s) {
-
-	if (F.PassThru)
-		TxESCu8(s, PassThruControl);
-	else if (AttitudeMode == HorizonMode)
-		TxESCu8(s, HorizonControl);
-	else if (AttitudeMode == RateMode)
-		TxESCu8(s, RateControl);
-	else
-		TxESCu8(s, NavState);
-} // SendNavState
 
 void SendControlPacket(uint8 s) {
 
@@ -555,16 +557,33 @@ void SendFusionPacket(uint8 s) {
 
 	TxESCu8(s, UAVXFusionPacketTag);
 
-	TxESCu8(s, 20);
+	TxESCu8(s, 46);
 
-	TxESCi32(s, AltitudeuS);
-	TxESCi24(s, RawAlt * 1000.0f); // raw sensor value
-	TxESCi24(s, DensityAltitude * 1000.0f);
+	TxESCi32(s, AltitudemS);
+
+	TxESCi24(s, (RawAlt - OriginAltitude) * 1000.0f); // raw sensor value
+	TxESCi24(s, (DensityAltitude - OriginAltitude) * 1000.0f);
 	TxESCi16(s, ROC * 1000.0f);
 	TxESCi16(s, AccZ * 1000.0f);
 	TxESCi16(s, AccZBias * 1000.0f);
 	TxESCi16(s, BaroVariance * 1000.0f);
 	TxESCi16(s, TrackAccZVariance * 1000.0f);
+
+	TxESCi24(s, Alt.P.Desired * 100.0f);
+	TxESCi16(s, Alt.P.Error * 1000.0f);
+	TxESCi16(s, Alt.P.PTerm * 1000.0f);
+	TxESCi16(s, Alt.P.ITerm * 1000.0f);
+
+	TxESCi16(s, Alt.R.Desired * 100.0f);
+	TxESCi16(s, Alt.R.Error * 1000.0f);
+	TxESCi16(s, Alt.R.PTerm * 1000.0f);
+	TxESCi16(s, Alt.R.DTerm * 1000.0f);
+
+	TxESCi16(s, CruiseThrottle * 1000.0f);
+	TxESCi16(s, AltComp * 1000.0f);
+
+	TxESCi24(s, (GPS.altitude - GPS.originAltitude) * 1000.0f);
+	TxESCi16(s, -GPS.velD * 1000.0f);
 
 	SendPacketTrailer(s);
 
@@ -639,7 +658,8 @@ void SendDefAFNameNames(uint8 s) {
 void SendParamsPacket(uint8 s, uint8 GUIPS) {
 	idx p;
 
-	if ((State == Preflight) || (State == Ready)) {
+	if ((State == Preflight) || (State == Ready) || (State
+			== MonitorInstruments)) {
 
 		SendDefAFNameNames(s); // refresh
 
@@ -822,6 +842,7 @@ void SendMinPacket(uint8 s) {
 
 } // SendMinPacket
 
+
 void SendMinimOSDPacket(uint8 s) {
 
 	SendPacketHeader(s);
@@ -999,22 +1020,19 @@ void SetTelemetryBaudRate(uint8 s, uint32 b) {
 void ProcessParamsPacket(uint8 s) {
 	uint8 p;
 
-	if ((State == Preflight) || (State == Ready)) { // not inflight
+	if ((State == Preflight) || (State == Ready) || (State
+			== MonitorInstruments)) { // not inflight
 
 		Config.CurrPS = 0;
 
 		for (p = 0; p < MAX_PARAMETERS; p++)
 			SetP(p, UAVXPacketi8(p + 3));
 
-		ConfigChanged = true;
-
 		UpdateConfig();
 
-		F.ParametersChanged = true;
 		UpdateParameters();
 
 		SendAckPacket(s, UAVXParamPacketTag, true);
-
 		SendParamsPacket(s, 255);
 
 	} else
@@ -1266,7 +1284,7 @@ void UseUAVXTelemetry(uint8 s) {
 	if (SendFlight) {
 		SendFlightPacket(s); // 78
 		SendGuidancePacket(s); // 2+24
-		//	SendFusionPacket(s); // 2+7
+		//SendFusionPacket(s); // 2+7
 		SendWindPacket(s); // 2+10
 		SendRCChannelsPacket(s); // 27 -> 105
 	} else {
@@ -1282,19 +1300,17 @@ void UseUAVXTelemetry(uint8 s) {
 } // UseUAVXTelemetry
 
 void CheckTelemetry(uint8 s) {
-	tickCountOn(TelemetryTick);
-
 	timemS NowmS;
+	static uint32 RCNavFramesP = 0;
 
 	if (F.UsingUplink)
 		UAVXPollRx(s);
 
-	BlackBoxEnabled = (Armed() || (UAVXAirframe == Instrumentation)) && (State
-			== InFlight);
+	BlackBoxEnabled = (State == InFlight) || (State == MonitorInstruments);
 
 	NowmS = mSClock();
 
-	if (!(Armed() || (UAVXAirframe == Instrumentation))) {
+	if (!BlackBoxEnabled) {
 		SetTelemetryBaudRate(s, 115200);
 		if (NowmS >= mS[TelemetryUpdate]) {
 			mSTimer(TelemetryUpdate, UAVX_TEL_INTERVAL_MS);
@@ -1325,17 +1341,15 @@ void CheckTelemetry(uint8 s) {
 				SendFrSkyHubTelemetry(s);
 			}
 			break;
-			/*
-			 case FusionTelemetry:
-			 SetTelemetryBaudRate(s, 115200);
-			 if (NowmS >= mS[TelemetryUpdate]) {
-			 mSTimer(TelemetryUpdate, FUSION_TEL_INTERVAL_MS);
-			 if ((State == InFlight) ) //&& F.HoldingAlt)
-			 SendFusionPacket(s);
-			 }
+		case FusionTelemetry:
+			SetTelemetryBaudRate(s, 115200);
+			if (NowmS >= mS[TelemetryUpdate]) {
+				mSTimer(TelemetryUpdate, FUSION_TEL_INTERVAL_MS);
+				if ((State == InFlight) && F.HoldingAlt)
+					SendFusionPacket(s);
+			}
+			break;
 
-			 break;
-			 */
 		case FrSkyFPortTelemetry:
 		case CleanflightBBTelemetry:
 		default:
@@ -1346,10 +1360,7 @@ void CheckTelemetry(uint8 s) {
 
 	UpdateBlackBox();
 
-	tickCountOff(TelemetryTick);
-
-}
-// CheckTelemetry
+} // CheckTelemetry
 
 #endif
 

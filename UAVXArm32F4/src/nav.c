@@ -237,7 +237,7 @@ void NavYaw(WPStruct * W) {
 	real32 POIEastDiff, POINorthDiff, POIDistance;
 
 	if (F.RapidDescentHazard)
-		DoOrbit(DESCENT_RADIUS_M, DESCENT_VELOCITY_MPS); // only non FW
+		DoOrbit(DESCENT_RADIUS_M, DESCENT_ORBIT_VELOCITY_MPS); // only non FW
 	else if (F.OrbitingWP)
 		DoOrbit(W->OrbitRadius, W->OrbitVelocity);
 	else {
@@ -313,8 +313,6 @@ void NavPI_P(void) {
 void Navigate(WPStruct * W) {
 	idx a;
 
-	tickCountOn(NavigateTick);
-
 	NavdT = dTUpdate(&LastNavUpdateuS);
 	NavdTR = 1.0f / NavdT;
 
@@ -354,8 +352,6 @@ void Navigate(WPStruct * W) {
 			A[a].NavCorr = Limit1(A[a].NavCorr, Nav.MaxBankAngle);
 
 	}
-
-	tickCountOff(NavigateTick);
 
 } // Navigate
 

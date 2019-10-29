@@ -76,10 +76,10 @@ PinDef LEDPins[MAX_LED_PINS] = { //
 
 SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { 
 	{true, }, // mapped to USBSerial
-	{true, USART1, PA9, PA10, 115200, USART1Config,},
-	{false, USART2, PA14, PA15, 9600, USART2Config,},
-	{true, USART3, PB10, PB11, 115200, USART3Config,},
-	{false, UART4, PB10, PB11, 115200, UART4Config,},
+	{true, USART1, PA9, PA10, 115200, true, false, USART1Config,},
+	{false, USART2, PA14, PA15, 9600, true, false, USART2Config,},
+	{true, USART3, PB10, PB11, 115200, true, false, USART3Config,},
+	{false, UART4, PB10, PB11, 115200, true, false, UART4Config,},
 	{false, 0 } // SoftSerial
 };
 

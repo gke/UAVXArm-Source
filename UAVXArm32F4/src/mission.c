@@ -63,7 +63,7 @@ void GenerateHomeWP(void) {
 void CaptureHomePosition(void) {
 	idx a;
 
-	if (F.GPSValid && (GPS.hAcc <= GPSMinhAcc)) {
+	if (F.GPSValid && (GPS.hAcc <= GPSMinhAcc) && (GPS.vAcc < GPSMinvAcc)) {
 
 		mS[LastGPS] = mSClock();
 
@@ -84,7 +84,7 @@ void CaptureHomePosition(void) {
 		for (a = NorthC; a <= EastC; a++)
 			GPS.C[a].Pos = GPS.C[a].Vel = GPS.C[a].PosP = 0.0f;
 
-		GPS.originAltitude = GPS.altitude - Altitude; // TODO: assumes altitude here is from Baro
+		GPS.originAltitude = GPS.altitude;
 		F.HoldingAlt = false;
 
 		setStat(OriginValidS, true);
@@ -93,12 +93,9 @@ void CaptureHomePosition(void) {
 
 		CapturePosition();
 
-		if (F.GPSToLaunchRequired) {
-			Delay1mS(500);
-			DoBeep(2, 2);
-			DoBeep(6, 2);
-		} else
-			ScheduleBeeper(1500);
+		Delay1mS(500);
+		DoBeep(2, 2);
+		DoBeep(6, 2);
 	}
 } // CaptureHomePosition
 
@@ -140,7 +137,7 @@ void ScheduleNavPulse(NavPulseStruct * n, timemS w, timemS p) {
 void UpdateNavPulse(boolean v) {
 #if defined(UAVXF4V3)|| defined(UAVXF4V3BBFLASH)
 	if (Navigating && !UsingWS28XXLEDs)
-	DigitalWrite(&GPIOPins[Aux1Sel].P, v ? 1 : 0);
+	DigitalWrite(&GPIOPins[Aux1Sel].P, v);
 #endif
 } // DoNavPulse
 
@@ -179,7 +176,7 @@ void NextWP(void) {
 } // NextWP
 
 void SetWPHome(void) {
-	if (F.IsFixedWing && UsingOffsetHome && F.OffsetOriginValid)
+	if (F.IsFixedWing && F.UsingOffsetHome && F.OffsetOriginValid)
 		memcpy(&WP, &OffsetHomeWP, sizeof(WPStruct));
 	else
 		memcpy(&WP, &HomeWP, sizeof(WPStruct));
@@ -260,10 +257,8 @@ void UpdateNavMission(void) {
 
 		memset(&NewNavMission, 0, sizeof(MissionStruct));
 
-		if (State != InFlight) {
-			ConfigChanged = true;
+		if (State != InFlight)
 			UpdateConfig();
-		}
 
 		NavMissionUpdated = true;
 	}

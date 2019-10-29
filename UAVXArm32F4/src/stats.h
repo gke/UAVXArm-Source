@@ -30,7 +30,6 @@ int16 currStat(uint8 s);
 
 void ZeroStats(void);
 void ReadStatsNV(void);
-void WriteStatsNV(void);
 void ShowStats(uint8 s);
 void StatsMinMax(uint8 l, uint8 u, int16 v);
 void StatsMax(uint8 u, int16 v);

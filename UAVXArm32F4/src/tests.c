@@ -892,7 +892,6 @@ void BatteryTest(uint8 s) {
 void LEDsAndBuzzer(uint8 s) {
 	int8 f, m;
 
-	SaveLEDs();
 
 	TxString(s, "\r\nLED/Beeper test\r\n");
 	for (m = 0; m < MAX_LEDS; m++) {
@@ -903,7 +902,6 @@ void LEDsAndBuzzer(uint8 s) {
 		}
 	};
 
-	RestoreLEDs();
 	BeeperOn();
 	Delay1mS(100);
 	BeeperOff();

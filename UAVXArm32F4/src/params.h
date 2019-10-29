@@ -36,6 +36,10 @@
 
 #define DEFAULT_HOME_LAT  (-352902889L) // Canberra
 #define DEFAULT_HOME_LON  (1491109972L)
+
+//#define DEFAULT_HOME_LAT  (-374397722L) // Hollowback
+//#define DEFAULT_HOME_LON  (1438189666L)
+
 #define DEFAULT_LON_CORR cosf(DegreesToRadians(DEFAULT_HOME_LAT*1e-7))
 
 #define RC_MAXIMUM 1.0f
@@ -80,11 +84,11 @@
 
 #define OPTICAL_TIME_MS			50
 
-#define DESCENT_RADIUS_M  			10.0f
-#define DESCENT_VELOCITY_MPS		1.5f
-//#define DESCENT_MIN_ROC_MPS			(-3.0f) moved to a parameter
-#define DESCENT_ALT_DIFF_M			10.0f
-#define DESCENT_SAFETY_ALT_M		(15.0f)
+#define DESCENT_RADIUS_M  			5.0f
+#define DESCENT_ORBIT_VELOCITY_MPS	1.5f
+
+#define DESCENT_ALT_DIFF_M			(25.0f) // 10.0f
+#define DESCENT_SAFETY_ALT_M		(25.0f) //(15.0f)
 
 #define ACCZ_LANDING_MPS_S			(0.5f * GRAVITY_MPS_S)
 
@@ -108,8 +112,6 @@
 
 #define ALT_MAX_ROC_MPS 5.0f
 
-#define STICK_PASSTHRU_SCALE  (1.0f/3.0f)
-
 #define NAV_CEILING_M 120.0f // 400 feet
 #define NAV_DEFAULT_RTH_M 15.0f
 #define NAV_DEFAULT_FENCE_M 400.0f
@@ -126,28 +128,25 @@
 #define GPS_TIMEOUT_MS 2000 // mS. TODO: too short for forced landing trigger?
 #define GPS_MIN_SATELLITES 6 // preferably > 5 for 3D fix
 #define GPS_MIN_HACC 5.0f
+#define GPS_MIN_VACC 5.0f
 #define GPS_MIN_SACC 1.0f
 #define GPS_HDOP_TO_HACC 4.0f // crude approximation for NMEA GPS units
 #define GPS_UPDATE_MS 200
 #define GPS_UPDATE_HZ (1000/GPS_UPDATE_MS)
 
-#define THR_UPDATE_MS 3000 // mS. constant throttle time for altitude hold
-
 #define RC_MOVEMENT_STICK FromPercent(1) // minimum to be recognised as a stick input change without triggering failsafe
-#define THR_MIDDLE_WINDOW_STICK FromPercent(5) // throttle stick dead zone for baro
 
+#define AH_THR_UPDATE_MS 1000 // checking interval  if throttle has moved outside AH tracking window
 #define NAV_SENS_ALT_THRESHOLD_STICK FromPercent(10)// Altitude hold disabled if Ch7 is less than this
 #define ATTITUDE_HOLD_LIMIT_STICK FromPercent(20) // dead zone for roll/pitch stick for position hold
 #define ATTITUDE_THRESHOLD_STICK FromPercent(2) // make sure neutral is 1500uS with no trims
 #define ATTITUDE_HOLD_RESET_INTERVAL 25 // number of impulse cycles before GPS position is re-acquired
 
 #define UAVX_TEL_INTERVAL_MS 500 // 200 // mS. emit an interleaved telemetry packet
-#define UAVX_MIN_TEL_INTERVAL_MS 500 // mS. emit minimum data packet for example to FrSky
-#define UAVX_PID_TEL_INTERVAL_MS 20 // mS. high rate tuning telemetry
-#define ARDU_TEL_INTERVAL_MS 200 // mS. alternating 1:5
+#define UAVX_MIN_TEL_INTERVAL_MS 500 // mS. emit minimum data packet
 #define FRSKY_TEL_INTERVAL_MS 200 // mS.
-#define FUSION_TEL_INTERVAL_MS 20 // mS. high rate tuning telemetry
-#define UAVX_MINIMOSD_TEL_INTERVAL_MS 200 // modified minimOSD for FPV
+#define TRACK_TEL_INTERVAL_MS 1000 // mS.
+#define FUSION_TEL_INTERVAL_MS 200 // was 20 mS. high rate tuning telemetry
 
 extern const real32 OKp, OIL, IKp, IKd;
 
@@ -348,9 +347,9 @@ enum Params { // MAX 128
 
 	KFBaroVar, // 111
 	TrackKFAccZVar, // 112
-	Unused113, // 113
-	Unused114, // 114
-	Unused115, // 115
+	FWStickScale, // 113
+	FWRollControlPitchLimit, // 114
+	AHThrottleMovingTrigger, // 115
 	Unused116, // 116
 	Unused117, // 117
 	Unused118, // 118
@@ -373,7 +372,7 @@ enum Params { // MAX 128
 #define	UseRTHDescendMask		(1<<1) // bit11CheckBox 16_1
 #define UseManualAltHoldMask 	(1<<2) // bit21CheckBox 16_2
 #define EmulationEnableMask		(1<<3) // bit31CheckBox 16_3
-#define GPSToLaunchRequiredMask (1<<4) // bit41CheckBox 16_4
+#define UseAltHoldAlarmMask 	(1<<4) // bit41CheckBox 16_4
 #define	UseOffsetHomeMask		(1<<5) // bit51CheckBox 16_5
 #define	UseRapidDescentMask		(1<<6) // bit61CheckBox 16_6
 
@@ -391,7 +390,7 @@ enum Params { // MAX 128
 // In Servo Sense Byte
 #define	UseConvYawSenseMask			(1<<6)
 
-extern volatile boolean StickArmed, TxSwitchArmed;
+extern volatile boolean ArmedByTx, TxSwitchArmed;
 
 extern ParamStruct DefaultParams[];
 extern const uint8 NoOfDefParamSets;
@@ -402,13 +401,12 @@ extern int8 CP[];
 extern const real32 AFOrientation[];
 extern uint8 UAVXAirframe;
 extern boolean IsMulticopter, UsingNavBeep, UsingFastStart, UsingBLHeliPrograming,
-		UsingGliderStrategy, UsingOffsetHome;
+		UsingGliderStrategy;
 extern uint8 CurrMotorStopSel;
 
 extern real32 AltCompDecayS;
 extern boolean UseFastStart;
 
-extern boolean ConfigChanged;
 extern ConfigStruct Config;
 
 #endif

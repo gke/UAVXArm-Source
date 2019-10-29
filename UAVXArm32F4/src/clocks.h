@@ -30,7 +30,7 @@ typedef struct {
 extern volatile timeuS uS[];
 extern volatile timemS mS[];
 extern volatile tickStruct ticks[];
-extern volatile boolean tickCountsEnabled;
+
 
 extern volatile timeuS TicksuS;
 
@@ -44,7 +44,5 @@ void mSTimer(uint8 t, timemS TimePeriodmS);
 void uSTimer(uint8 t, timeuS TimePerioduS);
 boolean mSTimeout(uint8 t);
 boolean uSTimeout(uint8 t);
-void tickCountOn(uint8 t);
-void tickCountOff(uint8 t);
 
 #endif

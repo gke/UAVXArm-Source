@@ -94,8 +94,8 @@ void ParseGXRMCSentence(void);
 void ParseGXGGASentence(void);
 void SetGPSOrigin(void);
 void ParseGPSSentence(void);
-void RxGPSPacket(uint8);
-void UpdateGPS(void);
+void CheckGPS(void);
+void CheckGPSTimeouts(void);
 void ShowGPSStatus(uint8 s);
 boolean GPSOK(void);
 void InitGPS(void);
@@ -124,7 +124,7 @@ extern timemS NavGPSTimeoutmS;
 extern uint8 nll, cc, lo, hi;
 extern boolean EmptyField;
 extern real32 GPSLag;
-extern real32 GPSMinhAcc;
+extern real32 GPSMinhAcc, GPSMinvAcc;
 
 extern uint8 CurrGPSType;
 

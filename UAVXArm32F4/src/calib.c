@@ -148,7 +148,7 @@ uint16 SphereFit(real32 d[][3], uint16 N, uint16 MaxIterations, real32 Err,
 	for (a = X; a <= Z; a++)
 		SphereOrigin[a] = c[a];
 
-//	*SphereRadius = sqrtf(Abs(r2));
+	//	*SphereRadius = sqrtf(Abs(r2));
 
 	return (Iterations);
 }
@@ -334,9 +334,6 @@ void CalibrateAccSixPointSphere(uint8 s, uint8 imuSel) {
 	real32 SphereOrigin[3];
 	real32 SphereRadius;
 
-	SaveLEDs();
-	LEDsOff();
-
 	LEDOn(ledBlueSel);
 
 	for (a = X; a <= Z; a++)
@@ -394,7 +391,7 @@ void CalibrateAccSixPointSphere(uint8 s, uint8 imuSel) {
 
 	} while (calDirCnt != 6);
 
-	LEDsOff();
+	LEDOff(ledBlueSel);
 
 	SphereFit(sp, ACC_CAL_SPHERE_CYCLES * 6, 50, 0.01f, SphereOrigin,
 			&SphereRadius);
@@ -409,14 +406,9 @@ void CalibrateAccSixPointSphere(uint8 s, uint8 imuSel) {
 	Config.AccCal.Calibrated = 1;
 	F.AccCalibrated = true;
 
-	ConfigChanged = true;
 	UpdateConfig();
 
-
-	LEDsOff();
 	DoBeeps(2);
-
-	RestoreLEDs();
 
 } // CalibrateAccSixPointSphere
 
@@ -427,9 +419,6 @@ void CalibrateAccSixPoint(uint8 s, uint8 imuSel) {
 	sensorStateStruct calState;
 	real32 sensorSamples[6][3];
 	real32 sensorSample[3];
-
-	SaveLEDs();
-	LEDsOff();
 
 	LEDOn(ledBlueSel);
 
@@ -490,7 +479,7 @@ void CalibrateAccSixPoint(uint8 s, uint8 imuSel) {
 
 	} while (calDirCnt != 6);
 
-	LEDsOff();
+	LEDOff(ledBlueSel);
 
 	solveBias(&calState, Config.AccCal.Bias);
 
@@ -514,16 +503,10 @@ void CalibrateAccSixPoint(uint8 s, uint8 imuSel) {
 	Config.AccCal.Calibrated = 1;
 	F.AccCalibrated = true;
 
-	ConfigChanged = true;
 	UpdateConfig();
 
-	LEDsOff();
 	DoBeeps(2);
 
-	RestoreLEDs();
-
 } // CalibrateAccSixPoint
-
-
 
 

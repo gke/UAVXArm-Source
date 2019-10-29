@@ -68,16 +68,6 @@ void StatsMax(uint8 u, int16 v) {
 
 } // StatsMax
 
-void WriteStatsNV() {
-	//uint8 i;
-
-	//if (CurrESCType != ESCPWM)
-	//	for (i = 0; i < CurrMaxPWMOutputs; i++)
-	//		Config.Stats[ESCI2CFailS] += ESCI2CFail[i];
-
-	UpdateConfig();
-
-} // WriteStatsNV
 
 
 

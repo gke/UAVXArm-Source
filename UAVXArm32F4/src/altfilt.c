@@ -21,18 +21,18 @@
 
 #include "UAVX.h"
 
+const real32 AccZBiasVariance = 0.01f;
+
 real32 DensityAltitudeP;
 real32 BaroVariance = 0.35f;
 real32 AccZVariance = 0.04f;
 real32 AccZSDevN = 0.3f;
 real32 TrackAccZVariance = 0.04f;
-const real32 AccZBiasVariance = 0.0005f;
 
 real32 m00 = 1.0f;
 real32 m01 = 0.0f;
 real32 m10 = 0.0f;
 real32 m11 = 1.0f;
-
 
 void InitAltitudeFilters(void) {
 	const uint8 AltLPFOrder = 1;
@@ -48,9 +48,9 @@ void InitAltitudeFilters(void) {
 
 	initLPFn(&AccZBumpLPF, 2, 1.0f);
 
-	initLPFn(&AltitudeLPF, AltLPFOrder, AltLPFHz); // ALT_UPDATE_MS
-	initLPFn(&ROCLPF, ROCLPFOrder, AltLPFHz);
-	initLPFn(&FROCLPF, ROCFLPFOrder, AltLPFHz * 0.25f);
+	initLPFn(&AltitudeLPF, AltLPFOrder, CurrAltLPFHz); // ALT_UPDATE_MS
+	initLPFn(&ROCLPF, ROCLPFOrder, CurrAltLPFHz);
+	initLPFn(&FROCLPF, ROCFLPFOrder, CurrAltLPFHz * 0.25f);
 
 } // InitAltitudeFilters
 
@@ -66,37 +66,40 @@ void AltitudeKF(real32 Alt, real32 AccZ, real32 dT) {
 	const real32 q10 = 0.5f * AccZVariance * (dT * dT * dT);
 	const real32 q11 = AccZVariance * (dT * dT);
 
-	real32 ps0, ps1, opt;
+	real32 ps0, ps1, cse;
 	real32 pp00, pp01, pp10, pp11;
-	real32 inn, icR, kg0, kg1;
+	real32 inov, icR, kg0, kg1;
 
 	ps0 = DensityAltitude + ROC * dT + 0.5f * AccZ * Sqr(dT);
 	ps1 = ROC + AccZ * dT;
 
-	opt = m11 * dT;
-	pp01 = m01 + opt + q01;
+	cse = m11 * dT;
+	pp01 = m01 + cse + q01;
 
-	pp10 = m10 + opt;
+	pp10 = m10 + cse;
 	pp00 = m00 + (m01 + pp10) * dT + q00;
 	pp10 += q10;
 	pp11 = m11 + q11;
 
-	inn = Alt - ps0;
+	inov = Alt - ps0;
 	icR = 1.0f / (pp00 + BaroVariance);
 
 	kg0 = pp00 * icR;
 	kg1 = pp10 * icR;
 
-	DensityAltitude = ps0 + kg0 * inn;
-	ROC = ps1 + kg1 * inn;
+	DensityAltitude = ps0 + kg0 * inov;
+	ROC = ps1 + kg1 * inov;
 
-	opt = 1.0f - kg0;
-	m00 = pp00 * opt;
-	m01 = pp01 * opt;
+	m00 = pp00 * (1.0f - kg0);
+	m01 = pp01 * (1.0f - kg0);
 	m10 = pp10 - pp00 * kg1;
 	m11 = pp11 - pp01 * kg1;
 
 } // AltitudeKF
+
+
+
+
 
 
 

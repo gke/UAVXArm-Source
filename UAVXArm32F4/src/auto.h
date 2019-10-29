@@ -129,6 +129,7 @@ void InitiateRTH(void );
 void InitiatePH(void );
 void CapturePosition(void );
 void CheckRapidDescentHazard(void );
+boolean NotDescending(void);
 
 void DecayPosCorr(void );
 void InitiateShutdown(uint8 s);

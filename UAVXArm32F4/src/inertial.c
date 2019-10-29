@@ -36,8 +36,6 @@ uint32 AccZSamples = 0;
 
 HistStruct AccZF;
 
-real32 AltLPFHz;
-
 real32 EstMagHeading = 0.0f;
 
 uint8 CurrIMUOption = unknownIMUOption;
@@ -176,27 +174,26 @@ void UpdateAccZVariance(real32 AccZ) {
 	static real32 A[128];
 	static uint16 i = 0;
 
-	//	if (State != InFlight) {
-	A[i++] = AccZ;
+	if (State != InFlight) {
+		A[i++] = AccZ;
 
-	if (i >= 128) {
-		TrackAccZVariance = TrackAccZVariance * AccZ_K + CalculateVariance(A,
-				128) * (1.0f - AccZ_K);
-		i = 0;
+		if (i >= 128) {
+			TrackAccZVariance = TrackAccZVariance * AccZ_K + CalculateVariance(
+					A, 128) * (1.0f - AccZ_K);
+			i = 0;
+		}
 	}
-	//	}
 
 } // UpdateAccZVariance
 
 real32 ConditionAccZ(real32 dT) {
 	real32 NewAccZ;
 
-	NewAccZ = (AccZSamples > 0) ? median(AccZMF, AccZSamples): 0.0f; // 2.43uS
+	NewAccZ = (AccZSamples > 0) ? median(AccZMF, AccZSamples) : 0.0f; // 2.43uS
 	AccZSamples = 0;
 
 	if (State != InFlight)
-		AccZBias = AccZBias * (1.0f - AccZBiasVariance) + NewAccZ
-				* AccZBiasVariance;
+		AccZBias = AccZBias * (1.0f - AccZBiasVariance) + NewAccZ * AccZBiasVariance;
 	NewAccZ -= AccZBias;
 
 	UpdateAccZVariance(NewAccZ);
@@ -228,8 +225,12 @@ void InitMadgwick(void) {
 	Angle[Roll] = asinf(Acc[LR]);
 	Angle[Pitch] = asinf(-Acc[BF]);
 
-	InitialMagHeading = CalculateMagneticHeading();
-	Angle[Yaw] = InitialMagHeading;
+	if (F.MagnetometerFailure)
+		Angle[Yaw] = 0.0f;
+	else {
+		InitialMagHeading = CalculateMagneticHeading();
+		Angle[Yaw] = InitialMagHeading;
+	}
 
 	ConvertEulerToQuaternion();
 
@@ -278,8 +279,6 @@ void MadgwickUpdate(real32 gx, real32 gy, real32 gz, real32 ax, real32 ay,
 	real32 bx, bz;
 	real32 vx, vy, vz;
 	real32 wx, wy, wz;
-
-	tickCountOn(MadgwickTick);
 
 	q0q0 = q0 * q0;
 	q0q1 = q0 * q1;
@@ -369,8 +368,6 @@ void MadgwickUpdate(real32 gx, real32 gy, real32 gz, real32 ax, real32 ay,
 
 	ConvertQuaternionToEuler();
 
-	tickCountOff(MadgwickTick);
-
 } // MadgwickUpdate
 
 
@@ -392,14 +389,9 @@ void UpdateInertial(void) {
 	if (F.Emulation && (State == InFlight))
 		DoEmulation(); // produces ROC, Altitude etc.
 	else {
-		tickCountOn(IMUTick);
 		ReadFilteredGyroAndAcc(imuSel);
-		tickCountOff(IMUTick);
-
 		ScaleRateAndAcc(imuSel);
-
 		UpdateAccZ(dT);
-
 		GetMagnetometer();
 	}
 
@@ -407,12 +399,14 @@ void UpdateInertial(void) {
 		MadgwickUpdate(Rate[Roll], Rate[Pitch], Rate[Yaw], Acc[BF], Acc[LR],
 				Acc[UD], Mag[X], Mag[Y], Mag[Z]);
 
+	//Angle[Roll] = Acc[LR];
+	//Angle[Pitch] = Acc[BF];
+
 	DoControl();
 
 	// one cycle delay OK
 	UpdateHeading(); // 225uS!!!
 
-	UpdateGPS();
 	if (F.NewGPSPosition) {
 		F.NewGPSPosition = false;
 
@@ -428,11 +422,8 @@ void UpdateInertial(void) {
 		F.NewNavUpdate = Nav.Sensitivity > NAV_SENS_THRESHOLD_STICK;
 	}
 
-	if (!F.Emulation) {
-
-		UpdateAltitudeEstimates();
-		UpdateAirspeed();
-	}
+	UpdateAltitudeEstimates();
+	UpdateAirspeed();
 
 	TrackPitchAttitude();
 

@@ -22,12 +22,6 @@
 #ifndef _magnetometer_h
 #define _magnetometer_h
 
-typedef struct {
-	uint8 Calibrated; // exactly = 1 => calibrated
-	real32 Magnitude; // retained for field strength measure - maybe used for gain setting
-	real32 Bias[3];
-} MagCalStruct;
-
 extern int16 RawMag[];
 extern real32 MagScale[];
 extern real32 MagSample[][3];

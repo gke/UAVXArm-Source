@@ -151,22 +151,29 @@ void TIM8_BRK_TIM12_IRQHandler(void) {
 
 void TIM2_IRQHandler(void) {
 
-	if (CurrRxType == CPPMRx) {
-		if (TIM_GetITStatus(TIM2, TIM_IT_CC1) == SET)
-			RCSerialISR(TIM_GetCapture1(TIM2));
-		TIM_ClearITPendingBit(TIM2, TIM_IT_CC1);
-	} else if (CurrRxType == ParallelPPMRx)
+	if (CurrRxType == ParallelPPMRx)
 		RCParallelISR(TIM2);
-
+	else {
+		if (CurrRxType == CPPMRx) {
+			if (TIM_GetITStatus(TIM2, TIM_IT_CC1) == SET) {
+				RCSerialISR(TIM_GetCapture1(TIM2));
+				TIM_ClearITPendingBit(TIM2, TIM_IT_CC1);
+			}
+		}
+	}
 } // TIM2_IRQHandler
 
 void TIM3_IRQHandler(void) {
 
-	if (CurrRxType == CPPMRx) {
-		if (TIM_GetITStatus(TIM3, TIM_IT_CC1) == SET)
-			RCSerialISR(TIM_GetCapture1(TIM3));
-		TIM_ClearITPendingBit(TIM3, TIM_IT_CC1);
-	} else if (CurrRxType == ParallelPPMRx)
+	/*
+	 if (CurrRxType == CPPMRx) {
+	 if (TIM_GetITStatus(TIM3, TIM_IT_CC1) == SET)
+	 RCSerialISR(TIM_GetCapture1(TIM3));
+	 TIM_ClearITPendingBit(TIM3, TIM_IT_CC1);
+
+	 } else
+	 */
+	if (CurrRxType == ParallelPPMRx)
 		RCParallelISR(TIM3);
 
 } // TIM3_IRQHandler
@@ -181,12 +188,12 @@ void DMA2_Stream2_IRQHandler(void) {
 
 #if (defined(USE_WS2812) || defined(USE_WS2812B))
 
-	if (UsingWS28XXLEDs) {
-	if (DMA_GetITStatus(DMA2_Stream2, DMA_IT_TCIF2)) {
-		DMA_ClearITPendingBit(DMA2_Stream2, DMA_IT_TCIF2);
-		WSDMAInactive = true;
-	}
-	}
+	if (UsingWS28XXLEDs)
+		if (DMA_GetITStatus(DMA2_Stream2, DMA_IT_TCIF2)) {
+			DMA_ClearITPendingBit(DMA2_Stream2, DMA_IT_TCIF2);
+			WSDMAInactive = true;
+		}
+
 #endif
 
 } // DMA2_Stream2_IRQHandler
@@ -252,9 +259,6 @@ void USART2_IRQHandler(void) {
 
 
 void USART3_IRQHandler(void) {
-#if defined (UAXF4V4)
-	if (CurrComboPort2Config == RF_GPS_V4)
-#endif
 	SerialISR(3);
 } // USART2_IRQHandler
 

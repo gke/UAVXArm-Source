@@ -28,8 +28,8 @@ PinDef RCPins[MAX_RC_INPUTS] = {
 	{true, PA0, PWMPinConfig, PWMIn_2_1},
 	// Archaic
 	{true, PA1, PWMPinConfig, PWMIn_2_2},
-	{true, PA2, PWMPinConfig, PWMIn_2_3},
-	{true, PA3, PWMPinConfig, PWMIn_2_4},
+	{true, PA2, PWMPinConfig, PWMIn_2_3}, // USART
+	{true, PA3, PWMPinConfig, PWMIn_2_4}, // USART
 	{true, PA6, PWMPinConfig, PWMIn_3_1},
 	{true, PA7, PWMPinConfig, PWMIn_3_2},
 	{true, PB0, PWMPinConfig, PWMIn_3_3},
@@ -88,10 +88,10 @@ PinDef LEDPins[MAX_LED_PINS] = {
 
 SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
 	{false, }, // mapped to USBSerial
-	{true, USART1, PA9, PA10, 115200, USART1Config,},
-	{true, USART2, PA2, PA3, 9600, USART2Config,},
-	{false, USART3, PB10, PB11, 115200, USART3Config,},
-	{false, UART4, PC10, PC11, 115200, UART4Config,},
+	{true, USART1, PA9, PA10, 115200, true, false, USART1Config},
+	{true, USART2, PA2, PA3, 9600, true, false, USART2Config},
+	{false, USART3, PB10, PB11, 115200, true, false, USART3Config},
+	{false, UART4, PC10, PC11, 115200, true, false, UART4Config},
 	{false, 0 } // SoftSerial
 };
 
@@ -135,6 +135,11 @@ DevDef busDev[maxDevSel] = {
 	{false, rfSel, },
 	{false, asSel, },
 	{false, flowSel, },
+#if defined(USE_OLED)
+	{true, oledSel, oledDisplay, false, 2, SSD1X06_I2C_ADDRESS,},
+#else
+	{false, oledSel, oledDisplay,},
+#endif
 #if defined(USE_SPI_ESC)	 
 	{true, escSPISel, ESCSPI, true, 1, 0, PC13}, // PC13 NC no select required
 #else

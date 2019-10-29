@@ -24,15 +24,15 @@ boolean FirstPass;
 boolean PreflightFail = false;
 uint8 ArmingMethod;
 
-void Probe(uint8 p) {
+void Probe(boolean p) {
 #if defined(USE_AUX3_PROBE_PIN)
 	DigitalWrite(&GPIOPins[WPMissionOrProbeSel].P, p);
 #endif
 } // Probe
 
 void Marker(void) {
-	Probe(1);
-	Probe(0);
+	Probe(true);
+	Probe(false);
 } // Marker
 
 void CheckLandingSwitch(void) { // sampled every PID cycle
@@ -62,22 +62,15 @@ void CheckLandingSwitch(void) { // sampled every PID cycle
 
 
 boolean Armed(void) {
-	static boolean SwitchP = false;
-	boolean NewUplinkState, IsArmed;
+	static boolean ArmedP = false;
+	boolean NewUplinkState;
+	boolean IsArmed;
 
-	if ((ArmingSwitch != SwitchP) && (State != InFlight)) {
-		DoBeep(3, 0);
-		SwitchP = ArmingSwitch;
-	}
+	if (State != InFlight)
+		F.IsArmed = (ArmedByTx || (ArmingMethod == SwitchArming))
+				&& ArmingSwitch;
 
-	if (ArmingMethod == TxSwitchArming)
-		IsArmed = ArmingSwitch && TxSwitchArmed;
-	else if (ArmingMethod == SwitchArming)
-		IsArmed = ArmingSwitch;
-	else
-		IsArmed = ArmingSwitch && StickArmed;
-
-	NewUplinkState = !((GPSRxSerial == TelemetrySerial) && IsArmed);
+	NewUplinkState = !((GPSRxSerial == TelemetrySerial) && F.IsArmed);
 	if (F.UsingUplink != NewUplinkState) {
 		RxEnabled[TelemetrySerial] = false;
 		RxQNewHead[TelemetrySerial] = RxQHead[TelemetrySerial]
@@ -86,7 +79,7 @@ boolean Armed(void) {
 		F.UsingUplink = NewUplinkState;
 	}
 
-	return (IsArmed);
+	return (F.IsArmed);
 
 } // Armed
 
@@ -131,15 +124,14 @@ void DoCalibrationAlarm(void) {
 
 void DoBeep(uint8 t, uint8 d) {
 	int32 i;
-	timeuS TimeoutuS;
 
 	BeeperOn();
-	for (i = 0; i < (t * 500); i++)
-		Delay1uS(100);
+	for (i = 0; i < t; i++)
+		Delay1mS(100);
 
 	BeeperOff();
-	for (i = 0; i < (d * 500); i++)
-		Delay1uS(100);
+	for (i = 0; i < d; i++)
+		Delay1mS(100);
 
 } // DoBeep
 
@@ -167,12 +159,15 @@ void CheckAlarms(void) {
 	static timemS BeeperOnTime = 100;
 
 	F.BeeperInUse = PreflightFail || F.LowBatt || (State == Shutdown) || (State
-			== ThrottleOpenCheck) || (NavState == Descending);
+			== ThrottleOpenCheck) || (NavState == Descending) || AltHoldAlarmActive;
 
 	if (F.BeeperInUse) {
 		if (F.LowBatt) {
 			BeeperOffTime = 600;
 			BeeperOnTime = 600;
+		} else if (AltHoldAlarmActive) {
+			BeeperOffTime = 1000;
+			BeeperOnTime = 1000;
 		} else if (State == Shutdown) {
 			BeeperOffTime = 4750;
 			BeeperOnTime = 250;
@@ -185,11 +180,11 @@ void CheckAlarms(void) {
 			if (BeeperIsOn()) {
 				mSTimer(BeeperUpdate, BeeperOffTime);
 				BeeperOff();
-				LEDOff(ledRedSel);
+			//zzz	LEDOff(ledRedSel);
 			} else {
 				mSTimer(BeeperUpdate, BeeperOnTime);
 				BeeperOn();
-				LEDOn(ledRedSel);
+			//zzz	LEDOn(ledRedSel);
 			}
 		}
 	} else {

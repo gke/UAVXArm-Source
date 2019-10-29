@@ -22,7 +22,7 @@
 
 uint32 spiErrors = 0;
 
-// imu0Sel,imu1Sel,baroSel,magSel,memSel,gpsSel,rfSel,asSel,flowSel,escSPISel,escI2CSel
+// imu0Sel,imu1Sel,baroSel,magSel,memSel,gpsSel,rfSel,asSel,flowSel,oledSel, escSPISel,escI2CSel
 // 20 20 20 8 20 20 unused MBaud
 
 #define SPI_CLOCK_SLOW          128 //00.65625 MHz
@@ -41,6 +41,7 @@ const SPIDefStruct SPIDef[] = { { false, spi_21, spi_0_65625 }, // imu0sel
 		{ false, spi_10_5, spi_10_5 }, // rfSel
 		{ false, spi_10_5, spi_10_5 }, // asSel
 		{ false, spi_10_5, spi_10_5 }, // flowSel
+		{ false, spi_10_5, spi_10_5 }, // oledSel
 		{ false, spi_10_5, spi_10_5 }, // escSPISel
 		{ false, spi_10_5, spi_10_5 }, // escI2CSel
 		{ false, spi_10_5, spi_10_5 } };
@@ -86,9 +87,9 @@ SPI_TypeDef * SPISetBaudRate(uint8 spiDev, boolean R) {
 void SPISelect(uint8 spiDev, boolean Sel) {
 
 	if (Sel)
-		DigitalWrite(&busDev[spiDev].P, 0);
+		DigitalWrite(&busDev[spiDev].P, false);
 	else {
-		DigitalWrite(&busDev[spiDev].P, 1);
+		DigitalWrite(&busDev[spiDev].P, true);
 		Delay1uS(1);
 	}
 

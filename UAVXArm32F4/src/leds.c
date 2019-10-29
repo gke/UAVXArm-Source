@@ -185,8 +185,9 @@ uint8 CurrBeeperSel = Aux2Sel; //BeeperSel;
 #if (defined(USE_WS2812) || defined(USE_WS2812B))
 
 // Y/O, R, B, G
-const WSLEDStruct WSLEDColours[] = { { 0xff, 0x45, 0 }, { 0xff, 0, 0 }, { 0, 0,
+const WSLEDStruct WSLEDColours[] = { { 0xff, 0xa5, 0 }, { 0xff, 0, 0 }, { 0, 0,
 		0xff }, { 0, 0x80, 0 } }; // RGB
+
 const WSLEDStruct LEDNone = { 0, 0, 0 };
 
 uint16 WSLEDPWMBuffer[MAX_PWM_BUFFER_SIZE];
@@ -194,23 +195,34 @@ WSLEDStruct WSLEDs[MAX_WS2812_LEDS];
 uint8 NoOfWSLEDs, WSLEDGroupSize;
 uint16 WSLEDBufferSize;
 uint8 CurrWSLED = 0;
-boolean WSLEDChanged;
-volatile boolean WSDMAInactive;
+boolean LEDStateChanged;
 
 // Recommendation post 2013 from WorldSemi are now: 0 = 400ns high/850ns low, and 1 = 850ns high, 400ns low"
 // Currently the timings are 0 = 350ns high/800ns and 1 = 700ns high/650ns low.
 // Betaflight timings are 0 = 350ns high/800ns and 1 = 700ns high/650ns low.
 
+/*
+ * "Note that the timing on the WS2812/WS2812B LEDs has changed as of batches from WorldSemi
+ * manufactured made in October 2013, and timing tolerance for approx 10-30% of parts is very small.
+ * Recommendation from WorldSemi is now: 0 = 400ns high/850ns low, and 1 = 850ns high, 400ns low"
+ *
+ * Currently the timings are 0 = 350ns high/800ns and 1 = 700ns high/650ns low.
+ *
+ *
+ *
+ * 375/875 750/500 TODO:
+ *
+ *
+ *
+ */
 
-#define ss 33 // 168.0f
-#if defined(USE_WS2812)
-const uint16 WS_L = (uint16) (0.35f * ss); // 11.55 473
-const uint16 WS_H = (uint16) (0.7f * ss); // 23.1 947
+//Compute the prescaler value
+// uint16 period = WS2811_TIMER_HZ / WS2811_CARRIER_HZ;
 
-#else // USE_WS2812B
-const uint16 WS_L = (uint16)(0.4f*ss); // 13.2 541.2
-const uint16 WS_H = (uint16)(0.8f*ss); // 26.4 1082.4
-#endif
+
+const uint16 WS_H = 27; // 20; //period * 2 / 3;
+const uint16 WS_L = 14; //10; //period / 3;
+
 
 static inline void GenWSLEDPWM(uint16 ** const dest, const uint8 color) {
 	// generates the PWM patterns for each colour byte - lookup table would be too large
@@ -218,7 +230,7 @@ static inline void GenWSLEDPWM(uint16 ** const dest, const uint8 color) {
 	uint8 mask = 0x80;
 
 	do {
-		**dest = color & mask ? WS_H : WS_L; // pulse width 0.625, 0.25
+		**dest = color & mask ? WS_H : WS_L;
 		*dest += 1;
 		mask >>= 1;
 	} while (mask != 0);
@@ -228,26 +240,30 @@ static inline void GenWSLEDPWM(uint16 ** const dest, const uint8 color) {
 void UpdateWSLEDBuffer(void) {
 	WSLEDStruct *WSLEDptr;
 	uint16 *WSPWMptr;
+	idx CurrWSLED;
 	uint16 i;
 
-	if (UsingWS28XXLEDs && WSLEDChanged && WSDMAInactive) { // 9.25uS @ 168MHz
-	//	Probe(1);
-		CurrWSLED = 0;
-		for (i = 0; i < WSLEDBufferSize; i += WS2812_COLOUR_FRAME_LEN) {
-			WSLEDptr = &WSLEDs[CurrWSLED];
-			WSPWMptr = &WSLEDPWMBuffer[0] + i;
+	if (UsingWS28XXLEDs) {
+		if (WSDMAInactive) {
+			if (LEDStateChanged) {
+				CurrWSLED = 0;
+				for (i = 0; i < WSLEDBufferSize; i += WS2812_COLOUR_FRAME_LEN) {
+					WSLEDptr = &WSLEDs[CurrWSLED];
+					WSPWMptr = &WSLEDPWMBuffer[0] + WS2812_RESET_LEN + i;
 
-			// WS2812 order is G R B
-			GenWSLEDPWM(&WSPWMptr, WSLEDptr->g);
-			GenWSLEDPWM(&WSPWMptr, WSLEDptr->r);
-			GenWSLEDPWM(&WSPWMptr, WSLEDptr->b);
-			CurrWSLED++;
+					GenWSLEDPWM(&WSPWMptr, WSLEDptr->g);
+					GenWSLEDPWM(&WSPWMptr, WSLEDptr->r);
+					GenWSLEDPWM(&WSPWMptr, WSLEDptr->b);
+					CurrWSLED++;
+				}
+				LEDStateChanged = false;
+			}
+			WSPinDMAEnable(WSLEDBufferSize);
+			WSDMAInactive = false;
 		}
-		WSLEDChanged = WSDMAInactive = false;
-		WSPinDMAEnable();
-		//Probe(0);
 	}
 } // UpdateWSLEDBuffer
+
 
 void SetWSLEDColours(idx i, uint8 R, uint8 G, uint8 B) {
 	WSLEDs[i].g = G;
@@ -269,16 +285,14 @@ void InitWSLEDs(void) {
 		for (l = 0; l < NoOfWSLEDs; l++)
 			SetWSLEDColours(l, 0, 0, 0);
 
-		InitWSPin(WSLEDBufferSize + WS2812_COLOUR_FRAME_LEN); // end of buffer has zero colour field
-		WSLEDChanged = true;
-		WSDMAInactive = false;
+		InitWSPin(WSLEDBufferSize);
+		LEDStateChanged = WSDMAInactive = true;
 	}
 
 } // InitWSLEDs
 
 
 void WSLEDColour(idx i, const WSLEDStruct w) {
-
 	SetWSLEDColours(i, w.r, w.g, w.b);
 } // WSLEDColour
 
@@ -288,7 +302,9 @@ void WSLEDOn(idx l) { // run in pairs
 	if (!LEDState[l]) {
 		for (ll = 0; ll < WSLEDGroupSize; ll++)
 			WSLEDColour(l * WSLEDGroupSize + ll, WSLEDColours[l]);
-		WSLEDChanged = true;
+
+		LEDStateChanged |= true;
+		LEDState[l] = true;
 	}
 
 } // WSLEDOn
@@ -299,7 +315,8 @@ void WSLEDOff(idx l) {
 	if (LEDState[l]) {
 		for (ll = 0; ll < WSLEDGroupSize; ll++)
 			SetWSLEDColours(l * WSLEDGroupSize + ll, 0, 0, 0);
-		WSLEDChanged = true;
+		LEDStateChanged |= true;
+		LEDState[l] = false;
 	}
 
 } // WSLEDOff;
@@ -333,11 +350,17 @@ void InitWSLEDs(void) {}
 
 
 void BeeperOff(void) {
-	DigitalWrite(&GPIOPins[CurrBeeperSel].P, 0); //
+	if (CurrBeeperSel == Aux2Sel)
+		DigitalWrite(&GPIOPins[CurrBeeperSel].P, true);
+	else
+		DigitalWrite(&GPIOPins[CurrBeeperSel].P, false); //
 } // BeeperOff
 
 void BeeperOn(void) {
-	DigitalWrite(&GPIOPins[CurrBeeperSel].P, 1);
+	if (CurrBeeperSel == Aux2Sel)
+		DigitalWrite(&GPIOPins[CurrBeeperSel].P, false);
+	else
+		DigitalWrite(&GPIOPins[CurrBeeperSel].P, true);
 } // BeeperOn
 
 void BeeperToggle(void) {
@@ -345,15 +368,16 @@ void BeeperToggle(void) {
 } // BeeperToggle
 
 boolean BeeperIsOn(void) {
-	return ((DigitalRead(&GPIOPins[CurrBeeperSel].P) & 1) != 0);
+	return (DigitalRead(&GPIOPins[CurrBeeperSel].P));
 } // BeeperIsOn
 
 void LEDOn(uint8 l) {
+
 	if (UsingWS28XXLEDs)
 		WSLEDOn(l);
 	else
 		DigitalWrite(&LEDPins[l].P, ledsLowOn);
-	LEDState[l] = true;
+
 } // LEDOn
 
 void LEDOff(uint8 l) {
@@ -361,7 +385,7 @@ void LEDOff(uint8 l) {
 		WSLEDOff(l);
 	else
 		DigitalWrite(&LEDPins[l].P, !ledsLowOn);
-	LEDState[l] = false;
+
 } // LEDOff
 
 void LEDToggle(uint8 l) {
@@ -369,7 +393,6 @@ void LEDToggle(uint8 l) {
 		WSLEDToggle(l);
 	else
 		DigitalToggle(&LEDPins[l].P);
-	LEDState[l] = !LEDState[l];
 } // LEDToggle
 
 void LEDsOn(void) {
@@ -386,6 +409,34 @@ void LEDsOff(void) {
 		LEDOff(l);
 } // LEDsOff
 
+void LEDsOffExcept(uint8 l) {
+	idx lll;
+
+	for (ll = 0; ll < MAX_LED_PINS; ll++)
+		if (l == ll)
+			LEDOn(l);
+		else
+			LEDOff(l);
+
+} // LEDsOffExcept
+
+void LEDChaser(void) {
+	static uint16 lastLED = 0;
+	static boolean blink = false;
+
+	if (UsingWS28XXLEDs)
+		if (mSTimeout(chaserTimeout)) {
+			mSTimer(chaserTimeout, 100);
+
+			LEDOff(lastLED);
+			lastLED++;
+			if (lastLED >= MAX_LED_PINS)
+				lastLED = 0;
+			LEDOn(lastLED);
+		}
+
+} // LEDChaser
+
 void SaveLEDs(void) { // one level only
 	idx l;
 
@@ -396,6 +447,7 @@ void SaveLEDs(void) { // one level only
 void RestoreLEDs(void) {
 	idx l;
 
+	LEDsOff();
 	for (l = 0; l < MAX_LED_PINS; l++)
 		if (LEDsSaved[l])
 			LEDOn(l);
@@ -416,5 +468,3 @@ void InitLEDs(void) {
 	BeeperOff();
 
 } // InitLEDs
-
-

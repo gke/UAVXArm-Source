@@ -30,10 +30,10 @@ void AltitudeCF(real32 Alt, real32 AccZ, real32 dT);
 void AltitudeKF(real32 Alt, real32 AccZ, real32 dT);
 void AltitudeFreeIMUCF(real32 Alt, real32 AccZ, real32 dT);
 
-void InitAltitudeKF3V(real32 zMeasVariance, real32 zAccelVariance, real32 zAccelBiasVariance, real32 zInitial, real32 vInitial, real32 aBiasInitial);
-void AltitudeKF3V(real32 z, real32 a, real32 dt);
+void AltitudeKF4V(real32 Alt, real32 RFAlt, real32 GPSAlt, real32 AccZ,
+		real32 dT);
 
-const real32 AccZBiasVariance;
+extern const real32 AccZBiasVariance;
 extern real32 BaroVariance, AccZVariance, AccZSDevN, TrackAccZVariance;
 #endif
 

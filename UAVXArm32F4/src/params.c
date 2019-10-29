@@ -26,15 +26,16 @@ const uint8 NoOfDefParamSets = sizeof(DefaultParams) / sizeof(ParamStruct);
 
 //uint8 NavStrength;
 
-volatile boolean StickArmed = false;
+volatile boolean ArmedByTx = false;
 volatile boolean TxSwitchArmed = false;
+
+//volatile boolean TxSwitchArmed = false;
 
 uint8 UAVXAirframe = AFUnknown;
 boolean IsMulticopter;
 boolean UsingGliderStrategy, UsingFastStart, UsingBLHeliPrograming, UsingHWLPF,
-		UsingOffsetHome, UsingNavBeep;
+		UsingNavBeep;
 
-boolean ConfigChanged = false;
 uint8 CurrConfig1, CurrConfig2;
 uint8 CurrUAVXAirframe;
 uint8 CurrMotorStopSel;
@@ -50,19 +51,10 @@ boolean ConfigUninitialised(void) {
 
 
 boolean UpdateConfig(void) {
-	uint16 i;
-	boolean r = true;
 
-	//for (i = 0; i < l; i++) // TODO: optimise to word compares
-	//	r &= v[i] == FlashNV[a + i]; //*(int8 *) (FLASH_SCRATCH_ADDR + a + i);
+	return WriteBlockArmFlash(true, CONFIG_FLASH_SECTOR, CONFIG_FLASH_ADDR + 0,
+			sizeof(Config), (uint8 *) &Config);
 
-	if (ConfigChanged) {
-		WriteBlockArmFlash(true, CONFIG_FLASH_SECTOR, CONFIG_FLASH_ADDR + 0,
-				sizeof(Config), (uint8 *) &Config);
-		ConfigChanged = false;
-	}
-
-	return (r);
 } // UpdateConfig
 
 uint8 P(uint8 i) {
@@ -70,10 +62,9 @@ uint8 P(uint8 i) {
 } // P
 
 void SetP(uint8 i, uint8 v) {
-	if (P(i) != v) {
+	if (P(i) != v)
 		Config.P[Config.CurrPS][i] = v;
-		ConfigChanged = true;
-	}
+
 } // SetP
 
 uint8 LimitP(uint8 i, uint8 l, uint8 h) { // TODO: really should have a limits array for all params as a prepass
@@ -111,12 +102,12 @@ void DoConfigBits(void) {
 
 	// Config1
 	F.UsingRTHAutoDescend = (P(Config1Bits) & UseRTHDescendMask) != 0;
-	F.GPSToLaunchRequired = (P(Config1Bits) & GPSToLaunchRequiredMask) != 0;
+	F.UsingAltHoldAlarm = (P(Config1Bits) & UseAltHoldAlarmMask) != 0;
 	F.InvertMagnetometer = (P(Config1Bits) & UseInvertMagMask) != 0;
 	F.UsingRapidDescent = (P(Config1Bits) & UseRapidDescentMask) != 0;
 	F.Emulation = (P(Config1Bits) & EmulationEnableMask) != 0;
 	F.UseManualAltHold = (P(Config1Bits) & UseManualAltHoldMask) != 0;
-	UsingOffsetHome = (P(Config1Bits) & UseOffsetHomeMask) != 0;
+	F.UsingOffsetHome = (P(Config1Bits) & UseOffsetHomeMask) != 0;
 	// Config2
 	UsingPavelFilter = (P(Config2Bits) & UsePavelFilterMask) != 0;
 	UsingFastStart = (P(Config2Bits) & UseFastStartMask) != 0;
@@ -134,8 +125,6 @@ void InitPIDStructs(void) {
 	AxisStruct * C;
 
 	// Nav
-
-	memset(&Nav, 0, sizeof(Nav));
 
 	Nav.PosKp = (real32) P(NavPosKp) * 0.0165f; //20 -> 0.33f;
 	Nav.PosKi = (real32) P(NavPosKi) * 0.004f; // 5 -> 0.02f;
@@ -163,8 +152,6 @@ void InitPIDStructs(void) {
 
 	const real32 ScaleRateKp = 0.005f;
 	const real32 ScaleRateKd = 0.0001f; // 0.0045
-
-	memset(&A, 0, sizeof(A[3]));
 
 	// Pitch
 	C = &A[Pitch];
@@ -219,12 +206,13 @@ void InitPIDStructs(void) {
 
 	// Altitude
 
-	memset(&Alt, 0, sizeof(Alt));
-
 	Alt.P.Kp = (real32) P(AltPosKp) * 0.018f; // 0.65->36, 1.3->71
 
 	Alt.P.Max = (real32) P(AltHoldBand) * 1.0f;
 	Alt.R.Max = Alt.P.Max * Alt.P.Kp; // default
+
+	Alt.P.Ki = (real32) P(AltPosKi) * 0.0074f;
+	Alt.P.IntLim = (real32) P(AltPosIntLimit) * 0.035; // 0.35 0.15f;
 
 	SetP(MaxROC, Limit(Alt.R.Max, 1, ALT_MAX_ROC_MPS) * 10);
 	MaxROCMPS = P(MaxROC) * 0.1f;
@@ -257,86 +245,84 @@ void SetPIDPeriod(void) {
 
 } // SetPIDPeriod
 
-boolean AltFiltersChanged(void) {
+boolean CurrAltFiltersChanged(void) {
 
-	return  (AltLPFHz != P(AltLPF));
+	return (CurrAltLPFHz != P(AltLPF));
 
-} // AltFiltersChanged
+} // CurrAltFiltersChanged
 
-boolean InertialFiltersChanged(void) {
+boolean CurrInertialFiltersChanged(void) {
 
-	return (
-			CurrAccLPFSel != P(AccLPFSel)) //
+	return (CurrAccLPFSel != P(AccLPFSel)) //
 			|| (CurrGyroLPFSel != P(GyroLPFSel)) //
 			|| (CurrYawLPFHz != P(YawLPFHz)) //
 			|| (CurrServoLPFHz != P(ServoLPFHz));
 
-} // InertialFiltersChanged
+} // CurrInertialFiltersChanged
 
 void UpdateParameters(void) {
 	// overkill if only a single parameter has changed but not in flight loop
 
-	if (F.ParametersChanged) {
+	// Misc
 
-		// Misc
+	F.UsingConvYawSense = (P(ServoSense) & UseConvYawSenseMask) != 0;
+	YawSense = F.UsingConvYawSense ? -1.0f : 1.0f;
 
-		F.UsingConvYawSense = (P(ServoSense) & UseConvYawSenseMask) != 0;
-		YawSense = F.UsingConvYawSense ? -1.0f : 1.0f;
+	UpdateRCMap(); // for channel re-assignment
 
-		UpdateRCMap(); // for channel re-assignment
+	// The following if statement identifies a change to the physical
+	// configuration or attached devices and forces a reboot to restore
+	// Arm registers to a known state and to initialise new devices.
 
-		// The following if statement identifies a change to the physical
-		// configuration or attached devices and forces a reboot to restore
-		// Arm registers to a known state and to initialise new devices.
+	if ((State == Preflight) || (State == Ready) || (State
+			== MonitorInstruments)) { // PARANOID
+		if ((CurrIMUOption != P(IMUOption)) //
+				|| (ArmingMethod != P(ArmingMode)) //
+				|| (CurrAttSensorType != P(SensorHint)) //
+				|| (CurrRxType != P(RxType)) //
+				|| (CurrConfig1 != P(Config1Bits)) //
+				|| (CurrConfig2 != P(Config2Bits)) //
+				|| (CurrESCType != P(ESCType)) //
+				|| (UAVXAirframe != P(AFType)) //
+				|| (CurrTelType != P(TelemetryType)) //
+				|| (CurrRFSensorType != P(RFSensorType)) //
+				|| (CurrASSensorType != P(ASSensorType)) //
+				|| CurrInertialFiltersChanged() //
+				|| CurrAltFiltersChanged() //
+				|| (CurrGPSType != P(GPSProtocol)) //
+				|| (CurrMotorStopSel != P(MotorStopSel)) //
+				|| (CurrNoOfWSLEDs != P(WS2812Leds)))
+			systemReset(false);
 
-		if ((State == Preflight) || (State == Ready)) // NOT IN FLIGHT
-			if ((CurrIMUOption != P(IMUOption)) //
-					|| (ArmingMethod != P(ArmingMode)) //
-					|| (CurrAttSensorType != P(SensorHint)) //
-					|| (CurrRxType != P(RxType)) //
-					|| (CurrConfig1 != P(Config1Bits)) //
-					|| (CurrConfig2 != P(Config2Bits)) //
-					|| (CurrESCType != P(ESCType)) //
-					|| (UAVXAirframe != P(AFType)) //
-					|| (CurrRFSensorType != P(RFSensorType)) //
-					|| (CurrASSensorType != P(ASSensorType)) //
-					|| InertialFiltersChanged() //
-					|| AltFiltersChanged() //
-					|| (CurrGPSType != P(GPSProtocol)) //
-					|| (CurrMotorStopSel != P(MotorStopSel)) //
-					|| (CurrNoOfWSLEDs != P(WS2812Leds)))
-				systemReset(false);
-
-		DoConfigBits();
 		InitPIDStructs();
 
 		// Throttle
-		IdleThrottlePW = IdleThrottle = FromPercent(LimitP(PercentIdleThr, RC_THRES_START + 1, 20));
+		IdleThrottlePW = IdleThrottle
+				= FromPercent(LimitP(PercentIdleThr, RC_THRES_START + 1, 20));
 
 		FWPitchThrottleFFFrac = FromPercent(P(FWPitchThrottleFF));
 		TiltThrFFFrac = FromPercent(P(TiltThrottleFF));
 
 		CGOffset = FromPercent(Limit1(P(Balance), 100));
 
-		if (P(EstCruiseThr) <= 0) {
-			CruiseThrottle = (F.IsFixedWing) ? THR_DEFAULT_CRUISE_FW_STICK
-					: THR_DEFAULT_CRUISE_STICK;
-			SetP(EstCruiseThr, CruiseThrottle * 100.0f);
-		}
 		if (F.Emulation)
 			CruiseThrottle = F.IsFixedWing ? THR_DEFAULT_CRUISE_FW_STICK
 					: THR_DEFAULT_CRUISE_STICK;
 		else
-			CruiseThrottle = FromPercent(P(EstCruiseThr));
+			CruiseThrottle =  FromPercent(LimitP(EstCruiseThr, 10, 65));
 
 		// Attitude
+
+		FWStickScaleFrac = FromPercent(LimitP(FWStickScale, 20, 100))
+				* OUT_NEUTRAL;
 
 #if defined(USE_IMU_DFT)
 
 #else
-		GyroSlewLimitFrac = FromPercent(Limit(P(GyroSlewRate), 1, 200));
+		GyroSlewLimitFrac = FromPercent(LimitP(GyroSlewRate, 1, 200));
 		SlewBand = MAX_NOISE_BANDS / (GyroSlewLimitFrac * 16384.0f);
 #endif
+		FWRollControlPitchLimitRad = DegreesToRadians(LimitP(FWRollControlPitchLimit, 45, 60));
 
 		StickDeadZone = FromPercent(LimitP(StickHysteresis, 1, 5));
 
@@ -367,24 +353,22 @@ void UpdateParameters(void) {
 		FWAltSpoilerFFFrac = FromPercent(P(FWAltSpoilerFF));
 		FWSpoilerDecayS = P(FWSpoilerDecayTime) * 0.1f;
 
+		AHThrottleWindow =  FromPercent((real32) (LimitP(AHThrottleMovingTrigger, 10, 100)) * 0.1f);
+
 		// Nav
 
-		LimitP(NavGPSTimeoutS, 2, 30);
-		NavGPSTimeoutmS = P(NavGPSTimeoutS) * 1000;
+		NavGPSTimeoutmS = (timemS) LimitP(NavGPSTimeoutS, 2, 30) * 1000;
 		MagVariation = DegreesToRadians((real32)P(NavMagVar) * 0.1f);
 
 		GPSMinhAcc = GPS_MIN_HACC; // not set in GUI LimitP(MinhAcc, 10, GPS_MIN_HACC * 10) * 0.1f;
+		GPSMinvAcc = GPS_MIN_VACC; // not set in GUI LimitP(MinhAcc, 10, GPS_MIN_HACC * 10) * 0.1f;
 
 		// Misc
 		InitServoSense();
 		InitBattery();
 
 		InitTune();
-
-		CurrTelType = P(TelemetryType);
 	}
-
-	F.ParametersChanged = false;
 
 } // UpdateParameters
 
@@ -466,103 +450,84 @@ void DoStickProgramming(void) {
 	timemS NowmS;
 	int8 NewCurrPS;
 	real32 BFTrim, LRTrim;
-	boolean Changed;
+	boolean Changed = false;
+
+	// Yaw & Roll swapped in pattern gen to make Mode 0/1 pattern equivalent
 
 	if (!Armed()) {
 
-		UpdateSticksState();
-
-		if (SticksState == SticksChanged) {
-			if ((P(ArmingMode) != SwitchArming) && (StickPattern == (THR_LO
-					| YAW_CE | PIT_CE | ROL_HI)) && ArmingSwitch && !StickArmed) {
-				LEDOn(ledBlueSel);
-				//DoBeep(3, 0);
-				StickArmed = true;
-				SticksState = MonitorSticks;
-				LEDOff(ledBlueSel);
-			} else {
-				NewCurrPS = Config.CurrPS;
-				switch (StickPattern) {
-				case THR_LO | YAW_HI | PIT_LO | ROL_CE: // TopRight
-					if (++NewCurrPS >= NO_OF_PARAM_SETS)
-						NewCurrPS = 0;
-					break;
-				case THR_LO | YAW_LO | PIT_LO | ROL_CE: // TopLeft
-					if (--NewCurrPS < 0)
-						NewCurrPS = NO_OF_PARAM_SETS - 1;
-					break;
-				default:
-					break;
-				} // switch
-
-				if (NewCurrPS != Config.CurrPS) {
-					LEDOn(ledBlueSel);
-					// IGNORE	Config.CurrPS = NewCurrPS;
-					DoBeeps(Config.CurrPS + 1);
-					F.ParametersChanged = true;
-					LEDOff(ledBlueSel);
-				}
-				SticksState = MonitorSticks;
+		if (ArmingMethod == TxSwitchArming)
+			ArmedByTx = TxSwitchArmed;
+		else {
+			UpdateSticksState();
+			if (SticksState == SticksChanged) {
+				if ((ArmingMethod == RollStickArming) || (ArmingMethod
+						== YawStickArming))
+					ArmedByTx = StickPattern == (THR_LO | YAW_CE | PIT_CE
+							| ROL_HI);
 			}
+			SticksState = MonitorSticks;
 		}
 	} else if (State == Landed) {
 
+		if (ArmingMethod == TxSwitchArming)
+			ArmedByTx = TxSwitchArmed;
+
 		UpdateSticksState();
 
 		if (SticksState == SticksChanged) {
-			if ((P(ArmingMode) != SwitchArming) && (StickPattern == (THR_LO
-					| YAW_CE | PIT_CE | ROL_LO)) && StickArmed) {
-				LEDOn(ledBlueSel);
-				//DoBeep(1, 0);
-				StickArmed = false;
+
+			BFTrim = LRTrim = 0.0f;
+			Changed = false;
+
+			switch (StickPattern) {
+			case THR_LO | YAW_CE | PIT_HI | ROL_CE:
+				BFTrim = +ACC_TRIM_STEP;
+				Changed = true;
+				break;
+			case THR_LO | YAW_CE | PIT_LO | ROL_CE:
+				BFTrim = -ACC_TRIM_STEP;
+				Changed = true;
+				break;
+			case THR_LO | YAW_LO | PIT_CE | ROL_CE:
+				LRTrim = -ACC_TRIM_STEP;
+				Changed = true;
+				break;
+			case THR_LO | YAW_HI | PIT_CE | ROL_CE:
+				LRTrim = +ACC_TRIM_STEP;
+				Changed = true;
+				break;
+			case THR_LO | YAW_CE | PIT_CE | ROL_LO:
+				if ((ArmingMethod == RollStickArming) || (ArmingMethod
+						== YawStickArming))
+					ArmedByTx = false;
+				break;
+			default:
+				break;
+			} // switch
+
+			if (Changed) {
+
+				AccTrimStickAdjust(BFTrim, LRTrim);
+				// updated in Landing or disarm UpdateConfig();
+
+				UpdateGyroTempComp(imuSel);
+				LEDToggle(ledBlueSel);
+				DoBeep(1, 0);
+
+				NowmS = mSClock();
+				mSTimer(StickTimeout, 100);
+				mSTimer(ArmedTimeout, ARMED_TIMEOUT_MS);
+
+				SticksState = SticksChanging;
+			} else {
 				SticksState = MonitorSticks;
 				LEDOff(ledBlueSel);
-			} else {
-				BFTrim = LRTrim = 0.0f;
-				Changed = false;
-
-				switch (StickPattern) {
-				case THR_LO | YAW_CE | PIT_HI | ROL_CE:
-					BFTrim = +ACC_TRIM_STEP;
-					Changed = true;
-					break;
-				case THR_LO | YAW_CE | PIT_LO | ROL_CE:
-					BFTrim = -ACC_TRIM_STEP;
-					Changed = true;
-					break;
-				case THR_LO | YAW_LO | PIT_CE | ROL_CE:
-					LRTrim = -ACC_TRIM_STEP;
-					Changed = true;
-					break;
-				case THR_LO | YAW_HI | PIT_CE | ROL_CE:
-					LRTrim = +ACC_TRIM_STEP;
-					Changed = true;
-					break;
-				default:
-					break;
-				} // switch
-
-				if (Changed) {
-
-					ConfigChanged = true;
-
-					AccTrimStickAdjust(BFTrim, LRTrim);
-					// updated in Landing or disarm UpdateConfig();
-
-					UpdateGyroTempComp(imuSel);
-					DoBeep(1, 0);
-					SticksState = SticksChanging;
-					NowmS = mSClock();
-					mSTimer(StickTimeout, 100);
-					mSTimer(ArmedTimeout, ARMED_TIMEOUT_MS);
-				} else
-					SticksState = MonitorSticks;
 			}
 		}
 	}
 
 	LEDOff(ledBlueSel);
-	UpdateParameters();
 
 } // DoStickProgramming
 
@@ -575,6 +540,9 @@ void UseDefaultParameters(uint8 DefaultPS) {
 	if (Config.CurrRevisionNo != RevisionNo)
 	memset(&Config, 0, sizeof(Config)); // forces acc/mag recalibration
 
+#else
+	memset(&Config.Mission, 0, sizeof(Config.Mission));
+	memset(&Config.Stats, 0, sizeof(Config.Stats));
 #endif
 
 	Config.CurrPS = 0;
@@ -583,11 +551,8 @@ void UseDefaultParameters(uint8 DefaultPS) {
 	for (i = 0; i < MAX_PARAMETERS; i++)
 		SetP(i, DefaultParams[DefaultPS].P[i]);
 
-	if (Abs(Config.Mission.NoOfWayPoints) >= NAV_MAX_WAYPOINTS)
-		memset(&Config.Mission, 0, sizeof(Config.Mission));
-	memset(&Config.Stats, 0, sizeof(Config.Stats));
 
-	ConfigChanged = true;
+
 	UpdateConfig();
 
 } // UseDefaultParameters
@@ -605,6 +570,7 @@ void ConditionParameters(void) {
 
 	ArmingMethod = P(ArmingMode);
 
+	CurrTelType = P(TelemetryType);
 	CurrAttSensorType = P(SensorHint);
 	CurrRxType = P(RxType);
 	CurrConfig1 = P(Config1Bits);
@@ -621,7 +587,7 @@ void ConditionParameters(void) {
 	CurrYawLPFHz = LimitP(YawLPFHz, 25, 255);
 	CurrServoLPFHz = LimitP(ServoLPFHz, 10, 100);
 
-	AltLPFHz = LimitP(AltLPF, 2, 10);
+	CurrAltLPFHz = LimitP(AltLPF, 2, 10);
 
 	DoConfigBits();
 
@@ -642,13 +608,13 @@ void ConditionParameters(void) {
 			&& (CurrAttSensorType != FreeIMU);
 
 	CurrNoOfWSLEDs = LimitP(WS2812Leds, 0, MAX_WS2812_LEDS);
+
 #if (defined(USE_WS2812) || defined(USE_WS2812B))
 	UsingWS28XXLEDs = CurrNoOfWSLEDs != 0;
 #else
 	UsingWS28XXLEDs = false;
 #endif
 
-	F.ParametersChanged = true;
 	UpdateParameters();
 
 } // ConditionParameters

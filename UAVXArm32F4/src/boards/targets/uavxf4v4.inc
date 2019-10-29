@@ -89,10 +89,10 @@ AnalogPinDef AnalogPins[MAX_ANALOG_CHANNELS] = {
 
 SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
 	{false, }, // mapped to USBSerial
-	{true, USART1, PA9, PA10, 115200, USART1Config,},
-	{true, USART2, PA2, PA3, 9600, USART2Config,},
-	{true, USART3, PB10, PB11, 115200, USART3Config,},
-	{false, UART4, PB10, PB11, 115200, UART4Config,},
+	{true, USART1, PA9, PA10, 115200, true, false, USART1Config},
+	{true, USART2, PA2, PA3, 9600, true, false, USART2Config},
+	{true, USART3, PB10, PB11, 115200, true, false, USART3Config},
+	{false, UART4, PB10, PB11, 115200, true, false, UART4Config},
 	{false, 0 } // SoftSerial
 };
 
@@ -130,12 +130,17 @@ DevDef busDev[maxDevSel] = {
 	{false, rfSel, },
 	{false, asSel, },
 	{false, flowSel, }, 
+#if defined(USE_OLED)
+	{true, oledSel, oledDisplay, false, 2, SSD1X06_I2C_ADDRESS,},
+#else
+	{false, oledSel, oledDisplay,},
+#endif
 #if defined(USE_SPI_ESC)
 	{true, escSPISel, ESCSPI, true, 1, 0, PC13}, // PC13 NC no select required
 #else
 	{false, escSPISel, }, // PC13 not connected
 #endif
-	{true, escI2CSel, ESCI2C, false, 2, ESCI2C_ID, }
+	{false, escI2CSel, ESCI2C, false, 2, ESCI2C_ID, }
 };
 
 const uint8 IMUQuadrant = 0;
@@ -155,7 +160,7 @@ void InitTarget(void) {
 	switch (CurrRxType) {
 	case CPPMRx:
 		CurrMaxPWMOutputs = (UsingDCMotors || (CurrESCType == ESCSPI)) ? 4 : 10;
-		CurrNoOfRCPins = 1;
+		CurrNoOfRCPins = 1; 
 		RxUsingSerial = false;
 		break;
 	/* Ken does not use V4 SPI boards

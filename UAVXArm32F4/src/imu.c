@@ -60,10 +60,12 @@ void ScaleRateAndAcc(uint8 imuSel) {
 			// TODO: bias and scale from where? track max min with decay???
 
 		} else {
-			Acc[UD] = -(RawAcc[Y] - Config.AccCal.Bias[Y]) * Config.AccCal.Scale[Y];
-			Acc[LR] = (RawAcc[X] - Config.AccCal.Bias[X]) * Config.AccCal.Scale[X];
-			Acc[BF] = -(RawAcc[Z] - Config.AccCal.Bias[Z]) * Config.AccCal.Scale[Z]
-					- 1.0f;
+			Acc[UD] = -(RawAcc[Y] - Config.AccCal.Bias[Y])
+					* Config.AccCal.Scale[Y];
+			Acc[LR] = (RawAcc[X] - Config.AccCal.Bias[X])
+					* Config.AccCal.Scale[X];
+			Acc[BF] = -(RawAcc[Z] - Config.AccCal.Bias[Z])
+					* Config.AccCal.Scale[Z] - 1.0f;
 
 		}
 	} else {
@@ -77,9 +79,12 @@ void ScaleRateAndAcc(uint8 imuSel) {
 			// TODO: bias and scale from where? track max min with decay???
 
 		} else {
-			Acc[BF] = (RawAcc[Y] - Config.AccCal.Bias[Y]) * Config.AccCal.Scale[Y];
-			Acc[LR] = (RawAcc[X] - Config.AccCal.Bias[X]) * Config.AccCal.Scale[X];
-			Acc[UD] = -(RawAcc[Z] - Config.AccCal.Bias[Z]) * Config.AccCal.Scale[Z];
+			Acc[BF] = (RawAcc[Y] - Config.AccCal.Bias[Y])
+					* Config.AccCal.Scale[Y];
+			Acc[LR] = (RawAcc[X] - Config.AccCal.Bias[X])
+					* Config.AccCal.Scale[X];
+			Acc[UD] = -(RawAcc[Z] - Config.AccCal.Bias[Z])
+					* Config.AccCal.Scale[Z];
 		}
 	}
 
@@ -96,52 +101,57 @@ void ErectGyros(uint8 imuSel, int32 TS) {
 
 	ReadFilteredGyroAndAcc(imuSel);
 
-	for (a = X; a <= Z; a++)
-		gMax[a] = gMin[a] = g[a] = RawGyro[a];
-	t = 0.0f;
+	LEDOn(ledBlueSel);
 
-	for (i = 1; i < Samples; i++) {
+	do {
 
-		Delay1mS(IntervalmS);
+		for (a = X; a <= Z; a++)
+			gMax[a] = gMin[a] = g[a] = RawGyro[a];
+		t = 0.0f;
 
-		ReadFilteredGyroAndAcc(imuSel);
+		for (i = 1; i < Samples; i++) {
+
+			Delay1mS(IntervalmS);
+
+			ReadFilteredGyroAndAcc(imuSel);
+
+			for (a = X; a <= Z; a++) {
+				g[a] += RawGyro[a];
+				if (RawGyro[a] > gMax[a])
+					gMax[a] = RawGyro[a];
+				else if (RawGyro[a] < gMin[a])
+					gMin[a] = RawGyro[a];
+			}
+			t += MPU6XXXTemperature;
+		}
 
 		for (a = X; a <= Z; a++) {
-			g[a] += RawGyro[a];
-			if (RawGyro[a] > gMax[a])
-				gMax[a] = RawGyro[a];
-			else if (RawGyro[a] < gMin[a])
-				gMin[a] = RawGyro[a];
+			g[a] *= SamplesR;
+			gMax[a] -= g[a];
+			gMin[a] -= g[a];
+			Moving |= Max(Abs(gMax[a]), Abs(gMin[a])) > GYRO_MAX_SHAKE_RAW;
 		}
-		t += MPU6XXXTemperature;
-	}
+		t *= SamplesR;
 
-	for (a = X; a <= Z; a++) {
-		g[a] *= SamplesR;
-		gMax[a] -= g[a];
-		gMin[a] -= g[a];
-		Moving |= Max(Abs(gMax[a]), Abs(gMin[a])) > GYRO_MAX_SHAKE_RAW;
-	}
-	t *= SamplesR;
 
-	if (Moving) {
-		SaveLEDs();
-		LEDsOff();
-		for (i = 0; i < 4; i++) {
-			LEDToggle(ledYellowSel);
-			DoBeep(8, 2);
+		if (Moving) {
+			DoBeep(2, 8);
+			LEDToggle(ledRedSel);
 		}
-		RestoreLEDs();
-	} else {
-		// leave MPU6xxx calibration alone
-		for (a = X; a <= Z; a++)
-			Config.GyroCal.C[a] = g[a];
-		Config.GyroCal.TRef = t;
-		ConfigChanged = true;
-		UpdateConfig();
-		if (CurrTelType == UAVXTelemetry)
-			SendCalibrationPacket(TelemetrySerial);
-	}
+
+
+	} while (Moving);
+
+	LEDOff(ledRedSel);
+	LEDOff(ledBlueSel);
+
+	// leave MPU6xxx calibration alone
+	for (a = X; a <= Z; a++)
+		Config.GyroCal.C[a] = g[a];
+	Config.GyroCal.TRef = t;
+	UpdateConfig();
+	if (CurrTelType == UAVXTelemetry)
+		SendCalibrationPacket(TelemetrySerial);
 
 } // ErectGyros
 
@@ -153,10 +163,10 @@ real32 CurrGyroLPFHz = 100.0f;
 real32 CurrYawLPFHz = 75.0f;
 real32 CurrServoLPFHz = 20.0f;
 boolean UsingPavelFilter = false;
-real32 AltLPFHz;
+real32 CurrAltLPFHz;
 
-filterStruct AccF[3], GyroF[3], ROCLPF, FROCLPF, AltitudeLPF,
-		AccZBumpLPF, SensorTempF;
+filterStruct AccF[3], GyroF[3], ROCLPF, FROCLPF, AltitudeLPF, AccZBumpLPF,
+		SensorTempF;
 
 void InitInertialFilters(void) {
 
@@ -220,7 +230,7 @@ void InitIMU(uint8 imuSel) {
 		Noise[a] = 0;
 #endif
 
-	F.AccCalibrated = F.IMUCalibrated = (Config.AccCal.Calibrated == 1);
+	F.AccCalibrated = F.IMUCalibrated = Config.AccCal.Calibrated == 1;
 
 } // InitIMU
 

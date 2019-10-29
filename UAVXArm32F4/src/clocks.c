@@ -71,8 +71,6 @@ void TimingDelay(unsigned int tick) {
 volatile timeuS TicksuS;
 volatile timeuS uS[uSLastArrayEntry];
 volatile timemS mS[mSLastArrayEntry];
-volatile tickStruct ticks[tickLastArrayEntry];
-volatile boolean tickCountsEnabled;
 
 void cycleCounterInit(void) {
 	RCC_ClocksTypeDef clocks;
@@ -154,33 +152,17 @@ boolean uSTimeout(uint8 t) {
 	return uSClock() >= uS[t];
 } // mSTimeout
 
-void tickCountOn(uint8 t) {
-
- // ticks[t].Start = SysTick->VAL;
-
-} // TickCountOn
-
-void tickCountOff(uint8 t){
-
-//	if (tickCountsEnabled)
-//		ticks[t].Cumulative += SysTick->VAL - ticks[t].Start;
-
-} // tickCountOff 
-
 
 void InitClocks(void) {
 	idx i;
+
 	cycleCounterInit();
 	SysTick_Config(SystemCoreClock / 1000); // 1mS
 
-	for (i = 0; i<mSLastArrayEntry; i++)
+	for (i = 0; i < mSLastArrayEntry; i++)
 		mS[i] = 0;
 	for (i = 0; i < uSLastArrayEntry; i++)
 		uS[i] = 0;
-	for (i = 0; i<tickLastArrayEntry; i++)
-			ticks[i].Cumulative = 0;
-
-	tickCountsEnabled = false;
 
 } // InitClocks
 

@@ -78,6 +78,7 @@ enum PacketTags {
 	UAVXCalibrationPacketTag = 62,
 	UAVXAFNamePacketTag = 63,
 	UAVXWindPacketTag = 64,
+	UAVXTrackPacketTag = 65,
 
 	FrSkyPacketTag = 99
 };
@@ -86,6 +87,7 @@ enum TelemetryTypes {
 	NoTelemetry,
 	UAVXTelemetry,
 	UAVXMinTelemetry,
+	UAVXUnusedTelemetry,
 	FrSkyV1Telemetry,
 	FrSkyFPortTelemetry,
 	CleanflightBBTelemetry,
@@ -117,6 +119,7 @@ void CheckTelemetry(uint8 s);
 void SetTelemetryBaudRate(uint8 s, uint32 b);
 
 extern uint8 CurrTelType;
+extern uint32 TrackGPSInvalid;
 
 #endif
 

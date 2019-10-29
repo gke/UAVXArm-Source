@@ -64,7 +64,7 @@ real32 ROC, ROCF;
 
 real32 Airspeed;
 
-timeuS AltitudeuS;
+timemS AltitudemS;
 
 real32 BarodT, AltdT;
 
@@ -88,7 +88,7 @@ void TrackOriginAltitude(void) {
 
 	WasUsingRF = false;
 	OriginAltitude = DensityAltitudeP = DensityAltitude;
-	if (F.GPSValid && (GPS.vAcc < 5.0f))
+	if (F.GPSValid && (GPS.vAcc < GPSMinvAcc))
 		GPS.originAltitude = GPS.altitude;
 
 } // TrackOriginAltitude
@@ -260,7 +260,8 @@ void GetBaro(void) {
 				BaroPressure = F.BaroFailure ? BaroPressureP : BaroPressure;
 #endif
 
-				RawAlt = CalculateDensityAltitude(true, BaroPressure);
+				RawAlt = F.Emulation ? FakeAltitude : CalculateDensityAltitude(
+						true, BaroPressure);
 
 				if (!isnan(RawAlt)) {
 
@@ -640,8 +641,7 @@ real32 AltitudeSensor(void) {
 		if (F.UsingRangefinderAlt) {
 			SensorAltitude = RangefinderAltitude;
 			if ((RangefinderAltitude > RFlb) && (RangefinderAltitude < RFub)) {
-				AltOffset = Altitude
-						- RangefinderAltitude;
+				AltOffset = Altitude - RangefinderAltitude;
 				OriginAltitude = OriginAltitude * RF_CF + ((OriginAltitude
 						+ AltOffset) * (1.0f - RF_CF));
 			}
@@ -681,7 +681,7 @@ void UpdateAltitudeEstimates(void) {
 	if (F.NewBaroValue) {
 		F.NewBaroValue = false;
 
-		AltitudeuS = uSClock();
+		AltitudemS = mSClock();
 		AltdT = BarodT;
 
 		UpdateBaroVariance(RawDensityAltitude); // 2.188uS
@@ -694,14 +694,14 @@ void UpdateAltitudeEstimates(void) {
 
 		StatsMax(AltitudeS, Altitude);
 		StatsMinMax(MinROCS, MaxROCS, ROC * 100.0f);
-
+/*
 		if ((State == InFlight) && (CurrTelType == FusionTelemetry)) {
 			BlackBoxEnabled = true;
 			SetTelemetryBaudRate(TelemetrySerial, 115200);
 			SendFusionPacket(TelemetrySerial);
 			BlackBoxEnabled = false;
 		}
-
+*/
 		if (State == InFlight)
 			Altitude = AltitudeSensor();
 		else {

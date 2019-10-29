@@ -84,11 +84,11 @@ boolean isEscLo(uint8_t selEsc) {
 }
 
 void setEscHi(uint8_t selEsc) {
-	DigitalWrite(&PWMPins[selEsc].P, 1);
+	DigitalWrite(&PWMPins[selEsc].P, true);
 }
 
 void setEscLo(uint8_t selEsc) {
-	DigitalWrite(&PWMPins[selEsc].P, 0);
+	DigitalWrite(&PWMPins[selEsc].P, false);
 }
 
 void setEscInput(uint8_t selEsc) {

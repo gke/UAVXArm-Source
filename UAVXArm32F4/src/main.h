@@ -34,20 +34,6 @@ extern real32 dT, dTR, dTOn2, dTROn2;
 extern timeuS CurrPIDCycleuS;
 extern real32 CurrPIDCycleS;
 
-enum tickCounts {
-	FlightTick,
-	SIOReadTick,
-	SIOWriteTick,
-	IMUTick,
-	MagTick,
-	BaroTick,
-	NavigateTick,
-	ControlTick,
-	MadgwickTick,
-	TelemetryTick,
-	tickLastArrayEntry
-};
-
 enum uSTimes {
 	NextCycleUpdate, MemReady, LastCycleTime, NextGyroUpdate, NextBaroUpdate, NextAltUpdate, uSLastArrayEntry
 };
@@ -78,8 +64,8 @@ enum mSTimes {
 	BeeperUpdate,
 	ArmedTimeout,
 	WarmupTimeout,
-	ThrottleUpdate,
 	BaroUpdate,
+	ThrottleUpdate,
 	AltUpdate,
 	EmuAltUpdate,
 	NextASUpdate,
@@ -98,6 +84,9 @@ enum mSTimes {
 	LastMAVHeartbeat,
 	NavPulseUpdate,
 	BLHeliTimeout,
+	oledDisplayUpdate,
+	wsTimeout,
+	chaserTimeout,
 	mSLastArrayEntry
 };
 
@@ -113,7 +102,7 @@ enum WaitStates {
 	WaitCheckSum2
 };
 
-typedef union {
+typedef volatile union {
 	uint8 AllFlags[FLAG_BYTES];
 	struct { // Order of these flags subject to change
 		uint8 // 0
@@ -179,11 +168,11 @@ typedef union {
 				// 6
 				NewBaroValue :1,
 				BeeperInUse :1,
-				ParametersChanged :1,
+				ParametersChangedUNUSED :1,
 				Soaring :1,
 				ValidGPSVel :1,
 				RCFrameReceived :1, // zzz
-				ValidGPSPos :1,
+				ValidGPSPosUNUSED :1,
 				ASActive :1,
 
 				// 7
@@ -197,7 +186,7 @@ typedef union {
 				Glide:1,
 
 				// 8
-				NewMagValues :1, GPSToLaunchRequired :1, UsingAnalogGyros :1,
+				NewMagValues :1, UsingAltHoldAlarm :1, UsingAnalogGyros :1,
 				sioFatal :1, GPSPacketReceived :1, WindEstValid :1,
 				FenceAlarm :1,
 				NavigationEnabled :1,
@@ -205,7 +194,7 @@ typedef union {
 				// 9
 				ForcedLanding :1, NewGPSPosition :1,
 				EnforceDriveSymmetry :1, RCFrameOK :1, InvertMagnetometer :1,
-				NewCommands :1, Unused_9_6 :1, UsingConvYawSense :1,
+				NewCommands :1, UsingOffsetHome :1, UsingConvYawSense :1,
 
 				// 10
 				BadBusDevConfig :1
@@ -226,6 +215,8 @@ enum FlightStates {
 	Preflight,
 	Ready,
 	ThrottleOpenCheck,
+	ErectingGyros,
+	MonitorInstruments,
 	UnknownFlightState
 };
 

@@ -126,8 +126,8 @@ real32 CalculateMagneticHeading(void) {
 	real32 xh, yh;
 	real32 cR, sR, cP, sP;
 
-//	if (F.NewMagValues) {
-//		F.NewMagValues = false;
+	//	if (F.NewMagValues) {
+	//		F.NewMagValues = false;
 	if (F.MagnetometerActive) {
 
 		cR = cosf(-Angle[Roll]);
@@ -243,9 +243,7 @@ void InitMagnetometerBias(void) {
 		Config.MagCal.Bias[a] = 0.0f;
 
 	Config.MagCal.Calibrated = 0xff;
-	F.MagnetometerCalibrated = false;
-
-	ConfigChanged = true;
+	F.MagnetometerCalibrated =  false;
 
 } // InitMagnetometerBias
 
@@ -270,7 +268,6 @@ void CalibrateHMC5XXX(uint8 s) {
 	idx a;
 	uint16 ss;
 
-	LEDsOff();
 	LEDOn(ledBlueSel);
 
 	if (F.MagnetometerActive) {
@@ -314,20 +311,16 @@ void CalibrateHMC5XXX(uint8 s) {
 		for (a = X; a <= Z; a++)
 			Config.MagCal.Bias[a] = MagOrigin[a];
 
-
 		Config.MagCal.Calibrated = 1;
 		F.MagnetometerCalibrated = true;
 
-		ConfigChanged = true;
 		UpdateConfig();
 
 		DoBeep(8, 1);
 
-		LEDsOff();
-
-		Config.MagCal.Calibrated = 1;
-		F.MagnetometerCalibrated = true;
 	}
+
+	LEDOff(ledBlueSel);
 
 	SendAckPacket(s, UAVXMiscPacketTag, F.MagnetometerCalibrated);
 

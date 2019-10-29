@@ -155,6 +155,7 @@ extern real32 CGOffset;
 
 extern real32 I2CESCMax;
 
+extern real32 FWStickScaleFrac;
 extern boolean UsingPWMSync;
 extern boolean UsingDCMotors;
 extern boolean DrivesInitialised;

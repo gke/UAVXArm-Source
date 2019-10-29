@@ -100,10 +100,10 @@ const AnalogPinDef AnalogPins[MAX_ANALOG_CHANNELS] = {
 	
 SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { 
 	{true, }, // mapped to USBSerial
-	{true, USART1, PB6, PB7, 115200, USART1Config,},
-	{true, USART2, PA2, PA3, 9600, USART2Config,},
-	{true, USART3, PB10, PB11, 115200, USART3Config,},
-	{true, UART4, PA0, PA1, 115200, UART4Config,},
+	{true, USART1, PB6, PB7, 115200, true, false, USART1Config,},
+	{true, USART2, PA2, PA3, 9600, true, false, USART2Config,},
+	{true, USART3, PB10, PB11, 115200, true, false, USART3Config,},
+	{true, UART4, PA0, PA1, 115200, true, false, UART4Config,},
 	{false, 0 } // SoftSerial
 };
 

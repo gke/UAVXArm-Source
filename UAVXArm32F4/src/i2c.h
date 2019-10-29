@@ -24,7 +24,7 @@
 
 #define I2C_CLOCK_HZ 400000
 
-typedef struct { // TODO: possibly combine with Port def
+typedef volatile struct { // TODO: possibly combine with Port def
 	boolean error;
 	boolean busy;
 	uint32 i2cErrors;
@@ -49,7 +49,7 @@ void i2c_ev_handler(uint8 i2cCurr);
 
 void InitI2C(uint8 I2CCurr);
 
-extern volatile I2CStateDef I2CState[];
+extern I2CStateDef I2CState[];
 
 
 #endif

@@ -54,7 +54,7 @@ extern HistStruct AccZF;
 extern real32 AccZ, RawAccZ, AccZBias, RawAccZSum;
 extern uint32 AccZSamples;
 extern real32 AccZMF[];
-extern real32 AltLPFHz;
+extern real32 CurrAltLPFHz;
 
 extern timeuS LastInertialUpdateuS;
 
