@@ -84,8 +84,9 @@
 
 #define OPTICAL_TIME_MS			50
 
-#define DESCENT_RADIUS_M  			5.0f
+#define DESCENT_RADIUS_M  			7.0f
 #define DESCENT_ORBIT_VELOCITY_MPS	1.5f
+#define DEF_FW_LOITER_RADIUS_M 	60.0f
 
 #define DESCENT_ALT_DIFF_M			(25.0f) // 10.0f
 #define DESCENT_SAFETY_ALT_M		(25.0f) //(15.0f)
@@ -136,7 +137,9 @@
 
 #define RC_MOVEMENT_STICK FromPercent(1) // minimum to be recognised as a stick input change without triggering failsafe
 
-#define AH_THR_UPDATE_MS 1000 // checking interval  if throttle has moved outside AH tracking window
+#define AH_THR_UPDATE_S 0.25f // was 1000 // checking interval  if throttle has moved outside AH tracking window
+#define AH_THR_UPDATE_MS ((timemS)(AH_THR_UPDATE_S * 1000.0f))
+
 #define NAV_SENS_ALT_THRESHOLD_STICK FromPercent(10)// Altitude hold disabled if Ch7 is less than this
 #define ATTITUDE_HOLD_LIMIT_STICK FromPercent(20) // dead zone for roll/pitch stick for position hold
 #define ATTITUDE_THRESHOLD_STICK FromPercent(2) // make sure neutral is 1500uS with no trims
@@ -215,7 +218,6 @@ enum AFs {
 	VTOL2AF,
 	GimbalAF,
 	Instrumentation,
-	IREmulation,
 	AFUnknown,
 };
 
@@ -350,7 +352,7 @@ enum Params { // MAX 128
 	FWStickScale, // 113
 	FWRollControlPitchLimit, // 114
 	AHThrottleMovingTrigger, // 115
-	Unused116, // 116
+	CruiseTrackingRate, // 116
 	Unused117, // 117
 	Unused118, // 118
 	Unused119, // 119

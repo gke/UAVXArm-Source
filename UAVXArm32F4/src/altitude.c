@@ -88,6 +88,7 @@ void TrackOriginAltitude(void) {
 
 	WasUsingRF = false;
 	OriginAltitude = DensityAltitudeP = DensityAltitude;
+	SetDesiredAltitude(0.0f);
 	if (F.GPSValid && (GPS.vAcc < GPSMinvAcc))
 		GPS.originAltitude = GPS.altitude;
 

@@ -22,14 +22,33 @@
 #ifndef _gps_h
 #define _gps_h
 
+
+enum WaitStates {
+	WaitSentinel,
+	WaitSentinel2,
+	WaitID,
+	WaitClass,
+	WaitLength,
+	WaitLength2,
+	WaitBody,
+	WaitCheckSum,
+	WaitCheckSum2,
+
+	WaitNMEAID,
+	WaitNMEABody,
+	WaitNMEACheckSum,
+	WaitNMEACheckSum2
+
+};
+
+
 enum GPSProtcols {
-	NMEAGPS, UBXBinGPS, UBXBinGPSInit, MTKBinGPS, MTKNMEAGPS, NoGPS
+UBXBinGPSInit, GenericGPS, NoGPS
 };
 
 typedef struct {
-	int32 Raw, OriginRaw;
-	real32 Pos, PosP;
-	real32 Vel, VelP;
+	int32 Raw, RawP, OriginRaw;
+	real32 Pos, Vel;
 } GPSCoord;
 
 typedef struct {

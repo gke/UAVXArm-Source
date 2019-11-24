@@ -90,17 +90,6 @@ enum mSTimes {
 	mSLastArrayEntry
 };
 
-enum WaitStates {
-	WaitSentinel,
-	WaitSentinel2,
-	WaitID,
-	WaitClass,
-	WaitLength,
-	WaitLength2,
-	WaitBody,
-	WaitCheckSum,
-	WaitCheckSum2
-};
 
 typedef volatile union {
 	uint8 AllFlags[FLAG_BYTES];

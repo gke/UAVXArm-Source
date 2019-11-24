@@ -86,7 +86,7 @@ boolean Armed(void) {
 boolean FailPreflight(void) {
 	boolean r;
 
-	r = !((UAVXAirframe == Instrumentation) || (UAVXAirframe == IREmulation)
+	r = !((UAVXAirframe == Instrumentation)
 			|| ( //
 			F.Signal //
 					&& (RCStart <= 0) //

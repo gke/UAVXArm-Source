@@ -32,7 +32,7 @@ const uint8 DrivesUsed[AFUnknown + 1] = { 3, 6, 4, 4, 4, 8, 8, 6, 6, 8, 8, // Tr
 		1, 1, // Heli90AF, Heli120AF,
 		1, 1, 1, 1, 1, 1, // ElevonAF, DeltaAF, AileronAF, AileronSpoilerFlapsAF, AileronVTailAF, RudderElevatorAF,
 		1, 2, 0, // VTOLAF, VTOL2AF, GimbalAF,
-		0, 4, // Instrumentation, IREmulation,
+		0,  // Instrumentation,
 		0 }; // AFUnknown,
 
 const uint8 PWMOutputsUsed[AFUnknown + 1] = { 5, 8, 6, 6, 6, 10, 10, 8, 8, 10,
@@ -40,7 +40,7 @@ const uint8 PWMOutputsUsed[AFUnknown + 1] = { 5, 8, 6, 6, 6, 10, 10, 8, 8, 10,
 		6, 6, //
 		3, 6, 7, 5, 6, 4, // inc rudder elev from 3->4 for spoilers
 		4, 4, 2, //
-		0, 0, //
+		0, //
 		0 };
 
 #if defined(UAVXF4V3) || defined(UAVXF4V4)
@@ -67,7 +67,6 @@ typedef struct {
 	uint16 cs;
 }__attribute__((packed)) SPIESCFrameStruct_t;
 
-boolean UsingPWMSync = false;
 boolean UsingDCMotors = false;
 boolean DrivesInitialised = false;
 
@@ -92,8 +91,8 @@ CamStruct Cam;
 
 real32 DFT[8];
 
-const char * ESCName[] = { "PWM", "PWMSync", "PWMSyncDiv8 or OneShot", "I2C",
-		"DC Motor", "DC Motor Slow Idle", "SPI", "ADC Angle", "Unknown" };
+const char * ESCName[] = { "PWM",
+		"DC Motor", "DC Motor Slow Idle", "I2C", "SPI", "ADC Angle", "Unknown" };
 
 void ShowESCType(uint8 s) {
 	TxString(s, ESCName[CurrESCType]);
@@ -115,33 +114,6 @@ void servoWrite(idx channel, real32 v) {
 		*PWMPins[DM[channel]].Timer.CCR = v;
 	}
 } // servoWrite
-
-void driveSyncWrite(idx channel, real32 v) {
-	const PinDef * u;
-
-	if (DM[channel] < CurrMaxPWMOutputs) {
-		u = &PWMPins[DM[channel]];
-		// repetition for multiple channels on some timer
-		TIM_Cmd(u->Timer.Tim, DISABLE);
-		TIM_SetCounter(u->Timer.Tim, 0);
-
-		*u->Timer.CCR = Limit((int16)((v + 1.0f) * 1000.0f), PWM_MIN, PWM_MAX);
-	}
-} // driveSyncWrite
-
-void driveSyncDiv8Write(idx channel, real32 v) {
-	const PinDef * u;
-
-	if (DM[channel] < CurrMaxPWMOutputs) {
-		u = &PWMPins[DM[channel]];
-		// repetition for multiple channels on some timer
-		TIM_Cmd(u->Timer.Tim, DISABLE);
-		TIM_SetCounter(u->Timer.Tim, 0);
-
-		*u->Timer.CCR = Limit((int16)((v + 1.0f) * 1500.0f),
-				PWM_MIN_SYNC_DIV8, PWM_MAX_SYNC_DIV8);
-	}
-} // driveSyncDiv8Write
 
 
 void driveSyncStart(uint8 drives) {
@@ -243,7 +215,7 @@ void driveDCWrite(idx channel, real32 v) {
 typedef void (*driveWriteFuncPtr)(idx channel, real32 value);
 static driveWriteFuncPtr driveWritePtr = NULL;
 
-// ESCPWM, ESCSyncPWM, ESCSyncPWMDiv8, ESCI2C, DCMotors, DCMotorsWithIdle, SPI, IR, ESCUnknown,
+// ESCPWM,  DCMotors, ESCI2C, SPI, ESCUnknown,
 
 const struct {
 	driveWriteFuncPtr driver;
@@ -252,33 +224,16 @@ const struct {
 	uint32 min;
 	uint32 max;
 } Drive[] = { { driveWrite, PWM_PS, PWM_PERIOD, PWM_MIN, PWM_MAX }, // ESCPWM
-		{ driveSyncWrite, PWM_PS_SYNC, PWM_PERIOD_SYNC, PWM_MIN_SYNC,
-				PWM_MAX_SYNC }, // ESCSyncPWM
-		{ driveSyncDiv8Write, PWM_PS_SYNC_DIV8, PWM_PERIOD_SYNC_DIV8,
-				PWM_MIN_SYNC_DIV8, PWM_MAX_SYNC_DIV8 }, // ESCSyncPWMDiv8
-		{ driveI2CWrite, 0, 0, 0, 225 }, // ESCI2C
 		{ driveDCWrite, PWM_PS_DC, PWM_PERIOD_DC, PWM_MIN_DC, PWM_MAX_DC }, // DCMotors
-		{ driveDCWrite, PWM_PS_DC, PWM_PERIOD_DC, PWM_MIN_DC, PWM_MAX_DC }, // DCMotorsWithIdle
+		{ driveI2CWrite, 0, 0, 0, 225 }, // ESCI2C
 		{ driveSPIWrite, 0, 0, 0, SPI_MAX }, // ESCSPI
-		{ driveDCWrite, PWM_PS_DC, PWM_PERIOD_DC, PWM_MIN_DC, PWM_MAX_DC }, // ADC Angle
 		};
 
 void UpdateDrives(void) {
 	static idx m;
 
 	if (DrivesInitialised) {
-		if (UAVXAirframe == IREmulation) {
-
-			PW[IRRollC] = OUT_NEUTRAL + PWSense[IRRollC] * sinf(Angle[Roll])
-					* OUT_NEUTRAL;
-			PW[IRPitchC] = OUT_NEUTRAL + PWSense[IRPitchC] * sinf(Angle[Pitch])
-					* OUT_NEUTRAL;
-			PW[IRZC] = OUT_NEUTRAL + PWSense[IRZC] * 0.0f; // TODO:
-
-			for (m = 0; m < NoOfDrives; m++)
-				driveWritePtr(m, PW[m]);
-
-		} else if (IsMulticopter) {
+		if (IsMulticopter) {
 
 			Rl = Limit1(A[Roll].Out, OUT_NEUTRAL);
 			Pl = Limit1(A[Pitch].Out, OUT_NEUTRAL);
@@ -298,9 +253,7 @@ void UpdateDrives(void) {
 
 			PWSamples++;
 
-			if (UsingPWMSync)
-				driveSyncStart(NoOfDrives);
-			else if (CurrESCType == ESCSPI)
+			if (CurrESCType == ESCSPI)
 				driveSPISyncStart(NoOfDrives);
 
 			// servos
@@ -345,14 +298,12 @@ void InitDrives(void) {
 
 	F.DrivesArmed = false;
 
-	UsingDCMotors = (CurrESCType == DCMotorsWithIdle) || (CurrESCType
-			== DCMotors) || (CurrESCType == PWMDAC);
-	UsingPWMSync = (CurrESCType == ESCSyncPWM) || (CurrESCType
-			== ESCSyncPWMDiv8);
+	UsingDCMotors =  (CurrESCType
+			== DCMotors);
 
 	NoOfDrives = Limit(DrivesUsed[UAVXAirframe], 0, CurrMaxPWMOutputs);
 
-	if (IsMulticopter || (UAVXAirframe == IREmulation)) {
+	if (IsMulticopter) {
 
 		NoOfDrivesR = 1.0f / NoOfDrives;
 		nd = ((NoOfDrives + 3) / 4) * 4; // Timers share period 4 + 4 + 2
@@ -365,8 +316,7 @@ void InitDrives(void) {
 			if ((CurrESCType != ESCI2C) && (CurrESCType != ESCSPI))
 				if (DM[m] < CurrMaxPWMOutputs)
 					InitPWMPin(&PWMPins[DM[m]], Drive[CurrESCType].prescaler,
-							Drive[CurrESCType].period, Drive[CurrESCType].min,
-							UsingPWMSync);
+							Drive[CurrESCType].period, Drive[CurrESCType].min);
 		}
 
 		// servos
@@ -375,7 +325,7 @@ void InitDrives(void) {
 				if (DM[m] < CurrMaxPWMOutputs) {
 					PW[m] = PWp[m] = OUT_NEUTRAL;
 					InitPWMPin(&PWMPins[DM[m]], PWM_PS, PWM_PERIOD_SERVO,
-							PWM_NEUTRAL, false);
+							PWM_NEUTRAL);
 				}
 	} else {
 
@@ -390,7 +340,7 @@ void InitDrives(void) {
 		for (m = 0; m < MAX_PWM_OUTPUTS; m++)
 			if (DM[m] < CurrMaxPWMOutputs)
 				InitPWMPin(&PWMPins[DM[m]], PWM_PS, PWM_PERIOD_SERVO,
-						PWM_WIDTH_SERVO, false);
+						PWM_WIDTH_SERVO);
 
 		for (m = 0; m < MAX_PWM_OUTPUTS; m++)
 			servoWrite(m, PWp[m]);

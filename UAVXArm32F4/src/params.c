@@ -206,20 +206,21 @@ void InitPIDStructs(void) {
 
 	// Altitude
 
-	Alt.P.Kp = (real32) P(AltPosKp) * 0.018f; // 0.65->36, 1.3->71
+	Alt.P.Kp = (real32) P(AltPosKp) * 0.0183f; // 0.515->28
 
 	Alt.P.Max = (real32) P(AltHoldBand) * 1.0f;
 	Alt.R.Max = Alt.P.Max * Alt.P.Kp; // default
 
-	Alt.P.Ki = (real32) P(AltPosKi) * 0.0074f;
-	Alt.P.IntLim = (real32) P(AltPosIntLimit) * 0.035; // 0.35 0.15f;
+	Alt.P.Ki = (real32) P(AltPosKi) * 0.00046f; // 0.0046->10
+	Alt.P.IntLim = (real32) P(AltPosIntLimit) * 0.05;
 
 	SetP(MaxROC, Limit(Alt.R.Max, 1, ALT_MAX_ROC_MPS) * 10);
 	MaxROCMPS = P(MaxROC) * 0.1f;
 
 	VRSDescentRateMPS = -P(VRSDescentRate) * 0.1f;
 
-	Alt.R.Kp = (real32) P(AltVelKp) * 0.0026f; // 0.065->25, 0.13->50
+	Alt.R.Kp = (real32) P(AltVelKp) * 0.0026f; // MatLab 0.085->32
+	Alt.R.Ki = (real32) P(AltVelKi) * 0.00027f; // MatLab 0.0027->10
 	Alt.R.IntLim = FromPercent((real32) P(AltVelIntLimit)); // 0.3 max throttle compensation
 
 	Alt.R.Kd = (real32) P(AltVelKd) * 0.00016f;
@@ -235,11 +236,8 @@ void InitPIDStructs(void) {
 
 void SetPIDPeriod(void) {
 
-	if (CurrESCType == ESCSyncPWM)
-		CurrPIDCycleuS = PID_SYNCPWM_CYCLE_2050US;
-	else
-		CurrPIDCycleuS = busDev[imuSel].useSPI ? PID_CYCLE_1000US
-				: PID_CYCLE_2000US;
+	CurrPIDCycleuS = busDev[imuSel].useSPI ? PID_CYCLE_1000US
+			: PID_CYCLE_2000US;
 
 	CurrPIDCycleS = CurrPIDCycleuS * 1.0e-6;
 
@@ -309,7 +307,11 @@ void UpdateParameters(void) {
 			CruiseThrottle = F.IsFixedWing ? THR_DEFAULT_CRUISE_FW_STICK
 					: THR_DEFAULT_CRUISE_STICK;
 		else
-			CruiseThrottle =  FromPercent(LimitP(EstCruiseThr, 10, 65));
+			CruiseThrottle = FromPercent(LimitP(EstCruiseThr, 10, 65));
+
+		CruiseThrottleTrackingRate = FromPercent(LimitP(CruiseTrackingRate, 1, 100) * 0.01f);
+
+		AHThrottle = CruiseThrottle;
 
 		// Attitude
 
@@ -322,7 +324,8 @@ void UpdateParameters(void) {
 		GyroSlewLimitFrac = FromPercent(LimitP(GyroSlewRate, 1, 200));
 		SlewBand = MAX_NOISE_BANDS / (GyroSlewLimitFrac * 16384.0f);
 #endif
-		FWRollControlPitchLimitRad = DegreesToRadians(LimitP(FWRollControlPitchLimit, 45, 60));
+		FWRollControlPitchLimitRad
+				= DegreesToRadians(LimitP(FWRollControlPitchLimit, 45, 60));
 
 		StickDeadZone = FromPercent(LimitP(StickHysteresis, 1, 5));
 
@@ -353,7 +356,9 @@ void UpdateParameters(void) {
 		FWAltSpoilerFFFrac = FromPercent(P(FWAltSpoilerFF));
 		FWSpoilerDecayS = P(FWSpoilerDecayTime) * 0.1f;
 
-		AHThrottleWindow =  FromPercent((real32) (LimitP(AHThrottleMovingTrigger, 10, 100)) * 0.1f);
+		AHThrottleWindow
+				= FromPercent((real32) (LimitP(AHThrottleMovingTrigger, 1, 100)) * 0.1f);
+		ThrottleMovingWindow = AHThrottleWindow * AH_THR_UPDATE_S;
 
 		// Nav
 
@@ -551,8 +556,6 @@ void UseDefaultParameters(uint8 DefaultPS) {
 	for (i = 0; i < MAX_PARAMETERS; i++)
 		SetP(i, DefaultParams[DefaultPS].P[i]);
 
-
-
 	UpdateConfig();
 
 } // UseDefaultParameters
@@ -592,11 +595,6 @@ void ConditionParameters(void) {
 	DoConfigBits();
 
 	SetPIDPeriod();
-
-	if (UAVXAirframe == IREmulation) { // force PWM for DAC function
-		SetP(ESCType, PWMDAC);
-		CurrESCType = PWMDAC;
-	}
 
 	if (P(RxType) == ParallelPPMRx)
 		CurrBeeperSel = BeeperSel;

@@ -68,11 +68,11 @@ uint8 DiscoveredRCChannels = 4; // used by PPM/CPPM
 real32 StickThrottle;
 real32 CamPitchTrim;
 real32 ThrLow, ThrHigh, ThrNeutral;
+real32 ThrottleMovingWindow;
 real32 CurrMaxRollPitchStick;
 int8 RCStart;
 timemS NextNavSwUpdatemS = 0;
-real32 AHThrottleWindow;
-
+real32 AHThrottle, AHThrottleWindow;
 
 boolean RxLoopbackEnabled = false;
 
@@ -80,7 +80,7 @@ uint8 CurrRxType = UnknownRx;
 
 void EnableRC(void) {
 
-	if ((CurrRxType != ParallelPPMRx)&& (CurrRxType != CPPMRx))
+	if ((CurrRxType != ParallelPPMRx) && (CurrRxType != CPPMRx))
 		RxEnabled[RCSerial] = true;
 
 } // EnableRC
@@ -810,13 +810,46 @@ void CheckRCLoopback(void) {
 
 } // CheckRCLoopback
 
+
 inline boolean ActiveCh(uint8 c) {
 	return DiscoveredRCChannels > Map[c];
 } // ActiveCh
 
+
+void CheckThrottleMoved(void) {
+	static real32 StickThrottleP = 0.0f;
+	real32 t;
+
+	if (mSTimeout(ThrottleUpdate)) {
+		mSTimer(ThrottleUpdate, AH_THR_UPDATE_MS);
+		t = StickThrottle - StickThrottleP;
+		F.ThrottleMoving = (Abs(t) > ThrottleMovingWindow);
+		StickThrottleP = StickThrottle;
+	}
+
+} // CheckThrottleMoved
+
+
+void CheckThrottleMovedOLD(void) {
+	if (mSTimeout(ThrottleUpdate)) {
+		ThrLow = ThrNeutral - AHThrottleWindow;
+		ThrLow = Max(ThrLow, THR_MIN_ALT_HOLD_STICK);
+		ThrHigh = ThrNeutral + AHThrottleWindow;
+
+		if ((StickThrottle <= ThrLow) || (StickThrottle >= ThrHigh)) {
+			mSTimer(ThrottleUpdate, AH_THR_UPDATE_MS);
+			F.ThrottleMoving = true;
+		} else
+			F.ThrottleMoving = false;
+	} else
+		ThrNeutral = StickThrottle;
+} // CheckThrottleMoved
+
+
 inline boolean Triggered(real32 t, uint8 r) {
 	return ActiveCh(r) && (RC[r] > t);
 } // Triggered
+
 
 void UpdateControls(void) {
 
@@ -845,6 +878,8 @@ void UpdateControls(void) {
 
 		StickThrottle = RC[ThrottleRC];
 		F.ThrottleOpen = StickThrottle >= RC_THRES_START_STICK;
+
+		CheckThrottleMoved();
 
 		F.PassThru = Triggered(0.7f, PassThruRC);
 
@@ -918,21 +953,5 @@ void UpdateControls(void) {
 	}
 
 } // UpdateControls
-
-
-void CheckThrottleMoved(void) {
-	if (mSTimeout(ThrottleUpdate)) {
-		ThrLow = ThrNeutral - AHThrottleWindow;
-		ThrLow = Max(ThrLow, THR_MIN_ALT_HOLD_STICK);
-		ThrHigh = ThrNeutral + AHThrottleWindow;
-
-		if ((StickThrottle <= ThrLow) || (StickThrottle >= ThrHigh)) {
-			mSTimer(ThrottleUpdate, AH_THR_UPDATE_MS);
-			F.ThrottleMoving = true;
-		} else
-			F.ThrottleMoving = false;
-	} else
-		ThrNeutral = StickThrottle;
-} // CheckThrottleMoved
 
 

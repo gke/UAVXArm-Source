@@ -399,9 +399,6 @@ void UpdateInertial(void) {
 		MadgwickUpdate(Rate[Roll], Rate[Pitch], Rate[Yaw], Acc[BF], Acc[LR],
 				Acc[UD], Mag[X], Mag[Y], Mag[Z]);
 
-	//Angle[Roll] = Acc[LR];
-	//Angle[Pitch] = Acc[BF];
-
 	DoControl();
 
 	// one cycle delay OK

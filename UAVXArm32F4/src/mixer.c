@@ -28,7 +28,7 @@ const real32 AFOrientation[AFUnknown + 1] = { // K1 arm relative to board North
 				0, 0, // Heli90AF, Heli120AF
 				0, 0, 0, 0, 0, 0, // ElevonAF, DeltaAF, AileronAF, AileronSpoilerFlapsAF, AileronVTailAF, RudderElevatorAF,
 				0, 0, 0, // VTOLAF, VTOL2AF, GimbalAF,
-				0, 0, // Instrumentation, IREmulation
+				0, // Instrumentation
 				0 }; // AFUnknown
 
 

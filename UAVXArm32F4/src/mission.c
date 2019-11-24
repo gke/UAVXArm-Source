@@ -48,9 +48,9 @@ void GenerateHomeWP(void) {
 	HomeWP.Pos[DownC] = P(NavRTHAlt);
 	HomeWP.Velocity = Nav.MaxVelocity;
 	HomeWP.Loiter = (int16) P(DescentDelayS); // mS
-	HomeWP.Action = navLand;
 
 	HomeWP.OrbitAltitude = P(NavRTHAlt); // TODO: for camera height above ground
+	HomeWP.Action = navLand;
 
 	memcpy(&OffsetHomeWP, &HomeWP, sizeof(WPStruct));
 	memcpy(&HP, &HomeWP, sizeof(WPStruct));
@@ -63,7 +63,7 @@ void GenerateHomeWP(void) {
 void CaptureHomePosition(void) {
 	idx a;
 
-	if (F.GPSValid && (GPS.hAcc <= GPSMinhAcc) && (GPS.vAcc < GPSMinvAcc)) {
+	if (F.GPSValid && (GPS.hAcc <= GPSMinhAcc) && (GPS.vAcc <= GPSMinvAcc)) {
 
 		mS[LastGPS] = mSClock();
 
@@ -81,8 +81,10 @@ void CaptureHomePosition(void) {
 		// do it once - operations area small
 		GPS.longitudeCorrection
 				= Abs(cos(DegreesToRadians((real64)GPS.C[NorthC].Raw * 1e-7)));
-		for (a = NorthC; a <= EastC; a++)
-			GPS.C[a].Pos = GPS.C[a].Vel = GPS.C[a].PosP = 0.0f;
+		for (a = NorthC; a <= EastC; a++) {
+			GPS.C[a].Pos = GPS.C[a].Vel = 0.0f;
+			GPS.C[a].RawP = 0;
+		}
 
 		GPS.originAltitude = GPS.altitude;
 		F.HoldingAlt = false;

@@ -45,13 +45,9 @@ void driveWrite(idx channel, real32 v);
 
 enum ESCTypes {
 	ESCPWM,
-	ESCSyncPWM,
-	ESCSyncPWMDiv8,
-	ESCI2C,
 	DCMotors,
-	DCMotorsWithIdle,
+	ESCI2C,
 	ESCSPI,
-	PWMDAC,
 	ESCUnknown
 };
 

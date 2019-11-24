@@ -166,10 +166,11 @@ extern real32 StickThrottle;
 extern real32 CurrMaxRollPitchStick;
 extern real32 CamPitchTrim;
 extern real32 ThrLow, ThrHigh, ThrNeutral;
+extern real32 ThrottleMovingWindow;
 extern uint8 NoOfControls;
 extern int8 RCStart;
 extern timemS NextNavSwUpdatemS;
-extern real32 AHThrottleWindow;
+extern real32 AHThrottle, AHThrottleWindow;
 
 extern boolean RxLoopbackEnabled;
 

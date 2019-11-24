@@ -100,7 +100,7 @@ extern real32 DesiredHeading, SavedHeading;
 extern real32 CurrMaxTiltAngle;
 extern real32 Altitude;
 extern real32 AltComp, ROC, MinROCMPS;
-extern real32 DesiredThrottle, CruiseThrottle, IdleThrottle, InitialThrottle;
+extern real32 DesiredThrottle, CruiseThrottle, CruiseThrottleTrackingRate, IdleThrottle, InitialThrottle;
 extern real32 BattThrFFComp, TiltThrFFComp;
 extern real32 HorizonTransScale;
 extern real32 StickDeadZone;

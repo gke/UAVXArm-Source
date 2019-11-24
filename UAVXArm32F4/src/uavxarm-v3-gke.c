@@ -55,7 +55,7 @@ void InitMisc(void) {
 		memset(&Angle[i], 0, sizeof(Angle[0]));
 	}
 
-	DesiredThrottle = StickThrottle = 0.0f;
+	DesiredThrottle = StickThrottle = AHThrottle = 0.0f;
 	InitialThrottle = ThrNeutral = ThrLow = ThrHigh = 1.0f;
 	IdleThrottle = FromPercent(10);
 
@@ -163,7 +163,7 @@ int main() {
 
 	while (true) {
 
-		if ((UAVXAirframe == Instrumentation) || (UAVXAirframe == IREmulation)) {
+		if (UAVXAirframe == Instrumentation) {
 			F.Signal = true;
 			StickThrottle = 0.0f;
 			RCStart = 0;
@@ -314,11 +314,6 @@ int main() {
 				F.DrivesArmed = false;
 
 				if (Armed()) {
-
-					if (CurrESCType == DCMotorsWithIdle) {
-						F.DrivesArmed = true;
-						DesiredThrottle = IdleThrottle;
-					}
 
 					DoStickProgramming(); // blue toggle if trimming acc
 

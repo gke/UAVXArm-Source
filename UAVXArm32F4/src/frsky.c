@@ -116,7 +116,8 @@ enum {
 timeuS FrSkyDLinkuS;
 
 uint16 MakeFrac(real32 v, uint16 s) {
-	return (Abs((int32)(v * s)) % s);
+	int32 t = (int32)(v * s);
+	return (Abs(t) % s);
 } // MakeFrac
 
 void TxFrSkyHubHeader(uint8 s) {
@@ -578,7 +579,7 @@ void TxFrSkySPort(uint8 s) {
 
 		switch (appID) {
 		case FSSP_ID_SPEED:
-			if (F.HaveGPS && F.GPSValid)
+			if (F.GPSValid)
 				TxFrSkySPortPacket(s, appID, GPS.gspeed * 10.0); // 0.1 m/s
 			break;
 		case FSSP_ID_VFAS:
@@ -626,7 +627,7 @@ void TxFrSkySPort(uint8 s) {
 			//case FSSP_ID_ADC2       :
 
 		case FSSP_ID_LATLONG:
-			if (F.HaveGPS && F.GPSValid) {
+			if (F.GPSValid) {
 				uint32 tmpui = 0;
 
 				if (appIDindex & 1) {
@@ -700,7 +701,7 @@ void TxFrSkySPort(uint8 s) {
 						+ (F.OriginValid ? 2000 : 0) + GPS.noofsats);
 			break;
 		case FSSP_ID_GPS_ALT:
-			if (F.HaveGPS && F.GPSValid)
+			if (F.GPSValid)
 				TxFrSkySPortPacket(s, appID, GPS.altitude * 10); // given in 0.1m , requested in 10 = 1m (should be in mm, probably a bug in opentx, tested on 2.0.1.7)
 			break;
 		case FSSP_ID_A4:

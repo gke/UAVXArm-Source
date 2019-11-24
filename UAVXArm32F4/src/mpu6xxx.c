@@ -109,7 +109,8 @@ void ReadAccGyro(uint8 imuSel) {
 		IMUSampleWindow[a][hidx] = B[a + 4];
 #else
 		RawGyro[a] = (real32) B[a + 4];
-		RateD = Abs((int32)B[a + 4] - BP[a]);
+		RateD = (int32)B[a + 4] - BP[a];
+		RateD = Abs(RateD);
 		Band = Limit( (int16)(RateD * SlewBand), 0, (MAX_NOISE_BANDS-1));
 		Noise[Band]++;
 		BP[a] = B[a + 4];

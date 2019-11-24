@@ -118,8 +118,8 @@ timemS WPDistanceTimeout(void) {
 } // WPDistanceTimeout
 
 timemS WPAltitudeTimeout(void) {
-	return (timemS) (FromPercent(120) * Abs(Alt.P.Desired - Altitude)
-			/ MaxROCMPS) * 1000;
+	real32 t = Alt.P.Desired - Altitude;
+	return (timemS) (FromPercent(120) * Abs(t) / MaxROCMPS) * 1000;
 } // WPDistanceTimeout
 
 
@@ -142,10 +142,9 @@ void ZeroNavCorrections(void) {
 	idx a;
 
 	F.Glide =
-			//F.Navigate = F.ReturnHome =
-			F.CrossTrackActive
-			= F.WayPointAchieved = F.WayPointCentred = F.OrbitingWP
-					= F.RapidDescentHazard = false;
+	//F.Navigate = F.ReturnHome =
+			F.CrossTrackActive = F.WayPointAchieved = F.WayPointCentred
+					= F.OrbitingWP = F.RapidDescentHazard = false;
 
 	SavedPIOState = F.UsingPOI;
 	F.UsingPOI = false;
@@ -236,29 +235,34 @@ real32 MinimumTurn(real32 Desired) {
 void NavYaw(WPStruct * W) {
 	real32 POIEastDiff, POINorthDiff, POIDistance;
 
-	if (F.RapidDescentHazard)
-		DoOrbit(DESCENT_RADIUS_M, DESCENT_ORBIT_VELOCITY_MPS); // only non FW
-	else if (F.OrbitingWP)
-		DoOrbit(W->OrbitRadius, W->OrbitVelocity);
-	else {
-		if (F.UsingPOI) {
-			POIEastDiff = POI.Pos[EastC] - Nav.C[EastC].Pos;
-			POINorthDiff = POI.Pos[NorthC] - Nav.C[NorthC].Pos;
+	if (F.RapidDescentHazard) {
+		if (IsMulticopter)
+			DoOrbit(DESCENT_RADIUS_M, DESCENT_ORBIT_VELOCITY_MPS);
+		else
+			DoOrbit(DEF_FW_LOITER_RADIUS_M, AS_MIN_MPS); // only non FW
+	} else {
+		if (F.OrbitingWP)
+			DoOrbit(W->OrbitRadius, W->OrbitVelocity);
+		else {
+			if (F.UsingPOI) {
+				POIEastDiff = POI.Pos[EastC] - Nav.C[EastC].Pos;
+				POINorthDiff = POI.Pos[NorthC] - Nav.C[NorthC].Pos;
 
-			POIDistance = sqrtf(Sqr(POIEastDiff) + Sqr(POINorthDiff));
-			Nav.DesiredHeading
-					= (POIDistance > (Nav.ProximityRadius * 2.0f)) ? atan2f(
-							POIEastDiff, POINorthDiff) : Heading;
-		} else {
-			if (F.UsingTurnToWP) {
-				if (F.WayPointCentred) {
-					if (F.WayPointAchieved && (CurrWPNo == 0))
-						Nav.DesiredHeading = Nav.TakeoffBearing;
-					else {
-						// just leave the heading as is to avoid spinning top
-					}
-				} else
-					Nav.DesiredHeading = Nav.WPBearing;
+				POIDistance = sqrtf(Sqr(POIEastDiff) + Sqr(POINorthDiff));
+				Nav.DesiredHeading = (POIDistance
+						> (Nav.ProximityRadius * 2.0f)) ? atan2f(POIEastDiff,
+						POINorthDiff) : Heading;
+			} else {
+				if (F.UsingTurnToWP) {
+					if (F.WayPointCentred) {
+						if (F.WayPointAchieved && (CurrWPNo == 0))
+							Nav.DesiredHeading = Nav.TakeoffBearing;
+						else {
+							// just leave the heading as is to avoid spinning top
+						}
+					} else
+						Nav.DesiredHeading = Nav.WPBearing;
+				}
 			}
 		}
 	}
@@ -274,7 +278,7 @@ void NavPI_P(void) {
 
 	for (a = NorthC; a <= EastC; a++) {
 
-		NavMaxVel = VelScale[a] * Nav.MaxVelocity;
+		NavMaxVel = VelScale[a] * Min(WP.Velocity, Nav.MaxVelocity);
 
 		//Position
 		if (F.OrbitingWP || F.RapidDescentHazard) {

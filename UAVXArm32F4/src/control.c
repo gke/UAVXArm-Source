@@ -43,6 +43,7 @@ real32 HorizonTransScale;
 real32 AngleRateMix = 1.0f;
 real32 StickDeadZone;
 real32 CruiseThrottle = 0.5f;
+real32 CruiseThrottleTrackingRate = 0.001f;
 real32 CurrMaxTiltAngle = 0.0f;
 real32 TuneKpScale;
 int8 BeepTick = 0;
@@ -137,19 +138,20 @@ void TrackCruiseThrottle(void) {
 		if ((Abs(ROCF) < ALT_HOLD_MAX_ROC_MPS) && (DesiredThrottle
 				> THR_MIN_ALT_HOLD_STICK)) {
 
-			CruiseThrottle += ((CruiseThrottle < DesiredThrottle) ? 0.02f
-					: -0.01f) * AltdT; // was 0.004 -0.002f
+			CruiseThrottle
+					+= (((DesiredThrottle + AltComp) > CruiseThrottle) ? CruiseThrottleTrackingRate
+							: -CruiseThrottleTrackingRate) * AltdT;
 
 			CruiseThrottle
 					= Limit(CruiseThrottle, THR_MIN_ALT_HOLD_STICK, THR_MAX_ALT_HOLD_STICK);
-			SetP(EstCruiseThr, Limit(CruiseThrottle * 100.0f, 10, 65));
+			SetP(EstCruiseThr, Limit(CruiseThrottle * 100.0f, 20, 65)); // was 10, 65
 		}
 	}
 } // TrackCruiseThrottle
 
 void CheckAltHoldAlarm(void) {
 
-	AltHoldAlarmActive =  F.UsingAltHoldAlarm && NotDescending();
+	AltHoldAlarmActive = F.UsingAltHoldAlarm && NotDescending();
 
 } // CheckAltHoldAlarm
 
@@ -159,9 +161,11 @@ void DoROCControl(void) {
 
 	Alt.R.PTerm = Alt.R.Error * Alt.R.Kp;
 
-	Alt.R.DTerm = 0.0f; //Limit1(AccZ * R->Kd, 0.2f);
+	Alt.R.IntE += (Alt.R.Error * Alt.R.Ki * AltdT);
+	Alt.R.IntE = Limit1(Alt.R.IntE, Alt.R.IntLim);
+	Alt.R.ITerm = Alt.R.IntE;
 
-	AltComp = Limit1(Alt.R.PTerm + Alt.R.DTerm, Alt.R.IntLim);
+	AltComp = Limit1(Alt.R.PTerm + Alt.R.ITerm, Alt.R.IntLim);
 
 	CheckAltHoldAlarm();
 
@@ -174,7 +178,7 @@ void AltitudeHold(real32 CurrMinROCMPS, real32 CurrMaxROCMPS) {
 
 	Alt.P.PTerm = Alt.P.Error * Alt.P.Kp;
 	Alt.P.IntE += (Alt.P.Error * Alt.P.Ki * AltdT);
-	Alt.P.IntE = Limit1(Alt.P.IntE, Alt.P.IntLim);
+	Alt.P.IntE = Limit1(Alt.P.IntE, Alt.P.IntLim); // ???
 	Alt.P.ITerm = Alt.P.IntE;
 
 	Alt.R.Desired = Alt.P.PTerm + Alt.P.ITerm;
@@ -216,6 +220,7 @@ boolean ROCTooHigh(real32 Window) {
 } // ROCTooHigh
 
 void AltitudeControlFW(void) {
+	real32 t;
 
 	if (F.ForcedLanding) {
 		F.HoldingAlt = true;
@@ -228,9 +233,10 @@ void AltitudeControlFW(void) {
 				Alt.R.Desired = Limit(MaxROCMPS, 0.0, MaxROCMPS);
 				DoROCControl();
 			} else {
-				//Sl = (NavState == AltitudeLimiting) ? Limit(Abs(Altitude - AltMaxM) * 0.05f, 0.0f, 1.0f)
+				t = Altitude - AltMaxM;
+				//Sl = (NavState == AltitudeLimiting) ? Limit(Abs(t) * 0.05f, 0.0f, 1.0f)
 				//				: 0.0f; // TODO: slew
-				DeploySpoilers(Abs(Altitude - AltMaxM));
+				DeploySpoilers(Abs(t));
 				F.HoldingAlt = AltHoldAlarmActive = false;
 				AltComp = -1.0f;
 			}
@@ -239,15 +245,20 @@ void AltitudeControlFW(void) {
 				F.HoldingAlt = true;
 				AcquireAltitudeFW();
 			} else {
-				CheckThrottleMoved();
-				if (F.ThrottleMoving || (ROCTooHigh(1.0f) && !F.HoldingAlt)) {
-					F.HoldingAlt = AltHoldAlarmActive = false;
-					SetDesiredAltitude(Altitude);
-					AltComp = 0.0f;
+				if (F.HoldingAlt) {
+					t = DesiredThrottle - AHThrottle;
+					if (Abs(t) > AHThrottleWindow)
+						F.HoldingAlt = false;
+					else {
+						F.ThrottleMoving = false;
+						TrackCruiseThrottle();
+						AcquireAltitudeFW();
+					}
 				} else {
-					F.HoldingAlt = true;
-					TrackCruiseThrottle();
-					AcquireAltitudeFW(); // using Stick Throttle NOT cruise throttle
+					AltComp = DecayX(AltComp, Alt.R.IntLim * 0.33f, AltdT); // // give 3 seconds decay from max AltComp
+					AHThrottle = DesiredThrottle;
+					SetDesiredAltitude(Altitude); // just track altitude
+					F.HoldingAlt = !ROCTooHigh(1.0f);
 				}
 			}
 		}
@@ -271,25 +282,47 @@ void AcquireAltitude(void) {
 
 
 void AltitudeControl(void) {
+	real32 t;
 
 	if (F.ForcedLanding || Navigating) { // autonomous
 		F.HoldingAlt = true;
 		AcquireAltitude();
 	} else {
-		CheckThrottleMoved();
-		if (F.ThrottleMoving || (ROCTooHigh(0.25f) && !F.HoldingAlt)) {
-			F.HoldingAlt = false;
-			SetDesiredAltitude(Altitude); // just track altitude
-			AltComp = 0.0f;
+		if (F.HoldingAlt) {
+			t = DesiredThrottle - AHThrottle;
+			if (Abs(t) > AHThrottleWindow)
+				F.HoldingAlt = false;
+			else {
+				TrackCruiseThrottle();
+				AcquireAltitude();
+			}
 		} else {
-			F.HoldingAlt = true;
-			TrackCruiseThrottle();
-			AcquireAltitude(); // using Stick Throttle NOT cruise throttle
+			AltComp = DecayX(AltComp, Alt.R.IntLim * 0.33f, AltdT); // give 3 seconds decay from max AltComp
+			AHThrottle = DesiredThrottle;
+			SetDesiredAltitude(Altitude); // just track altitude
+			F.HoldingAlt = !(F.ThrottleMoving || ROCTooHigh(0.25f));
 		}
 	}
 
 } // AltitudeControl
 
+
+void AltitudeControlOLD(void) {
+
+	if (F.ForcedLanding || Navigating) { // autonomous
+		F.HoldingAlt = true;
+		AcquireAltitude();
+	} else if (F.ThrottleMoving || (ROCTooHigh(0.25f) && !F.HoldingAlt)) {
+		F.HoldingAlt = false;
+		SetDesiredAltitude(Altitude); // just track altitude
+		AltComp = 0.0f;
+	} else {
+		F.HoldingAlt = true;
+		TrackCruiseThrottle();
+		AcquireAltitude(); // using Stick Throttle NOT cruise throttle
+	}
+
+} // AltitudeControl
 
 void DoAltitudeControl(void) {
 
@@ -415,25 +448,6 @@ void DoRateDampingControl(idx a) {
 } // DoRateDampingControl
 
 
-void DoIRAngleControlFW(idx a) {
-	PIStruct *P = &A[a].P;
-
-	P->Desired = Threshold(A[a].Stick, StickDeadZone) * P->Max + A[a].NavCorr;
-	if (a == Pitch)
-		P->Desired += FWBoardPitchAngleRad;
-
-	P->Error = Limit1(P->Desired, P->Max) - Angle[a];
-	P->PTerm = P->Error * P->Kp;
-
-	P->IntE += (P->Error * P->Ki * dT);
-	P->IntE = Limit1(P->IntE, P->IntLim);
-	P->ITerm = P->IntE;
-
-	A[a].Out = -conditionOut(P->PTerm + P->ITerm);
-
-} // DoIRAngleControlFW
-
-
 void DoAngleControl(idx a) {
 	real32 AngleRateMix;
 	PIStruct *P = &A[a].P;
@@ -534,42 +548,6 @@ static void DoTurnControl(void) {
 } // DoTurnControl
 
 
-static void DoIRTurnControlFW(void) {
-	PIStruct *P = &A[Yaw].P;
-	int8 ErrorSignP = 1.0f;
-	real32 NewRollCorr;
-
-	F.YawActive = F.PassThru || (Abs(A[Yaw].Stick) > StickDeadZone)
-			|| (Abs(A[Roll].Stick) > StickDeadZone);
-
-	if (F.YawActive) {
-
-		DesiredHeading = SavedHeading = Heading;
-		P->Error = 0.0f;
-		A[Yaw].Out = conditionOut(Threshold(A[Yaw].Stick, StickDeadZone)
-				* A[Yaw].R.Max);
-
-	} else {
-		if (F.Navigate || F.ReturnHome)
-			DesiredHeading = Nav.DesiredHeading;
-
-		P->Error = MinimumTurn(DesiredHeading);
-		P->Error = Limit1(P->Error, Nav.HeadingTurnout); // 150 30
-
-		P->PTerm = P->Error * P->Kp * 0.1f; //60deg * 20 * 0.1 * 0.8 -> 12
-		ConditionIntE(P, &ErrorSignP, dT);
-
-		P->ITerm = P->IntE;
-
-		A[Yaw].Out = conditionOut(P->PTerm + P->ITerm); // needs to be driven by LR acc
-
-		NewRollCorr = 0.0f; // TODO: atanf(R->Desired * Airspeed * GRAVITY_MPS_S_R);
-		A[Roll].NavCorr = Limit1(NewRollCorr, Nav.MaxBankAngle);
-	}
-
-} // DoIRTurnControlFW
-
-
 static void DoTurnControlFW(void) {
 	PIDStruct *R = &A[Yaw].R;
 	PIStruct *P = &A[Yaw].P;
@@ -627,33 +605,22 @@ void DoControl(void) {
 
 	if (F.IsFixedWing) {
 
-		if (CurrAttSensorType == InfraRedAngle) {
+		DoTurnControlFW(); // MUST BE BEFORE ROLL CONTROL
 
-			DoIRTurnControlFW();
+		for (a = Pitch; a <= Roll; a++)
 
-			for (a = Pitch; a <= Roll; a++)
-				DoIRAngleControlFW(a);
-
-		} else {
-
-			DoTurnControlFW(); // MUST BE BEFORE ROLL CONTROL
-
-			for (a = Pitch; a <= Roll; a++)
-
-				if ((a == Roll) && (Abs(Angle[Pitch])
-						> FWRollControlPitchLimitRad))
-					DoRateDampingControl(Roll);
-				else
-					switch (AttitudeMode) {
-					case AngleMode:
-						DoAngleControl(a);
-						break;
-					case HorizonMode: // no Horizon Control for FW
-					case RateMode:
-						DoRateDampingControl(a);
-						break;
-					} // switch
-		}
+			if ((a == Roll) && (Abs(Angle[Pitch]) > FWRollControlPitchLimitRad))
+				DoRateDampingControl(Roll);
+			else
+				switch (AttitudeMode) {
+				case AngleMode:
+					DoAngleControl(a);
+					break;
+				case HorizonMode: // no Horizon Control for FW
+				case RateMode:
+					DoRateDampingControl(a);
+					break;
+				} // switch
 	} else {
 
 		//CalcTiltThrFFComp();

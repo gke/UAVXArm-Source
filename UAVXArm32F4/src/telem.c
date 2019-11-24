@@ -557,7 +557,7 @@ void SendFusionPacket(uint8 s) {
 
 	TxESCu8(s, UAVXFusionPacketTag);
 
-	TxESCu8(s, 46);
+	TxESCu8(s, 49);
 
 	TxESCi32(s, AltitudemS);
 
@@ -577,13 +577,18 @@ void SendFusionPacket(uint8 s) {
 	TxESCi16(s, Alt.R.Desired * 100.0f);
 	TxESCi16(s, Alt.R.Error * 1000.0f);
 	TxESCi16(s, Alt.R.PTerm * 1000.0f);
-	TxESCi16(s, Alt.R.DTerm * 1000.0f);
+	TxESCi16(s, Alt.R.ITerm * 1000.0f);
 
 	TxESCi16(s, CruiseThrottle * 1000.0f);
+	TxESCi16(s, DesiredThrottle * 1000.0f);
 	TxESCi16(s, AltComp * 1000.0f);
 
 	TxESCi24(s, (GPS.altitude - GPS.originAltitude) * 1000.0f);
 	TxESCi16(s, -GPS.velD * 1000.0f);
+
+	 //  "AH, VRS, TM, Alm,"
+
+	TxESCi8(s, (Navigating?8:0) + (F.RapidDescentHazard?4:0)  +(F.ThrottleMoving?2:0)+ (AltHoldAlarmActive?1:0));
 
 	SendPacketTrailer(s);
 
