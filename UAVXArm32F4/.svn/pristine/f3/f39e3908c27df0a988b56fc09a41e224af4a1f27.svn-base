@@ -1,0 +1,271 @@
+// ===============================================================================================
+// =                                UAVX Quadrocopter Controller                                 =
+// =                           Copyright (c) 2008 by Prof. Greg Egan                             =
+// =                 Original V3.15 Copyright (c) 2007 Ing. Wolfgang Mahringer                   =
+// =                     http://code.google.com/p/uavp-mods/ http://uavp.ch                      =
+// ===============================================================================================
+
+//    This is part of UAVX.
+
+//    UAVX is free software: you can redistribute it and/or modify it under the terms of the GNU 
+//    General Public License as published by the Free Software Foundation, either version 3 of the 
+//    License, or (at your option) any later version.
+
+//    UAVX is distributed in the hope that it will be useful,but WITHOUT ANY WARRANTY; without
+//    even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+//    See the GNU General Public License for more details.
+
+//    You should have received a copy of the GNU General Public License along with this program.  
+//    If not, see http://www.gnu.org/licenses/
+
+// Autonomous flight routines
+
+#include "UAVX.h"
+
+WPStruct WP, HP, HomeWP, OffsetHomeWP, POI;
+uint8 CurrWPNo = 0;
+
+const char * NavComNames[] = { "Via", "Orbit", "Perch", "POI" };
+
+//  North, East, Altitude, Velocity, Loiter, OrbitRadius OrbitAltitude OrbitVelocity Action
+
+MissionStruct NewNavMission;
+boolean NavMissionUpdated = true;
+NavPulseStruct NavPulse, SavedNavPulse;
+boolean UsingSurveyPulse;
+
+void ClearNavMission(void) {
+
+	Config.Mission.NoOfWayPoints = 0;
+	Config.Mission.FenceRadius = NAV_DEFAULT_FENCE_M;
+
+} // ClearMission
+
+void GenerateHomeWP(void) {
+
+	memset(&HomeWP, 0, sizeof(HomeWP));
+
+	HomeWP.Pos[DownC] = P(NavRTHAlt);
+	HomeWP.Velocity = Nav.MaxVelocity;
+	HomeWP.Loiter = (int16) P(DescentDelayS); // mS
+	HomeWP.Action = navLand;
+
+	HomeWP.OrbitAltitude = P(NavRTHAlt); // TODO: for camera height above ground
+
+	memcpy(&OffsetHomeWP, &HomeWP, sizeof(WPStruct));
+	memcpy(&HP, &HomeWP, sizeof(WPStruct));
+
+	F.OffsetOriginValid = false;
+
+} // GenerateHomeWP
+
+
+void CaptureHomePosition(void) {
+	idx a;
+
+	if (F.GPSValid && (GPS.hAcc <= GPSMinhAcc)) {
+
+		mS[LastGPS] = mSClock();
+
+		GPS.startTime = GPS.missionTime;
+
+		if (F.Emulation) {
+			GPS.C[NorthC].Raw = DEFAULT_HOME_LAT;
+			GPS.C[EastC].Raw = DEFAULT_HOME_LON;
+			GPS.longitudeCorrection = DEFAULT_LON_CORR;
+		}
+
+		GPS.C[NorthC].OriginRaw = GPS.C[NorthC].Raw;
+		GPS.C[EastC].OriginRaw = GPS.C[EastC].Raw;
+
+		// do it once - operations area small
+		GPS.longitudeCorrection
+				= Abs(cos(DegreesToRadians((real64)GPS.C[NorthC].Raw * 1e-7)));
+		for (a = NorthC; a <= EastC; a++)
+			GPS.C[a].Pos = GPS.C[a].Vel = GPS.C[a].PosP = 0.0f;
+
+		GPS.originAltitude = GPS.altitude - Altitude; // TODO: assumes altitude here is from Baro
+		F.HoldingAlt = false;
+
+		setStat(OriginValidS, true);
+
+		F.OriginValid = true;
+
+		CapturePosition();
+
+		if (F.GPSToLaunchRequired) {
+			Delay1mS(500);
+			DoBeep(2, 2);
+			DoBeep(6, 2);
+		} else
+			ScheduleBeeper(1500);
+	}
+} // CaptureHomePosition
+
+void CaptureOffsetHomePosition(void) {
+
+	if (!F.OffsetOriginValid) {
+
+		if (sqrtf(Sqr(GPS.C[NorthC].Pos) + Sqr(GPS.C[EastC].Pos))
+				> Nav.ProximityRadius) {// TODO: RTH or first PH
+			OffsetHomeWP.Pos[NorthC] = GPS.C[NorthC].Pos;
+			OffsetHomeWP.Pos[EastC] = GPS.C[EastC].Pos;
+			CapturePosition();
+			F.OffsetOriginValid = true;
+		}
+	}
+
+} // CaptureOffsetHomePosition
+
+
+boolean NavMissionSanityCheck(MissionStruct * M) {
+
+	// rely on UAVXNav for now
+	//CHECK FOR ANY ZERO LAT/LON VALUES ZZZ
+
+
+	return (true);
+} // NavMissionSanityCheck
+
+
+void ScheduleNavPulse(NavPulseStruct * n, timemS w, timemS p) {
+	n->State = false;
+	n->WidthmS = w;
+	n->PeriodmS = p;
+	n->Active = w > 0;
+	mSTimer(NavPulseUpdate, 0);
+} // ScheduleNavPulse
+
+
+void UpdateNavPulse(boolean v) {
+#if defined(UAVXF4V3)|| defined(UAVXF4V3BBFLASH)
+	if (Navigating && !UsingWS28XXLEDs)
+	DigitalWrite(&GPIOPins[Aux1Sel].P, v ? 1 : 0);
+#endif
+} // DoNavPulse
+
+void CheckNavPulse(NavPulseStruct * n) {
+
+	if (mSTimeout(NavPulseUpdate)) {
+		switch (n->State) {
+		case false:
+			if (Navigating && n->Active || UsingSurveyPulse) {
+				UpdateNavPulse(true);
+				mSTimer(NavPulseUpdate, n->WidthmS);
+			}
+			break;
+		case true:
+			UpdateNavPulse(false);
+			if ((n->PeriodmS <= n->WidthmS)) { // oneshot
+				n->Active = UsingSurveyPulse = false;
+			} else
+				mSTimer(NavPulseUpdate, n->PeriodmS - n->WidthmS);
+			break;
+		} // switch
+		n->State = !n->State;
+	}
+
+} // CheckNavPulse
+
+
+void NextWP(void) {
+
+	CurrWPNo++;
+	if (CurrWPNo > Config.Mission.NoOfWayPoints)
+		CurrWPNo = 0;
+
+	NavState = Transiting;
+
+} // NextWP
+
+void SetWPHome(void) {
+	if (F.IsFixedWing && UsingOffsetHome && F.OffsetOriginValid)
+		memcpy(&WP, &OffsetHomeWP, sizeof(WPStruct));
+	else
+		memcpy(&WP, &HomeWP, sizeof(WPStruct));
+} // SetWPHome
+
+void RefreshNavWayPoint(void) {
+
+	GetNavWayPoint();
+	while ((WP.Action == navPOI) || (WP.Action == navPulse)) {
+		if (WP.Action == navPOI) {
+			F.UsingPOI = true;
+			POI.Pos[NorthC] = WP.Pos[NorthC];
+			POI.Pos[EastC] = WP.Pos[EastC];
+		} else {
+			ScheduleNavPulse(&NavPulse, WP.PulseWidthmS, WP.PulsePeriodmS);
+			UsingSurveyPulse = NavPulse.Active;
+		}
+		NextWP();
+		GetNavWayPoint();
+	}
+
+	SetDesiredAltitude(WP.Pos[DownC]);
+
+} // RefreshNavWayPoint
+
+
+void GetNavWayPoint(void) {
+	WPStructNV * W;
+	static uint8 LastWPUpdated = 255;
+
+	if (NavMissionUpdated || (CurrWPNo != LastWPUpdated)) {
+		NavMissionUpdated = false;
+		LastWPUpdated = CurrWPNo;
+
+		if (CurrWPNo > Config.Mission.NoOfWayPoints)
+			CurrWPNo = 0;
+
+		if (CurrWPNo == 0) { // WP #0 is Origin
+
+			SetWPHome();
+			NavState = Transiting;
+			F.UsingPOI = false;
+
+		} else { // TODO: run time expansion - a little expensive!
+
+			W = &Config.Mission.WP[CurrWPNo];
+			WP.Pos[NorthC] = GPSToM(W->LatitudeRaw - GPS.C[NorthC].OriginRaw);
+			WP.Pos[EastC] = GPSToM(W->LongitudeRaw - GPS.C[EastC].OriginRaw)
+					* GPS.longitudeCorrection;
+			WP.Pos[DownC] = (real32) W->Altitude;
+			WP.Velocity = (real32) W->VelocitydMpS * 0.1f;
+			WP.Loiter = (int16) W->Loiter; // S
+			WP.Action = W->Action;
+			if (WP.Action == navPOI)
+				F.UsingPOI = true;
+			WP.OrbitRadius = (real32) W->OrbitRadius; // M
+			WP.OrbitAltitude = (real32) W->OrbitAltitude;
+			WP.OrbitVelocity = (real32) W->OrbitVelocitydMpS * 0.1f; // dM/S
+
+			WP.PulseWidthmS = W->PulseWidthmS;
+			WP.PulsePeriodmS = W->PulsePeriodmS;
+
+		}
+#if defined(NAV_ENFORCE_ALTITUDE_CEILING)
+		WP.Pos[DownC] = Limit(WP.Pos[DownC], 0, NAV_CEILING_M);
+		WP.OrbitAltitude = Limit(WP.OrbitAltitude, 0, NAV_CEILING_M);
+#endif // NAV_ENFORCE_ALTITUDE_CEILING
+	}
+} // GetNavWaypoint
+
+void UpdateNavMission(void) {
+
+	if (NavMissionSanityCheck(&NewNavMission)) {
+		if (NewNavMission.NoOfWayPoints > 0)
+			memcpy(&Config.Mission, &NewNavMission, sizeof(MissionStruct));
+		else
+			ClearNavMission();
+
+		memset(&NewNavMission, 0, sizeof(MissionStruct));
+
+		if (State != InFlight)
+			UpdateConfig();
+
+		NavMissionUpdated = true;
+	}
+
+} // DoNavMissionUpdate
+
+

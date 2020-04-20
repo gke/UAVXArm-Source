@@ -1,0 +1,103 @@
+// ===============================================================================================
+// =                                UAVX Quadrocopter Controller                                 =
+// =                           Copyright (c) 2008 by Prof. Greg Egan                             =
+// =                 Original V3.15 Copyright (c) 2007 Ing. Wolfgang Mahringer                   =
+// =                     http://code.google.com/p/uavp-mods/ http://uavp.ch                      =
+// ===============================================================================================
+
+//    This is part of UAVX.
+
+//    UAVX is free software: you can redistribute it and/or modify it under the terms of the GNU 
+//    General Public License as published by the Free Software Foundation, either version 3 of the 
+//    License, or (at your option) any later version.
+
+//    UAVX is distributed in the hope that it will be useful,but WITHOUT ANY WARRANTY; without
+//    even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+//    See the GNU General Public License for more details.
+
+//    You should have received a copy of the GNU General Public License along with this program.  
+//    If not, see http://www.gnu.org/licenses/
+
+
+#include "UAVX.h"
+
+real32 DensityAltitudeP;
+real32 BaroVariance = 0.35f;
+real32 AccZVariance = 0.04f;
+real32 AccZSDevN = 0.3f;
+real32 TrackAccZVariance = 0.04f;
+
+real32 m00 = 1.0f;
+real32 m01 = 0.0f;
+real32 m10 = 0.0f;
+real32 m11 = 1.0f;
+
+void InitAltitudeFilters(void) {
+	const uint8 AltLPFOrder = 1;
+	const uint8 ROCLPFOrder = 2;
+	const uint8 ROCFLPFOrder = 2;
+
+	m00 = 1.0f;
+	m01 = 0.0f;
+	m10 = 0.0f;
+	m11 = 1.0f;
+
+	Altitude = ROC = ROCF = AccZ = AccZBias = 0.0f;
+
+	initLPFn(&AccZBumpLPF, 2, 1.0f);
+
+	initLPFn(&AltitudeLPF, AltLPFOrder, CurrAltLPFHz); // ALT_UPDATE_MS
+	initLPFn(&ROCLPF, ROCLPFOrder, CurrAltLPFHz);
+	initLPFn(&FROCLPF, ROCFLPFOrder, CurrAltLPFHz * 0.25f);
+
+} // InitAltitudeFilters
+
+
+// Kalman
+
+// https://shepherdingelectrons.blogspot.com/2017/06/height-and-vertical-velocity-kalman.html
+
+
+void AltitudeKF(real32 Alt, real32 AccZ, real32 dT) {
+	const real32 q00 = 0.5f * AccZVariance * (dT * dT * dT * dT);
+	const real32 q01 = 0.5f * AccZVariance * (dT * dT * dT);
+	const real32 q10 = 0.5f * AccZVariance * (dT * dT * dT);
+	const real32 q11 = AccZVariance * (dT * dT);
+
+	real32 ps0, ps1, cse;
+	real32 pp00, pp01, pp10, pp11;
+	real32 inov, icR, kg0, kg1;
+
+	ps0 = DensityAltitude + ROC * dT + 0.5f * AccZ * Sqr(dT);
+	ps1 = ROC + AccZ * dT;
+
+	cse = m11 * dT;
+	pp01 = m01 + cse + q01;
+
+	pp10 = m10 + cse;
+	pp00 = m00 + (m01 + pp10) * dT + q00;
+	pp10 += q10;
+	pp11 = m11 + q11;
+
+	inov = Alt - ps0;
+	icR = 1.0f / (pp00 + BaroVariance);
+
+	kg0 = pp00 * icR;
+	kg1 = pp10 * icR;
+
+	DensityAltitude = ps0 + kg0 * inov;
+	ROC = ps1 + kg1 * inov;
+
+	m00 = pp00 * (1.0f - kg0);
+	m01 = pp01 * (1.0f - kg0);
+	m10 = pp10 - pp00 * kg1;
+	m11 = pp11 - pp01 * kg1;
+
+} // AltitudeKF
+
+
+
+
+
+
+

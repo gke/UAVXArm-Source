@@ -1,0 +1,226 @@
+// ===============================================================================================
+// =                                UAVX Quadrocopter Controller                                 =
+// =                           Copyright (c) 2008 by Prof. Greg Egan                             =
+// =                 Original V3.15 Copyright (c) 2007 Ing. Wolfgang Mahringer                   =
+// =                     http://code.google.com/p/uavp-mods/ http://uavp.ch                      =
+// ===============================================================================================
+
+//    This is part of UAVX.
+
+//    UAVX is free software: you can redistribute it and/or modify it under the terms of the GNU
+//    General Public License as published by the Free Software Foundation, either version 3 of the
+//    License, or (at your option) any later version.
+
+//    UAVX is distributed in the hope that it will be useful,but WITHOUT ANY WARRANTY; without
+//    even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+//    See the GNU General Public License for more details.
+
+//    You should have received a copy of the GNU General Public License along with this program.
+//    If not, see http://www.gnu.org/licenses/
+
+
+#ifndef _main_h
+#define _main_h
+
+#define ArmingSwitch (DigitalRead(&GPIOPins[ArmedSel].P))
+
+//________________________________________________________________________________________
+
+#define FLAG_BYTES  12
+
+
+
+extern real32 dT, dTR, dTOn2, dTROn2;
+extern timeuS CurrPIDCycleuS;
+extern real32 CurrPIDCycleS;
+
+enum uSTimes {
+	NextCycleUpdate, MemReady, LastCycleTime, NextGyroUpdate, NextBaroUpdate, NextAltUpdate, uSLastArrayEntry
+};
+
+
+enum mSTimes {
+	StartTime,
+	GeneralCountdown,
+	UpdateTimeout,
+	RCSignalTimeout,
+	BeeperTimeout,
+	ThrottleIdleTimeout,
+	AbortTimeout,
+	NavStateTimeout,
+	DescentUpdate,
+	GlidingTime,
+	LastValidRx,
+	LastGPS,
+	AccTimeout,
+	GPSTimeout,
+	RxFailsafeTimeout,
+	StickChangeUpdate,
+	StickTimeout,
+	LEDChaserUpdate,
+	LastBattery,
+	BatteryUpdate,
+	TelemetryUpdate,
+	BeeperUpdate,
+	ArmedTimeout,
+	WarmupTimeout,
+	ThrottleUpdate,
+	BaroUpdate,
+	AltUpdate,
+	EmuAltUpdate,
+	NextASUpdate,
+	FakeGPSUpdate,
+	GyroTempUpdate,
+	RangefinderUpdate,
+	MagnetometerUpdate,
+	LVCTimeout,
+	CrashedTimeout,
+	ThermalTimeout,
+	CruiseTimeout,
+	OpticalUpdate,
+	WPTimeout,
+	CalibrationTimeout,
+	MotorStart,
+	LastMAVHeartbeat,
+	NavPulseUpdate,
+	BLHeliTimeout,
+	oledDisplayUpdate,
+	mSLastArrayEntry
+};
+
+enum WaitStates {
+	WaitSentinel,
+	WaitSentinel2,
+	WaitID,
+	WaitClass,
+	WaitLength,
+	WaitLength2,
+	WaitBody,
+	WaitCheckSum,
+	WaitCheckSum2
+};
+
+typedef volatile union {
+	uint8 AllFlags[FLAG_BYTES];
+	struct { // Order of these flags subject to change
+		uint8 // 0
+				AltControlEnabled :1,
+				UsingGPSAltitude :1,
+				RapidDescentHazard :1,
+				LandingSwitch :1,
+				NearLevel :1,
+				LowBatt :1,
+				GPSValid :1,
+				OriginValid :1,
+
+				// 1
+				BaroFailure :1,
+				IMUFailure :1,
+				MagnetometerFailure :1,
+				GPSFailure :1,
+				AttitudeHold :1,
+				ThrottleMoving :1,
+				HoldingAlt :1,
+				Navigate :1,
+
+				// 2
+				ReturnHome :1,
+				WayPointAchieved :1,
+				WayPointCentred :1,
+				OrbitingWP :1,
+				UsingRTHAutoDescend :1,
+				BaroActive :1,
+				RangefinderActive :1,
+				UsingRangefinderAlt :1,
+
+				// 3
+				UsingPOI :1,
+				PassThru :1,
+				UsingAngleControl :1,
+				Emulation :1,
+				OffsetOriginValid :1,
+				DrivesArmed :1,
+				AccZBump :1,
+				UseManualAltHold :1,
+
+				// 4
+				Saturation :1,
+				DumpingBlackBox :1,
+				ParametersValid :1,
+				Signal :1,
+				UsingWPNavigation :1,
+				IMUActive :1,
+				MagnetometerActive :1,
+				IsArmed :1,
+
+				// 5
+				IsFixedWing :1,
+				ThrottleOpen :1,
+				MagnetometerCalibrated :1,
+				UsingUplink :1,
+				NewAltitudeValue :1,
+				IMUCalibrated :1,
+				CrossTrackActive :1,
+				AccCalibrated :1,
+
+				// 6
+				NewBaroValue :1,
+				BeeperInUse :1,
+				ParametersChangedUNUSED :1,
+				Soaring :1,
+				ValidGPSVel :1,
+				RCFrameReceived :1, // zzz
+				ValidGPSPosUNUSED :1,
+				ASActive :1,
+
+				// 7
+				YawActive :1,
+				HaveGPS :1,
+				RCNewValues :1,
+				NewNavUpdate :1,
+				HaveNVMem :1,
+				UsingRapidDescent :1, // was MPU6050
+				UsingTurnToWP:1,
+				Glide:1,
+
+				// 8
+				NewMagValues :1, GPSToLaunchRequired :1, UsingAnalogGyros :1,
+				sioFatal :1, GPSPacketReceived :1, WindEstValid :1,
+				FenceAlarm :1,
+				NavigationEnabled :1,
+
+				// 9
+				ForcedLanding :1, NewGPSPosition :1,
+				EnforceDriveSymmetry :1, RCFrameOK :1, InvertMagnetometer :1,
+				NewCommands :1, Unused_9_6 :1, UsingConvYawSense :1,
+
+				// 10
+				BadBusDevConfig :1
+
+				// 11
+				; // MAXED OUT
+	};
+} Flags;
+
+enum FlightStates {
+	Starting,
+	Warmup,
+	Landing,
+	Landed,
+	Shutdown,
+	InFlight,
+	IREmulate,
+	Preflight,
+	Ready,
+	ThrottleOpenCheck,
+	ErectingGyros,
+	MonitorInstruments,
+	UnknownFlightState
+};
+
+extern uint8 State;
+extern Flags F;
+
+#endif
+
+

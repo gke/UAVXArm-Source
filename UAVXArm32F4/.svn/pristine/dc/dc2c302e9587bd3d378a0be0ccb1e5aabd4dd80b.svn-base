@@ -1,0 +1,537 @@
+// ===============================================================================================
+// =                                UAVX Quadrocopter Controller                                 =
+// =                           Copyright (c) 2008 by Prof. Greg Egan                             =
+// =                 Original V3.15 Copyright (c) 2007 Ing. Wolfgang Mahringer                   =
+// =                     http://code.google.com/p/uavp-mods/ http://uavp.ch                      =
+// ===============================================================================================
+
+//    This is part of UAVX.
+
+//    UAVX is free software: you can redistribute it and/or modify it under the terms of the GNU 
+//    General Public License as published by the Free Software Foundation, either version 3 of the 
+//    License, or (at your option) any later version.
+
+//    UAVX is distributed in the hope that it will be useful,but WITHOUT ANY WARRANTY; without
+//    even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+//    See the GNU General Public License for more details.
+
+//    You should have received a copy of the GNU General Public License along with this program.  
+//    If not, see http://www.gnu.org/licenses/
+
+// Calibration extensions
+
+#include "UAVX.h"
+
+// Least squares fit of a sphere to 3D data, ImaginaryZ's blog,
+// Miscellaneous banter, Useful mathematics, game programming tools and the occasional kink or two.
+// 22 April 2011.
+// http: imaginaryz.blogspot.com.au/2011/04/least-squares-fit-sphere-to-3d-data.html
+
+// Substantially rewritten for UAVXArm by Prof. G.K. Egan (C) 2012.
+
+uint16 SphereFit(real32 d[][3], uint16 N, uint16 MaxIterations, real32 Err,
+		real32 SphereOrigin[], real32 * SphereRadius) {
+
+	int32 a;
+	uint16 i, Iterations;
+	real32 s[3], s2[3], s3[3], sum[3], sum2[3], sum3[3];
+	real32 x2sum[3], y2sum[3], z2sum[3];
+	real32 xy_sum, xz_sum, yz_sum;
+	real32 xy, xz, yz, x2z, y2x, y2z, z2x, x2y, z2y;
+	real32 qs, qb, q0, q1, q2;
+	real32 r2, c[3], c2[3], Delta[3], Denom[3];
+	real32 f0, f1, f2, f3, f4;
+	real32 di2[3];
+	real32 SizeR;
+
+	for (a = X; a <= Z; a++)
+		s[a] = s2[a] = s3[a] = sum[a] = x2sum[a] = y2sum[a] = z2sum[a] = 0.0f;
+
+	xy_sum = xz_sum = yz_sum = 0.0f;
+
+	for (i = 0; i < N; i++) {
+
+		for (a = X; a <= Z; a++) {
+			di2[a] = Sqr(d[i][a]);
+			s[a] += d[i][a];
+			s2[a] += di2[a];
+			s3[a] += di2[a] * d[i][a];
+		}
+
+		///zzzzzzzzzz
+
+		xy_sum += d[i][X] * d[i][Y];
+		xz_sum += d[i][X] * d[i][Z];
+		yz_sum += d[i][Y] * d[i][Z];
+
+		x2sum[Y] += di2[X] * d[i][Y];
+		x2sum[Z] += di2[X] * d[i][Z];
+
+		y2sum[X] += di2[Y] * d[i][X];
+		y2sum[Z] += di2[Y] * d[i][Z];
+
+		z2sum[X] += di2[Z] * d[i][X];
+		z2sum[Y] += di2[Z] * d[i][Y];
+	}
+
+	SizeR = 1.0f / (real32) N;
+	for (a = X; a <= Z; a++) {
+		sum[a] = s[a] * SizeR; //sum( X[n] )
+		sum2[a] = s2[a] * SizeR; //sum( X[n]^2 )
+		sum3[a] = s3[a] * SizeR; //sum( X[n]^3 )
+	}
+
+	xy = xy_sum * SizeR; //sum( X[n] * Y[n] )
+	xz = xz_sum * SizeR; //sum( X[n] * Z[n] )
+	yz = yz_sum * SizeR; //sum( Y[n] * Z[n] )
+
+	x2y = x2sum[Y] * SizeR; //sum( X[n]^2 * Y[n] )
+	x2z = x2sum[Z] * SizeR; //sum( X[n]^2 * Z[n] )
+	y2x = y2sum[X] * SizeR; //sum( Y[n]^2 * X[n] )
+	y2z = y2sum[Z] * SizeR; //sum( Y[n]^2 * Z[n] )
+	z2x = z2sum[X] * SizeR; //sum( Z[n]^2 * X[n] )
+	z2y = z2sum[Y] * SizeR; //sum( Z[n]^2 * Y[n] )
+
+	//Reduction of multiplications
+	f0 = sum2[X] + sum2[Y] + sum2[Z];
+	f1 = 0.5f * f0;
+	f2 = -8.0f * (sum3[X] + y2x + z2x);
+	f3 = -8.0f * (x2y + sum3[Y] + z2y);
+	f4 = -8.0f * (x2z + y2z + sum3[Z]);
+
+	for (a = X; a <= Z; a++) {
+		c[a] = sum[a];
+		c2[a] = Sqr(c[a]);
+	}
+
+	qs = c2[X] + c2[Y] + c2[Z];
+	qb = -2.0f * (Sqr(c[X]) + Sqr(c[Y]) + Sqr(c[Z]));
+	r2 = f0 + qb + qs;
+	q0 = 0.5f * (qs - r2);
+	q1 = f1 + q0;
+	q2 = 8.0f * (qs - r2 + qb + f0);
+
+	Iterations = 0;
+	do {
+		for (a = X; a <= Z; a++) {
+			Denom[a] = q2 + 16.0f * (c2[a] - 2.0f * c[a] * sum[a] + sum2[a]);
+			if (Denom[a] == 0.0f)
+				Denom[a] = 1.0f;
+		}
+
+		Delta[X] = -((f2 + 16.0f * (c[Y] * xy + c[Z] * xz + sum[X] * (-c2[X]
+				- q0) + c[X] * (sum2[X] + q1 - c[Z] * sum[Z] - c[Y] * sum[Y])))
+				/ Denom[X]);
+		Delta[Y] = -((f3 + 16.0f * (c[X] * xy + c[Z] * yz + sum[Y] * (-c2[Y]
+				- q0) + c[Y] * (sum2[Y] + q1 - c[X] * sum[X] - c[Z] * sum[Z])))
+				/ Denom[Y]);
+		Delta[Z] = -((f4 + 16.0f * (c[X] * xz + c[Y] * yz + sum[Z] * (-c2[Z]
+				- q0) + c[Z] * (sum2[Z] + q1 - c[X] * sum[X] - c[Y] * sum[Y])))
+				/ Denom[Z]);
+
+		for (a = X; a <= Z; a++) {
+			c[a] += Delta[a];
+			c2[a] = Sqr(c[a]);
+		}
+
+		qs = c2[X] + c2[Y] + c2[Z];
+		qb = -2.0f * (c[X] * sum[X] + c[Y] * sum[Y] + c[Z] * sum[Z]);
+		r2 = f0 + qb + qs;
+		q0 = 0.5f * (qs - r2);
+		q1 = f1 + q0;
+		q2 = 8.0f * (qs - r2 + qb + f0);
+
+		Iterations++;
+	} while ((Iterations < MaxIterations) && ((Sqr(Delta[X]) + Sqr(Delta[Y])
+			+ Sqr(Delta[Z])) > Err));
+
+	for (a = X; a <= Z; a++)
+		SphereOrigin[a] = c[a];
+
+	*SphereRadius = sqrtf(r2);
+
+	return (Iterations);
+}
+// SphereFit
+
+//______________________________________________________________________________________
+
+// 6 point calibration
+
+// Used by Cleanflight and derivatives originally from Freescale's Compass/Magnetometer AN4246
+// Initial implementation by @HaukeRa and modified by @DigitalEntity
+
+// Modified for UAVXArm by Prof. G.K. Egan 2017
+// Basic scheme is to fit data to a sphere and then determine axis scaling and origin offset
+
+
+typedef struct {
+	real32 XtY[4];
+	real32 XtX[4][4];
+} sensorStateStruct;
+
+int16 calCycles;
+boolean axisCalibrated[6];
+
+void resetState(sensorStateStruct * state) {
+	int i, j;
+
+	for (i = 0; i < 4; i++) {
+		for (j = 0; j < 4; j++)
+			state->XtX[i][j] = 0.0f;
+
+		state->XtY[i] = 0.0f;
+	}
+} // resetState
+
+
+void pushForBiasCalc(sensorStateStruct * state, real32 s[3]) {
+	state->XtX[0][0] += s[0] * s[0];
+	state->XtX[0][1] += s[0] * s[1];
+	state->XtX[0][2] += s[0] * s[2];
+	state->XtX[0][3] += s[0];
+
+	state->XtX[1][0] += s[1] * s[0];
+	state->XtX[1][1] += s[1] * s[1];
+	state->XtX[1][2] += s[1] * s[2];
+	state->XtX[1][3] += s[1];
+
+	state->XtX[2][0] += s[2] * s[0];
+	state->XtX[2][1] += s[2] * s[1];
+	state->XtX[2][2] += s[2] * s[2];
+	state->XtX[2][3] += s[2];
+
+	state->XtX[3][0] += s[0];
+	state->XtX[3][1] += s[1];
+	state->XtX[3][2] += s[2];
+	state->XtX[3][3] += 1.0f;
+
+	real32 ss2 = Sqr(s[0]) + Sqr(s[1]) + Sqr(s[2]);
+	state->XtY[0] += s[0] * ss2;
+	state->XtY[1] += s[1] * ss2;
+	state->XtY[2] += s[2] * ss2;
+	state->XtY[3] += ss2;
+} // pushForBiasCalc
+
+
+void pushForScaleCalc(sensorStateStruct * state, int a, real32 s[3],
+		real32 target) {
+	int i;
+
+	for (i = 0; i < 3; i++) {
+		real32 ss2 = Sqr(s[i] / target);
+		state->XtX[a][i] += ss2;
+		state->XtX[3][i] += ss2;
+	}
+
+	state->XtX[a][3] += 1.0f;
+	state->XtY[a] += 1.0f;
+	state->XtY[3] += 1.0f;
+} // pushForScaleCalc
+
+
+static void gaussLR(real32 m[4][4]) {
+	int i, j, k;
+
+	for (i = 0; i < 4; i++) {
+		// Determine R
+		for (j = i; j < 4; j++)
+			for (k = 0; k < i; k++)
+				m[i][j] -= m[i][k] * m[k][j];
+
+		// Determine L
+		for (j = i + 1; j < 4; j++) {
+			for (k = 0; k < i; k++)
+				m[j][i] -= m[j][k] * m[k][i];
+			m[j][i] /= m[i][i];
+		}
+	}
+} // gaussLR
+
+
+void FWSubst(real32 LR[4][4], real32 y[4], real32 b[4]) {
+	int i, k;
+
+	for (i = 0; i < 4; ++i) {
+		y[i] = b[i];
+		for (k = 0; k < i; ++k)
+			y[i] -= LR[i][k] * y[k];
+
+		//y[i] /= MAT_ELEM_AT(LR,i,i); //Do not use, LR(i,i) is 1 anyways and not stored in this matrix
+	}
+} // FWSubst
+
+void BWSubst(real32 LR[4][4], real32 x[4], real32 y[4]) {
+	int i, k;
+
+	for (i = 3; i >= 0; --i) {
+		x[i] = y[i];
+		for (k = i + 1; k < 4; ++k)
+			x[i] -= LR[i][k] * x[k];
+
+		x[i] /= LR[i][i];
+	}
+} // BWSubst
+
+
+// solve linear equation
+// https://en.wikipedia.org/wiki/Gaussian_elimination
+static void solveLGS(real32 A[4][4], real32 x[4], real32 b[4]) {
+	int a;
+	real32 y[4];
+
+	gaussLR(A);
+
+	for (a = 0; a < 4; ++a)
+		y[a] = 0.0f;
+
+	FWSubst(A, y, b);
+	BWSubst(A, x, y);
+} // solveLGS
+
+void solveBias(sensorStateStruct * state, real32 result[3]) {
+	real32 beta[4];
+	idx a;
+
+	solveLGS(state->XtX, beta, state->XtY);
+
+	for (a = X; a <= Z; a++)
+		result[a] = beta[a] * 0.5f;
+} // solveBias
+
+void solveScale(sensorStateStruct * state, real32 result[3]) {
+	idx a;
+	real32 beta[4];
+
+	solveLGS(state->XtX, beta, state->XtY);
+
+	for (a = X; a <= Z; a++)
+		result[a] = sqrtf(beta[a]);
+} // solveScale
+
+
+int8 getCurrDir(real32 s[3]) {
+	const real32 r = atanf(DegreesToRadians(10));
+
+	if ((Abs(s[Z]) * r) > Abs(s[X]) && (Abs(s[Z]) * r) > Abs(s[Y]))
+		return (s[Z] > 0) ? 0 : 1;
+	else if ((Abs(s[X]) * r) > Abs(s[Y]) && (Abs(s[X]) * r) > Abs(s[Z]))
+		return (s[X] > 0) ? 2 : 3;
+	else if ((Abs(s[Y]) * r) > Abs(s[X]) && (Abs(s[Y]) * r) > Abs(s[Z]))
+		return (s[Y] > 0) ? 4 : 5;
+	else
+		return -1;
+} // getCurrDir
+
+
+#if defined(STM32F1)
+
+void CalibrateAccSixPoint(uint8 s) {
+
+
+} // CalibrateAccSixPoint
+
+#else
+
+real32 sp[ACC_CAL_SPHERE_CYCLES * 6][3];
+
+void CalibrateAccSixPointSphere(uint8 s) {
+	int16 calDirCnt = 0;
+	idx a;
+	int8 Currdp, dp;
+	uint16 N;
+	real32 SphereOrigin[3];
+	real32 SphereRadius;
+
+	SaveLEDs();
+	LEDsOff();
+
+	LEDOn(LEDBlueSel);
+
+	for (a = X; a <= Z; a++)
+		axisCalibrated[a] = false;
+
+	N = 0;
+	calDirCnt = 0;
+	F.AccCalibrated = false;
+
+	do {
+
+		ReadAccAndGyro(false);
+		dp = getCurrDir(RawAcc);
+
+		if (dp >= 0) {
+
+			if (!axisCalibrated[dp]) { // assume stays in window
+				Currdp = dp;
+
+				DoBeep(2, 1);
+				LEDOff(LEDRedSel);
+
+				Delay1mS(100); // short delay to reduce post move shake
+
+				calCycles = 0;
+				do {
+					Delay1mS(2);
+
+					ReadAccAndGyro(false);
+					dp = getCurrDir(RawAcc);
+
+					if (Currdp == dp) {
+						LEDOff(LEDYellowSel);
+						LEDOn(LEDGreenSel);
+						for (a = X; a <= Z; a++)
+							sp[N][a] = RawAcc[a];
+
+						N++;
+						calCycles++;
+					} else {
+						LEDOn(LEDYellowSel);
+						LEDOff(LEDGreenSel);
+					}
+
+				} while (calCycles < ACC_CAL_SPHERE_CYCLES);
+
+				axisCalibrated[dp] = true;
+				calDirCnt++;
+
+				DoBeep(5, 1);
+				LEDOff(LEDYellowSel);
+				LEDOff(LEDGreenSel);
+			} else
+				LEDOn(LEDRedSel);
+		}
+
+	} while (calDirCnt != 6);
+
+	LEDsOff();
+
+	SphereFit(sp, ACC_CAL_SPHERE_CYCLES * 6, 50, 0.01f, SphereOrigin,
+			&SphereRadius);
+
+	for (a = X; a <= Z; a++) {
+		NV.AccCal.Scale[a] = SphereRadius * GRAVITY_MPS_S / (real32) MPU_1G;
+		NV.AccCal.Bias[a] = SphereOrigin[a];
+	}
+
+	NV.AccCal.DynamicAccBias[Z] = 0.0f;
+
+	NVChanged = true;
+	UpdateNV();
+
+	F.AccCalibrated = true;
+
+	LEDsOff();
+	DoBeeps(2);
+
+	RestoreLEDs();
+
+} // CalibrateAccSixPointSphere
+
+void CalibrateAccSixPoint(uint8 s) {
+	int16 calDirCnt = 0;
+	uint8 d, a;
+	int8 Currdp, dp;
+	sensorStateStruct calState;
+	real32 sensorSamples[6][3];
+	real32 sensorSample[3];
+
+	SaveLEDs();
+	LEDsOff();
+
+	LEDOn(LEDBlueSel);
+
+	for (d = 0; d < 6; d++) {
+		axisCalibrated[d] = false;
+		for (a = X; a <= Z; a++)
+			sensorSamples[d][a] = 0.0f;
+	}
+
+	calDirCnt = 0;
+	resetState(&calState);
+	F.AccCalibrated = false;
+
+	do {
+
+		ReadAccAndGyro(false);
+		dp = getCurrDir(RawAcc);
+
+		if (dp >= 0) {
+
+			if (!axisCalibrated[dp]) { // assume stays in window
+				Currdp = dp;
+
+				DoBeep(2, 1);
+				LEDOff(LEDRedSel);
+
+				Delay1mS(100); // short delay to reduce post move shake
+
+				calCycles = 0;
+				do {
+					Delay1mS(2);
+
+					ReadAccAndGyro(false);
+					dp = getCurrDir(RawAcc);
+
+					if (Currdp == dp) {
+						LEDOff(LEDYellowSel);
+						LEDOn(LEDGreenSel);
+						pushForBiasCalc(&calState, RawAcc);
+						for (a = X; a <= Z; a++)
+							sensorSamples[dp][a] += RawAcc[a];
+						calCycles++;
+					} else {
+						LEDOn(LEDYellowSel);
+						LEDOff(LEDGreenSel);
+					}
+
+				} while (calCycles < ACC_CAL_CYCLES);
+
+				axisCalibrated[dp] = true;
+				calDirCnt++;
+
+				DoBeep(5, 1);
+				LEDOff(LEDYellowSel);
+				LEDOff(LEDGreenSel);
+			} else
+				LEDOn(LEDRedSel);
+		}
+
+	} while (calDirCnt != 6);
+
+	LEDsOff();
+
+	solveBias(&calState, NV.AccCal.Bias);
+
+	resetState(&calState);
+
+	for (d = 0; d < 6; d++) {
+		for (a = X; a <= Z; a++)
+			sensorSample[a] = sensorSamples[d][a] / (real32) ACC_CAL_CYCLES
+					- NV.AccCal.Scale[a];
+
+		pushForScaleCalc(&calState, d >> 1, sensorSample, (real32) MPU_1G);
+	}
+
+	solveScale(&calState, NV.AccCal.Scale);
+
+	for (a = X; a <= Z; a++)
+		NV.AccCal.Scale[a] *= (GRAVITY_MPS_S / (real32) MPU_1G);
+
+	NV.AccCal.DynamicAccBias[Z] = 0.0f;
+
+	NVChanged = true;
+	UpdateNV();
+
+	F.AccCalibrated = true;
+
+	LEDsOff();
+	DoBeeps(2);
+
+	RestoreLEDs();
+
+} // CalibrateAccSixPoint
+
+#endif
+
+

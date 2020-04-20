@@ -1,0 +1,150 @@
+// ===============================================================================================
+// =                                UAVX Quadrocopter Controller                                 =
+// =                           Copyright (c) 2008 by Prof. Greg Egan                             =
+// =                 Original V3.15 Copyright (c) 2007 Ing. Wolfgang Mahringer                   =
+// =                     http://code.google.com/p/uavp-mods/ http://uavp.ch                      =
+// ===============================================================================================
+
+//    This is part of UAVX.
+
+//    UAVX is free software: you can redistribute it and/or modify it under the terms of the GNU 
+//    General Public License as published by the Free Software Foundation, either version 3 of the 
+//    License, or (at your option) any later version.
+
+//    UAVX is distributed in the hope that it will be useful,but WITHOUT ANY WARRANTY; without
+//    even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+//    See the GNU General Public License for more details.
+
+//    You should have received a copy of the GNU General Public License along with this program.  
+//    If not, see http://www.gnu.org/licenses/
+
+
+#include "UAVX.h"
+
+real32 DensityAltitudeP;
+real32 BaroVariance = 0.35f;
+real32 AccUVariance = 2.0f;
+real32 EstAccUBias = 0.0f;
+real32 TrackBaroVariance;
+real32 TrackAccUVariance;
+
+real32 m00 = 1.0f;
+real32 m01 = 0.0f;
+real32 m10 = 0.0f;
+real32 m11 = 1.0f;
+
+
+/**
+ * "THE BEER-WARE LICENSE" (Revision 42):
+ * <robin.lilja@gmail.com> wrote this file. As long as you retain this notice you
+ * can do whatever you want with this stuff. If we meet some day, and you think
+ * this stuff is worth it, you can buy me a beer in return. - Robin Lilja
+ *
+ * @file Alt_kf.cpp
+ * @author Robin Lilja
+ * @date 23 Jul 2015
+ */
+
+real32 kg0, kg1;
+real32 pp00, pp01, pp10, pp11;
+real32 h, v;
+real32 Q_accel;
+
+void AltitudeKF2(real32 Alt, real32 AccU, real32 R_Alt, const real32 dT) {
+
+	real32 _dT2 = dT * dT;
+
+	h = h + v * dT + 0.5f * AccU * _dT2;
+	v = v + AccU * dT;
+
+	real32 _Q_accel_dT2 = Q_accel * _dT2;
+	//
+	pp00 = pp00 + (pp10 + pp01 + (pp11 + 0.25f * _Q_accel_dT2) * dT) * dT;
+	pp01 = pp01 + (pp11 + 0.5f * _Q_accel_dT2) * dT;
+	pp10 = pp10 + (pp11 + 0.5f * _Q_accel_dT2) * dT;
+	pp11 = pp11 + _Q_accel_dT2;
+
+	real32 y = Alt - h;
+	real32 Sinv = 1.0f / (pp00 + R_Alt);
+	real32 kg0 = pp00 * Sinv;
+	real32 kg2 = pp10 * Sinv;
+
+	h += kg0 * y;
+	v += kg1 * y;
+
+	pp00 = pp00 - kg0 * pp00;
+	pp01 = pp01 - kg0 * pp01;
+	pp10 = pp10 - kg1 * pp00;
+	pp11 = pp11 - kg1 * pp01;
+
+} // AltitudeKF2
+
+
+// Kalman
+
+// https://shepherdingelectrons.blogspot.com/2017/06/height-and-vertical-velocity-kalman.html
+
+
+void AltitudeKF(real32 Alt, real32 AccU, real32 dT) {
+#define K_ACC_UP 0.001f
+	const real32 q00 = 0.5f * AccUVariance * (dT * dT * dT * dT);
+	const real32 q01 = 0.5f * AccUVariance * (dT * dT * dT);
+	const real32 q10 = 0.5f * AccUVariance * (dT * dT * dT);
+	const real32 q11 = AccUVariance * (dT * dT);
+
+	real32 Ka;
+	real32 ps0, ps1, cse;
+	real32 pp00, pp01, pp10, pp11;
+	real32 inov, icR, kg0, kg1;
+	real32 Acceleration;
+
+	Ka = K_ACC_UP * AccConfidence;
+#if defined(TRACK_ACC_UP_BIAS)
+	EstAccUBias = Limit1(EstAccUBias * (1.0f - Ka) + AccU * Ka , 0.1f);
+#endif
+
+	Acceleration = AccU - EstAccUBias;
+	ps1 = ROC + Acceleration * dT;
+	ps0 = DensityAltitude + ps1 * dT;
+
+	//ps0 = DensityAltitude + ROC * dT + 0.5f * Acceleration * Sqr(dT);
+	//ps1 = ROC + Acceleration * dT;
+
+	cse = m11 * dT;
+	pp01 = m01 + cse + q01;
+
+	pp10 = m10 + cse;
+	pp00 = m00 + (m01 + pp10) * dT + q00;
+	pp10 += q10;
+	pp11 = m11 + q11;
+
+	inov = Alt - ps0;
+	icR = 1.0f / (pp00 + BaroVariance);
+
+	kg0 = pp00 * icR;
+	kg1 = pp10 * icR;
+
+	DensityAltitude = ps0 + kg0 * inov;
+	ROC = ps1 + kg1 * inov;
+
+#if defined(ALT_KF_TESTING)
+	TxVal32(TelemetrySerial, dT * 10000.0f, 1, ',');
+	TxVal32(TelemetrySerial, AccU * 1000.0f, 3, ',');
+	TxVal32(TelemetrySerial, EstAccUBias * 10000.0f, 4, ',');
+	TxVal32(TelemetrySerial, BaroPressure, 0, ',');
+	TxVal32(TelemetrySerial, Alt * 100.0f, 2, ',');
+	TxVal32(TelemetrySerial, DensityAltitude * 100.0f, 2, ',');
+	TxVal32(TelemetrySerial, ROC * 100.0, 2, ',');
+
+	TxNextLine(TelemetrySerial);
+#endif
+
+	m00 = pp00 * (1.0f - kg0);
+	m01 = pp01 * (1.0f - kg0);
+	m10 = pp10 - pp00 * kg1;
+	m11 = pp11 - pp01 * kg1;
+
+} // AltitudeKF
+
+
+

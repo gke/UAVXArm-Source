@@ -1,0 +1,317 @@
+// ===============================================================================================
+// =                                UAVX Quadrocopter Controller                                 =
+// =                           Copyright (c) 2008 by Prof. Greg Egan                             =
+// =                 Original V3.15 Copyright (c) 2007 Ing. Wolfgang Mahringer                   =
+// =                     http://code.google.com/p/uavp-mods/ http://uavp.ch                      =
+// ===============================================================================================
+
+//    This is part of UAVX.
+
+//    UAVX is free software: you can redistribute it and/or modify it under the terms of the GNU 
+//    General Public License as published by the Free Software Foundation, either version 3 of the 
+//    License, or (at your option) any later version.
+
+//    UAVX is distributed in the hope that it will be useful,but WITHOUT ANY WARRANTY; without
+//    even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+//    See the GNU General Public License for more details.
+
+//    You should have received a copy of the GNU General Public License along with this program.  
+//    If not, see http://www.gnu.org/licenses/
+
+
+#include "UAVX.h"
+
+real32 DensityAltitudeP;
+real32 BaroVariance = 0.35f;
+real32 AccUVariance = 2.0f;
+real32 AccUBiasVariance = 0.001f; //1.0f;
+real32 EstAccUBias = 0.0f;
+
+real32 TrackBaroVariance;
+real32 TrackAccUVariance;
+
+real32 m00 = 1.0f;
+real32 m01 = 0.0f;
+real32 m10 = 0.0f;
+real32 m11 = 1.0f;
+
+void InitAltitudeFilters(void) {
+	const uint8 AltLPFOrder = 1;
+	const uint8 ROCLPFOrder = 2;
+	const uint8 ROCFLPFOrder = 2;
+
+	m00 = 1.0f;
+	m01 = 0.0f;
+	m10 = 0.0f;
+	m11 = 1.0f;
+
+	Altitude = ROC = ROCF = AccU = 0.0f;
+
+	initLPFn(&AccUBumpLPF, 2, 1.0f);
+
+	initLPFn(&AltitudeLPF, AltLPFOrder, CurrAltLPFHz); // ALTUPDATEMS
+	initLPFn(&ROCLPF, ROCLPFOrder, CurrAltLPFHz);
+	initLPFn(&FROCLPF, ROCFLPFOrder, CurrAltLPFHz * 0.25f);
+
+} // InitAltitudeFilters
+
+/**
+ * "THE BEER-WARE LICENSE" (Revision 42):
+ * <robin.lilja@gmail.com> wrote this file. As long as you retain this notice you
+ * can do whatever you want with this stuff. If we meet some day, and you think
+ * this stuff is worth it, you can buy me a beer in return. - Robin Lilja
+ *
+ * @file Altkf.cpp
+ * @author Robin Lilja
+ * @date 23 Jul 2015
+ */
+
+real32 kg0, kg1;
+real32 pp00, pp01, pp10, pp11;
+real32 h, v;
+real32 Qaccel;
+
+void AltitudeKF2(real32 Alt, real32 AccU, real32 RAlt, const real32 dT) {
+
+	real32 dT2 = dT * dT;
+
+	h = h + v * dT + 0.5f * AccU * dT2;
+	v = v + AccU * dT;
+
+	real32 QacceldT2 = Qaccel * dT2;
+	//
+	pp00 = pp00 + (pp10 + pp01 + (pp11 + 0.25f * QacceldT2) * dT) * dT;
+	pp01 = pp01 + (pp11 + 0.5f * QacceldT2) * dT;
+	pp10 = pp10 + (pp11 + 0.5f * QacceldT2) * dT;
+	pp11 = pp11 + QacceldT2;
+
+	real32 y = Alt - h;
+	real32 Sinv = 1.0f / (pp00 + RAlt);
+	real32 kg0 = pp00 * Sinv;
+	real32 kg2 = pp10 * Sinv;
+
+	h += kg0 * y;
+	v += kg1 * y;
+
+	pp00 = pp00 - kg0 * pp00;
+	pp01 = pp01 - kg0 * pp01;
+	pp10 = pp10 - kg1 * pp00;
+	pp11 = pp11 - kg1 * pp01;
+
+} // AltitudeKF2
+
+
+// Tracks the position z and velocity v of an object moving in a straight line,
+// (here assumed to be vertical) that is perturbed by random accelerations.
+// sensor measurement of z is assumed to have constant measurement noise
+// variance BaroVariance,
+// This can be calculated offline for the specific sensor, and is supplied
+// as an initialization parameter.
+
+
+static real32 Pzz = 1.0f;
+static real32 Pzv = 0.0f;
+static real32 Pza = 0.0f;
+
+static real32 Pvz = 0.0f;
+static real32 Pvv = 1.0f;
+static real32 Pva = 0.0f;
+
+static real32 Paz = 0.0f;
+static real32 Pav = 0.0;
+static real32 Paa = 100.0f; //100000.0f;
+
+void AltitudeKF3(real32 Alt, real32 AccU, real32 dT) { // DODGY tracking of AccUBias
+
+	real32 EstROC, EstAlt;
+	real32 Acceleration;
+
+	// Predict state
+	Acceleration = AccU - EstAccUBias;
+	EstROC = ROC + Acceleration * dT;
+	EstAlt = DensityAltitude + EstROC * dT;
+
+	//	AccUVariance = TrackAccUVariance;
+
+	//	AccUVariance = Abs(Acceleration) / 50.0f;
+	//	AccUVariance = Limit(AccUVariance, 1.0f, 50.0f);
+
+	// Predict State Covariance matrix
+	real32 t00, t01, t02;
+	real32 t10, t11, t12;
+	real32 t20, t21, t22;
+
+	real32 dT2div2 = Sqr(dT) * 0.5f;
+	real32 dT3div2 = dT2div2 * dT;
+	real32 dT4div4 = dT2div2 * dT2div2;
+
+	t00 = Pzz + dT * Pvz - dT2div2 * Paz;
+	t01 = Pzv + dT * Pvv - dT2div2 * Pav;
+	t02 = Pza + dT * Pva - dT2div2 * Paa;
+
+	t10 = Pvz - dT * Paz;
+	t11 = Pvv - dT * Pav;
+	t12 = Pva - dT * Paa;
+
+	t20 = Paz;
+	t21 = Pav;
+	t22 = Paa;
+
+	Pzz = t00 + dT * t01 - dT2div2 * t02;
+	Pzv = t01 - dT * t02;
+	Pza = t02;
+
+	Pvz = t10 + dT * t11 - dT2div2 * t12;
+	Pvv = t11 - dT * t12;
+	Pva = t12;
+
+	Paz = t20 + dT * t21 - dT2div2 * t22;
+	Pav = t21 - dT * t22;
+	Paa = t22;
+
+	Pzz += dT4div4 * AccUVariance;
+	Pzv += dT3div2 * AccUVariance;
+
+	Pvz += dT3div2 * AccUVariance;
+	Pvv += dT * dT * AccUVariance;
+
+	Paa += AccUBiasVariance;
+
+	// Error
+	real32 innov = Alt - EstAlt;
+	real32 sInv = 1.0f / (Pzz + BaroVariance);
+
+	// Kalman gains
+	real32 kz = Pzz * sInv;
+	real32 kv = Pvz * sInv;
+	real32 ka = Paz * sInv;
+
+	// Update state
+	EstAlt += kz * innov;
+	EstROC += kv * innov;
+	EstAccUBias += ka * innov;
+
+	DensityAltitude = EstAlt;
+	ROC = EstROC;
+
+#if defined(ALT_KF_TESTING)
+
+	TxVal32(TelemetrySerial, dT * 10000.0f, 1, ',');
+	TxVal32(TelemetrySerial, AccU * 10000.0f, 4, ',');
+	TxVal32(TelemetrySerial, EstAccUBias * 1000.0f, 3, ',');
+	TxVal32(TelemetrySerial, BaroPressure, 0, ',');
+	TxVal32(TelemetrySerial, Alt * 10000.0f, 4, ',');
+	TxVal32(TelemetrySerial, DensityAltitude * 10000.0f, 4, ',');
+	TxVal32(TelemetrySerial, ROC * 1000.0, 3, ',');
+
+	TxNextLine(TelemetrySerial);
+#endif
+
+	// Update state covariance matrix
+#define REVERSE_KF
+#if defined(REVERSE_KF)
+
+	Paz -= ka * Pzz;
+	Pav -= ka * Pzv;
+	Paa -= ka * Pza;
+
+	Pvz -= kv * Pzz;
+	Pvv -= kv * Pzv;
+	Pva -= kv * Pza;
+
+	Pzz -= kz * Pzz;
+	Pzv -= kz * Pzv;
+	Pza -= kz * Pza;
+
+#else
+
+	Pzz -= kz * Pzz;
+	Pzv -= kz * Pzv;
+	Pza -= kz * Pza;
+
+	Pvz -= kv * Pzz;
+	Pvv -= kv * Pzv;
+	Pva -= kv * Pza;
+
+	Paz -= ka * Pzz;
+	Pav -= ka * Pzv;
+	Paa -= ka * Pza;
+
+#endif
+
+} // AltitudeKF3
+
+// Kalman
+
+// https://shepherdingelectrons.blogspot.com/2017/06/height-and-vertical-velocity-kalman.html
+
+
+void AltitudeKF(real32 Alt, real32 AccU, real32 dT) {
+#define K_ACC_UP 0.001f
+	const real32 q00 = 0.5f * AccUVariance * (dT * dT * dT * dT);
+	const real32 q01 = 0.5f * AccUVariance * (dT * dT * dT);
+	const real32 q10 = 0.5f * AccUVariance * (dT * dT * dT);
+	const real32 q11 = AccUVariance * (dT * dT);
+
+	real32 Ka;
+	real32 ps0, ps1, cse;
+	real32 pp00, pp01, pp10, pp11;
+	real32 inov, icR, kg0, kg1;
+	real32 Acceleration;
+
+	Ka = K_ACC_UP * AccConfidence;
+	EstAccUBias = Limit1(EstAccUBias * (1.0f - Ka)  + AccU * Ka , 0.1f);
+
+	Acceleration = AccU - EstAccUBias;
+	ps1 = ROC + Acceleration * dT;
+	ps0 = DensityAltitude + ps1 * dT;
+
+	//ps0 = DensityAltitude + ROC * dT + 0.5f * Acceleration * Sqr(dT);
+	//ps1 = ROC + Acceleration * dT;
+
+	cse = m11 * dT;
+	pp01 = m01 + cse + q01;
+
+	pp10 = m10 + cse;
+	pp00 = m00 + (m01 + pp10) * dT + q00;
+	pp10 += q10;
+	pp11 = m11 + q11;
+
+	inov = Alt - ps0;
+	icR = 1.0f / (pp00 + BaroVariance);
+
+	kg0 = pp00 * icR;
+	kg1 = pp10 * icR;
+
+	DensityAltitude = ps0 + kg0 * inov;
+	ROC = ps1 + kg1 * inov;
+
+#if defined(ALT_KF_TESTING)
+	TxVal32(TelemetrySerial, dT * 10000.0f, 1, ',');
+	TxVal32(TelemetrySerial, AccU * 1000.0f, 3, ',');
+	TxVal32(TelemetrySerial, EstAccUBias * 10000.0f, 4, ',');
+	TxVal32(TelemetrySerial, BaroPressure, 0, ',');
+	TxVal32(TelemetrySerial, Alt * 100.0f, 2, ',');
+	TxVal32(TelemetrySerial, DensityAltitude * 100.0f, 2, ',');
+	TxVal32(TelemetrySerial, ROC * 100.0, 2, ',');
+
+	TxNextLine(TelemetrySerial);
+#endif
+
+	m00 = pp00 * (1.0f - kg0);
+	m01 = pp01 * (1.0f - kg0);
+	m10 = pp10 - pp00 * kg1;
+	m11 = pp11 - pp01 * kg1;
+
+} // AltitudeKF
+
+
+void AltitudeSimpleLPF(real32 Alt, real32 dT) {
+	real32 NewDensityAltitude;
+
+	NewDensityAltitude = LPFn(&AltitudeLPF, Alt, dT);
+	ROC = LPFn(&ROCLPF, (NewDensityAltitude - DensityAltitude) / dT, dT);
+	DensityAltitude = NewDensityAltitude;
+
+} // AltitudeRaw
+

@@ -1,0 +1,329 @@
+// ===============================================================================================
+// =                                UAVX Quadrocopter Controller                                 =
+// =                           Copyright (c) 2008 by Prof. Greg Egan                             =
+// =                 Original V3.15 Copyright (c) 2007 Ing. Wolfgang Mahringer                   =
+// =                     http://code.google.com/p/uavp-mods/ http://uavp.ch                      =
+// ===============================================================================================
+
+//    This is part of UAVX.
+
+//    UAVX is free software: you can redistribute it and/or modify it under the terms of the GNU 
+//    General Public License as published by the Free Software Foundation, either version 3 of the 
+//    License, or (at your option) any later version.
+
+//    UAVX is distributed in the hope that it will be useful,but WITHOUT ANY WARRANTY; without
+//    even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+//    See the GNU General Public License for more details.
+
+//    You should have received a copy of the GNU General Public License along with this program.  
+//    If not, see http://www.gnu.org/licenses/
+
+
+#include "UAVX.h"
+
+real32 DensityAltitudeP, VelZ, AltZ;
+real32 BaroVariance = 0.35f;
+real32 AccZVariance = 0.001f; // 0.00005f;
+real32 AccZBiasVariance = 1.0f;
+
+real32 m00 = 1.0f;
+real32 m01 = 0.0f;
+real32 m10 = 0.0f;
+real32 m11 = 1.0f;
+
+void InitAltitude(void) {
+
+	Altitude = ROC = ROCF = AccZ = VelZ = AltZ = 0.0f;
+	OriginAltitude = DensityAltitude = DensityAltitudeP = RawDensityAltitude;
+
+} // InitAltitude
+
+
+// Kalman
+
+// https://shepherdingelectrons.blogspot.com/2017/06/height-and-vertical-velocity-kalman.html
+
+
+void AltitudeKF(real32 Alt, real32 AccZ, real32 dT) {
+	const real32 q00 = 0.5f * AccZVariance * (dT * dT * dT * dT);
+	const real32 q01 = 0.5f * AccZVariance * (dT * dT * dT);
+	const real32 q10 = 0.5f * AccZVariance * (dT * dT * dT);
+	const real32 q11 = AccZVariance * (dT * dT);
+
+	real32 ps0, ps1, opt;
+	real32 pp00, pp01, pp10, pp11;
+	real32 inn, icR, kg0, kg1;
+
+	ps0 = DensityAltitude + ROC * dT + 0.5f * AccZ * Sqr(dT);
+	ps1 = ROC + AccZ * dT;
+
+	opt = m11 * dT;
+	pp01 = m01 + opt + q01;
+
+	pp10 = m10 + opt;
+	pp00 = m00 + (m01 + pp10) * dT + q00;
+	pp10 += q10;
+	pp11 = m11 + q11;
+
+	inn = Alt - ps0;
+	icR = 1.0f / (pp00 + BaroVariance);
+
+	kg0 = pp00 * icR;
+	kg1 = pp10 * icR;
+
+	DensityAltitude = ps0 + kg0 * inn;
+	ROC = ps1 + kg1 * inn;
+
+	opt = 1.0f - kg0;
+	m00 = pp00 * opt;
+	m01 = pp01 * opt;
+	m10 = pp10 - pp00 * kg1;
+	m11 = pp11 - pp01 * kg1;
+
+} // AltitudeKF
+
+
+//#define dT 0.004 # 250 Hz
+
+void BaroKF(real32 Alt, real32 AccZ, real32 dT) {
+	const real32 AccZVariance = 1.0f;
+	const real32 q00 = AccZVariance * 0.5f * (dT * dT * dT * dT);
+	const real32 q01 = AccZVariance * 0.5f * (dT * dT * dT);
+	const real32 q10 = AccZVariance * 0.5f * (dT * dT * dT);
+	const real32 q11 = AccZVariance * (dT * dT);
+
+	real32 ps0, ps1, opt;
+	real32 pp00, pp01, pp10, pp11;
+	real32 inn, icR, kg0, kg1;
+
+	ps0 = DensityAltitude + dT * ROC;
+	ps1 = ROC;
+
+	opt = dT * m11;
+	pp01 = m01 + opt + q01;
+
+	pp10 = m10 + opt;
+	pp00 = m00 + dT * (m01 + pp01) + q00;
+	pp10 += q10;
+	pp11 = m11 + q11;
+
+	inn = Alt - ps0;
+	icR = 1.0f / (pp00 + BaroVariance);
+
+	kg0 = pp00 * icR;
+	kg1 = pp10 * icR;
+
+	DensityAltitude = ps0 + kg0 * inn;
+	ROC = ps1 + kg1 * inn;
+
+	opt = 1.0f - kg0;
+	m00 = pp00 * opt;
+	m01 = pp01 * opt;
+	m10 = pp10 - pp00 * kg1;
+	m11 = pp11 - pp01 * kg1;
+
+} // BaroKF
+
+
+// https://github.com/har-in-air
+
+// Kalman filter configuration
+// actual variance value used is accel_variance*1000
+#define KF_ACCEL_VARIANCE_DEFAULT            50 // => 0.05
+#define KF_ACCEL_VARIANCE_MIN                10
+#define KF_ACCEL_VARIANCE_MAX                100
+
+// This can be measured offline by calculating the
+// statistical variance in cm^2 of about one second of
+// altitude (in cm) samples from the MS5611.
+#define KF_ZMEAS_VARIANCE_DEFAULT            300 // => 0.03
+#define KF_ZMEAS_VARIANCE_MIN                100
+#define KF_ZMEAS_VARIANCE_MAX                500
+
+// This is set low as the residual acceleration bias after calibration
+// is expected to have little variation/drift
+#define KF_ACCELBIAS_VARIANCE   1.0f
+
+// State being tracked
+static real32 z_; // position
+static real32 v_; // velocity
+static real32 aBias_; // acceleration
+
+// 3x3 State Covariance matrix
+static real32 Pzz_;
+static real32 Pzv_;
+static real32 Pza_;
+static real32 Pvz_;
+static real32 Pvv_;
+static real32 Pva_;
+static real32 Paz_;
+static real32 Pav_;
+static real32 Paa_;
+
+static real32 AccZBiasVariance_; // assumed fixed.
+static real32 AccZVariance_; // environmental acceleration variance, depends on conditions
+static real32 DensityAltitudeVariance_; //  sensor z measurement noise variance, measure offline, fixed
+
+// Tracks the position z and velocity v of an object moving in a straight line,
+// (here assumed to be vertical) that is perturbed by random accelerations.
+// sensor measurement of z is assumed to have constant measurement noise
+// variance zVariance.
+// This can be calculated offline for the specific sensor.
+// zInitial can be determined by averaging a few samples of the altitude measurement.
+// vInitial and aBiasInitial can be set as 0.0
+// AccZVariance can be specified with a large initial value to skew the
+// filter towards the fresh data.
+
+// kalmanFilter3_configure((real32)opt.kf.DensityAltitudeVariance, 1000.0f*(real32)opt.kf.accelVariance, KF_ACCELBIAS_VARIANCE, ZCmAvg, 0.0f, 0.0f);
+
+
+void kalmanFilter3_configure(real32 DensityAltitudeVariance, real32 AccZVariance,
+		real32 AccZBiasVariance, real32 zInitial, real32 vInitial,
+		real32 aBiasInitial) {
+	DensityAltitudeVariance_ = DensityAltitudeVariance;
+	AccZVariance_ = AccZVariance;
+	AccZBiasVariance_ = AccZBiasVariance;
+
+	z_ = zInitial;
+	v_ = vInitial;
+	aBias_ = aBiasInitial;
+	Pzz_ = 1.0f;
+	Pzv_ = 0.0f;
+	Pza_ = 0.0f;
+
+	Pvz_ = 0.0f;
+	Pvv_ = 1.0f;
+	Pva_ = 0.0f;
+
+	Paz_ = 0.0f;
+	Pav_ = 0.0;
+	Paa_ = 100000.0f;
+
+} // kalmanFilter3_configure
+
+// Updates state [Z, V] given a sensor measurement of z, acceleration a,
+// and the time in seconds dT since the last measurement.
+
+void kalmanFilter3_update(real32 z, real32 a, real32 dT, real32* pZ, real32* pV) {
+
+	// Predict state
+	real32 accel = a - aBias_;
+	v_ += accel * dT;
+	z_ += v_ * dT;
+
+	// when AccZVariance is large, filter favours fresh data.
+	// when small, filter favours existing state.
+
+	// Predict State Covariance matrix
+	real32 t00, t01, t02;
+	real32 t10, t11, t12;
+	real32 t20, t21, t22;
+
+	real32 dT2On2 = Sqr(dT) * 0.5f;
+	real32 dT3On2 = dT2On2 * dT;
+	real32 dT4On4 = dT2On2 * dT2On2;
+
+	t00 = Pzz_ + dT * Pvz_ - dT2On2 * Paz_;
+	t01 = Pzv_ + dT * Pvv_ - dT2On2 * Pav_;
+	t02 = Pza_ + dT * Pva_ - dT2On2 * Paa_;
+
+	t10 = Pvz_ - dT * Paz_;
+	t11 = Pvv_ - dT * Pav_;
+	t12 = Pva_ - dT * Paa_;
+
+	t20 = Paz_;
+	t21 = Pav_;
+	t22 = Paa_;
+
+	Pzz_ = t00 + dT * t01 - dT2On2 * t02;
+	Pzv_ = t01 - dT * t02;
+	Pza_ = t02;
+
+	Pvz_ = t10 + dT * t11 - dT2On2 * t12;
+	Pvv_ = t11 - dT * t12;
+	Pva_ = t12;
+
+	Paz_ = t20 + dT * t21 - dT2On2 * t22;
+	Pav_ = t21 - dT * t22;
+	Paa_ = t22;
+
+	Pzz_ += dT4On4 * AccZVariance_;
+	Pzv_ += dT3On2 * AccZVariance_;
+
+	Pvz_ += dT3On2 * AccZVariance_;
+	Pvv_ += Sqr(dT) * AccZVariance_;
+
+	Paa_ += AccZBiasVariance_;
+
+	// Error
+	real32 innov = z - z_;
+	real32 sInv = 1.0f / (Pzz_ + DensityAltitudeVariance_);
+
+	// Kalman gains
+	real32 kz = Pzz_ * sInv;
+	real32 kv = Pvz_ * sInv;
+	real32 ka = Paz_ * sInv;
+
+	// Update state
+	z_ += kz * innov;
+	v_ += kv * innov;
+	aBias_ += ka * innov;
+
+	*pZ = z_;
+	*pV = v_;
+
+	// Update state covariance matrix
+	Pzz_ -= kz * Pzz_;
+	Pzv_ -= kz * Pzv_;
+	Pza_ -= kz * Pza_;
+
+	Pvz_ -= kv * Pzz_;
+	Pvv_ -= kv * Pzv_;
+	Pva_ -= kv * Pza_;
+
+	Paz_ -= ka * Pzz_;
+	Pav_ -= ka * Pzv_;
+	Paa_ -= ka * Pza_;
+
+} // kalmanFilter3_update
+
+
+//_________________________________________________________________________________
+
+// Complementary Filter
+
+
+void AltitudeCF(real32 Alt, real32 AccZ, real32 dT) {
+	// Greg's KISS Complementary Filter
+	const real32 CF_K_POS = 0.05f;
+	const real32 CF_K_VEL = 0.05f;
+
+	AltZ += VelZ * dT + 0.5f * AccZ * Sqr(dT);
+	VelZ += AccZ * dT;
+
+	DensityAltitude = Alt * CF_K_POS + AltZ * (1.0f - CF_K_POS);
+	ROC = (DensityAltitude - DensityAltitudeP) * CF_K_VEL / dT + VelZ * (1.0f
+			- CF_K_VEL);
+
+	AltZ = DensityAltitudeP = DensityAltitude;
+	VelZ = ROC;
+
+} // AltitudeCF
+
+
+//_________________________________________________________________________________
+
+
+void AltitudeSimpleLPF(real32 Alt, real32 AccZ, real32 dT) {
+
+	DensityAltitude = Alt; //LPFn(&AltitudeLPF, Alt, dT);
+	ROC = (DensityAltitude - DensityAltitudeP) / dT;
+	DensityAltitudeP = DensityAltitude;
+	ROC = LPFn(&ROCLPF, ROC, dT);
+
+} // AltitudeSimpleLPF
+
+
+//_________________________________________________________________________________
+
+

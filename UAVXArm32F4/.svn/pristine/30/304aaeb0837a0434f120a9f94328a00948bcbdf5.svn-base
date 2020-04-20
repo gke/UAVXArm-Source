@@ -1,0 +1,247 @@
+// ===============================================================================================
+// =                                UAVX Quadrocopter Controller                                 =
+// =                           Copyright (c) 2008 by Prof. Greg Egan                             =
+// =                 Original V3.15 Copyright (c) 2007 Ing. Wolfgang Mahringer                   =
+// =                     http://code.google.com/p/uavp-mods/ http://uavp.ch                      =
+// ===============================================================================================
+
+//    This is part of UAVX.
+
+//    UAVX is free software: you can redistribute it and/or modify it under the terms of the GNU 
+//    General Public License as published by the Free Software Foundation, either version 3 of the 
+//    License, or (at your option) any later version.
+
+//    UAVX is distributed in the hope that it will be useful,but WITHOUT ANY WARRANTY; without
+//    even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+//    See the GNU General Public License for more details.
+
+//    You should have received a copy of the GNU General Public License along with this program.  
+//    If not, see http://www.gnu.org/licenses/
+
+#include "UAVX.h"
+
+boolean FirstPass;
+boolean PreflightFail = false;
+uint8 ArmingMethod;
+
+void Probe(uint8 p) {
+#if defined(USE_AUX3_PROBE_PIN)
+	DigitalWrite(&GPIOPins[WPMissionOrProbeSel].P, p);
+#endif
+} // Probe
+
+void Marker(void) {
+	Probe(1);
+	Probe(0);
+} // Marker
+
+void CheckLandingSwitch(void) { // sampled every PID cycle
+	static int16 Count = 100;
+	static boolean SwitchP = false;
+	boolean Switch;
+
+	if (F.Emulation)
+		F.AccZBump = F.LandingSwitch = (Altitude < 0.1f);
+	else {
+
+		Switch = !DigitalRead(&GPIOPins[LandingSel].P); // active to ground
+
+		if (Switch != SwitchP)
+			if (Count <= 0) {
+				SwitchP = Switch;
+				Count = 100;
+			} else
+				Count--;
+		else
+			Count = 100;
+
+		F.LandingSwitch = SwitchP;
+	}
+
+} // CheckLandingSwitch
+
+
+boolean Armed(void) {
+	static boolean SwitchP = false;
+	boolean NewUplinkState, IsArmed;
+
+	if ((ArmingSwitch != SwitchP) && (State != InFlight)) {
+		DoBeep(3, 0);
+		SwitchP = ArmingSwitch;
+	}
+
+	if (ArmingMethod == TxSwitchArming)
+		IsArmed = ArmingSwitch && TxSwitchArmed;
+	else if (ArmingMethod == SwitchArming)
+		IsArmed = ArmingSwitch;
+	else
+		IsArmed = ArmingSwitch && StickArmed;
+
+	NewUplinkState = !((GPSRxSerial == TelemetrySerial) && IsArmed);
+	if (F.UsingUplink != NewUplinkState) {
+		RxEnabled[TelemetrySerial] = false;
+		RxQNewHead[TelemetrySerial] = RxQHead[TelemetrySerial]
+				= RxQTail[TelemetrySerial] = 0;
+		RxEnabled[TelemetrySerial] = true;
+		F.UsingUplink = NewUplinkState;
+	}
+
+	return (IsArmed);
+
+} // Armed
+
+boolean FailPreflight(void) {
+	boolean r;
+
+	r = !((UAVXAirframe == Instrumentation) || (UAVXAirframe == IREmulation)
+			|| ( //
+			F.Signal //
+					&& (RCStart <= 0) //
+					&& !(Armed() && FirstPass) //
+					&& !F.ThrottleOpen //
+					&& (RC[NavModeRC] <= FromPercent(20)) //
+					&& F.IMUActive //
+					&& F.IMUCalibrated //
+					&& (F.BaroActive || (busDev[baroSel].type == noBaro)) //
+					&& ((F.MagnetometerActive && F.MagnetometerCalibrated) //
+							|| ((busDev[magSel].type == noMag) //
+									|| F.IsFixedWing)) //
+					&& !(F.LowBatt || F.sioFatal || F.ReturnHome || F.Navigate) //
+			));
+
+	PreflightFail = F.ReturnHome || F.Navigate || !F.Signal;
+
+	return (r);
+
+} // FailPreflight
+
+
+void DoCalibrationAlarm(void) {
+
+	if (!F.IMUCalibrated
+			|| !((F.MagnetometerActive && F.MagnetometerCalibrated)
+					|| F.IsFixedWing)) {
+		if (mSTimeout(CalibrationTimeout)) {
+			mSTimer(CalibrationTimeout, 500);
+			LEDToggle(ledYellowSel);
+		}
+	}
+
+} // DoAccCalibrationAlarm
+
+void DoBeep(uint8 t, uint8 d) {
+	int32 i;
+	timeuS TimeoutuS;
+
+	BeeperOn();
+	for (i = 0; i < (t * 500); i++) {
+		Delay1uS(100);
+		GetBaro();
+	}
+
+	BeeperOff();
+	for (i = 0; i < (d * 500); i++) {
+		Delay1uS(100);
+		GetBaro();
+	}
+
+} // DoBeep
+
+void DoBeeps(uint8 b) {
+	idx i;
+
+	for (i = 0; i < b; i++)
+		DoBeep(2, 8);
+
+} // DoStartingBeeps
+
+void ScheduleBeeper(timemS w) {
+
+	if (!F.BeeperInUse) {
+		BeeperOn();
+		mSTimer(BeeperTimeout, w);
+	}
+
+} // ScheduleNavBeeper
+
+
+void CheckAlarms(void) {
+
+	static timemS BeeperOffTime = 100;
+	static timemS BeeperOnTime = 100;
+
+	F.BeeperInUse = PreflightFail || F.LowBatt || (State == Shutdown) || (State
+			== ThrottleOpenCheck) || (NavState == Descending);
+
+	if (F.BeeperInUse) {
+		if (F.LowBatt) {
+			BeeperOffTime = 600;
+			BeeperOnTime = 600;
+		} else if (State == Shutdown) {
+			BeeperOffTime = 4750;
+			BeeperOnTime = 250;
+		} else { //default
+			BeeperOffTime = 125;
+			BeeperOnTime = 125;
+		}
+
+		if (mSTimeout(BeeperUpdate)) {
+			if (BeeperIsOn()) {
+				mSTimer(BeeperUpdate, BeeperOffTime);
+				BeeperOff();
+				LEDOff(ledRedSel);
+			} else {
+				mSTimer(BeeperUpdate, BeeperOnTime);
+				BeeperOn();
+				LEDOn(ledRedSel);
+			}
+		}
+	} else {
+		if (mSTimeout(BeeperTimeout))
+			BeeperOff();
+	}
+
+} // CheckAlarms
+
+
+void Catastrophe(void) {
+
+	/*
+	 StopDrives();
+	 while (true) {
+	 LEDsOn();
+	 Delay1mS(500);
+	 LEDsOff();
+	 Delay1mS(500);
+	 }
+	 */
+
+	systemReset(false);
+
+} // Catastrophe
+
+
+boolean UpsideDownMulticopter(void) {
+
+	boolean UpsideDown;
+
+	UpsideDown = false;
+#if defined(CHECK_INVERTED)
+
+	if (IsMulticopter) {
+		if (Abs(Angle[Roll]) < CRASHED_ANGLE_RAD)
+			mSTimer(CrashedTimeout, CRASHED_TIMEOUT_MS);
+		else {
+			if (mSTimeout(CrashedTimeout) && (DesiredThrottle > IdleThrottle)
+					&& F.UsingAngleControl)
+				UpsideDown = true;
+			UpsideDown = false;
+		}
+	}
+#endif
+
+	return (UpsideDown);
+
+} // UpsideDownMulticopter
+
+

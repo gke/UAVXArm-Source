@@ -1,0 +1,297 @@
+// DO NOT FORMAT  DO NOT FORMAT DO NOT FORMAT DO NOT FORMAT DO NOT FORMAT DO NOT FORMAT DO NOT FORMAT
+// ===============================================================================================
+// =                                UAVX Quadrocopter Controller                                 =
+// =                           Copyright (c) 2008 by Prof. Greg Egan                             =
+// =                 Original V3.15 Copyright (c) 2007 Ing. Wolfgang Mahringer                   =
+// =                     http://code.google.com/p/uavp-mods/ http://uavp.ch                      =
+// ===============================================================================================
+
+//    This is part of UAVX.
+
+//    UAVX is free software: you can redistribute it and/or modify it under the terms of the GNU
+//    General Public License as published by the Free Software Foundation, either version 3 of the
+//    License, or (at your option) any later version.
+
+//    UAVX is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+//    even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+//    See the GNU General Public License for more details.
+
+//    You should have received a copy of the GNU General Public License along with this program.
+//    If not, see http://www.gnu.org/licenses/
+
+
+#ifndef _harness_h
+#define _harness_h
+
+#define MAX_RC_INPUTS 8
+#define MAX_PWM_OUTPUTS 10
+
+// Drives
+
+#define PWM_PS 					TIMER_PS	// 1MHz
+#define PWM_WIDTH				1000 // 1ms pulse width
+#define PWM_MIN					PWM_WIDTH
+#define PWM_MAX					(2000) // must preserve a synchronisation gap for ESCs
+#define PWM_PERIOD    			(1000000L/450) // could go to 490Hz?
+#define PWM_PS_SYNC 			TIMER_PS
+#define PWM_WIDTH_SYNC			PWM_WIDTH // 1ms pulse width
+#define PWM_MIN_SYNC			PWM_WIDTH_SYNC
+#define PWM_MAX_SYNC			PWM_MAX // must preserve a synchronisation gap for ESCs
+#define PWM_PERIOD_SYNC    		(PWM_MAX_SYNC*2)
+
+#define PWM_PS_SYNC_DIV8		(TIMER_PS/12)	// 12MHz
+#define PWM_WIDTH_SYNC_DIV8		((PWM_MIN*3)>>1)
+#define PWM_MIN_SYNC_DIV8		PWM_WIDTH_SYNC_DIV8
+#define PWM_MAX_SYNC_DIV8		((PWM_MAX*3)>>1)
+#define PWM_PERIOD_SYNC_DIV8	(PWM_MAX_SYNC_DIV8*2)
+
+#define DC_DRIVE_FREQ_HZ 		12000 // KHz 1000, 2000, 4000, 8000, 12000, 24000, 42000, 84000, 168000
+#define DC_DRIVE_PS				(DC_DRIVE_FREQ_HZ/1000) // increase resolution
+#define PWM_PS_DC				(TIMER_PS/DC_DRIVE_PS)
+#define PWM_WIDTH_DC			1 // so we get a marker for logic analysers - can be zero
+#define PWM_MIN_DC				PWM_WIDTH_DC
+#define PWM_MAX_DC				(1000-PWM_MIN_DC)
+#define PWM_PERIOD_DC    		((1000000*DC_DRIVE_PS)/DC_DRIVE_FREQ_HZ)
+
+// Servos
+
+#define PWM_PERIOD_DIGITAL  (1000000/200) // pulse period for digital servo
+#define PWM_PERIOD_ANALOG  (22500) //1000000/50) // pulse period for analog servo
+#ifdef USE_DIGITAL_SERVOS
+#define PWM_PERIOD_SERVO PWM_PERIOD_DIGITAL
+#else
+#define PWM_PERIOD_SERVO PWM_PERIOD_ANALOG
+#endif
+
+#define PWM_MIN_SERVO	(800)
+#define PWM_WIDTH_SERVO	(1000) // 1ms pulse width
+#define PWM_NEUTRAL		(1500)
+#define PWM_MAX_SERVO	(2200)
+
+enum GPIOSelectors {
+	BeeperSel,
+	ArmedSel,
+	LandingSel,
+	Aux1Sel,
+	Aux2Sel,
+	ProbeSel,
+	InverterSel,
+	MPU6XXXIntSel,
+	HMC5XXXRdySel,
+	MAX_GPIO_PINS
+};
+
+enum ADCSelectors {
+	RangefinderAnalogSel, BattCurrentAnalogSel, BattVoltsAnalogSel,
+	// Unused
+	RollAnalogSel,
+	PitchAnalogSel,
+	YawAnalogSel,
+	MAX_ANALOG_CHANNELS
+};
+
+enum BusDevSelectors {
+	imu0Sel,
+	imu1Sel,
+	baroSel,
+	magSel,
+	memSel,
+	gpsSel,
+	rfSel,
+	asSel,
+	flowSel,
+	escSel,
+	maxDevSel
+};
+
+enum {
+	mpu6000IMU, mpu6050IMU, icm20689IMU, noIMU
+};
+enum {
+	ms5611Baro, ms5607Baro, bmp085Baro, noBaro
+};
+enum {
+	hmc5xxxMag, noMag
+};
+enum {
+	servoGimbal, noGimbal
+};
+
+enum {
+	i2cEEPROMMem, spiFlashMem, noMem
+};
+
+enum GPIOSelectorsBF {
+	BaroXCLRSel = 2, BaroEOCSel = 3
+};
+
+enum BusSelectors {
+	useI2C, useSPI
+};
+
+enum LEDSelectors {
+	ledYellowSel, ledRedSel, ledBlueSel, ledGreenSel, MAX_LED_PINS
+};
+
+enum SerialPortSelectors {
+	USBSerial, Usart1, Usart2, Usart3, Uart4, SoftSerialTx, MAX_SERIAL_PORTS
+};
+
+typedef const struct {
+	boolean Used;
+	TIM_TypeDef *Tim;
+	uint16 Channel;
+	uint16 CC;
+	volatile uint32 * CCR;
+	uint8 TimAF;
+} TIMChannelDef;
+
+typedef const struct {
+	boolean Used;
+	uint32 Channel;
+	DMA_Stream_TypeDef * Stream;
+} DMAChannelDef;
+
+extern TIM_ICInitTypeDef TIM_ICInitStructure;
+
+typedef const struct {
+	boolean Used;
+	GPIO_TypeDef* Port;
+	uint16 Pin;
+	uint16 PinSource;
+	GPIOMode_TypeDef Mode;
+	GPIOOType_TypeDef OType;
+	GPIOPuPd_TypeDef PuPd;
+	TIMChannelDef Timer;
+	DMAChannelDef DMA;
+	IRQn_Type PinISR;
+
+} PinDef;
+
+typedef const struct {
+	boolean Used;
+	ADC_TypeDef* ADCx;
+	GPIO_TypeDef* Port;
+	uint16 Pin;
+	uint32 ADCChannel;
+	DMAChannelDef DMA;
+	uint8 Rank;
+} AnalogPinDef;
+
+typedef const struct {
+	boolean Used;
+	USART_TypeDef* USART;
+	uint8 USART_AF;
+	GPIO_TypeDef* Port;
+	uint16 TxPin;
+	uint16 TxPinSource;
+	uint16 RxPin;
+	uint16 RxPinSource;
+	boolean InterruptsUsed;
+	IRQn_Type ISR;
+	boolean DMAUsed;
+	uint32 DMAChannel;
+	DMA_Stream_TypeDef * TxStream;
+	IRQn_Type TxDMAISR;
+	DMA_Stream_TypeDef * RxStream;
+
+	uint32 Baud;
+
+} SerialPortDef;
+
+typedef const struct {
+	I2C_TypeDef* I2C;
+	GPIO_TypeDef* SCLPort;
+	uint16 SCLPin;
+	uint8 SCLPinSource;
+	GPIO_TypeDef* SDAPort;
+	uint16 SDAPin;
+	uint8 SDAPinSource;
+	uint8 I2C_AF;
+} I2CPortDef;
+
+typedef const struct {
+	SPI_TypeDef* SPIx;
+	GPIO_TypeDef* Port;
+	struct {
+		int16 Pin;
+		int16 PinSource;
+	} P[3];
+} SPIPortDef;
+
+typedef struct { // C2 Port GUI changeable UAVX
+	boolean Used;
+	uint8 Type;
+	uint8 BusUsed;
+	uint8 BusNo;
+	uint8 i2cId;
+} DevDef;
+
+//________________________________________________________________________________________________
+
+#define spi_21 			SPI_BaudRatePrescaler_2
+#define spi_10_5 		SPI_BaudRatePrescaler_4
+#define spi_5_250 		SPI_BaudRatePrescaler_8
+#define spi_2_625 		SPI_BaudRatePrescaler_16
+#define spi_1_3125 		SPI_BaudRatePrescaler_32
+#define spi_0_65625 	SPI_BaudRatePrescaler_64
+#define spi_0_3128125 	SPI_BaudRatePrescaler_128
+#define spi_0_15640625 	SPI_BaudRatePrescaler_256
+
+#define MAX_SPI_PORTS 4
+#define MAX_I2C_PORTS 3
+
+#define MAX_SPI_DEVICES 8
+
+//______________________________________________________________________
+
+extern PinDef GPIOPins[];
+extern PinDef LEDPins[];
+extern AnalogPinDef AnalogPins[];
+extern PinDef SPISelectPins[];
+extern PinDef USBDisconnectPin;
+extern I2CPortDef I2CPorts[];
+extern SPIPortDef SPIPorts[];
+extern SerialPortDef SerialPorts[];
+extern PinDef WSPin;
+
+extern PinDef RCPins[];
+extern PinDef PWMPins[];
+
+extern boolean usartUsed[];
+extern uint8 CurrNoOfRCPins;
+extern idx CurrMaxPWMOutputs;
+extern idx GPSRxSerial, GPSTxSerial, RCSerial, TelemetrySerial;
+extern boolean RxUsingSerial;
+extern const uint8 currGimbalType;
+extern const DevDef busDev[];
+extern const boolean ledsLowOn;
+
+//_______________________________________________________________
+
+void systemReset(boolean toBootloader);
+void InitClocks(void);
+
+void InitHarness(void);
+void InitTarget(void);
+
+void InitPin(PinDef * d);
+void InitOutputPin(PinDef * d);
+void InitPinMode(PinDef * d, boolean IsInput);
+
+void InitSerialPort(uint8 s, boolean Enable, boolean SBusConfig);
+void SetBaudRate(uint8 s, uint32 BaudRate);
+
+void InitPWMPin(PinDef * u, uint16 pwmprescaler, uint32 pwmperiod,
+		uint32 pwmwidth, boolean usingpwm);
+void InitWSPin(uint16 wsBufferSize);
+
+void InitI2C(uint8 I2CCurr);
+void UnstickI2C(uint8 I2CCurr);
+void InitSPIGPIOPins(uint8 spiPort, boolean highClock);
+
+boolean DigitalRead(PinDef * d);
+void DigitalWrite(PinDef * d, uint8 m);
+void DigitalToggle(PinDef * d);
+
+#endif

@@ -1,0 +1,473 @@
+// ===============================================================================================
+// =                                UAVX Quadrocopter Controller                                 =
+// =                           Copyright (c) 2008 by Prof. Greg Egan                             =
+// =                 Original V3.15 Copyright (c) 2007 Ing. Wolfgang Mahringer                   =
+// =                     http://code.google.com/p/uavp-mods/ http://uavp.ch                      =
+// ===============================================================================================
+
+//    This is part of UAVX.
+
+//    UAVX is free software: you can redistribute it and/or modify it under the terms of the GNU 
+//    General Public License as published by the Free Software Foundation, either version 3 of the 
+//    License, or (at your option) any later version.
+
+//    UAVX is distributed in the hope that it will be useful,but WITHOUT ANY WARRANTY; without
+//    even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+//    See the GNU General Public License for more details.
+
+//    You should have received a copy of the GNU General Public License along with this program.  
+//    If not, see http://www.gnu.org/licenses/
+
+#include "UAVX.h"
+
+void DFT8(real32 v, real32 *DFT) { // 137uS
+#if defined(INC_DFT)
+	const real32 mR = 0.125f;
+	static boolean Primed = false;
+	static real32 cosarg[8][8], sinarg[8][8];
+	static real32 inp[8];
+	long i, k;
+	double arg;
+	double x[8], y[8];
+
+	if (!Primed) {
+		for (i = 0; i < 8; i++) {
+			inp[i] = v;
+			arg = -2.0 * PI * (real32) i * mR;
+			for (k = 0; k < 8; k++) {
+				cosarg[i][k] = cosf(arg * (real32) k);
+				sinarg[i][k] = sinf(arg * (real32) k);
+			}
+		}
+		Primed = true;
+	} else {
+		for (i = 7; i > 0; i--)
+		inp[i] = inp[i - 1];
+		inp[0] = v;
+	}
+
+	for (i = 0; i < 8; i++) {
+		x[i] = y[i] = 0.0;
+		for (k = 0; k < 8; k++) {
+			x[i] += inp[k] * cosarg[i][k];
+			y[i] += inp[k] * sinarg[i][k];
+		}
+	}
+
+	for (i = 0; i < 8; i++)
+	DFT[i] = sqrtf(Sqr(x[i]) + Sqr(y[i])) * mR;
+
+#endif
+} // DFT8
+
+
+// Algorithm from N. Wirth's book, implementation by N. Devillard.
+// This code in public domain.
+
+typedef float elem_type;
+
+#define ELEM_SWAP(a,b) { register elem_type t=(a);(a)=(b);(b)=t; }
+
+/*---------------------------------------------------------------------------
+ Function :   kth_smallest()
+ In       :   array of elements, # of elements in the array, rank k
+ Out      :   one element
+ Job      :   find the kth smallest element in the array
+ Notice   :   use the median() macro defined below to get the median.
+
+ Reference:
+
+ Author: Wirth, Niklaus
+ Title: Algorithms + data structures = programs
+ Publisher: Englewood Cliffs: Prentice-Hall, 1976
+ Physical description: 366 p.
+ Series: Prentice-Hall Series in Automatic Computation
+
+ ---------------------------------------------------------------------------*/
+
+real32 kth_smallest(real32 a[], uint16 n, uint16 k) {
+	uint16 i, j, l, m;
+	real32 x;
+
+	l = 0;
+	m = n - 1;
+	while (l < m) {
+		x = a[k];
+		i = l;
+		j = m;
+		do {
+			while (a[i] < x)
+				i++;
+			while (x < a[j])
+				j--;
+			if (i <= j) {
+				ELEM_SWAP(a[i],a[j]);
+				i++;
+				j--;
+			}
+		} while (i <= j);
+		if (j < k)
+			l = i;
+		if (k < i)
+			m = j;
+	}
+	return a[k];
+} // kth_smallest
+
+//#define median(a,n) kth_smallest(a,n,(((n)&1)?((n)/2):(((n)/2)-1)))
+
+
+// FIR filter
+
+
+void InitSmoothr32xn(HistStruct * F) {
+	F->Primed = false;
+} // InitSmooth32xn
+
+real32 Smoothr32xn(HistStruct * F, uint8 n, real32 v) {
+	idx i, p;
+
+	if (!F->Primed) {
+		for (i = 0; i < n; i++)
+			F->h[i] = v;
+
+		F->Head = 0;
+		F->Tail = (n - 1);
+
+		F->S = v * (real32) n;
+		F->Primed = true;
+	} else {
+		p = F->Head;
+		F->S -= F->h[p];
+		F->Head = (p + 1) & (n - 1);
+		p = F->Tail;
+		p = (p + 1) & (n - 1);
+		F->h[p] = v;
+		F->Tail = p;
+		F->S += v;
+	}
+
+	return (F->S / (real32) n);
+} // Smoothr32xn
+
+inline real32 LPF1Coefficient(real32 CutHz, real32 dT) {
+
+	return (dT / ((1.0f / (TWO_PI * CutHz)) + dT));
+} // LPF1Coefficient
+
+__attribute__((always_inline))          inline real32 LPF1(real32 O, real32 N, const real32 K) {
+
+	return (O + (N - O) * K);
+} // LPF1
+
+
+real32 LeadFilter(real32 Pos, real32 VelP, real32 Vel, real32 Lag) {
+
+	return (Pos + Vel * Lag + (Vel - VelP) * Sqr(Lag));
+} // LeadFilter
+
+
+real32 LPD5BW(HistStruct * F, real32 v, const real32 CutHz, real32 dT) {
+	real32 r;
+	idx i;
+
+	// WARNING - the priming process uses the first dT only and so
+	// this is better instantiated using a constant for dT
+	if (!F->Primed) {
+		real32 wc, k1, k2, k3, a0, a1, a2, b1, b2;
+
+		wc = tan(PI * CutHz * dT);
+		k1 = sqrtf(2.0f) * wc;
+		k2 = Sqr(wc);
+		a0 = k2 / (1.0f + k1 + k2);
+		a1 = 2.0f * a0;
+		a2 = a0;
+		k3 = 2.0f * a0 / k2;
+		b1 = -2.0f * a0 + k3;
+		b2 = 1 - 2.0f * a0 - k3;
+		F->c[0] = a0;
+		F->c[1] = a1;
+		F->c[2] = a2;
+		F->c[3] = b1;
+		F->c[4] = b2;
+
+		for (i = 0; i < 5; i++)
+			F->h[i] = v;
+		F->Primed = true;
+	}
+
+	for (i = 4; i > 0; i--)
+		F->h[i] = F->h[i - 1];
+	F->h[0] = v;
+
+	r = 0.0f;
+	for (i = 0; i < 5; i++)
+		r += F->h[i] * F->c[i];
+
+	return (r);
+} // LPD5BW
+
+
+real32 PavelDifferentiator(HistStruct *F, real32 v) {
+	// Pavel Holoborodko, see http://www.holoborodko.com/pavel/numerical-methods/
+	// numerical-derivative/smooth-low-noise-differentiators/
+
+	idx i;
+	//const idx N = 5;
+	//static const real32 C[] = { 0.625f, 0.25f, -1.0f, -0.25f, 0.375f };
+
+	const idx N = 6;
+	// h[0] = 3/8, h[-1] = 1/2, h[-2] = -1/2, h[-3] = -3/4, h[-4] = 1/8, h[-5] = 1/4
+	const real32 C[] = { 0.375f, 0.5f, -0.5f, -0.75, 0.125f, 0.25f };
+
+	real32 r = 0.0f;
+
+	if (!F->Primed) {
+		for (i = 0; i < N; i++)
+			F->h[i] = v;
+		F->Primed = true;
+	} else {
+		for (i = N; i > 0; --i)
+			F->h[i] = F->h[i - 1];
+		F->h[0] = v;
+	}
+
+	for (i = 0; i < N; ++i)
+		r += C[i] * F->h[i];
+
+	return (r);
+} // Pavel
+
+
+__attribute__((always_inline)) inline real32 LPFn(HistStruct * F, const idx Order, real32 v,
+		const real32 CutHz, real32 dT) {
+	idx n;
+	real32 AdjCutHz;
+	// AdjCutHz = CutHz /(sqrtf(powerf(2, 1/Order) -1))
+	const real32 ScaleF[] = { 1.0f, 1.553773974f, 1.961459177f, 2.298959223f };
+
+	if (!F->Primed) {
+		for (n = 1; n <= Order; n++)
+			F->h[n] = v;
+		F->Primed = true;
+
+		AdjCutHz = CutHz * ScaleF[Order];
+
+		F->Tau = 1.0f / (TWO_PI * AdjCutHz);
+
+		//F->S = dT / (F->Tau + dT);
+	}
+
+	F->S = dT / (F->Tau + dT);
+
+	F->h[0] = v;
+
+	for (n = 1; n <= Order; n++)
+		F->h[n] += (F->h[n - 1] - F->h[n]) * F->S;
+
+	return (F->h[Order]);
+
+} // LPFn
+
+
+#define MAX_Q_SAMPLES 256
+static float d[MAX_Q_SAMPLES][3];
+
+real32 calculateMean(idx a) {
+	idx i;
+	real32 temp = 0.0;
+
+	for (i = 0; i < MAX_Q_SAMPLES; i++)
+		temp += d[i][a];
+
+	return(temp / MAX_Q_SAMPLES );
+} // calculateMean
+
+
+real32 calculateBiasCorrectedVariance(uint16 a, real32 *mean_val) {
+    idx i;
+    real64 mean = calculateMean(a);
+    real64 temp = 0.0;
+
+    *mean_val = (float) mean;
+    for (i = 0; i < MAX_Q_SAMPLES; i++)
+        temp += Sqr(d[i][a] - mean);
+
+    return (real32) temp / (MAX_Q_SAMPLES - 1); //?? -1
+} // calculateBiasCorrectedVariance
+
+//.gyro_kalman_enable = true,
+//.gyro_kalman_q = 0.000900,
+//.gyro_kalman_r = 0.08,
+//.gyro_kalman_p = 0
+
+//Fast two-state Kalman from Kalyn (RaceFlight/BetaFlight
+
+
+void InitAccGyroKF(KFStruct *F, real32 Q, real32 R) {
+
+	F->enable = true;
+	F->q = Q; // process noise covariance 0.05deg/s at 100Hz? 0.005 deg/sqrt(Hz)
+	F->r = R; // measurement noise covariance
+	F->p = 0.0f; // estimation error
+	F->est = F->estP = 0.0f; // state
+	F->k = 0.0f; //Kalman gain
+
+} // InitAccGyroKF
+
+
+real32 DoAccGyroKF(KFStruct *F, real32 v) { // ~0.42uS F4 @ 168MHz
+
+	if (F->enable) {
+
+		//project the state ahead using acceleration
+		F->est += (F->est - F->estP); // linear extrapolation -  dT and 1/dT cancel
+
+		//update last state
+		F->estP = F->est;
+
+		//prediction update
+		F->p = F->p + F->q;
+
+		//measurement update
+		F->k = F->p / (F->p + F->r);
+		F->est += F->k * (v - F->est);
+		F->p = (1.0f - F->k) * F->p;
+
+		return (F->est);
+	} else
+		return (v);
+
+} // DoAccGyroKF
+
+
+int16 SensorSlewLimit(uint8 sensor, int16 * O, int16 N, int16 Slew) {
+	int16 L, H;
+
+	L = *O - Slew;
+	H = *O + Slew;
+	if (N < L) {
+		incStat(sensor);
+		*O = L;
+	} else if (N > H) {
+		incStat(sensor);
+		*O = H;
+	} else
+		*O = N;
+	return (*O);
+} // SensorSlewLimit
+
+
+real32 SlewLimit(real32 * O, real32 N, const real32 Slew, real32 dT) {
+	// DO NOT USE WHEN YOU HAVE 360DEG STEPS AS IT WILL NOT TRACK
+	real32 L, H, SlewD;
+
+	SlewD = Slew * dT;
+
+	L = *O - SlewD;
+	H = *O + SlewD;
+	*O = (N < L) ? L : ((N > H) ? H : N);
+	return (*O);
+} // SlewLimit
+
+
+real32 Threshold(real32 v, real32 t) {
+
+	if (v > t)
+		v -= t;
+	else if (v < -t)
+		v += t;
+	else
+		v = 0.0f;
+
+	return (v);
+} // Threshold
+
+
+real32 DeadZone(real32 v, real32 t) {
+
+	if (Abs(v) <= t)
+		v = 0.0f;
+
+	return (v);
+} // DeadZone
+
+
+real32 Make2Pi(real32 A) {
+	while (A < 0)
+		A += DegreesToRadians(360.0f);
+	while (A >= DegreesToRadians(360.0f))
+		A -= DegreesToRadians(360.0f);
+
+	return (A);
+} // Make2Pi
+
+real32 MakePi(real32 A) {
+	while (A < -DegreesToRadians(180.0f))
+		A += DegreesToRadians(360.0f);
+	while (A >= DegreesToRadians(180.0f))
+		A -= DegreesToRadians(360.0f);
+
+	return (A);
+} // MakePi
+
+
+real32 invSqrt(real32 x) {
+
+#if defined(STM32F4)
+	return (1.0f / sqrtf(x)); // hopefully gcc uses VSQRT for M4
+#else
+	// Fast inverse square-root
+	// See: http://en.wikipedia.org/wiki/Fast_inverse_square_root
+
+	real32 halfx = 0.5f * x;
+	real32 y = x;
+	uint32 i = *(uint32*) &y;
+	i = 0x5f3759df - (i >> 1);
+	y = *(real32*) &i;
+	y = y * (1.5f - (halfx * y * y));
+	return y;
+#endif
+} // invSqrt
+
+
+void Rotate(real32 * nx, real32 * ny, real32 x, real32 y, real32 A) { // A rotation CW
+	static real32 cA = 1.0f;
+	static real32 sA = 0.0f;
+	static real32 AP = 0.0f;
+	real32 Temp;
+
+	if (A != AP) { // saves ~7uS for successive calls with same angle
+		cA = cosf(A);
+		sA = sinf(A);
+		AP = A;
+	}
+
+	Temp = x * cA + y * sA;
+	*ny = -x * sA + y * cA;
+	*nx = Temp;
+
+} // Rotate
+
+
+real32 DecayX(real32 v, real32 rate, real32 dT) {
+	real32 d = rate * dT;
+
+	if (v < -d)
+		v += d;
+	else if (v > d)
+		v -= d;
+	else
+		v = 0.0f;
+
+	return (v);
+}
+// DecayX
+
+
+real32 scaleRangef(real32 v, real32 srcMin, real32 srcMax, real32 destMin,
+		real32 destMax) {
+	real32 a = (destMax - destMin) * (v - srcMin);
+	real32 b = srcMax - srcMin;
+	return ((a / b) + destMin);
+} // scaleRangef

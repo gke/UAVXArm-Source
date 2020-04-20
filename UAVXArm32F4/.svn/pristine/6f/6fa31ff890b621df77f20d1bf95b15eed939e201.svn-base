@@ -1,0 +1,83 @@
+// ===============================================================================================
+// =                                UAVX Quadrocopter Controller                                 =
+// =                           Copyright (c) 2008 by Prof. Greg Egan                             =
+// =                 Original V3.15 Copyright (c) 2007 Ing. Wolfgang Mahringer                   =
+// =                     http://code.google.com/p/uavp-mods/ http://uavp.ch                      =
+// ===============================================================================================
+
+//    This is part of UAVX.
+
+//    UAVX is free software: you can redistribute it and/or modify it under the terms of the GNU 
+//    General Public License as published by the Free Software Foundation, either version 3 of the 
+//    License, or (at your option) any later version.
+
+//    UAVX is distributed in the hope that it will be useful,but WITHOUT ANY WARRANTY; without
+//    even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+//    See the GNU General Public License for more details.
+
+//    You should have received a copy of the GNU General Public License along with this program.  
+//    If not, see http://www.gnu.org/licenses/
+
+#include "UAVX.h"
+
+void incStat(uint8 s) {
+#if defined(INC_STATS_TEL)
+	Config.Stats[s]++;
+#endif
+} // incStats
+
+void setStat(uint8 s, int16 v) {
+#if defined(INC_STATS_TEL)
+	Config.Stats[s] = v;
+#endif
+} // setStats
+
+
+int16 currStat(uint8 s) {
+	return Config.Stats[s];
+} // currStats
+
+void ZeroStats(void) {
+	uint16 s;
+
+	for (s = 0; s < MAX_STATS; s++)
+		Config.Stats[s] = 0;
+
+	setStat(MinhAccS, INIT_MIN);
+	setStat(MaxhAccS, 0);
+	setStat(MinROCS, INIT_MIN);
+	setStat(MaxROCS, 0);
+	setStat(GPSMinSatsS, INIT_MIN);
+	setStat(GPSMaxSatsS, 0);
+
+} // ZeroStats
+
+void StatsMinMax(uint8 l, uint8 u, int16 v) {
+
+	if (v > currStat(u))
+		setStat(u, v);
+	else if (v < currStat(l))
+		setStat(l, v);
+
+} // StatsMaxMin
+
+void StatsMax(uint8 u, int16 v) {
+
+	if (v > currStat(u))
+		setStat(u, v);
+
+} // StatsMax
+
+void WriteStatsNV() {
+	//uint8 i;
+
+	//if (CurrESCType != ESCPWM)
+	//	for (i = 0; i < CurrMaxPWMOutputs; i++)
+	//		Config.Stats[ESCI2CFailS] += ESCI2CFail[i];
+
+	UpdateConfig();
+
+} // WriteStatsNV
+
+
+

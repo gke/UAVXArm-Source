@@ -1,0 +1,589 @@
+// ===============================================================================================
+// =                                UAVX Quadrocopter Controller                                 =
+// =                           Copyright (c) 2008 by Prof. Greg Egan                             =
+// =                 Original V3.15 Copyright (c) 2007 Ing. Wolfgang Mahringer                   =
+// =                     http://code.google.com/p/uavp-mods/ http://uavp.ch                      =
+// ===============================================================================================
+
+//    This is part of UAVX.
+
+//    UAVX is free software: you can redistribute it and/or modify it under the terms of the GNU 
+//    General Public License as published by the Free Software Foundation, either version 3 of the 
+//    License, or (at your option) any later version.
+
+//    UAVX is distributed in the hope that it will be useful,but WITHOUT ANY WARRANTY; without
+//    even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+//    See the GNU General Public License for more details.
+
+//    You should have received a copy of the GNU General Public License along with this program.  
+//    If not, see http://www.gnu.org/licenses/
+
+#include "UAVX.h"
+
+void DFT8(real32 v, real32 *DFT) { // 137uS
+	const real32 mR = 0.125f;
+	static boolean Primed = false;
+	static real32 cosarg[MAX_NOISE_BANDS][MAX_NOISE_BANDS], sinarg[MAX_NOISE_BANDS][MAX_NOISE_BANDS];
+	static real32 inp[MAX_NOISE_BANDS];
+	long i, k;
+	double arg;
+	double x[MAX_NOISE_BANDS], y[MAX_NOISE_BANDS];
+
+	if (!Primed) {
+		for (i = 0; i < MAX_NOISE_BANDS; i++) {
+			inp[i] = v;
+			arg = -2.0 * PI * (real32) i * mR;
+			for (k = 0; k < MAX_NOISE_BANDS; k++) {
+				cosarg[i][k] = cosf(arg * (real32) k);
+				sinarg[i][k] = sinf(arg * (real32) k);
+			}
+		}
+		Primed = true;
+	} else {
+		for (i = 7; i > 0; i--)
+		inp[i] = inp[i - 1];
+		inp[0] = v;
+	}
+
+	for (i = 0; i < MAX_NOISE_BANDS; i++) {
+		x[i] = y[i] = 0.0;
+		for (k = 0; k < MAX_NOISE_BANDS; k++) {
+			x[i] += inp[k] * cosarg[i][k];
+			y[i] += inp[k] * sinarg[i][k];
+		}
+	}
+
+	for (i = 0; i < MAX_NOISE_BANDS; i++)
+	DFT[i] = sqrtf(Sqr(x[i]) + Sqr(y[i])) * mR;
+
+} // DFT8
+
+
+void LMSQFit(real32 * M, real32 * C, real32 X[], real32 Y[], uint16 Samples) {
+	uint16 i;
+	real32 xMean, yMean, n, d;
+	real32 SamplesR;
+
+	SamplesR = 1.0f / Samples;
+	xMean = yMean = 0.0f;
+
+	for (i = 0; i < Samples; i++) {
+		xMean += X[i];
+		yMean += Y[i];
+	}
+
+	xMean *= SamplesR;
+	yMean *= SamplesR;
+
+	n = d = 0.0f;
+	for (i = 0; i < Samples; i++) {
+		n += (X[i] - xMean) * (Y[i] - yMean);
+		d += Sqr(X[i]-xMean);
+	}
+
+	*M = n / d;
+	*C = yMean - *M * xMean;
+
+} // LMSQFit
+
+// Algorithm from N. Wirth's book, implementation by N. Devillard.
+// This code in public domain.
+
+typedef real32 elem_type;
+
+#define ELEM_SWAP(a,b) { register elem_type t=(a);(a)=(b);(b)=t; }
+
+/*---------------------------------------------------------------------------
+ Function :   kth_smallest()
+ In       :   array of elements, # of elements in the array, rank k
+ Out      :   one element
+ Job      :   find the kth smallest element in the array
+ Notice   :   use the median() macro defined below to get the median.
+
+ Reference:
+
+ Author: Wirth, Niklaus
+ Title: Algorithms + data structures = programs
+ Publisher: Englewood Cliffs: Prentice-Hall, 1976
+ Physical description: 366 p.
+ Series: Prentice-Hall Series in Automatic Computation
+
+ ---------------------------------------------------------------------------*/
+
+real32 kth_smallest(real32 a[], uint16 n, uint16 k) {
+	uint16 i, j, l, m;
+	real32 x;
+
+	l = 0;
+	m = n - 1;
+	while (l < m) {
+		x = a[k];
+		i = l;
+		j = m;
+		do {
+			while (a[i] < x)
+				i++;
+			while (x < a[j])
+				j--;
+			if (i <= j) {
+				ELEM_SWAP(a[i],a[j]);
+				i++;
+				j--;
+			}
+		} while (i <= j);
+		if (j < k)
+			l = i;
+		if (k < i)
+			m = j;
+	}
+	return a[k];
+} // kth_smallest
+
+//#define median(a,n) kth_smallest(a,n,(((n)&1)?((n)/2):(((n)/2)-1)))
+
+real32 LeadFilter(real32 Pos, real32 VelP, real32 Vel, real32 Lag) {
+
+	return (Pos + Vel * Lag + (Vel - VelP) * Sqr(Lag));
+} // LeadFilter
+
+
+void initMA(filterStruct * F, uint8 order) {
+	idx i;
+
+	F->order = order;
+	for (i = 0; i < F->order; i++)
+		F->h[i] = 0.0f;
+
+	F->head = 0;
+	F->tail = (F->order - 1);
+
+	F->s = 0.0f;
+
+} // initMA
+
+real32 MAF(filterStruct * F, real32 v) {
+	idx i, p;
+
+	p = F->head;
+	F->s -= F->h[p];
+	F->head = (p + 1) & (F->order - 1);
+	p = F->tail;
+	p = (p + 1) & (F->order - 1);
+	F->h[p] = v;
+	F->tail = p;
+	F->s += v;
+
+	return (F->s / (real32) F->order);
+} // FIRF
+
+
+real32 initFIRF(filterStruct *F, uint8 order, const real32 * C) {
+	// Pavel Holoborodko, see http://www.holoborodko.com/pavel/numerical-methods/
+	// numerical-derivative/smooth-low-noise-differentiators/
+
+	idx i;
+
+	F->order = (order > MAX_LPF_ORDER) ? MAX_LPF_ORDER : order;
+
+	for (i = 0; i < F->order; i++) {
+		F->h[i] = 0.0f;
+		F->c[i] = C[i];
+	}
+
+} // initFIRF
+
+
+real32 FIRF(filterStruct *F, real32 v) {
+
+	idx i;
+
+	// inefficient but OK for short vectors
+	for (i = F->order; i > 0; --i)
+		F->h[i] = F->h[i - 1];
+	F->h[0] = v;
+
+	real32 r = 0.0f;
+	for (i = 0; i < F->order; ++i)
+		r += F->c[i] * F->h[i];
+
+	return (r);
+} // FIRF
+
+
+real32 initLPF1Coefficient(real32 CutHz, real32 dT) {
+
+	return (dT / ((1.0f / (TWO_PI * CutHz)) + dT));
+} // initLPF1Coefficient
+
+real32 LPF1(real32 O, real32 N, const real32 K) {
+
+	return (O + (N - O) * K);
+} // LPF1
+
+
+void initLPFn(filterStruct * F, const idx order, const real32 CutHz) {
+	idx n;
+
+	// AdjCutHz = CutHz /(sqrtf(powf(2, 1/order) -1))
+	const real32 ScaleF[] = { 1.0f, 1.553773974f, 1.961459177f, 2.298959223f };
+
+	F->order = Limit(order, 1, 4); //MAX_LPF_ORDER);
+
+	for (n = 1; n <= F->order; n++)
+		F->h[n] = 0.0f;
+
+	F->tau = 1.0f / (TWO_PI * CutHz * ScaleF[F->order - 1]);
+
+} // initLPFn
+
+real32 LPFn(filterStruct * F, real32 v, real32 dT) {
+	idx n;
+
+	real32 s = dT / (F->tau + dT); // more compute but deals with sampling jitter
+
+	F->h[0] = v;
+
+	for (n = 1; n <= F->order; n++)
+		F->h[n] += (F->h[n - 1] - F->h[n]) * s;
+
+	return (F->h[F->order]);
+
+} // LPFn
+
+
+#define MAX_Q_SAMPLES 256
+static real32 d[MAX_Q_SAMPLES][3];
+
+real32 calculateMean(idx a) {
+	idx i;
+	real32 temp = 0.0;
+
+	for (i = 0; i < MAX_Q_SAMPLES; i++)
+		temp += d[i][a];
+
+	return (temp / MAX_Q_SAMPLES);
+} // calculateMean
+
+
+real32 calculateBiasCorrectedVariance(uint16 a, real32 *mean_val) {
+	idx i;
+	real64 mean = calculateMean(a);
+	real64 temp = 0.0;
+
+	*mean_val = (real32) mean;
+	for (i = 0; i < MAX_Q_SAMPLES; i++)
+		temp += Sqr(d[i][a] - mean);
+
+	return (real32) temp / (MAX_Q_SAMPLES - 1); //?? -1
+} // calculateBiasCorrectedVariance
+
+//_____________________________________________________________________________
+
+// KF Variants
+
+//.gyro_kalman_enable = true,
+//.gyro_kalman_q = 0.000900,
+//.gyro_kalman_r = 0.08,
+//.gyro_kalman_p = 0
+
+// Fast two-state Kalman Filter from Kalyn (RaceFlight)
+
+void initKalynFastLPKF(filterStruct *F, real32 Q, real32 R, real32 CutHz) {
+
+	F->q = Q * 0.000001f;
+	F->r = R * 0.001f;
+	F->p = 0.0f;
+	F->x = F->xP = 0.0f;
+	F->k = 0.0f;
+
+} // initKalynFastLPKF
+
+
+real32 KalynFastLPKF(filterStruct *F, real32 v, real32 dT) { // ~0.42uS F4 @ 168MHz
+
+	//project the state ahead using acceleration
+	F->x += (F->x - F->xP); // linear extrapolation -  dT and 1/dT cancel
+
+	//update last state
+	F->xP = F->x;
+
+	//prediction update
+	F->p = F->p + F->q;
+
+	//measurement update
+	F->k = F->p / (F->p + F->r);
+	F->x += F->k * (v - F->x);
+	F->p = (1.0f - F->k) * F->p;
+
+	return (F->x);
+
+} // KalynFastKF
+
+
+// Fujin implementation of  Kalyn aka rs2k's fast "kalman" filter
+
+//real32 gain = -QOnR * 0.5f + sqrtf(Sqr(QOnR) * 0.25f + QOnR);
+//CutHz = -LN(1.0f - 2.0f * gain) * (1.0f/dT) * 0.5f / PI;
+//=>
+//2.0f * PI * CutHz * dT = -LN(1.0f - 2.0f * gain);
+
+void initFujinFastLPKF(filterStruct *F, real32 CutHz) {
+
+	F->tau = 1.0f / (TWO_PI * CutHz);
+	//real32 a = dT / (F->tau + dT);
+
+	F->p = 0.0f; // set initial value, can be zero if unknown
+	F->xP = 0.0f; // set initial value, can be zero if unknown
+	//F->k = 0.5f * a; // "kalman" gain - half of RC coefficient
+
+} // initFujinFastLPKF
+
+real32 FujinFastLPKF(filterStruct *F, real32 v, real32 dT) {
+
+	F->k = 0.5f * dT / (F->tau + dT);
+
+	//update last state
+	F->x += (F->x - F->xP);
+
+	//prediction update
+	F->xP = F->x;
+
+	//measurement update
+	F->x += F->k * (v - F->x);
+
+	return F->xP;
+} // FujinFastLPKF
+
+int16 SensorSlewLimit(uint8 sensor, int16 * O, int16 N, int16 Slew) {
+	int16 L, H;
+
+	L = *O - Slew;
+	H = *O + Slew;
+	if (N < L) {
+		incStat(sensor);
+		*O = L;
+	} else if (N > H) {
+		incStat(sensor);
+		*O = H;
+	} else
+		*O = N;
+	return (*O);
+} // SensorSlewLimit
+
+
+real32 SlewLimit(real32 * O, real32 N, const real32 Slew, real32 dT) {
+	// DO NOT USE WHEN YOU HAVE 360DEG STEPS AS IT WILL NOT TRACK
+	real32 L, H, SlewD;
+
+	SlewD = Slew * dT;
+
+	L = *O - SlewD;
+	H = *O + SlewD;
+	*O = (N < L) ? L : ((N > H) ? H : N);
+	return (*O);
+} // SlewLimit
+
+
+real32 Threshold(real32 v, real32 t) {
+
+	if (v > t)
+		v -= t;
+	else if (v < -t)
+		v += t;
+	else
+		v = 0.0f;
+
+	return (v);
+} // Threshold
+
+
+real32 DeadZone(real32 v, real32 t) {
+
+	if (Abs(v) <= t)
+		v = 0.0f;
+
+	return (v);
+} // DeadZone
+
+
+real32 Make2Pi(real32 A) {
+	while (A < 0)
+		A += DegreesToRadians(360.0f);
+	while (A >= DegreesToRadians(360.0f))
+		A -= DegreesToRadians(360.0f);
+
+	return (A);
+} // Make2Pi
+
+real32 MakePi(real32 A) {
+	while (A < -DegreesToRadians(180.0f))
+		A += DegreesToRadians(360.0f);
+	while (A >= DegreesToRadians(180.0f))
+		A -= DegreesToRadians(360.0f);
+
+	return (A);
+} // MakePi
+
+
+real32 invSqrt(real32 x) {
+
+#if defined(STM32F4)
+	return (1.0f / sqrtf(x)); // hopefully gcc uses VSQRT for M4
+#else
+	// Fast inverse square-root
+	// See: http://en.wikipedia.org/wiki/Fast_inverse_square_root
+
+	real32 halfx = 0.5f * x;
+	real32 y = x;
+	uint32 i = *(uint32*) &y;
+	i = 0x5f3759df - (i >> 1);
+	y = *(real32*) &i;
+	y = y * (1.5f - (halfx * y * y));
+	return y;
+#endif
+} // invSqrt
+
+
+void Rotate(real32 * nx, real32 * ny, real32 x, real32 y, real32 A) { // A rotation CW
+	static real32 cA = 1.0f;
+	static real32 sA = 0.0f;
+	static real32 AP = 0.0f;
+	real32 Temp;
+
+	if (A != AP) { // saves ~7uS for successive calls with same angle
+		cA = cosf(A);
+		sA = sinf(A);
+		AP = A;
+	}
+
+	Temp = x * cA + y * sA;
+	*ny = -x * sA + y * cA;
+	*nx = Temp;
+
+} // Rotate
+
+void RotateSensor(int16 * x, int16 * y, const uint8 Q) {
+	int16 Temp;
+
+	if (Q > 0)
+		switch (Q) {
+		case 1:
+			Temp = *x;
+			*x = *y;
+			*y = -Temp;
+			break;
+		case 2:
+			*x = -*x;
+			*y = -*y;
+			break;
+		case 3:
+			Temp = *x;
+			*x = -*y;
+			*y = Temp;
+			break;
+		default:
+			break;
+		}
+
+} // RotateSensor
+
+
+real32 DecayX(real32 v, real32 rate, real32 dT) {
+	real32 d = rate * dT;
+
+	if (v < -d)
+		v += d;
+	else if (v > d)
+		v -= d;
+	else
+		v = 0.0f;
+
+	return (v);
+}
+// DecayX
+
+
+real32 scaleRangef(real32 v, real32 srcMin, real32 srcMax, real32 destMin,
+		real32 destMax) {
+	real32 a = (destMax - destMin) * (v - srcMin);
+	real32 b = srcMax - srcMin;
+	return ((a / b) + destMin);
+} // scaleRangef
+
+//____________________________________________________________________________
+
+/// Initialise all SW filters in one place
+
+
+
+real32 CurrAccLPFHz = 20.0f;
+real32 CurrGyroLPFHz = 100.0f;
+real32 CurrYawLPFHz = 75.0f;
+real32 CurrServoLPFHz = 20.0f;
+boolean UsingPavelFilter = false;
+
+filterStruct AccF[3], GyroF[3];
+//OSLPFPtr OSF = NULL;
+
+filterStruct ROCLPF, FROCLPF, BaroLPF;
+
+void InitSWFilters(void) {
+
+	const idx GyroLPFOrder = 2;
+	const idx YawLPFOrder = 2;
+	const idx AccLPFOrder = 2;
+
+	const idx DerivLPFOrder = 1;
+
+	const uint8 AltLPFOrder = 1;
+	const uint8 ROCLPFOrder = 2;
+	const uint8 ROCFLPFOrder = 2;
+
+	idx a;
+
+	const real32 rKF = 88;
+
+	CurrYawLPFHz = LimitP(YawLPFHz, 25, 255);
+	CurrServoLPFHz = LimitP(ServoLPFHz, 10, 100);
+
+	LPF1DriveK = initLPF1Coefficient(CurrGyroLPFHz, CurrPIDCycleS);
+	LPF1ServoK = initLPF1Coefficient(CurrServoLPFHz, CurrPIDCycleS);
+
+	CurrAccLPFSel = LimitP(AccLPFSel, 3, 5);
+	CurrAccLPFHz = MPUAccLPFHz[CurrAccLPFSel];
+
+	CurrGyroLPFSel = LimitP(GyroLPFSel, 1, 4);
+	CurrGyroLPFHz = MPUGyroLPFHz[CurrGyroLPFSel];
+
+	for (a = X; a <= Z; a++) {
+
+		initLPFn(&AccF[a], AccLPFOrder, CurrAccLPFHz);
+
+		if (a != Z) {
+			initLPFn(&GyroF[a], GyroLPFOrder, CurrGyroLPFHz);
+			initLPFn(&A[a].R.RateF, DerivLPFOrder, CurrGyroLPFHz * 0.6f); // derivative
+		} else {
+			initLPFn(&GyroF[a], GyroLPFOrder, CurrYawLPFHz);
+			initLPFn(&A[a].R.RateF, DerivLPFOrder, CurrYawLPFHz * 0.6f); // derivative
+		}
+
+		// Pavel Holoborodko, see http://www.holoborodko.com/pavel/numerical-methods/
+		// numerical-derivative/smooth-low-noise-differentiators/
+		const real32 C[] = { 0.375f, 0.5f, -0.5f, -0.75, 0.125f, 0.25f };
+		if (UsingPavelFilter)
+			initFIRF(&A[a].R.RateDF, 6, C);
+		else
+			initMA(&A[a].R.RateDF, 4);
+	}
+
+	AltLPFHz = LimitP(AltLPF, 1, 50) * 0.1f; // apply to Baro and Zacc
+	initLPFn(&AccZLPF, AltLPFOrder, AltLPFHz);
+
+	initLPFn(&BaroLPF, AltLPFOrder, AltLPFHz);
+	initLPFn(&ROCLPF, ROCLPFOrder, AltLPFHz);
+	initLPFn(&FROCLPF, ROCFLPFOrder, AltLPFHz * 0.25f);
+
+	initLPFn(&SensorTempF, 2, 0.5f); // TODO: problem for SPI MPUxxx
+
+} // InitSWFilters
+

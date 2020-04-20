@@ -1,0 +1,176 @@
+// DO NOT FORMAT  DO NOT FORMAT DO NOT FORMAT DO NOT FORMAT DO NOT FORMAT DO NOT FORMAT DO NOT FORMAT
+// ===============================================================================================
+// =                                UAVX Quadrocopter Controller                                 =
+// =                           Copyright (c) 2008 by Prof. Greg Egan                             =
+// =                 Original V3.15 Copyright (c) 2007 Ing. Wolfgang Mahringer                   =
+// =                     http://code.google.com/p/uavp-mods/ http://uavp.ch                      =
+// ===============================================================================================
+
+//    This is part of UAVX.
+
+//    UAVX is free software: you can redistribute it and/or modify it under the terms of the GNU
+//    General Public License as published by the Free Software Foundation, either version 3 of the
+//    License, or (at your option) any later version.
+
+//    UAVX is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+//    even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+//    See the GNU General Public License for more details.
+
+//    You should have received a copy of the GNU General Public License along with this program.
+//    If not, see http://www.gnu.org/licenses/
+
+#ifndef _uavxf4v3_h
+#define _uavxf4v3_h
+
+#include "UAVX.h"
+
+PinDef RCPins[MAX_RC_INPUTS] = {
+	{true, PA0, PWMPinConfig, PWMIn_2_1},
+	// Archaic
+	{true, PA1, PWMPinConfig, PWMIn_2_2},
+	{true, PA2, PWMPinConfig, PWMIn_2_3},
+	{true, PA3, PWMPinConfig, PWMIn_2_4},
+	{true, PA6, PWMPinConfig, PWMIn_3_1},
+	{true, PA7, PWMPinConfig, PWMIn_3_2},
+	{true, PB0, PWMPinConfig, PWMIn_3_3},
+	{true, PB1, PWMPinConfig, PWMIn_3_4}  
+};
+
+PinDef PWMPins[MAX_PWM_OUTPUTS] = {
+	// Drives 1-4
+	{true, PB9, PWMPinConfig, PWMOut_4_4},
+	{true, PB8, PWMPinConfig, PWMOut_4_3},
+	{true, PB7, PWMPinConfig, PWMOut_4_2},
+	{true, PB6, PWMPinConfig, PWMOut_4_1},		
+	{true, PA11, PWMPinConfig, PWMOut_1_4}, // USB
+	{true, PA8, PWMPinConfig, PWMOut_1_1},
+
+	// Drives 4-8 for brushless
+	{true, PA6, PWMPinConfig, PWMOut_3_1},
+	{true, PA7, PWMPinConfig, PWMOut_3_2}, 
+	{true, PB0, PWMPinConfig, PWMOut_3_3},
+	{true, PB1, PWMPinConfig, PWMOut_3_4}
+};
+
+PinDef GPIOPins[MAX_GPIO_PINS] = { 	
+	{true, PA12, OutPinConfig,}, // Beeper 4? // USB
+	{true, PC10, InpPinConfig,}, // Armed
+	{true, PC9, InpPinConfig,}, // Landing
+#if (defined(USE_WS2812) || defined(USE_WS2812B))
+	{false, PC6, OutPinConfig,}, // WSLEDs
+#else
+	{true, PC6, OutPinConfig,}, // Aux1
+#endif	   
+	{true, PC7, OutPinConfig,}, // Aux2
+	{true, PC8, OutPinConfig,}, // Probe (Aux3)
+	{false, }, // MPU6XXXIntSel 
+	{false, } // HMC5XXXRdySel
+};
+
+SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
+	{false, }, // mapped to USBSerial
+	{true, USART1, PA9, PA10, 115200, USART1Config,},
+	{true, USART2, PA2, PA3, 9600, USART2Config,},
+	{false, USART3, PB10, PB11, 115200, USART3Config,},
+	{false, UART4, PC10, PC11, 115200, UART4Config,},
+	{false, 0 } // SoftSerial
+};
+
+AnalogPinDef AnalogPins[MAX_ANALOG_CHANNELS] = {
+	{true, ADC1, PC0, ADC_Channel_10, DMA2_0_0_noIRQn, 1}, // RF
+	{true, ADC1, PC1, ADC_Channel_11, DMA2_0_0_noIRQn, 2}, // Current
+	{true, ADC1, PC2, ADC_Channel_12, DMA2_0_0_noIRQn, 3}, // Volts
+		
+	{true, ADC1, PC3, ADC_Channel_13, DMA2_0_0_noIRQn, 4}, // Roll
+	{true, ADC1, PC4, ADC_Channel_14, DMA2_0_0_noIRQn, 5}, // Pitch
+	{true, ADC1, PC5, ADC_Channel_15, DMA2_0_0_noIRQn, 6}, // Yaw
+};
+
+PinDef WSPin = // Aux1 Pin for UAVXF4V3
+	{true, PC6, PWMPinConfig, PWMOut_8_1CC, DMA2_0_2_IRQn};
+
+//PinDef WSPin = // Aux1 Pin for UAVXF4V3
+//	{true, PC6, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_NOPULL, 
+//		{true, TIM8, TIM_Channel_1, TIM_DMA_CC1, &(TIM8->CCR1), GPIO_AF_TIM8 },
+//		{true, DMA_Channel_0, DMA2_Stream2}, DMA2_Stream2_IRQn };
+
+		
+PinDef LEDPins[MAX_LED_PINS] = { 
+	{true, PB3, LEDPinConfig,}, // Yellow
+	{true, PB4, LEDPinConfig,}, // Red
+	{true, PC11, LEDPinConfig,}, // Blue
+	{true, PC12, LEDPinConfig,},// Green
+};
+
+I2CPortDef I2CPorts[MAX_I2C_PORTS] = {
+	{false, 0, }, // notionally I2C0
+	{true, I2C1, PB6, PB7, GPIO_AF_I2C1 },//
+	{true, I2C2, PB10, PB11, GPIO_AF_I2C2}, 
+	{false, I2C3,}
+};
+
+SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
+	{false, 0, }, // notionally SPI0
+	{true, SPI1, {PA5, PA6, PA7}}, //
+	{true, SPI2, {PB13, PB14, PB15}}, //
+	{true, SPI3, {PC10, PC11, PC12}}
+};
+
+PinDef USBDisconnectPin = {false, 0, };
+
+DevDef busDev[maxDevSel] = {
+	{true, imu0Sel, mpu6050IMU, false, 2, MPU_0x68_ID,},  
+	{false, imu1Sel, },  
+	{true, baroSel, ms5611Baro, false, 2, MS56XX_ID,},
+	{true, magSel, hmc5xxxMag, false, 2, HMC5XXX_ID,},
+	{true, memSel, i2cEEPROMMem, false, 2, EEPROM_ID,},
+	{false, gpsSel, },
+	{false, rfSel, },
+	{false, asSel, },
+	{false, flowSel, },
+	{false, escSel, },
+};
+
+const uint8 IMUQuadrant = 0;
+const uint8 MagQuadrant = 0;
+
+const uint8 currGimbalType = noGimbal;
+const boolean ledsLowOn = false;
+const uint8 imuSel = imu0Sel;
+
+
+void InitTarget(void) {
+
+	TelemetrySerial = Usart1;
+	InitSerialPort(TelemetrySerial, true, false);
+
+	switch (CurrRxType) {
+	case CPPMRx:
+		CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 10;
+		CurrNoOfRCPins = 1;
+		GPSTxSerial = GPSRxSerial = Usart2;
+		InitSerialPort(GPSRxSerial, false, false);
+		RxUsingSerial = false;
+		break;
+	case ParallelPPMRx:
+		CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 6;
+		CurrNoOfRCPins = MAX_RC_INPUTS; //P(RCChannels);
+		RxUsingSerial = false;
+		GPSRxSerial = Usart1;
+		GPSTxSerial = SoftSerialTx;
+		break;
+	default:
+		CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 10;
+		CurrNoOfRCPins = 0;
+		RxUsingSerial = true;
+		GPSRxSerial = TelemetrySerial;
+		GPSTxSerial = SoftSerialTx;
+		RCSerial = Usart2;
+		InitSerialPort(RCSerial, false, CurrRxType == FutabaSBusRx);
+		break;
+	} // switch
+
+} // InitTarget
+
+#endif
+

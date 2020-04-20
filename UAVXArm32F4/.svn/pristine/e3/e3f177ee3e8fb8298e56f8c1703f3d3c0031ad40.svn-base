@@ -1,0 +1,168 @@
+// ===============================================================================================
+// =                                UAVX Quadrocopter Controller                                 =
+// =                           Copyright (c) 2008 by Prof. Greg Egan                             =
+// =                 Original V3.15 Copyright (c) 2007 Ing. Wolfgang Mahringer                   =
+// =                     http://code.google.com/p/uavp-mods/ http://uavp.ch                      =
+// ===============================================================================================
+
+//    This is part of UAVX.
+
+//    UAVX is free software: you can redistribute it and/or modify it under the terms of the GNU 
+//    General Public License as published by the Free Software Foundation, either version 3 of the 
+//    License, or (at your option) any later version.
+
+//    UAVX is distributed in the hope that it will be useful,but WITHOUT ANY WARRANTY; without
+//    even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+//    See the GNU General Public License for more details.
+
+//    You should have received a copy of the GNU General Public License along with this program.  
+//    If not, see http://www.gnu.org/licenses/
+
+// Gyros
+
+#include "UAVX.h"
+
+// ITG3200  1.214142088
+const real32 GyroScale[] = { //
+		13.0834, // MLX90609
+				6.98131, // ADXRS613/150
+				15.8666, // ST-AY530 0.0041
+				17.4532, // ADXRS610/300
+				0.001064225154f, // UAVXArm32IMU
+				0.001064225154f, // FreeIMU
+				0.001064225154f };
+
+uint8 CurrAttSensorType = UAVXArm32IMU;
+
+real32 GyroBias[3];
+real32 Acc[3], Rate[3];
+real32 RateEnergySum;
+uint32 RateEnergySamples;
+
+// NED
+// P,R,Y
+// BF, LR, UD
+
+
+void ScaleRateAndAcc(uint8 imuSel) {
+	idx a;
+
+	UpdateGyroTempComp(imuSel);
+
+	if (VTOLMode) {
+
+		Rate[Pitch] = (RawGyro[X] - GyroBias[X]) * GyroScale[CurrAttSensorType];
+		Rate[Yaw] = -(RawGyro[Y] - GyroBias[Y]) * GyroScale[CurrAttSensorType];
+		Rate[Roll] = -(RawGyro[Z] - GyroBias[Z]) * GyroScale[CurrAttSensorType];
+
+		if (CurrAttSensorType == InfraRedAngle) {
+
+			// TODO: bias and scale from where? track max min with decay???
+
+		} else {
+			Acc[UD] = -(RawAcc[Y] - NV.AccCal.Bias[Y]) * NV.AccCal.Scale[Y];
+			Acc[LR] = (RawAcc[X] - NV.AccCal.Bias[X]) * NV.AccCal.Scale[X];
+			Acc[BF] = -(RawAcc[Z] - NV.AccCal.Bias[Z]) * NV.AccCal.Scale[Z]
+					- 1.0f;
+		}
+	} else {
+
+		Rate[Pitch] = (RawGyro[X] - GyroBias[X]) * GyroScale[CurrAttSensorType];
+		Rate[Roll] = (RawGyro[Y] - GyroBias[Y]) * GyroScale[CurrAttSensorType];
+		Rate[Yaw] = -(RawGyro[Z] - GyroBias[Z]) * GyroScale[CurrAttSensorType];
+
+		if (CurrAttSensorType == InfraRedAngle) {
+
+			// TODO: bias and scale from where? track max min with decay???
+
+		} else {
+			Acc[BF] = (RawAcc[Y] - NV.AccCal.Bias[Y]) * NV.AccCal.Scale[Y];
+			Acc[LR] = (RawAcc[X] - NV.AccCal.Bias[X]) * NV.AccCal.Scale[X];
+			Acc[UD] = -(RawAcc[Z] - NV.AccCal.Bias[Z]) * NV.AccCal.Scale[Z];
+		}
+	}
+
+} // ScaleRateAndAcc
+
+void ErectGyros(uint8 imuSel, int32 TS) {
+	const int32 IntervalmS = 2;
+	idx a;
+	int32 i;
+	real32 gMax[3], gMin[3], g[3], t;
+	int16 Samples = TS * 1000 / IntervalmS;
+	real32 SamplesR = 1.0f / Samples;
+	boolean Moving = false;
+
+	LEDOn(ledRedSel);
+
+	ReadFilteredGyroAndAcc(imuSel);
+
+	for (a = X; a <= Z; a++)
+		gMax[a] = gMin[a] = g[a] = RawGyro[a];
+	t = 0.0f;
+
+	for (i = 1; i < Samples; i++) {
+		Delay1mS(IntervalmS);
+
+		ReadFilteredGyroAndAcc(imuSel);
+
+		for (a = X; a <= Z; a++) {
+			g[a] += RawGyro[a];
+			if (RawGyro[a] > gMax[a])
+				gMax[a] = RawGyro[a];
+			else if (RawGyro[a] < gMin[a])
+				gMin[a] = RawGyro[a];
+		}
+		t += MPU6XXXTemperature;
+	}
+
+	for (a = X; a <= Z; a++) {
+		g[a] *= SamplesR;
+		gMax[a] -= g[a];
+		gMin[a] -= g[a];
+		Moving |= Max(Abs(gMax[a]), Abs(gMin[a])) > GYRO_MAX_SHAKE_RAW;
+	}
+	t *= SamplesR;
+
+	if (Moving) {
+		SaveLEDs();
+		LEDsOff();
+		for (i = 0; i < 4; i++) {
+			LEDToggle(ledYellowSel);
+			DoBeep(8, 2);
+		}
+		RestoreLEDs();
+	} else {
+		 // leave MPU6xxx calibration alone
+			for (a = X; a <= Z; a++)
+				NV.GyroCal.C[a] = g[a];
+			NV.GyroCal.TRef = t;
+			NVChanged = true;
+			UpdateNV();
+			if (CurrTelType == UAVXTelemetry)
+				SendCalibrationPacket(TelemetrySerial);
+	}
+
+	LEDOff(ledRedSel);
+
+} // ErectGyros
+
+
+void InitIMU(uint8 imuSel) {
+	idx a;
+	boolean r;
+
+	InitMPU6XXX(imuSel);
+
+	for (a = 0; a < MAX_NOISE_BANDS; a++)
+		Noise[a] = 0;
+
+	r = true;
+	for (a = X; a <= Y; a++)
+		r &= NV.AccCal.Bias[a] == 0.0f;
+
+	F.AccCalibrated = F.IMUCalibrated = !r;
+
+} // InitIMU
+
+
