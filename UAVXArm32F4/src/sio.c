@@ -20,6 +20,8 @@
 
 #include "UAVX.h"
 
+boolean SIOTokenFree = true;
+
 boolean SIOReadBlock(uint8 sioDev, uint8 reg, uint8 len, uint8 * data) {
 
 	if (busDev[sioDev].useSPI)

@@ -21,8 +21,7 @@
 
 #include "UAVX.h"
 
-idx GPSRxSerial, GPSTxSerial, RCSerial, TelemetrySerial;
-boolean RxUsingSerial;
+idx GPSSerial, RCSerial, TelemetrySerial;
 uint8 CurrNoOfRCPins;
 
 #include "./targets/targets.inc"
@@ -156,19 +155,17 @@ void InitPORT_RCC_APB(GPIO_TypeDef* Port) {
 		RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOE, ENABLE);
 } // InitPort_RCC_APB
 
-void InitRCPins(uint8 NoOfRCPins) {
+void InitCPPMPin() {
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure = { 0, };
 	NVIC_InitTypeDef NVIC_InitStructure;
 	TIM_OCInitTypeDef TIM_OCInitStructure;
 	PinDef * u;
-	uint8 p;
 
-	for (p = 0; p < MAX_RC_INPUTS; p++)
-		if (RCPins[p].Used) {
-			TIM_CtrlPWMOutputs(RCPins[p].Timer.Tim, DISABLE);
-			//TIM_DeInit(RCPins[i].Timer.Tim);
-			InitTIM_RCC_APB(RCPins[p].Timer.Tim);
-		}
+	if (CPPMPin.Used) {
+		TIM_CtrlPWMOutputs(CPPMPin.Timer.Tim, DISABLE);
+		//TIM_DeInit(RCPins[i].Timer.Tim);
+		InitTIM_RCC_APB(CPPMPin.Timer.Tim);
+	}
 
 	TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
 	TIM_OCStructInit(&TIM_OCInitStructure);
@@ -185,33 +182,30 @@ void InitRCPins(uint8 NoOfRCPins) {
 
 	// Pin specific
 
-	for (p = 0; p < NoOfRCPins; p++)
-		if (RCPins[p].Used) {
-			u = &RCPins[p];
+	if (CPPMPin.Used) {
+		u = &CPPMPin;
 
-			InitPin(u);
+		InitPin(u);
 
-			GPIO_PinAFConfig(u->P.Port, u->P.PinSource, u->Timer.TimAF);
+		GPIO_PinAFConfig(u->P.Port, u->P.PinSource, u->Timer.TimAF);
 
-			NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-			NVIC_InitStructure.NVIC_IRQChannel = u->PinISR;
-			NVIC_Init(&NVIC_InitStructure);
+		NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+		NVIC_InitStructure.NVIC_IRQChannel = u->PinISR;
+		NVIC_Init(&NVIC_InitStructure);
 
-			TIM_TimeBaseInit(u->Timer.Tim, &TIM_TimeBaseStructure);
+		TIM_TimeBaseInit(u->Timer.Tim, &TIM_TimeBaseStructure);
 
-			TIM_ICStructInit(&TIM_ICInitStructure);
-			TIM_ICInitStructure.TIM_Channel = u->Timer.Channel;
-			TIM_ICInit(u->Timer.Tim, &TIM_ICInitStructure);
+		TIM_ICStructInit(&TIM_ICInitStructure);
+		TIM_ICInitStructure.TIM_Channel = u->Timer.Channel;
+		TIM_ICInit(u->Timer.Tim, &TIM_ICInitStructure);
 
-			//u->Timer.Tim->DIER |= u->Timer.CC; // TIM_ITConfig ENABLE Channel
-			TIM_ITConfig(u->Timer.Tim, u->Timer.CC, ENABLE);
-		}
+		//u->Timer.Tim->DIER |= u->Timer.CC; // TIM_ITConfig ENABLE Channel
+		TIM_ITConfig(u->Timer.Tim, u->Timer.CC, ENABLE);
 
-	for (p = 0; p < NoOfRCPins; p++)
-		if (RCPins[p].Used)
-			TIM_Cmd(RCPins[p].Timer.Tim, ENABLE);
+		TIM_Cmd(CPPMPin.Timer.Tim, ENABLE);
+	}
 
-} // InitRCPins
+} // InitCPPMPin
 
 
 void WSPinDMAEnable(uint16 wsBufferSize) {
@@ -608,7 +602,7 @@ void SetBaudRate(uint8 s, uint32 BaudRate) {
 	const SerialPortDef * u;
 
 	switch (s) {
-	case SoftSerialTx:
+	case SoftSerial:
 		SoftUSARTBaudRate = BaudRate;
 		break;
 	case USBSerial:
@@ -936,10 +930,8 @@ void InitHarness(void) {
 	else
 		InitDrives();
 
-	// PPM RC
-	InitRCPins(CurrNoOfRCPins);
-
 	InitRC();
+	InitCPPMPin();
 
 	// I2C/SPI
 	for (i = 0; i < maxDevSel; i++)

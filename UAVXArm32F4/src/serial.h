@@ -28,12 +28,14 @@ extern volatile uint8 TxQ[][SERIAL_BUFFER_SIZE];
 extern volatile int16 TxQTail[];
 extern volatile int16 TxQHead[];
 extern volatile int16 TxQNewHead[];
+extern volatile int16 TxQEntries[];
 
 extern volatile uint8 RxQ[][SERIAL_BUFFER_SIZE];
 extern volatile int16 RxQTail[];
 extern volatile int16 RxQHead[];
 extern volatile int16 RxQNewHead[];
-extern volatile boolean RxEnabled[];
+extern volatile int16 RxQEntries[];
+extern volatile boolean RxEnabled[], RxOverflow[], TxOverflow[];
 extern volatile boolean RxCTS[];
 
 extern uint8 TxCheckSum[];

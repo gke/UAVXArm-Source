@@ -30,7 +30,7 @@ boolean WriteI2CEEPROMBlock(uint32 a, uint16 l, int8 *v) {
 
 	if (F.HaveNVMem) {
 
-		while (!uSTimeout(MemReady)) {
+		while (!uSTimeout(MemReadyuS)) {
 			// BLOCKING
 		};
 
@@ -46,7 +46,7 @@ boolean WriteI2CEEPROMBlock(uint32 a, uint16 l, int8 *v) {
 
 	} else
 		r = false;
-	uSTimer(MemReady, 5000);
+	uSTimer(MemReadyuS, 5000);
 
 	return (r);
 
@@ -59,7 +59,7 @@ void ReadI2CEEPROMBlock(uint32 a, uint16 l, int8 * v) {
 	uint8 b[2];
 
 	if (F.HaveNVMem) {
-		while (uSClock() < uS[MemReady]) {
+		while (uSClock() < uS[MemReadyuS]) {
 			// BLOCKING
 		};
 

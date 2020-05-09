@@ -38,7 +38,7 @@ void UpdateBlackBox(void) {
 	uint32 i;
 
 	if (F.HaveNVMem)
-		if ((uSClock() >= uS[MemReady]) && (BBQEntries >= NVMemBlockSize)) {
+		if ((uSClock() >= uS[MemReadyuS]) && (BBQEntries >= NVMemBlockSize)) {
 
 			for (i = 0; i < NVMemBlockSize; i++) {
 				BBQHead = (BBQHead + 1) & BBQ_BUFFER_MASK;

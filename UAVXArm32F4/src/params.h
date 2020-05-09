@@ -135,8 +135,6 @@
 #define GPS_MIN_VACC 5.0f
 #define GPS_MIN_SACC 1.0f
 #define GPS_HDOP_TO_HACC 4.0f // crude approximation for NMEA GPS units
-#define GPS_UPDATE_MS 200
-#define GPS_UPDATE_HZ (1000/GPS_UPDATE_MS)
 
 #define RC_MOVEMENT_STICK FromPercent(1) // minimum to be recognised as a stick input change without triggering failsafe
 
@@ -190,8 +188,6 @@ enum ArmingModes {
 enum RxTypes {
 	CPPMRx,
 	FutabaSBusRx,
-	ParallelPPMRx,
-	Deltang1024Rx,
 	Spektrum1024Rx,
 	Spektrum2048Rx,
 	FrSkyFBusRx,
@@ -328,7 +324,7 @@ enum Params { // MAX 128
 	MaxCompassYawRate, // 89
 	AccLPFSel, //P90,
 	YawRateKd, // 91,
-	Unused92, // 92
+	GyroSlewRate, // 92
 	ThrottleGainRate, // 93
 	RxAux5Ch, // 94
 	RxAux6Ch, // 95
@@ -382,7 +378,7 @@ enum Params { // MAX 128
 #define	UseRapidDescentMask		(1<<6) // bit61CheckBox 16_6
 
 // Config2
-#define UseAccGyroM3FilterMask		0x01   // bit02CheckBox 74_1
+#define UseKalmanFilterMask		0x01   // bit02CheckBox 74_1
 #define	UseFastStartMask		(1<<1) // bit12CheckBox 74_2
 #define UseBLHeliMask 			(1<<2) // bit22CheckBox 74_3
 #define UseGliderStrategyMask	(1<<3) // bit32CheckBox 74_4

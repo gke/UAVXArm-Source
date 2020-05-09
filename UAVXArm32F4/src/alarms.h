@@ -28,8 +28,9 @@ void Marker(void);
 boolean Armed();
 void CheckLandingSwitch(void);
 boolean FailPreflight(void);
-void DoBeep(uint8, uint8);
-void DoBeeps(uint8);
+
+void DoBeep(uint16, uint16);
+void DoBeeps(uint16);
 void ScheduleBeeper(timemS w);
 void DoCalibrationAlarm(void);
 void CheckAlarms(void);

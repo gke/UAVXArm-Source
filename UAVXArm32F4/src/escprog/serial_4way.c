@@ -816,11 +816,11 @@ boolean DoMSPCmds(uint8_t s) {
 
 void DoBLHeliSuite(uint8_t s) {
 
-	mSTimer(BLHeliTimeout, 5000);
+	mSTimer(BLHeliTimeoutmS, 5000);
 
 	LEDOn(ledYellowSel);
 
-	while (!(mSTimeout(BLHeliTimeout) || SerialAvailable(s))) {
+	while (!(mSTimeout(BLHeliTimeoutmS) || SerialAvailable(s))) {
 	};
 
 	if (SerialAvailable(s)) {

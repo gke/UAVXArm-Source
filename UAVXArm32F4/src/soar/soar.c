@@ -85,7 +85,7 @@ boolean SuppressThrottle(void) {
 		ThrottleSuppressed = true;
 		VarioFilt = 0; // zooming on motor climb
 		//zzz spdHgt->reset_pitch_I(); // zero pitch integral
-		mSTimer(CruiseTimeout, CRUISE_MIN_MS);
+		mSTimer(CruiseTimeoutmS, CRUISE_MIN_MS);
 	};
 
 	return ThrottleSuppressed;
@@ -93,7 +93,7 @@ boolean SuppressThrottle(void) {
 } // SuppressThrottle
 
 boolean CommenceThermalling(void) {
-	return mSTimeout(CruiseTimeout) && (VarioFilt > THERMAL_MIN_MPS)
+	return mSTimeout(CruiseTimeoutmS) && (VarioFilt > THERMAL_MIN_MPS)
 			&& InAltitudeBand();
 	//zzz&& (StickThrottle <= IdleThrottle); // zzz
 } // CommenceThermalling
@@ -101,7 +101,7 @@ boolean CommenceThermalling(void) {
 
 boolean ResumeGlide(void) {
 
-	return mSTimeout(ThermalTimeout) && (!InAltitudeBand()
+	return mSTimeout(ThermalTimeoutmS) && (!InAltitudeBand()
 			|| !ThermalOK());
 
 } // ResumeGlide
@@ -132,13 +132,13 @@ void InitThermalling(void) {
 	Soar.Th[EastC].Pos = Nav.C[EastC].Pos;
 
 	LastKFUpdatemS = mSClock();
-	mSTimer(ThermalTimeout, THERMAL_MIN_MS);
+	mSTimer(ThermalTimeoutmS, THERMAL_MIN_MS);
 
 } // InitThermalling
 
 
 void InitCruising(void) {
-	mSTimer(CruiseTimeout, CRUISE_MIN_MS);
+	mSTimer(CruiseTimeoutmS, CRUISE_MIN_MS);
 	ThrottleSuppressed = true; // glide initially
 } // InitCruising
 
@@ -279,7 +279,7 @@ void DoGlider(void) {
 
 	if (ResumeGlide()) {
 		F.Soaring = false;
-		mSTimer(CruiseTimeout, CRUISE_MIN_MS);
+		mSTimer(CruiseTimeoutmS, CRUISE_MIN_MS);
 		PrevWPNo = -1; // force CaptureWPHeading
 		NavState = HoldingStation;
 	} else {

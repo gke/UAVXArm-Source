@@ -211,7 +211,6 @@ boolean I2CReadBlock(uint8 i2cSel, uint8 id, uint8 reg, uint8 len, uint8* buf) {
 	}
 	if (timeout == 0) {
 		s->i2cErrors++;
-		setStat(SIOFailS, s->i2cErrors);
 		InitI2C(i2cCurr);
 		return (false);
 	} else
@@ -262,7 +261,6 @@ boolean I2CWriteBlock(uint8 i2cSel, uint8 id, uint8 reg, uint8 len_,
 		}
 		if (timeout == 0) {
 			s->i2cErrors++;
-			setStat(SIOFailS, s->i2cErrors);
 			InitI2C(i2cCurr);
 			return (false);
 		} else

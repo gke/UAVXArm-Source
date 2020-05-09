@@ -65,7 +65,7 @@ void CaptureHomePosition(void) {
 
 	if (F.GPSValid && (GPS.hAcc <= GPSMinhAcc) && (GPS.vAcc <= GPSMinvAcc)) {
 
-		mS[LastGPS] = mSClock();
+		mS[LastGPSmS] = mSClock();
 
 		GPS.startTime = GPS.missionTime;
 
@@ -89,8 +89,6 @@ void CaptureHomePosition(void) {
 		GPS.originAltitude = GPS.altitude;
 		F.HoldingAlt = false;
 
-		setStat(OriginValidS, true);
-
 		F.OriginValid = true;
 
 		CapturePosition();
@@ -104,7 +102,6 @@ void CaptureHomePosition(void) {
 void CaptureOffsetHomePosition(void) {
 
 	if (!F.OffsetOriginValid) {
-
 		if (sqrtf(Sqr(GPS.C[NorthC].Pos) + Sqr(GPS.C[EastC].Pos))
 				> Nav.ProximityRadius) {// TODO: RTH or first PH
 			OffsetHomeWP.Pos[NorthC] = GPS.C[NorthC].Pos;
@@ -132,7 +129,7 @@ void ScheduleNavPulse(NavPulseStruct * n, timemS w, timemS p) {
 	n->WidthmS = w;
 	n->PeriodmS = p;
 	n->Active = w > 0;
-	mSTimer(NavPulseUpdate, 0);
+	mSTimer(NavPulseUpdatemS, 0);
 } // ScheduleNavPulse
 
 
@@ -145,12 +142,12 @@ void UpdateNavPulse(boolean v) {
 
 void CheckNavPulse(NavPulseStruct * n) {
 
-	if (mSTimeout(NavPulseUpdate)) {
+	if (mSTimeout(NavPulseUpdatemS)) {
 		switch (n->State) {
 		case false:
 			if (Navigating && n->Active || UsingSurveyPulse) {
 				UpdateNavPulse(true);
-				mSTimer(NavPulseUpdate, n->WidthmS);
+				mSTimer(NavPulseUpdatemS, n->WidthmS);
 			}
 			break;
 		case true:
@@ -158,7 +155,7 @@ void CheckNavPulse(NavPulseStruct * n) {
 			if ((n->PeriodmS <= n->WidthmS)) { // oneshot
 				n->Active = UsingSurveyPulse = false;
 			} else
-				mSTimer(NavPulseUpdate, n->PeriodmS - n->WidthmS);
+				mSTimer(NavPulseUpdatemS, n->PeriodmS - n->WidthmS);
 			break;
 		} // switch
 		n->State = !n->State;

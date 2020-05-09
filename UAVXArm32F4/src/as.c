@@ -103,13 +103,12 @@ void ReadASDiffPressureI2C(void) {
 
 } // ReadAirspeedI2C
 
-timemS NextASUpdatemS = 0;
 
 void InitASDiffPressureI2C(void) {
 
 	SIOWrite(asSel, 0, 0); // 8.4mS to first data
 
-	NextASUpdatemS = mSClock() + 9;
+	mSTimer(ASUpdatemS, 9);
 
 } // InitAirspeedI2C
 
@@ -117,9 +116,9 @@ void InitASDiffPressureI2C(void) {
 void UpdateAirspeed(void) {
 
 	if (F.ASActive) {
-		if (mSTimeout(NextASUpdate)) { // use mS[]
+		if (mSTimeout(ASUpdatemS)) { // use mS[]
 
-			NextASUpdatemS += 500; // make faster with filter and out of bound checks
+			mSTimer(ASUpdatemS, 500); // make faster with filter and out of bound checks
 
 			switch (CurrASSensorType) {
 			case MS4525D0I2C:

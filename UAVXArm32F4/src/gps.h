@@ -41,9 +41,8 @@ enum WaitStates {
 
 };
 
-
 enum GPSProtcols {
-UBXBinGPSInit, GenericGPS, NoGPS
+UbxM8GPSInit, UbxLegacyGPSInit, UbxGPS, NMEAGPS, NoGPS
 };
 
 typedef struct {
@@ -113,9 +112,9 @@ void ParseGXRMCSentence(void);
 void ParseGXGGASentence(void);
 void SetGPSOrigin(void);
 void ParseGPSSentence(void);
-void CheckGPS(void);
 void CheckGPSTimeouts(void);
 void ShowGPSStatus(uint8 s);
+void GPSISR(char ch);
 boolean GPSOK(void);
 void InitGPS(void);
 
@@ -151,8 +150,6 @@ extern uint8 ll, ss, tt, RxCh;
 extern uint8 RxCheckSum, GPSCheckSumChar, GPSTxCheckSum;
 
 extern int16 UbxVersion;
-
-extern boolean GPSInitialised;
 
 #endif
 

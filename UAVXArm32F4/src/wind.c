@@ -22,7 +22,6 @@
 WindStruct Wind = { 0, 0, { 0, 0, 0 } };
 
 void UpdateWindEstimator(void) {
-#if defined(HAVE_WIND_ESTIMATE)
 	idx a;
 	static timeuS lastUpdatemS = 0;
 	static real32 fusAngleP[3] = { 0, 0, 0 };
@@ -108,6 +107,5 @@ void UpdateWindEstimator(void) {
 			memcpy(gVelP, gVel, sizeof(gVelP));
 		}
 	}
-#endif
 } // UpdateWindEstimator
 

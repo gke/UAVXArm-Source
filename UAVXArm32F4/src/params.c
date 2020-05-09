@@ -109,7 +109,7 @@ void DoConfigBits(void) {
 	F.UseManualAltHold = (P(Config1Bits) & UseManualAltHoldMask) != 0;
 	F.UsingOffsetHome = (P(Config1Bits) & UseOffsetHomeMask) != 0;
 	// Config2
-	UsingAccGyroM3Filter = (P(Config2Bits) & UseAccGyroM3FilterMask) != 0;
+	UsingKalmanFilter = (P(Config2Bits) & UseKalmanFilterMask) != 0;
 	UsingFastStart = (P(Config2Bits) & UseFastStartMask) != 0;
 	UsingBLHeliPrograming = (P(Config2Bits) & UseBLHeliMask) != 0;
 	UsingGliderStrategy = ((P(Config2Bits) & UseGliderStrategyMask) != 0)
@@ -434,13 +434,13 @@ void UpdateSticksState(void) {
 	case MonitorSticks:
 		if (StickPattern != pattern) {
 			StickPattern = pattern;
-			mSTimer(StickTimeout, 2000);
+			mSTimer(StickTimeoutmS, 2000);
 			SticksState = SticksChanging;
 		}
 		break;
 	case SticksChanging:
 		if (StickPattern == pattern) {
-			if (mSTimeout(StickTimeout))
+			if (mSTimeout(StickTimeoutmS))
 				SticksState = SticksChanged;
 		} else
 			SticksState = MonitorSticks;
@@ -522,8 +522,8 @@ void DoStickProgramming(void) {
 				DoBeep(1, 0);
 
 				NowmS = mSClock();
-				mSTimer(StickTimeout, 100);
-				mSTimer(ArmedTimeout, ARMED_TIMEOUT_MS);
+				mSTimer(StickTimeoutmS, 100);
+				mSTimer(ArmedTimeoutmS, ARMED_TIMEOUT_MS);
 
 				SticksState = SticksChanging;
 			} else {
@@ -569,7 +569,7 @@ void ConditionParameters(void) {
 
 	F.ParametersValid = true; //unused
 
-	F.UsingUplink = true;
+	F.UsingUplink = true; // always true
 
 	ClassifyAFType();
 
@@ -579,12 +579,27 @@ void ConditionParameters(void) {
 
 	CurrTelType = P(TelemetryType);
 	CurrAttSensorType = P(SensorHint);
+
 	CurrRxType = P(RxType);
+
 	CurrConfig1 = P(Config1Bits);
 	CurrConfig2 = P(Config2Bits);
 	UAVXAirframe = LimitP(AFType, 0, AFUnknown);
 	CurrESCType = LimitP(ESCType, 0, ESCUnknown);
-	CurrGPSType = LimitP(GPSProtocol, 0, NoGPS);
+
+#if defined(UAVXF4V4)
+	F.HaveGPS = true;
+#else
+	F.HaveGPS = CurrRxType == CPPMRx;
+
+	if (F.HaveGPS)
+		CurrGPSType = LimitP(GPSProtocol, 0, NoGPS);
+	else {
+		SetP(GPSProtocol, NoGPS);
+		CurrGPSType = NoGPS;
+	}
+#endif
+
 	CurrMotorStopSel = P(MotorStopSel);
 	CurrRFSensorType = P(RFSensorType);
 	CurrASSensorType = P(ASSensorType);
@@ -600,11 +615,8 @@ void ConditionParameters(void) {
 
 	SetPIDPeriod();
 
-	if (P(RxType) == ParallelPPMRx)
-		CurrBeeperSel = BeeperSel;
-	else
-		CurrBeeperSel = ((P(Config2Bits) & UseAux2BeeperMask) != 0) ? Aux2Sel
-				: BeeperSel;
+	CurrBeeperSel = ((P(Config2Bits) & UseAux2BeeperMask) != 0) ? Aux2Sel
+			: BeeperSel;
 
 	F.UsingAnalogGyros = (CurrAttSensorType != UAVXArm32IMU)
 			&& (CurrAttSensorType != FreeIMU);

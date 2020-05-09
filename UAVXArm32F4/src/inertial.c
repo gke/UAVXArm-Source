@@ -168,9 +168,9 @@ real32 AttitudeCosine(void) { // for attitude throttle compensation
 } // AttitudeCosine
 
 void UpdateAccUVariance(real32 AccU) {
-	const real32 AccU_K = 0.995f;
+	const real32 AccU_K = 0.95f; // was 0.995
 
-	static real32 A[128];
+	static real32 A[128] = {0.0f, };
 	static uint16 i = 0;
 
 	if ((State == InFlight) && F.Hovering) {
@@ -356,11 +356,11 @@ void TrackPitchAttitude(void) {
 
 	if (F.IsFixedWing && (DesiredThrottle < IdleThrottle)
 			&& (State == InFlight)) {
-		if (mSTimeout(GlidingTime))
+		if (mSTimeout(GlidingTimemS))
 			FWGlideAngleOffsetRad = LPF1(FWGlideAngleOffsetRad, Angle[Pitch],
 					0.1f);
 	} else
-		mSTimer(GlidingTime, 5000);
+		mSTimer(GlidingTimemS, 5000);
 } // TrackPitchAttitude
 
 

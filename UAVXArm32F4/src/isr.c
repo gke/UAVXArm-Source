@@ -109,18 +109,17 @@ void debugHardFault(uint32 *sp) {
 
 
 __attribute__( (naked) )
-void HardFault_Handler(void)
-{
-    __asm volatile
-    (
-        "tst lr, #4                                    \n"
-        "ite eq                                        \n"
-        "mrseq r0, msp                                 \n"
-        "mrsne r0, psp                                 \n"
-        "ldr r1, debugHardFault_address                \n"
-        "bx r1                                         \n"
-        "debugHardFault_address: .word debugHardFault  \n"
-    );
+void HardFault_Handler(void) {
+	__asm volatile
+	(
+			"tst lr, #4                                    \n"
+			"ite eq                                        \n"
+			"mrseq r0, msp                                 \n"
+			"mrsne r0, psp                                 \n"
+			"ldr r1, debugHardFault_address                \n"
+			"bx r1                                         \n"
+			"debugHardFault_address: .word debugHardFault  \n"
+	);
 }
 
 #endif
@@ -170,30 +169,16 @@ void TIM8_BRK_TIM12_IRQHandler(void) {
 
 void TIM2_IRQHandler(void) {
 
-	if (CurrRxType == ParallelPPMRx)
-		RCParallelISR(TIM2);
-	else {
-		if (CurrRxType == CPPMRx) {
-			if (TIM_GetITStatus(TIM2, TIM_IT_CC1) == SET) {
-				RCSerialISR(TIM_GetCapture1(TIM2));
-				TIM_ClearITPendingBit(TIM2, TIM_IT_CC1);
-			}
+	if (CurrRxType == CPPMRx) {
+		if (TIM_GetITStatus(TIM2, TIM_IT_CC1) == SET) {
+			RCSerialISR(TIM_GetCapture1(TIM2));
+			TIM_ClearITPendingBit(TIM2, TIM_IT_CC1);
 		}
 	}
+
 } // TIM2_IRQHandler
 
 void TIM3_IRQHandler(void) {
-
-	/*
-	 if (CurrRxType == CPPMRx) {
-	 if (TIM_GetITStatus(TIM3, TIM_IT_CC1) == SET)
-	 RCSerialISR(TIM_GetCapture1(TIM3));
-	 TIM_ClearITPendingBit(TIM3, TIM_IT_CC1);
-
-	 } else
-	 */
-	if (CurrRxType == ParallelPPMRx)
-		RCParallelISR(TIM3);
 
 } // TIM3_IRQHandler
 

@@ -141,7 +141,7 @@ real32 CurrYawLPFHz = 75.0f;
 real32 CurrServoLPFHz = 20.0f;
 real32 CurrAltLPFHz = 20.0f;
 
-filterM3Struct AccM3F[3], GyroM3F[3], AccUM3F;
+filterM3Struct AccUM3F;
 filterStruct AccF[3], GyroF[3], SensorTempF;
 
 void InitInertialFilters(void) {
@@ -164,13 +164,9 @@ void InitInertialFilters(void) {
 
 	for (a = X; a <= Z; a++) {
 
-		AccM3F[a].initialised = false;
 		initLPFn(&AccF[a], AccLPFOrder, CurrAccLPFHz);
 
-		GyroM3F[a].initialised = false;
-
 		if (a != Z) {
-
 			initLPFn(&GyroF[a], GyroLPFOrder, CurrGyroLPFHz);
 			initLPFn(&A[a].R.RateF, DerivLPFOrder, CurrGyroLPFHz * 0.6f); // derivative
 		} else {

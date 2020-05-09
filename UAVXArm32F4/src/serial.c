@@ -28,19 +28,22 @@ volatile uint8 TxQ[MAX_SERIAL_PORTS][SERIAL_BUFFER_SIZE] __attribute__((aligned(
 volatile int16 TxQTail[MAX_SERIAL_PORTS] = { 0, };
 volatile int16 TxQHead[MAX_SERIAL_PORTS] = { 0, };
 volatile int16 TxQNewHead[MAX_SERIAL_PORTS] = { 0, };
+volatile int16 TxQEntries[MAX_SERIAL_PORTS] = { 0, };
+volatile boolean TxOverflow[MAX_SERIAL_PORTS] = { false, };
 
 volatile uint8 RxQ[MAX_SERIAL_PORTS][SERIAL_BUFFER_SIZE] __attribute__((aligned(4)));
 volatile int16 RxQTail[MAX_SERIAL_PORTS] = { 0, };
 volatile int16 RxQHead[MAX_SERIAL_PORTS] = { 0, };
 volatile int16 RxQNewHead[MAX_SERIAL_PORTS] = { 0, };
 volatile boolean RxEnabled[MAX_SERIAL_PORTS] = { false, };
+volatile int16 RxQEntries[MAX_SERIAL_PORTS] = { 0, };
+volatile boolean RxOverflow[MAX_SERIAL_PORTS] = { false, };
 volatile boolean RxCTS[MAX_SERIAL_PORTS] = { false, };
 
 volatile uint32 RxDMAPos[MAX_SERIAL_PORTS] = { 0, };
 
 uint8 TxCheckSum[MAX_SERIAL_PORTS];
 uint32 SoftUSARTBaudRate = 115200;
-boolean RxUsingSerial = false;
 
 void SerialTxDMA(uint8 s) {
 
@@ -66,7 +69,7 @@ boolean SerialAvailable(uint8 s) {
 	case USBSerial:
 		r = usbAvailable();
 		break;
-	case SoftSerialTx:
+	case SoftSerial:
 		r = false;
 		break;
 	default:
@@ -86,11 +89,12 @@ boolean SerialAvailable(uint8 s) {
 } // SerialAvailable
 
 uint8 RxChar(uint8 s) {
+	uint16 Entries;
 	uint8 ch;
 
 	ch = ASCII_NUL;
 	switch (s) {
-	case SoftSerialTx:
+	case SoftSerial:
 		break;
 	case USBSerial:
 		ch = USBRxChar();
@@ -99,10 +103,18 @@ uint8 RxChar(uint8 s) {
 		if (SerialPorts[s].DMAUsed || SerialPorts[s].InterruptsUsed) {
 			ch = RxQ[s][RxQHead[s]];
 			RxQHead[s] = (RxQHead[s] + 1) & (SERIAL_BUFFER_SIZE - 1);
+
+			Entries = RxQTail[s] - RxQHead[s];
+			if (Entries < 0)
+				Entries += SERIAL_BUFFER_SIZE;
+			if (Entries > RxQEntries[s])
+				RxQEntries[s] = Entries;
+
 		} else
 			ch = USART_ReceiveData(SerialPorts[s].USART);
 		break;
 	}// switch
+
 
 	return (ch);
 } // RxChar
@@ -111,7 +123,7 @@ uint8 PollRxChar(uint8 s) {
 	uint8 ch;
 
 	switch (s) {
-	case SoftSerialTx:
+	case SoftSerial:
 		return (ASCII_NUL);
 		break;
 	case USBSerial:
@@ -137,7 +149,7 @@ uint8 PollRxChar(uint8 s) {
 
 
 void TxChar(uint8 s, uint8 ch) {
-	int16 NewTail;
+	int16 NewTail, Entries;
 	boolean wasBlock = false;
 
 	TxCheckSum[s] ^= ch;
@@ -149,19 +161,17 @@ void TxChar(uint8 s, uint8 ch) {
 	case USBSerial:
 		USBTxChar(ch);
 		break;
-	case SoftSerialTx:
+	case SoftSerial:
 		SoftTxChar(ch); // blocking???
 		break;
 	default:
 		if (SerialPorts[s].DMAUsed || SerialPorts[s].InterruptsUsed) {
 			NewTail = (TxQTail[s] + 1) & (SERIAL_BUFFER_SIZE - 1);
-			while (NewTail == TxQHead[s]) { // BLOCKING!!!!!!!!!!!!
-				wasBlock = true;
-			};
-			if (wasBlock)
-				Config.Stats[TxBufferBlockS]++;
+			while (NewTail == TxQHead[s]) // BLOCKING!!!!!!!!!!!!
+				TxOverflow[s] |= true;
 
 			TxQ[s][TxQTail[s]] = ch;
+
 			// tail points to NEXT free slot
 			TxQTail[s] = NewTail;
 
@@ -172,13 +182,17 @@ void TxChar(uint8 s, uint8 ch) {
 				// if TXE then interrupt will be pending
 				USART_ITConfig(SerialPorts[s].USART, USART_IT_TXE, ENABLE);
 			}
+
+			Entries = TxQTail[s] - TxQHead[s];
+			if (Entries < 0)
+				Entries += SERIAL_BUFFER_SIZE;
+			if (Entries > TxQEntries[s])
+				TxQEntries[s] = Entries;
+
 		} else {
 			while (USART_GetFlagStatus(SerialPorts[s].USART, USART_FLAG_TXE)
-					== RESET) { // BLOCKING!!!!!!
-				wasBlock = true;
-			};
-			if (wasBlock)
-				Config.Stats[TxBufferBlockS]++;
+					== RESET) // BLOCKING!!!!!!
+				TxOverflow[s] |= true;
 
 			USART_SendData(SerialPorts[s].USART, ch);
 		}
@@ -193,12 +207,18 @@ void SerialISR(uint8 s) {
 	if (USART_GetITStatus(SerialPorts[s].USART, USART_IT_RXNE) == SET) {
 		ch = USART_ReceiveData(SerialPorts[s].USART);
 		if (RxEnabled[s]) {
-			if ((s == RCSerial) && RxUsingSerial)
-				RCUSARTISR(ch); // longish interrupt service time - could reduce?
-			else {
+			if (s == RCSerial) {
+				if (F.HaveSerialRC)
+					RCUSARTISR(ch);
+			} else if (s == GPSSerial) {
+				if (F.HaveGPS)
+					GPSISR(ch);
+			} else {
 				RxQ[s][RxQTail[s]] = ch;
+
 				RxQTail[s] = (RxQTail[s] + 1) & (SERIAL_BUFFER_SIZE - 1);
-				if (RxQTail[s] == RxQHead[s]) { // full
+				if (RxQTail[s] == RxQHead[s]) {
+					RxOverflow[s] |= true;// full
 					//USART_ITConfig(SerialPorts[s].USART, USART_IT_RXNE, DISABLE);
 				}
 			}
@@ -213,7 +233,7 @@ void SerialISR(uint8 s) {
 
 			TxQHead[s] = (TxQHead[s] + 1) & (SERIAL_BUFFER_SIZE - 1);
 		}
-		if (TxQHead[s] == TxQTail[s])
+		if (TxQHead[s] == TxQTail[s]) // empty
 			USART_ITConfig(SerialPorts[s].USART, USART_IT_TXE, DISABLE);
 	}
 } // SerialISR

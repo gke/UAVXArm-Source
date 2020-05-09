@@ -160,7 +160,7 @@
 //#define DMA1_4_3_IRQn DMA_Channel_4,DMA1_Stream3,DMA1_Stream3_IRQn
 //#define DMA2_0_2_IRQn {true,DMA_Channel_0,DMA2_Stream2},DMA2_Stream2_IRQn
 
-#define MAX_RC_INPUTS 8
+#define MAX_RC_INPUTS 1 // 8
 #define MAX_PWM_OUTPUTS 10
 
 // Drives
@@ -191,7 +191,13 @@
 
 // Servos
 
-#define PWM_PERIOD_SERVO (22500) // historical standard pulse period for analog servo
+#define PWM_PERIOD_DIGITAL  (1000000/200) // pulse period for digital servo
+#define PWM_PERIOD_ANALOG  (22500) //1000000/50) // pulse period for analog servo
+#ifdef USE_DIGITAL_SERVOS
+#define PWM_PERIOD_SERVO PWM_PERIOD_DIGITAL
+#else
+#define PWM_PERIOD_SERVO PWM_PERIOD_ANALOG
+#endif
 
 #define PWM_MIN_SERVO	(800)
 #define PWM_WIDTH_SERVO	(1000) // 1ms pulse width
@@ -271,7 +277,7 @@ enum LEDSelectors {
 };
 
 enum SerialPortSelectors {
-	USBSerial, Usart1, Usart2, Usart3, Uart4, SoftSerialTx, MAX_SERIAL_PORTS
+	USBSerial, Usart1, Usart2, Usart3, Uart4, SoftSerial, MAX_SERIAL_PORTS
 };
 
 typedef const struct {
@@ -386,8 +392,7 @@ extern PinDef PWMPins[];
 extern boolean usartUsed[];
 extern uint8 CurrNoOfRCPins;
 extern idx CurrMaxPWMOutputs;
-extern idx GPSRxSerial, GPSTxSerial, RCSerial, TelemetrySerial;
-extern boolean RxUsingSerial;
+extern idx GPSSerial, RCSerial, TelemetrySerial;
 
 extern const uint8 IMUQuadrant;
 extern const uint8 MagQuadrant;

@@ -44,11 +44,9 @@ int64 M[7];
 uint16 ms56xx_ManufacturersData;
 boolean AcquiringPressure;
 
-timeuS BaroUpdateTimeuS;
 real32 BaroOddsEvensFrac = 0.0f;
 uint32 BaroTempVal, BaroPressVal, BaroVal;
 real32 BaroTemperature, BaroPressure, CompensatedBaroPressure;
-timeuS NextBaroUpdateuS;
 uint8 baroSel = baro0Sel;
 
 uint8 CurrRFSensorType;
@@ -59,11 +57,12 @@ real32 OriginAltitude, RawAlt, RawDensityAltitude, DensityAltitude,
 		DensityAltitudeP, SensorAltitude, SensorAltitudeP;
 real32 ROC, ROCF;
 
-filterStruct ROCLPF, FROCLPF, AltitudeLPF, AccUBumpLPF;
+filterStruct FROCLPF, AltitudeLPF, AccUBumpLPF;
 filterM3Struct BaroM3F, RangefinderM3F, ROCM3F;
-filterStruct AccUMAF, BaroMAF, ROCMAF;
+filterStruct AccUMAF, ROCMAF;
+filterStruct BaroMAF;
 
-//boolean UsingKalmanFilter = false;
+boolean UsingKalmanFilter = false;
 
 real32 Airspeed;
 
@@ -222,7 +221,7 @@ void StartBaro(boolean ReadPressure) {
 	else
 		SIOWriteBlock(baroSel, (MS56XX_TEMP | MS56XXOSR), 0, &d);
 
-	uSTimer(NextBaroUpdate, ms56IntervaluS);
+	uSTimer(BaroUpdateuS, ms56IntervaluS);
 
 } // StartBaro
 
@@ -244,7 +243,9 @@ void GetBaro(void) {
 
 	if (F.BaroActive) {
 
-		if (uSTimeout(NextBaroUpdate)) { // don't use uSTimeout
+		if (SIOTokenFree && uSTimeout(BaroUpdateuS)) { // don't use uSTimeout
+
+			SIOTokenFree = false;
 
 			SIOReadBlock(baroSel, 0, 3, B);
 			NowuS = uSClock();
@@ -252,6 +253,8 @@ void GetBaro(void) {
 			BaroVal = ((uint32) B[0] << 16) | ((uint32) B[1] << 8) | B[2];
 
 			if (AcquiringPressure) {
+
+				// could do 10:1 P/T interleaving but adds lag 5 cycle or 50mS lag - not worth it
 
 				AcquiringPressure = false;
 				StartBaro(AcquiringPressure);
@@ -271,18 +274,15 @@ void GetBaro(void) {
 
 #if defined(UAVXF4V4)
 					// TODO: KLUDGE TO FIX "SOME" V4 BOARDS - NOT SIMPLE SIGN REVERSAL THOUGH? POOSIBLE SPI FAIL msb
-					F.BaroFailure = BaroPressure < 0.0f;
-					BaroPressure = F.BaroFailure ? BaroPressureP : BaroPressure;
+					//	F.BaroFailure = BaroPressure < 0.0f;
+					//	BaroPressure = F.BaroFailure ? BaroPressureP : BaroPressure;
 #endif
 
 					BaroPressure = real32Median3Filter(&BaroM3F,
 							RawBaroPressure);
 
-					//BaroPressure = MAF(&BaroMAF, BaroPressure);
-
 					RawDensityAltitude = CalculateDensityAltitude(true,
 							BaroPressure);
-
 				}
 
 				F.NewBaroValue = true;
@@ -352,8 +352,8 @@ void CheckBaroActive(void) {
 
 
 void UpdateBaroVariance(real32 Alt) {
-	const real32 Alt_K = 0.995f;
-	static real32 B[128];
+	const real32 Alt_K = 0.95f; // was 0.995
+	static real32 B[128] = { 0.0f, };
 	static idx i = 0;
 
 	if ((State != InFlight) || ((State == InFlight) && F.Hovering)) {
@@ -390,6 +390,7 @@ void InitBaro(void) {
 
 		do { // just warming up the ms56xx!
 			GetBaro();
+			SIOTokenFree = true;
 			if (F.NewBaroValue) {
 				F.NewBaroValue = false;
 				BaroWarmupCycles++;
@@ -511,8 +512,8 @@ void GetRangefinderAltitude(void) {
 
 	if (F.RangefinderActive) {
 
-		if (mSTimeout(RangefinderUpdate)) {
-			mSTimer(RangefinderUpdate, RF[CurrRFSensorType].intervalmS);
+		if (mSTimeout(RangefinderUpdatemS)) {
+			mSTimer(RangefinderUpdatemS, RF[CurrRFSensorType].intervalmS);
 
 			ReadRangefinder();
 
@@ -580,7 +581,7 @@ void InitRangefinder(void) {
 			F.RangefinderActive = false;
 			break;
 		} // switch
-		mSTimer(RangefinderUpdate, RF[CurrRFSensorType].intervalmS);
+		mSTimer(RangefinderUpdatemS, RF[CurrRFSensorType].intervalmS);
 	}
 
 	RangefinderAltitude = SensorAltitude, SensorAltitudeP = 0.0f;
@@ -684,29 +685,28 @@ void UpdateAltitudeEstimates(void) {
 		UpdateBaroVariance(RawDensityAltitude);
 		UpdateAccUVariance(AccU);
 
-#if defined(USE_SIMPLE_LPF_ALT)
-		DensityAltitude = LPFn(&AltitudeLPF, RawDensityAltitude, AltdT);
+		if (UsingKalmanFilter)
 
-		if (FirstAltEst) {
+			AltitudeKF(RawDensityAltitude, AccU, AltdT);
+
+		else {
+
+			DensityAltitude = LPFn(&AltitudeLPF, RawDensityAltitude, AltdT);
+
+			if (FirstAltEst) {
+				DensityAltitudeP = DensityAltitude;
+				FirstAltEst = false;
+			}
+
+			ROC = MAF(&ROCMAF, (DensityAltitude - DensityAltitudeP) / AltdT);
+			//ROC = LPFn(&ROCLPF, (DensityAltitude - DensityAltitudeP) / AltdT, AltdT);
 			DensityAltitudeP = DensityAltitude;
-			FirstAltEst = false;
 		}
-
-		ROC = MAF(&ROCMAF, (DensityAltitude - DensityAltitudeP) / AltdT);
-		//ROC = LPFn(&ROCLPF, (DensityAltitude - DensityAltitudeP) / AltdT, AltdT);
-		DensityAltitudeP = DensityAltitude;
-#else
-		AltitudeKF(RawDensityAltitude, AccU, AltdT);
-		ROC = LPFn(&ROCLPF, ROC, AltdT); // dubious?
-#endif
 
 		Altitude = DensityAltitude - OriginAltitude;
 
 		ROCF = LPFn(&FROCLPF, ROC, AltdT); // used for landing and cruise throttle tracking
 		F.AccUBump = LPFn(&AccUBumpLPF, AccU, AltdT) > ACCU_LANDING_MPS_S;
-
-		StatsMax(AltitudeS, Altitude);
-		StatsMinMax(MinROCS, MaxROCS, ROC * 100.0f);
 
 		if (State == InFlight)
 			Altitude = AltitudeSensor();
@@ -731,23 +731,19 @@ void InitAltitude(void) {
 
 	initLPFn(&AccUBumpLPF, 2, 1.0f);
 
-	initLPFn(&ROCLPF, ROCLPFOrder, CurrAltLPFHz);
+	initLPFn(&AltitudeLPF, AltLPFOrder, CurrAltLPFHz);
+
 	initLPFn(&FROCLPF, ROCFLPFOrder, CurrAltLPFHz * 0.25f);
 
 	BaroM3F.initialised = false;
 	RangefinderM3F.initialised = false;
-
-	initMAF(&BaroMAF, MAF_BARO_LEN);
-	initMAF(&ROCMAF, MAF_ROC_LEN);
-
-#if defined(USE_SIMPLE_LPF_ALT)
-
-	initLPFn(&AltitudeLPF, AltLPFOrder, CurrAltLPFHz);
 	ROCM3F.initialised = false;
 
-#endif
+	initMAF(&ROCMAF, MAF_ROC_LEN);
 
+#if !defined(ALT_KF_TESTING)
 	InitBaro();
+#endif
 
 } // InitAltitude
 

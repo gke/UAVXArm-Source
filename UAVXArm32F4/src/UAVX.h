@@ -27,10 +27,11 @@
 //#define USE_SPI_ESC  // place holder instead of stupid DSHOT disaster
 //#define USE_MAG_DIRECT // bypass Madgwick yaw fusion - not recommended
 
-//#define ALT_KF_TESTING  // different altitude filtering schemes
-//#define TRACK_ACC_UP_BIAS
 
-//#define USE_AUX3_PROBE_PIN // CAUTION DIAGNOSTIC ONLY: This disables use of Aux3 for WP Nav enable
+//#define ALT_KF_TESTING  // different altitude filtering schemes
+//#define USE_ACC_UP_BIAS
+
+#define USE_AUX3_PROBE_PIN // CAUTION DIAGNOSTIC ONLY: This disables use of Aux3 for WP Nav enable
 
 //#define USE_CONSERVATIVE_DEF_PARAM_LOAD
 
@@ -44,12 +45,12 @@
 #define NAV_ENFORCE_ALTITUDE_CEILING		// limit all autonomous altitudes
 #define CHECK_INVERTED // check multicopter upside down
 
+//#define TESTING_OPTICAL
+
 #define MAX_BLHELI_ESCS 4
 //#define USE_OLED
 #define USE_WS2812 // shared with Aux1 pulse
 //#define USE_WS2812B
-
-//#define INC_STATS_TEL
 
 #define INC_BARO_FULL_MATH
 #define VOLT_MEASUREMENT_ONBOARD
@@ -79,6 +80,7 @@
 #include "escprog/serial_4way_stk.h"
 #include "escprog/serial_4way_avr.h"
 #include "oled/SSD1X06.h"
+#include "optical/optical.h"
 
 #include "main.h"
 #include "filters.h"
@@ -117,7 +119,6 @@
 #include "spi.h"
 #include "rc.h"
 #include "spiflash.h"
-#include "stats.h"
 #include "telem.h"
 #include "temp.h"
 #include "tests.h"

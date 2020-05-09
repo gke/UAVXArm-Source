@@ -74,8 +74,6 @@ boolean ReadMagnetometer(void) {
 	RotateSensor(&RawMag[X], &RawMag[Y], MagQuadrant);
 
 	r = (RawMag[0] != -4096) && (RawMag[1] != -4096) && (RawMag[2] != -4096);
-	if (!r)
-		incStat(CompassFailS);
 
 	return (r);
 } // ReadMagnetometer
@@ -86,8 +84,11 @@ void GetMagnetometer(void) {
 	int32 a;
 
 	if (F.MagnetometerActive) {
-		if (mSTimeout(MagnetometerUpdate)) {
-			mSTimer(MagnetometerUpdate, MAG_TIME_MS);
+		if (SIOTokenFree && mSTimeout(MagnetometerUpdatemS)) {
+
+			SIOTokenFree = false;
+
+			mSTimer(MagnetometerUpdatemS, MAG_TIME_MS);
 
 			RawMag[MX] = -4096;
 
@@ -207,12 +208,13 @@ void InitMagnetometer(void) {
 		else
 			SIOWriteBlockataddr(magSel, HMC5XXX_CONFIG_A, 4, HMC5883LConfig);
 
-		mSTimer(MagnetometerUpdate, MAG_TIME_MS);
+		mSTimer(MagnetometerUpdatemS, MAG_TIME_MS);
 		Delay1mS(MAG_TIME_MS * 2);
 
 		F.NewMagValues = false;
 		do {
 			GetMagnetometer();
+			SIOTokenFree = true;
 		} while (!F.NewMagValues);
 
 		InitialMagHeading = CalculateMagneticHeading();
@@ -278,11 +280,11 @@ void CalibrateHMC5XXX(uint8 s) {
 		memset(&MagSample, 0, sizeof(MagSample));
 
 		ss = 0;
-		mSTimer(MagnetometerUpdate, MAG_TIME_MS);
+		mSTimer(MagnetometerUpdatemS, MAG_TIME_MS);
 
 		while (ss < MAG_CAL_SAMPLES)
-			if (mSTimeout(MagnetometerUpdate)) {
-				mSTimer(MagnetometerUpdate, MAG_TIME_MS);
+			if (mSTimeout(MagnetometerUpdatemS)) {
+				mSTimer(MagnetometerUpdatemS, MAG_TIME_MS);
 
 				if (ReadMagnetometer()) {
 

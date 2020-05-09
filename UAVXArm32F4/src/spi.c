@@ -71,7 +71,7 @@ SPI_TypeDef * SPISetBaudRate(uint8 spiDev, boolean R) {
 
 			SPIx->CR1 = (SPIx->CR1 & 0b1111111111111100)
 					| ((SPIDef[spiDev].ClockHigh) ? SPI_CPOL_High
-					& SPI_CPHA_2Edge : SPI_CPOL_Low & SPI_CPHA_1Edge);
+							& SPI_CPHA_2Edge : SPI_CPOL_Low & SPI_CPHA_1Edge);
 
 			Delay1uS(5);
 		}
@@ -112,19 +112,15 @@ uint8 SPITransfer(SPI_TypeDef *SPIx, uint8 data) {
 
 	spiTimeout = 0x1000;
 	while (SPI_I2S_GetFlagStatus(SPIx, SPI_I2S_FLAG_TXE) == RESET)
-		if ((spiTimeout--) == 0) {
-			setStat(SIOFailS, ++spiErrors);
+		if ((spiTimeout--) == 0)
 			return (0);
-		}
 
 	SPI_I2S_SendData(SPIx, data);
 
 	spiTimeout = 0x1000;
 	while (SPI_I2S_GetFlagStatus(SPIx, SPI_I2S_FLAG_RXNE) == RESET)
-		if ((spiTimeout--) == 0) {
-			setStat(SIOFailS, ++spiErrors);
+		if ((spiTimeout--) == 0)
 			return (0);
-		}
 
 	return ((uint8) SPI_I2S_ReceiveData(SPIx));
 }

@@ -23,16 +23,7 @@
 
 #include "UAVX.h"
 
-PinDef RCPins[MAX_RC_INPUTS] = {
-	{true, PA0, PWMPinConfig, PWMIn_2_1},
-	{true, PA1, PWMPinConfig, PWMIn_2_2},
-	{true, PA2, PWMPinConfig, PWMIn_2_3},
-	{true, PA3, PWMPinConfig, PWMIn_2_4},
-	{true, PA6, PWMPinConfig, PWMIn_3_1},
-	{true, PA7, PWMPinConfig, PWMIn_3_2},
-	{true, PB0, PWMPinConfig, PWMIn_3_3},
-	{true, PB1, PWMPinConfig, PWMIn_3_4} 
-};
+PinDef CPPMPin = {true, PA0, PWMPinConfig, PWMIn_2_1};
 
 PinDef PWMPins[MAX_PWM_OUTPUTS] = {
 		// Drives 1-4
@@ -90,7 +81,7 @@ AnalogPinDef AnalogPins[MAX_ANALOG_CHANNELS] = {
 SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
 	{false, }, // mapped to USBSerial
 	{true, USART1, PA9, PA10, 115200, true, false, USART1Config},
-	{true, USART2, PA2, PA3, 9600, true, false, USART2Config},
+	{true, USART2, PA2, PA3, 115200, true, false, USART2Config},
 	{true, USART3, PB10, PB11, 115200, true, false, USART3Config},
 	{false, UART4, PB10, PB11, 115200, true, false, UART4Config},
 	{false, 0 } // SoftSerial
@@ -111,8 +102,6 @@ SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
 };
 
 PinDef USBDisconnectPin = { false, 0, };
-
-#define FULL_V4
 
 DevDef busDev[maxDevSel] = {
 	{true, imu0Sel, mpu6000IMU, true, 2, 0, PB12}, 
@@ -156,26 +145,18 @@ void InitTarget(void) {
 	case CPPMRx:
 		CurrMaxPWMOutputs = (UsingDCMotors || (CurrESCType == ESCSPI)) ? 4 : 10;
 		CurrNoOfRCPins = 1; 
-		RxUsingSerial = false;
+		F.HaveSerialRC = false;
 		break;
-	/* Ken does not use V4 SPI boards
-	case ParallelPPMRx:
-		CurrMaxPWMOutputs = (UsingDCMotors || (CurrESCType == ESCSPI)) ? 4 : 6;
-		CurrNoOfRCPins = MAX_RC_INPUTS; //P(RCChannels);
-		RxUsingSerial = false;
-		break;
-	 */
 	default:
-		CurrMaxPWMOutputs = (UsingDCMotors || (CurrESCType == ESCSPI)) ? 4 : 10;
-		CurrNoOfRCPins = 0;
-		RxUsingSerial = true;
-		RCSerial = Usart2;
+		CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 10;
+		F.HaveSerialRC = true;
+		RCSerial = Usart3;
 		InitSerialPort(RCSerial, false, CurrRxType == FutabaSBusRx);
 		break;
 	} // switch
 	
-	GPSRxSerial = GPSTxSerial = Usart3;
-	InitSerialPort(GPSRxSerial, false, false); 
+	GPSSerial = Usart3;
+	InitSerialPort(GPSSerial, false, false); 
 
 	if (CurrNoOfWSLEDs > 0) // temporary KLUDGE - need to remap gimbal function
 		CurrMaxPWMOutputs = 4;

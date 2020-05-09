@@ -24,17 +24,7 @@
 
 #include "UAVX.h"
 
-PinDef RCPins[MAX_RC_INPUTS] = {
-	{true, PA0, PWMPinConfig, PWMIn_2_1},
-	// Archaic
-	{true, PA1, PWMPinConfig, PWMIn_2_2},
-	{true, PA2, PWMPinConfig, PWMIn_2_3}, // USART
-	{true, PA3, PWMPinConfig, PWMIn_2_4}, // USART
-	{true, PA6, PWMPinConfig, PWMIn_3_1},
-	{true, PA7, PWMPinConfig, PWMIn_3_2},
-	{true, PB0, PWMPinConfig, PWMIn_3_3},
-	{true, PB1, PWMPinConfig, PWMIn_3_4}  
-};
+PinDef CPPMPin = {true, PA0, PWMPinConfig, PWMIn_2_1};
 
 PinDef PWMPins[MAX_PWM_OUTPUTS] = {
 	// Drives 1-4
@@ -89,7 +79,7 @@ PinDef LEDPins[MAX_LED_PINS] = {
 SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
 	{false, }, // mapped to USBSerial
 	{true, USART1, PA9, PA10, 115200, true, false, USART1Config},
-	{true, USART2, PA2, PA3, 9600, true, false, USART2Config},
+	{true, USART2, PA2, PA3, 115200, true, false, USART2Config}, 
 	{false, USART3, PB10, PB11, 115200, true, false, USART3Config},
 	{false, UART4, PC10, PC11, 115200, true, false, UART4Config},
 	{false, 0 } // SoftSerial
@@ -165,29 +155,20 @@ void InitTarget(void) {
 	switch (CurrRxType) {
 	case CPPMRx:
 		CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 10;
-		CurrNoOfRCPins = 1;
-		GPSTxSerial = GPSRxSerial = Usart2;
-		InitSerialPort(GPSRxSerial, false, false);
-		RxUsingSerial = false;
-		break;
-	case ParallelPPMRx:
-		CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 6;
-		CurrNoOfRCPins = P(RCChannels);
-		RxUsingSerial = false;
-		GPSRxSerial = TelemetrySerial;
-		GPSTxSerial = SoftSerialTx;
+		F.HaveSerialRC = false;
+		F.HaveGPS = true;
+	    GPSSerial = Usart2;
+	    InitSerialPort(GPSSerial, false, false);
 		break;
 	default:
 		CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 10;
-		CurrNoOfRCPins = 0;
-		RxUsingSerial = true;
-		GPSRxSerial = TelemetrySerial;
-		GPSTxSerial = SoftSerialTx;
+		GPSSerial = SoftSerial;
+		F.HaveSerialRC = true;
 		RCSerial = Usart2;
 		InitSerialPort(RCSerial, false, CurrRxType == FutabaSBusRx);
 		break;
 	} // switch
-
+	
 } // InitTarget
 
 #endif

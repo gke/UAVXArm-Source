@@ -47,10 +47,19 @@ boolean BeeperIsOn(void);
 #define WS2812_COLOUR_FRAME_LEN 24
 #define WS2812_RESET_LEN (WS2812_COLOUR_FRAME_LEN*2) // ~50uS
 #define MAX_PWM_BUFFER_SIZE (MAX_WS2812_LEDS*WS2812_COLOUR_FRAME_LEN+WS2812_RESET_LEN) // pulse widths
+
 typedef struct {
+	uint8 pad:8;
 	uint8 r :8;
 	uint8 g :8;
 	uint8 b :8;
+} __attribute__((packed)) colourTripleStruct;
+
+typedef struct {
+	union {
+		colourTripleStruct c;
+		uint32 cc;
+	};
 } WSLEDStruct;
 
 extern void InitWSLEDs(void);
@@ -58,6 +67,7 @@ void UpdateWSLEDBuffer(void);
 void SetWSLEDColours(idx i, uint8 r, uint8 g, uint8 b);
 void WSLEDColour(idx i, const WSLEDStruct w);
 void UpdateWSLEDs(void);
+void LEDRandom(void);
 
 
 extern const WSLEDStruct WSLEDColours[];

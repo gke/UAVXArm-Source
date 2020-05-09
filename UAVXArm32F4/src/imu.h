@@ -57,7 +57,7 @@ extern real32 RateEnergySum;
 extern uint32 RateEnergySamples;
 extern boolean GyrosErected;
 extern int32 GyroErectionSamples;
-extern filterM3Struct AccM3F[], GyroM3F[], AccUM3F;
+extern filterM3Struct AccUM3F;
 extern filterStruct AccF[], GyroF[], SensorTempF;
 
 #endif

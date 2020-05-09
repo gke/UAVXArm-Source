@@ -100,11 +100,11 @@ extern real32 AltdT;
 extern timemS AltitudemS;
 extern uint16 ms56xx_ManufacturersData;
 
-extern filterStruct ROCLPF, FROCLPF, AltitudeLPF, AccUBumpLPF;
+extern filterStruct FROCLPF, AltitudeLPF, AccUBumpLPF;
 extern filterM3Struct BaroM3F, RangefinderM3F, ROCM3F;
-extern filterStruct AccUMAF, BaroMAF, ROCMAF;
+extern filterStruct AccUMAF, ROCMAF;
 
-//extern boolean UsingKalmanFilter;
+extern boolean UsingKalmanFilter;
 
 #endif
 

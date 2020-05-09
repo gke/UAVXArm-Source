@@ -190,12 +190,13 @@ void DoEmulation(void) {
 
 void GPSEmulation(void) {
 
-	while (SerialAvailable(GPSRxSerial))
-		RxChar(GPSRxSerial); // flush
+	if (F.HaveGPS)
+		while (SerialAvailable(GPSSerial))
+			RxChar(GPSSerial); // flush
 
-	if (mSTimeout(FakeGPSUpdate)) { // && ((mSClock() < BINGO) || (mSClock() > BINGO + 10000))) {
+	if (mSTimeout(FakeGPSUpdatemS)) { // && ((mSClock() < BINGO) || (mSClock() > BINGO + 10000))) {
 		GPS.lastPosUpdatemS = GPS.lastVelUpdatemS = mSClock();
-		mSTimer(FakeGPSUpdate, FAKE_GPS_DT_MS);
+		mSTimer(FakeGPSUpdatemS, FAKE_GPS_DT_MS);
 
 		GPS.heading = Heading;
 		GPS.cAcc = 0.5f; // degrees
@@ -225,7 +226,7 @@ void InitEmulation(void) {
 		GPS.C[EastC].OriginRaw = GPS.C[EastC].Raw = DEFAULT_HOME_LON;
 		GPS.longitudeCorrection = DEFAULT_LON_CORR;
 
-		mS[FakeGPSUpdate] = 0;
+		mS[FakeGPSUpdatemS] = 0;
 
 		Altitude = OriginAltitude = RangefinderAltitude = FakeAltitude
 				= FakeROC = 0.0f;

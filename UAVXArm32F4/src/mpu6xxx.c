@@ -51,8 +51,10 @@ real32 MPU6XXXTemperature = 25.0f;
 int16 RawMPU6XXXTemperature;
 timeuS mpu6xxxLastUpdateuS = 0;
 
-boolean UsingAccGyroM3Filter = true;
 real32 RawAcc[3], RawGyro[3];
+
+real32 SlewBand;
+int32 BP[3] = { 0, };
 
 // Roll Right +, Pitch Up +, Yaw ACW +
 
@@ -87,14 +89,10 @@ void ReadRawAccAndGyro(uint8 imuSel) {
 
 	RotateSensor(&B[X], &B[Y], IMUQuadrant);
 
-	for (a = X; a <= Z; a++)
-		if (UsingAccGyroM3Filter) {
-			RawAcc[a] = real32Median3Filter(&AccM3F[a], (real32) B[a]);
-			RawGyro[a] = real32Median3Filter(&GyroM3F[a], (real32) B[a + 4]);
-		} else {
-			RawAcc[a] = (real32) B[a];
-			RawGyro[a] = (real32) B[a + 4];
-		}
+	for (a = X; a <= Z; a++) {
+		RawAcc[a] = (real32) B[a];
+		RawGyro[a] = (real32) B[a + 4];
+	}
 
 	RawMPU6XXXTemperature = B[3];
 
@@ -117,10 +115,9 @@ void ReadFilteredGyroAndAcc(uint8 imuSel) {
 		for (a = X; a <= Z; a++)
 			RawAcc[a] = LPFn(&AccF[a], RawAcc[a], dT);
 
-	if (DisableGyroDLPF == 1) {
+	if (DisableGyroDLPF == 1)
 		for (a = X; a <= Z; a++)
 			RawGyro[a] = LPFn(&GyroF[a], RawGyro[a], dT);
-	}
 
 	UpdateMPU6XXXTemperature(imuSel, RawMPU6XXXTemperature, dT);
 

@@ -28,6 +28,7 @@ timeuS FlightTimemS = 0;
 
 timeuS CurrPIDCycleuS = PID_CYCLE_2000US;
 real32 CurrPIDCycleS;
+int16 ArmUtilisationPercent;
 
 uint8 ch;
 int8 i, m;
@@ -59,16 +60,13 @@ void InitMisc(void) {
 	InitialThrottle = ThrNeutral = ThrLow = ThrHigh = 1.0f;
 	IdleThrottle = FromPercent(10);
 
-	GyrosErected = GPSInitialised = false;
+	GyrosErected = false;
 	State = Preflight;
 
 } // InitMisc
 
 
 void DoHouseKeeping(void) {
-
-	if (F.HaveGPS && ((GPSRxSerial != TelemetrySerial) || Armed()))
-		CheckGPS();
 
 	CheckLandingSwitch();
 	CheckBatteries();
@@ -85,19 +83,18 @@ void DoHouseKeeping(void) {
 
 void ResetMainTimeouts(void) {
 
-	mSTimer(CrashedTimeout, CRASHED_TIMEOUT_MS);
+	mSTimer(CrashedTimeoutmS, CRASHED_TIMEOUT_MS);
 
-	mSTimer(ArmedTimeout, ARMED_TIMEOUT_MS);
-	mSTimer(NavStateTimeout, ARMED_TIMEOUT_MS);
+	mSTimer(ArmedTimeoutmS, ARMED_TIMEOUT_MS);
+	mSTimer(NavStateTimeoutmS, ARMED_TIMEOUT_MS);
 
-	mSTimer(RxFailsafeTimeout, RC_NO_CHANGE_TIMEOUT_MS);
+	mSTimer(RxFailsafeTimeoutmS, RC_NO_CHANGE_TIMEOUT_MS);
 
 } // ResetMainTimeouts
 
 void InitiateFlight(void) {
 
 	ResetMainTimeouts();
-	setStat(RCGlitchesS, 0);
 	RateEnergySum = 0.0f;
 	RateEnergySamples = 0;
 
@@ -128,7 +125,7 @@ int main() {
 	InitHarness();
 	InitOLED();
 
-	SendDefAFNameNames(TelemetrySerial);
+	SendDefAFNames(TelemetrySerial);
 
 	InitLEDs();
 	InitWSLEDs();
@@ -157,17 +154,15 @@ int main() {
 	InitNavigation();
 
 	LEDsOff();
-	if (GPSRxSerial != TelemetrySerial) {
-		SendFlightPacket(TelemetrySerial);
 
-		DoBeep(8, 2);
-		InitGPS(); // 11600mS !!!!!!
-	}
+	SendFlightPacket(TelemetrySerial);
+	DoBeep(8, 2);
+	InitGPS(); // 11600mS !!!!!!
 
 	F.DrivesArmed = false;
 	EnableRC();
 
-	uSTimer(NextCycleUpdate, CurrPIDCycleuS);
+	uSTimer(CycleUpdateuS, CurrPIDCycleuS);
 
 	FirstPass = true;
 	State = Preflight;
@@ -185,8 +180,8 @@ int main() {
 			UpdateControls(); // avoid loop sync delay
 		}
 
-		if (uSTimeout(NextCycleUpdate)) {
-			uSTimer(NextCycleUpdate, CurrPIDCycleuS);
+		if (uSTimeout(CycleUpdateuS)) {
+			uSTimer(CycleUpdateuS, CurrPIDCycleuS);
 
 			//	Marker();
 
@@ -231,23 +226,9 @@ int main() {
 					RxLoopbackEnabled = false;
 
 					LEDsOffExcept(ledYellowSel);
-
-					if ((GPSRxSerial == TelemetrySerial) && !GPSInitialised)
-						State = InitialisingGPS;
-					else
-						State = Starting;
+					State = Starting;
 				} else
 					DoStickProgramming(); // blue toggle if trimming acc
-
-				break;
-			case InitialisingGPS:
-
-				SendFlightPacket(TelemetrySerial);
-
-				DoBeep(8, 2);
-				InitGPS(); // 11600mS !!!!!
-
-				State = Starting;
 
 				break;
 			case Starting:
@@ -260,12 +241,10 @@ int main() {
 				InitControl();
 				InitNavigation();
 
-				ZeroStats();
-
 				LEDsOffExcept(ledYellowSel);
 
 				if ((UsingFastStart || GyrosErected) && !F.UsingAnalogGyros) {
-					mSTimer(WarmupTimeout, WARMUP_TIMEOUT_MS);
+					mSTimer(WarmupTimeoutmS, WARMUP_TIMEOUT_MS);
 					State = Warmup;
 				} else {
 					GyrosErected = false;
@@ -282,7 +261,7 @@ int main() {
 				ErectGyros(imuSel); // blue, red if moving
 
 				if (GyrosErected) {
-					mSTimer(WarmupTimeout, WARMUP_TIMEOUT_MS);
+					mSTimer(WarmupTimeoutmS, WARMUP_TIMEOUT_MS);
 					LEDsOffExcept(ledYellowSel);
 					State = Warmup;
 				}
@@ -294,8 +273,9 @@ int main() {
 
 				CaptureBatteryCurrentADCZero();
 
-				if (mSTimeout(WarmupTimeout)) {
-					UbxSaveConfig(GPSTxSerial); //does this save ephemeris stuff?
+				if (mSTimeout(WarmupTimeoutmS)) {
+					if (F.HaveGPS)
+						UbxSaveConfig(GPSSerial); //does this save ephemeris stuff?
 
 					DoBeeps(3);
 					DoBeep(8, 2);
@@ -351,7 +331,7 @@ int main() {
 							== NoGPS) || F.OriginValid)) {
 						ResetMainTimeouts();
 						InitiateFlight();
-					} else if (mSTimeout(ArmedTimeout))
+					} else if (mSTimeout(ArmedTimeoutmS))
 						InitiateShutdown(ArmingTimeout);
 
 				} else { // became disarmed mid state change
@@ -360,7 +340,7 @@ int main() {
 						// TODO: save tuning?
 					}
 
-					UpdateConfig(); // also captures stick programming
+					UpdateConfig(); // stick programming, cruise throttle and acc/baro variances
 
 					State = Preflight;
 				}
@@ -374,7 +354,7 @@ int main() {
 					State = InFlight;
 
 				} else {
-					if (mSTimeout(ThrottleIdleTimeout)) {
+					if (mSTimeout(ThrottleIdleTimeoutmS)) {
 						DesiredThrottle = 0.0f;
 
 						if (NavState != Perching)
@@ -392,12 +372,14 @@ int main() {
 
 				if (StickThrottle < IdleThrottle) {
 					TxSwitchArmed = ArmedByTx = false;
-					FirstPass = true; // should force fail preprocess with arming switch
+					FirstPass = true; // should force fail pre-process with arming switch
 
+					LEDsOff();
 					State = Preflight;
 
 				} else
-					LEDsOff();
+					LEDRandom();
+
 				break;
 			case InFlight:
 
@@ -415,7 +397,7 @@ int main() {
 								== TxSwitchArming)) && !Armed()))) {
 
 					ResetMainTimeouts();
-					mSTimer(ThrottleIdleTimeout, THR_LOW_DELAY_MS);
+					mSTimer(ThrottleIdleTimeoutmS, THR_LOW_DELAY_MS);
 
 					LEDsOffExcept(ledGreenSel);
 
@@ -445,8 +427,10 @@ int main() {
 				break;
 			} // switch state
 
-			setStat(UtilisationS, State == InFlight ? ((uSClock()
-					- LastUpdateuS) * 100.0f) / CurrPIDCycleuS : 0);
+			SIOTokenFree = true;
+
+			ArmUtilisationPercent = ((uSClock() - LastUpdateuS) * 100)
+					/ CurrPIDCycleuS;
 
 			//	Marker();
 		}

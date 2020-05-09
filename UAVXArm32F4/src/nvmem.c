@@ -173,7 +173,7 @@ void InitNVMem(void) {
 
 	if (busDev[memSel].Used) {
 
-		uS[MemReady] = uSClock();
+		uS[MemReadyuS] = uSClock();
 
 		switch (busDev[memSel].type) {
 		case i2cEEPROMMem:

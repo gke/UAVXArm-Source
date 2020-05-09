@@ -180,7 +180,7 @@ boolean LEDsSaved[MAX_LED_PINS] = { false, };
 boolean UsingWS28XXLEDs = false;
 uint8 CurrNoOfWSLEDs = 0;
 
-uint8 CurrBeeperSel = Aux2Sel; //BeeperSel;
+uint8 CurrBeeperSel = BeeperSel; // Aux2Sel; //
 
 #if (defined(USE_WS2812) || defined(USE_WS2812B))
 
@@ -251,9 +251,9 @@ void UpdateWSLEDBuffer(void) {
 					WSLEDptr = &WSLEDs[CurrWSLED];
 					WSPWMptr = &WSLEDPWMBuffer[0] + WS2812_RESET_LEN + i;
 
-					GenWSLEDPWM(&WSPWMptr, WSLEDptr->g);
-					GenWSLEDPWM(&WSPWMptr, WSLEDptr->r);
-					GenWSLEDPWM(&WSPWMptr, WSLEDptr->b);
+					GenWSLEDPWM(&WSPWMptr, WSLEDptr->c.g);
+					GenWSLEDPWM(&WSPWMptr, WSLEDptr->c.r);
+					GenWSLEDPWM(&WSPWMptr, WSLEDptr->c.b);
 					CurrWSLED++;
 				}
 				LEDStateChanged = false;
@@ -266,9 +266,9 @@ void UpdateWSLEDBuffer(void) {
 
 
 void SetWSLEDColours(idx i, uint8 R, uint8 G, uint8 B) {
-	WSLEDs[i].g = G;
-	WSLEDs[i].r = R;
-	WSLEDs[i].b = B;
+	WSLEDs[i].c.g = G;
+	WSLEDs[i].c.r = R;
+	WSLEDs[i].c.b = B;
 } // wsSetColours
 
 
@@ -293,7 +293,7 @@ void InitWSLEDs(void) {
 
 
 void WSLEDColour(idx i, const WSLEDStruct w) {
-	SetWSLEDColours(i, w.r, w.g, w.b);
+	SetWSLEDColours(i, w.c.r, w.c.g, w.c.b);
 } // WSLEDColour
 
 void WSLEDOn(idx l) { // run in pairs
@@ -328,6 +328,7 @@ void WSLEDToggle(idx l) {
 	else
 		WSLEDOn(l);
 } // WSLEDToggle
+
 
 #else
 
@@ -425,8 +426,8 @@ void LEDChaser(void) {
 	static boolean blink = false;
 
 	if (UsingWS28XXLEDs)
-		if (mSTimeout(chaserTimeout)) {
-			mSTimer(chaserTimeout, 100);
+		if (mSTimeout(chaserTimeoutmS)) {
+			mSTimer(chaserTimeoutmS, 100);
 
 			LEDOff(lastLED);
 			lastLED++;
@@ -436,6 +437,28 @@ void LEDChaser(void) {
 		}
 
 } // LEDChaser
+
+void LEDRandom(void) {
+	static uint16 lastLED = 0;
+	static boolean blink = false;
+	idx l;
+
+	if (mSTimeout(chaserTimeoutmS)) {
+		mSTimer(chaserTimeoutmS, 100);
+
+		if (UsingWS28XXLEDs) {
+			for (l = 0; l < NoOfWSLEDs; l++)
+				WSLEDs[l].cc = SensorNoise((real32) 0xffffff);
+		} else
+			for (l = 0; l < MAX_LED_PINS; l++) {
+				if (SensorNoise(1.0f) > 0.0f)
+					LEDOn(l);
+				else
+					LEDOff(l);
+			}
+	}
+
+} // LEDRandom
 
 void SaveLEDs(void) { // one level only
 	idx l;

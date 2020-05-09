@@ -196,8 +196,10 @@ void DoTesting(void) {
 
 	cycles = 10;
 	for (kkk = 0; kkk < 3000; kkk++) {
-		while (!DEBUGNewBaro)
-		GetBaro();
+		while (!DEBUGNewBaro) {
+		  GetBaro();
+		  SIOTokenFree = true;
+		}
 		DEBUGNewBaro = false;
 
 		if (cycles-- <= 0) {
@@ -229,8 +231,10 @@ void DoTesting(void) {
 	int16 kkk;
 
 	for (kkk = 0; kkk < 10000; kkk++) {
-		while (!DEBUGNewBaro)
-		GetBaro();
+		while (!DEBUGNewBaro) {
+		  GetBaro();
+		  SIOTokenFree = true;
+		}
 		DEBUGNewBaro = false;
 
 		LEDToggle(ledRedSel);
@@ -379,45 +383,42 @@ void DoTesting(void) {
 #elif defined(ALT_KF_TESTING)
 	real32 LastUpdateS = 0.0f;
 	const int16 ratio = 10;
-	real32 F = 5.0f;
-	real32 Period = 1.0f / F;
+	real32 Freq = 5.0f;
+	real32 Period = 1.0f / Freq;
 	int32 tick = 0;
 	real32 T = 0.0f;
 	real32 FakeROC = 0.0f;
 	real32 FakeAccU = 0.0f;
-	real32 dAlt, DensityAltitude2, MAROC, LPFROC, DensityAltitudeP, FakeROCP, AccU2;
+	real32 dAlt, DensityAltitude2, MAROC, LPFROC, DensityAltitudeP;
 	real32 BaroNoise;
 
 	boolean FirstAltEst = true;
-	boolean FirstROCEst = true;
 
 	dT = 0.002f;
 	AltdT = dT * ratio;
-	FakeROCP = 0.0f;
+
 	TxString(
 			TelemetrySerial,
-			"Sec,AccV,BaroV, AccUBias,FakeAlt,RawAlt,KFAlt,LPFAlt,FakeAcc,Acc,Acc2, FakeROC,KFROC,MAROC,LPFROC");
+			"Sec,AccV,BaroV, AccUBias,FakeAlt,RawAlt,KFAlt,LPFAlt,FakeAcc,Acc,FakeROC,KFROC, MAROC");
+
 	TxNextLine(TelemetrySerial);
+
+	TrackBaroVariance = BaroVariance = 0.4f;
+	TrackAccUVariance = AccUVariance = 2.0f;
+	F.Hovering = true;
+	State = InFlight;
 
 	while (1) {
 
 		T = (real32) tick * dT;
 
-		FakeAltitude = sinf(TWO_PI * F * T);
-		FakeROC = TWO_PI * F * cosf(TWO_PI * F * T);
-		FakeAccU = -Sqr(TWO_PI * F) * sinf(TWO_PI * F * T) + 0.05f;
+		FakeAltitude = sinf(TWO_PI * Freq * T);
+		FakeROC = TWO_PI * Freq * cosf(TWO_PI * Freq * T);
+		FakeAccU = -Sqr(TWO_PI * Freq) * sinf(TWO_PI * Freq * T) + 0.05f;
 
-		if (FirstROCEst) {
-			FakeROCP = FakeROC;
-			FirstROCEst = false;
-		}
-
-		AccU2 = (FakeROC - FakeROCP) / dT;
-		FakeROCP = FakeROC;
-
-		//AccU = FakeAccU + SensorNoise(5.0f);
+		//AccU = FakeAccU + SensorNoise(50.0f);
 		//FakeAccU = Limit1(FakeAccU, GRAVITY_MPS_S);
-		AccU = real32Median3Filter(&AccUM3F, FakeAccU + SensorNoise(5.0f));
+		AccU = real32Median3Filter(&AccUM3F, FakeAccU + SensorNoise(20.0f));
 		AccU = MAF(&AccUMAF, AccU);
 
 		if (tick % ratio == 0) {
@@ -431,7 +432,6 @@ void DoTesting(void) {
 			UpdateAccUVariance(AccU);
 
 			AltitudeKF(RawDensityAltitude, AccU, AltdT);
-			//ROC = LPFn(&ROCLPF, ROC, AltdT);
 
 			//---------------------
 
@@ -444,10 +444,6 @@ void DoTesting(void) {
 			}
 
 			MAROC = MAF(&ROCMAF, (DensityAltitude2 - DensityAltitudeP) / AltdT);
-
-			dAlt = DensityAltitude2 - DensityAltitudeP;
-			dAlt = real32Median3Filter(&ROCM3F, dAlt);
-			LPFROC = LPFn(&ROCLPF, dAlt / AltdT, AltdT);
 
 			DensityAltitudeP = DensityAltitude2;
 
@@ -463,12 +459,10 @@ void DoTesting(void) {
 
 			TxVal32(TelemetrySerial, FakeAccU * 1000.0f, 3, ',');
 			TxVal32(TelemetrySerial, AccU * 1000.0f, 3, ',');
-			TxVal32(TelemetrySerial, AccU2 * 1000.0f, 3, ',');
 
 			TxVal32(TelemetrySerial, FakeROC * 1000.0f, 3, ',');
 			TxVal32(TelemetrySerial, ROC * 1000.0f, 3, ',');
 			TxVal32(TelemetrySerial, MAROC * 1000.0f, 3, ',');
-			TxVal32(TelemetrySerial, LPFROC * 1000.0f, 3, ',');
 			TxNextLine(TelemetrySerial);
 
 			Delay1mS(100);
@@ -476,6 +470,16 @@ void DoTesting(void) {
 
 		tick++;
 
+	}
+
+#elif defined(TESTING_OPTICAL)
+
+	adns3080init();
+
+	while (1) {
+		adns3080update_position(Angle[Roll], Angle[Pitch], cosf(Angle[Yaw]),
+				sinf(Angle[Yaw]), Altitude);
+		adns3080print_pixel_data(TelemetrySerial);
 	}
 
 #else
@@ -621,12 +625,14 @@ void CommissioningTest(uint8 s) {
 		ReadFilteredGyroAndAcc(); ScaleRateAndAcc();
 
 		F.BaroActive = true; // force
-		if (mSTimeout(BaroUpdate)) {
-			mSTimer(BaroUpdate, 4);
+		if (uSTimeout(BaroUpdateuS)) {
+			uSTimer(BaroUpdateuS, 4000);
 			GetBaro();
+			SIOTokenFree = true;
 		}
 
 		GetMagnetometer();
+		SioTokenFree = true;
 
 		if (mSClock() > Timeout) {
 			Timeout += 500;
@@ -878,8 +884,10 @@ void MagnetometerTest(uint8 s) {
 	if (F.MagnetometerActive) {
 
 		F.NewMagValues = false;
-		while (!F.NewMagValues)
+		while (!F.NewMagValues) {
 		GetMagnetometer();
+		SIOTokenFree = true;
+		}
 
 		TxString(s, "\r\nTemperature: ");
 		TxVal32(s, MagTemperature * 10.0f, 1, 'C');
@@ -936,8 +944,10 @@ void BaroTest(uint8 s) {
 
 	if (F.BaroActive) {
 		F.NewBaroValue = false;
-		while (!F.NewBaroValue)
-		GetBaro();
+		while (!F.NewBaroValue) {
+		  GetBaro();
+		  SIOTokenFree = true;
+		}
 
 		TxString(s, "\r\nBaro. Temp.: ");
 		TxVal32(s, (int32) BaroTemperature * 100, 2, ' ');
@@ -1114,7 +1124,7 @@ void ReceiverTest(uint8 s) {
 	TxString(s, "\r\nRx: ");
 	ShowRCSetup(s);
 
-	if (RxUsingSerial) {
+	if (F.HaveSerialRC) {
 		TxString(s, "\r\nLost Frames: ");
 		TxVal32(s, LostFrameCount, 0, ' ');
 		TxString(s, " (Spektrum/SBus)");
@@ -1129,7 +1139,7 @@ void ReceiverTest(uint8 s) {
 	else
 	TxString(s, "\r\nSignal FAIL\r\n");
 
-	if (RxUsingSerial) {
+	if (F.HaveSerialRC) {
 		if (currRxType == Deltang) {
 			TxString(s, "\r\nRSSI: ");
 			TxVal32(s, RSSI, 0, ' ');

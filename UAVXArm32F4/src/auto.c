@@ -84,12 +84,12 @@ boolean DoLanding(void) {
 	case InitDescent:
 		//	if (Abs(Altitude) < NAV_LAND_M) {
 		bucketmS = 1000;
-		mSTimer(NavStateTimeout, bucketmS); // let descent actually start
+		mSTimer(NavStateTimeoutmS, bucketmS); // let descent actually start
 		LandingState = CommenceDescent;
 		//	}
 		break;
 	case CommenceDescent:
-		if (mSTimeout(NavStateTimeout)) {
+		if (mSTimeout(NavStateTimeoutmS)) {
 			LastLandUpdateuS = uSClock();
 			bucketmS = NAV_LAND_TIMEOUT_MS;
 			LandingState = Descent;
@@ -107,7 +107,7 @@ boolean DoLanding(void) {
 			F.AccUBump = false;
 		}
 
-		mSTimer(NavStateTimeout, bucketmS);
+		mSTimer(NavStateTimeoutmS, bucketmS);
 		break;
 	case DescentStopped:
 		HasLanded = true;
@@ -123,6 +123,7 @@ void InitiateShutdown(uint8 s) {
 	ZeroNavCorrections();
 	DesiredThrottle = 0.0f;
 	F.DrivesArmed = false;
+	LEDsOn();
 	AlarmState = s;
 	State = Shutdown;
 } // InitiateShutdown
@@ -221,7 +222,7 @@ void InitiatePerch(void) {
 	for (a = Pitch; a <= Yaw; a++)
 		A[a].NavCorr = A[a].NavCorrP = Nav.C[a].PosIntE = 0.0f;
 
-	mSTimer(NavStateTimeout, (timemS) WP.Loiter * 1000);
+	mSTimer(NavStateTimeoutmS, (timemS) WP.Loiter * 1000);
 	NavState = Perching;
 
 } // InitiatePerch
@@ -229,7 +230,9 @@ void InitiatePerch(void) {
 void InitiatePH(void) {
 
 	// resume mission if PH released? CurrWPNo = 0;
-	SetDesiredAltitude(Altitude);
+	if (!F.HoldingAlt)
+		SetDesiredAltitude(Altitude);
+
 	CapturePosition();
 	DesiredHeading = Heading;
 	NavState = HoldingStation;
@@ -250,14 +253,14 @@ void DoGliderStuff(void) {
 					InitThermalling();
 					CapturePosition();
 					F.Soaring = true;
-					mSTimer(ThermalTimeout, THERMAL_MIN_MS);
+					mSTimer(ThermalTimeoutmS, THERMAL_MIN_MS);
 					NavState = UsingThermal;
 				} else
 					Navigate(&HP);
 			} else {
 				if (ResumeGlide()) {
 					F.Soaring = false;
-					mSTimer(CruiseTimeout, CRUISE_MIN_MS);
+					mSTimer(CruiseTimeoutmS, CRUISE_MIN_MS);
 					CapturePosition();
 					NavState = JustGliding;
 				} else {
@@ -368,7 +371,7 @@ void DoNavigation(void) {
 					NextWP();
 				break;
 			case Perching:
-				if (mSTimeout(NavStateTimeout)) {
+				if (mSTimeout(NavStateTimeoutmS)) {
 					SetDesiredAltitude(WP.Pos[DownC]);
 					NavState = Takeoff;
 				}
@@ -394,7 +397,7 @@ void DoNavigation(void) {
 				Navigate(&WP);
 
 				if ((F.AltControlEnabled && F.UsingRTHAutoDescend)
-						&& mSTimeout(NavStateTimeout)) {
+						&& mSTimeout(NavStateTimeoutmS)) {
 					F.RapidDescentHazard = false;
 					if (F.IsFixedWing) {
 						// just orbit
@@ -438,7 +441,7 @@ void DoNavigation(void) {
 						break;
 					} // switch
 
-					mSTimer(NavStateTimeout, LoitermS);
+					mSTimer(NavStateTimeoutmS, LoitermS);
 
 					F.RapidDescentHazard = false;
 				}
@@ -458,7 +461,7 @@ void DoNavigation(void) {
 					OrbitCamAngle = Limit(OrbitCamAngle, 0.0f, HALF_PI);
 					break;
 				case navVia:
-					if (mSTimeout(NavStateTimeout) && !UsingSurveyPulse)
+					if (mSTimeout(NavStateTimeoutmS) && !UsingSurveyPulse)
 						NavPulse.Active = false;
 					break;
 				case navPerch: // fixed wing just orbits
@@ -467,7 +470,7 @@ void DoNavigation(void) {
 					break;
 				} // switch
 
-				if (mSTimeout(NavStateTimeout))
+				if (mSTimeout(NavStateTimeoutmS))
 					NextWP();
 
 				break;
@@ -476,7 +479,7 @@ void DoNavigation(void) {
 				Navigate(&WP);
 
 				if (F.WayPointCentred) {
-					mSTimer(NavStateTimeout, WPAltitudeTimeout());
+					mSTimer(NavStateTimeoutmS, WPAltitudeTimeout());
 					NavState = AcquiringAltitude;
 				}
 				break;
@@ -489,7 +492,7 @@ void DoNavigation(void) {
 				else {
 					if (F.AttitudeHold) {
 						if (F.UsingWPNavigation) {
-							mSTimer(NavStateTimeout, WPDistanceTimeout());
+							mSTimer(NavStateTimeoutmS, WPDistanceTimeout());
 							NextWP(); // start navigating
 						} else
 							Navigate(&HP); // maintain hold point

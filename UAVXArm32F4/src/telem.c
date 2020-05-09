@@ -405,7 +405,7 @@ void SendFlightPacket(uint8 s) {
 
 	TxESCi16(s, Limit(BatteryChargeUsedmAH, 0, 32000));
 
-	TxESCi16(s, currStat(RCGlitchesS));
+	TxESCi16(s, RCGlitches);
 	TxESCi16(s, DesiredThrottle * 1000.0f);
 
 	ShowAttitude(s);
@@ -507,7 +507,7 @@ void SendNavPacket(uint8 s) {
 	TxESCi32(s, Nav.C[NorthC].PosE * 10.0f); // dM
 	TxESCi32(s, Nav.C[EastC].PosE * 10.0f);
 
-	TxESCi24(s, mS[NavStateTimeout] - mSClock()); // mS
+	TxESCi24(s, mS[NavStateTimeoutmS] - mSClock()); // mS
 
 	TxESCi16(s, 0); // was MPU Temp
 	TxESCi32(s, GPS.missionTime);
@@ -636,7 +636,7 @@ void SendCalibrationPacket(uint8 s) {
 
 #define MAX_GUI_DEF_PARAM_SETS 20
 
-void SendDefAFNameNames(uint8 s) {
+void SendDefAFNames(uint8 s) {
 	idx p, a, len;
 
 	for (p = 0; p < Limit(NoOfDefParamSets, 0, MAX_GUI_DEF_PARAM_SETS); p++) {
@@ -663,12 +663,13 @@ void SendDefAFNameNames(uint8 s) {
 
 void SendParamsPacket(uint8 s, uint8 GUIPS) {
 	idx p;
-	const char * ResetCauseName = ResetCauseNames[ResetCause];;
+	const char * ResetCauseName = ResetCauseNames[ResetCause];
+	;
 
 	if ((State == Preflight) || (State == Ready) || (State
 			== MonitorInstruments)) {
 
-		SendDefAFNameNames(s); // refresh
+		SendDefAFNames(s); // refresh
 
 		if (GUIPS < NoOfDefParamSets)
 			UseDefaultParameters(GUIPS);
@@ -720,23 +721,35 @@ void SendRCChannelsPacket(uint8 s) {
 
 } // SendRCChannelsPacket
 
-void SendStatsPacket(uint8 s) {
-#if defined(INC_STATS_TEL)
-	idx i;
+void SendSerialPortStatus(uint8 s) {
+	int16 Entries;
 
 	SendPacketHeader(s);
 
-	TxESCu8(s, UAVXStatsPacketTag);
-	TxESCu8(s, MAX_STATS * 2 + 1);
+	TxESCu8(s, UAVXSerialPortPacketTag);
+	TxESCu8(s, 13); // 18
+	TxESCu8(s, MAX_SERIAL_PORTS);
+	TxESCi16(s, SERIAL_BUFFER_SIZE);
 
-	for (i = 0; i < MAX_STATS; i++)
-		TxESCi16(s, currStat(i));
+	TxESCu8(s, (TxOverflow[TelemetrySerial] << 1) | RxOverflow[TelemetrySerial]);
+	TxESCi16(s, TxQEntries[TelemetrySerial]);
+	TxESCi16(s, RxQEntries[TelemetrySerial]);
+	TxQEntries[TelemetrySerial] = RxQEntries[TelemetrySerial] = 0;
 
-	TxESCu8(s, UAVXAirframe | 0x80);
+	if (F.HaveGPS) {
+		TxESCu8(s, (TxOverflow[GPSSerial] << 1) | RxOverflow[GPSSerial]);
+		TxESCi16(s, TxQEntries[GPSSerial]);
+		TxESCi16(s, RxQEntries[GPSSerial]);
+		TxQEntries[GPSSerial] = RxQEntries[GPSSerial] = 0;
+	} else {
+		TxESCu8(s, 0);
+		TxESCi16(s, 0);
+		TxESCi16(s, 0);
+	}
 
 	SendPacketTrailer(s);
-#endif
-} // SendStatsPacket
+
+} // SendSerialPortStatus
 
 void SendBBPacket(uint8 s, int32 seqNo, uint8 l, int8 * B) {
 	idx i;
@@ -1025,14 +1038,17 @@ void ProcessOriginPacket(uint8 s) {
 void ProcessGPSPassThru(void) {
 
 	while (true) {
-		if (SerialAvailable(GPSRxSerial)) {
+
+		if (SerialAvailable(GPSSerial)) {
 			LEDToggle(ledBlueSel);
-			TxChar(TelemetrySerial, RxChar(GPSRxSerial));
+			TxChar(TelemetrySerial, RxChar(GPSSerial));
 		}
+
 		if (SerialAvailable(TelemetrySerial)) {
-			TxChar(GPSTxSerial, RxChar(TelemetrySerial));
+			TxChar(GPSSerial, RxChar(TelemetrySerial));
 			LEDToggle(ledRedSel);
 		}
+
 	}
 } // ProcessGPSPassThru
 
@@ -1126,6 +1142,13 @@ void ProcessRxPacket(uint8 s) {
 				SendCalibrationPacket(s);
 				break;
 			case miscCalAcc:
+				/*
+				 #if defined(CLASSIC_6_POINT_ACC_CAL)
+				 CalibrateAccSixPoint(s, imuSel);
+				 #else
+				 CalibrateAccSixPointSphere(s, imuSel);
+				 #endif
+				 */
 				CalibrateAccZeros(s, imuSel);
 				SendCalibrationPacket(s);
 				break;
@@ -1135,7 +1158,7 @@ void ProcessRxPacket(uint8 s) {
 				SendCalibrationPacket(s);
 				break;
 			case miscLB:
-				if ((CurrRxType != CPPMRx) && (CurrRxType != ParallelPPMRx))
+				if (CurrRxType != CPPMRx)
 					RxLoopbackEnabled = !RxLoopbackEnabled;
 				SendAckPacket(s, miscLB, RxLoopbackEnabled);
 				break;
@@ -1144,7 +1167,7 @@ void ProcessRxPacket(uint8 s) {
 				DumpBlackBox(s);
 				break;
 			case miscGPSPassThru:
-				if ((GPSRxSerial != TelemetrySerial) && !Armed()) {
+				if (!Armed()) {
 					InitiateShutdown(GPSSerialPassThru);
 					SendAckPacket(s, miscGPSPassThru, true);
 					ProcessGPSPassThru(); // requires power cycle to escape
@@ -1176,7 +1199,7 @@ void ProcessRxPacket(uint8 s) {
 			SendMinPacket(s);
 			break;
 		case UAVXStatsPacketTag:
-			SendStatsPacket(s);
+			//	SendStatsPacket(s);
 			break;
 		case UAVXFlightPacketTag:
 			SendFlightPacket(s);
@@ -1212,15 +1235,13 @@ void ProcessRxPacket(uint8 s) {
 void UAVXPollRx(uint8 s) {
 	uint8 ch;
 
-	if (F.UsingUplink) {
-		if (SerialAvailable(s)) {
-			ch = RxChar(s);
-			ParseRxPacket(ch);
-		}
-
-		if (PacketReceived)
-			ProcessRxPacket(s);
+	if (SerialAvailable(s)) {
+		ch = RxChar(s);
+		ParseRxPacket(ch);
 	}
+
+	if (PacketReceived)
+		ProcessRxPacket(s);
 
 } // UAVXPollRx
 
@@ -1236,7 +1257,7 @@ void UseUAVXTelemetry(uint8 s) {
 	} else {
 		if (CurrGPSType != NoGPS)
 			SendNavPacket(s); // 2+54+4 = 60
-		SendStatsPacket(s); // ~80 -> 104
+		SendSerialPortStatus(s);
 		if ((State == Preflight) || (State == Ready)) //Warmup) || (State == Landed))
 			SendCalibrationPacket(s);
 	}
@@ -1248,8 +1269,7 @@ void CheckTelemetry(uint8 s) {
 	timemS NowmS;
 	static uint32 RCNavFramesP = 0;
 
-	if (F.UsingUplink)
-		UAVXPollRx(s);
+	UAVXPollRx(s);
 
 	BlackBoxEnabled = (State == InFlight) || (State == MonitorInstruments);
 
@@ -1257,41 +1277,39 @@ void CheckTelemetry(uint8 s) {
 
 	if (!BlackBoxEnabled) {
 		SetTelemetryBaudRate(s, 115200);
-		if (NowmS >= mS[TelemetryUpdate]) {
-			mSTimer(TelemetryUpdate, UAVX_TEL_INTERVAL_MS);
+		if (NowmS >= mS[TelemetryUpdatemS]) {
+			mSTimer(TelemetryUpdatemS, UAVX_TEL_INTERVAL_MS);
 			UseUAVXTelemetry(s);
 		}
 	} else
 		switch (CurrTelType) {
 		case UAVXTelemetry:
 			SetTelemetryBaudRate(s, 115200);
-			if (NowmS >= mS[TelemetryUpdate]) {
-				mSTimer(TelemetryUpdate, UAVX_TEL_INTERVAL_MS);
+			if (NowmS >= mS[TelemetryUpdatemS]) {
+				mSTimer(TelemetryUpdatemS, UAVX_TEL_INTERVAL_MS);
 				UseUAVXTelemetry(s);
 			}
 			break;
 		case UAVXMinTelemetry:
 			SetTelemetryBaudRate(s, 115200);
-			if (NowmS >= mS[TelemetryUpdate]) {
-				mSTimer(TelemetryUpdate, UAVX_MIN_TEL_INTERVAL_MS);
+			if (NowmS >= mS[TelemetryUpdatemS]) {
+				mSTimer(TelemetryUpdatemS, UAVX_MIN_TEL_INTERVAL_MS);
 				SendMinPacket(s);
 				if (State == Warmup)
 					SendCalibrationPacket(s);
 			}
 			break;
 		case FrSkyV1Telemetry:
-			if (GPSRxSerial != TelemetrySerial) {
-				SetTelemetryBaudRate(s, 9600);
-				if (NowmS >= mS[TelemetryUpdate]) {
-					mSTimer(TelemetryUpdate, FRSKY_TEL_INTERVAL_MS);
-					SendFrSkyHubTelemetry(s);
-				}
+			SetTelemetryBaudRate(s, 9600);
+			if (NowmS >= mS[TelemetryUpdatemS]) {
+				mSTimer(TelemetryUpdatemS, FRSKY_TEL_INTERVAL_MS);
+				SendFrSkyHubTelemetry(s);
 			}
 			break;
 		case FusionTelemetry:
 			SetTelemetryBaudRate(s, 115200);
-			if (NowmS >= mS[TelemetryUpdate]) {
-				mSTimer(TelemetryUpdate, FUSION_TEL_INTERVAL_MS);
+			if (NowmS >= mS[TelemetryUpdatemS]) {
+				mSTimer(TelemetryUpdatemS, FUSION_TEL_INTERVAL_MS);
 				if ((State == InFlight) && F.HoldingAlt)
 					SendFusionPacket(s);
 			}

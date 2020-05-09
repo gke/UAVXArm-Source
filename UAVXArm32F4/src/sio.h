@@ -43,6 +43,8 @@ boolean SIOWriteBlockataddr(uint8 sioDev, uint8 reg,
 
 boolean SIOResponse(uint8 sioDev);
 
+extern boolean SIOTokenFree;
+
 #endif
 
 

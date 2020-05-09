@@ -98,7 +98,7 @@ enum PWMTagsAileron {
 	RightAileronC,
 	LeftAileronC,
 	ElevatorC,
-	RightSpoilerC = 7, // only available for non-parallel Rx
+	RightSpoilerC = 7,
 	RudderC = 8,
 	LeftSpoilerC = 9
 };

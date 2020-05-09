@@ -22,11 +22,7 @@
 
 real32 SensorNoise(real32 N) {
 
-#if defined(USE_SENSOR_NOISE)
 	return (N * (((real64) rand() / (real64) RAND_MAX) - 0.5f));
-#else
-	return (0.0f);
-#endif
 
 } // SensorNoise
 
@@ -451,13 +447,11 @@ int16 SensorSlewLimit(uint8 sensor, int16 * O, int16 N, int16 Slew) {
 
 	L = *O - Slew;
 	H = *O + Slew;
-	if (N < L) {
-		incStat(sensor);
+	if (N < L)
 		*O = L;
-	} else if (N > H) {
-		incStat(sensor);
+	else if (N > H)
 		*O = H;
-	} else
+	else
 		*O = N;
 	return (*O);
 } // SensorSlewLimit

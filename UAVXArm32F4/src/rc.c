@@ -35,6 +35,7 @@ uint8 SpekFrameNo = 0;
 
 uint32 RCNavFrames = 0;
 uint32 RC1CaptureFrames = 0;
+uint32 RCGlitches = 0;
 
 // Futaba SBus
 
@@ -80,7 +81,7 @@ uint8 CurrRxType = UnknownRx;
 
 void EnableRC(void) {
 
-	if ((CurrRxType != ParallelPPMRx) && (CurrRxType != CPPMRx))
+	if (CurrRxType != CPPMRx)
 		RxEnabled[RCSerial] = true;
 
 } // EnableRC
@@ -112,8 +113,7 @@ void RCSerialISR(timeuS TimerVal) {
 		if (RCWidthOK(Width))
 			RCInp[Channel].Raw = Width;
 		else {
-			// preserve old value i.e. default hold
-			incStat(RCGlitchesS);
+			RCGlitches++;
 			F.RCFrameOK = false;
 		}
 
@@ -131,91 +131,6 @@ void RCSerialISR(timeuS TimerVal) {
 	}
 
 } // RCSerialISR
-
-
-void RCParallelISR(TIM_TypeDef *tim) {
-	static uint8 OKChannels = 0;
-	uint8 c;
-	uint32 TimerVal = 0;
-	int32 Width;
-	RCInpDefStruct_t * RCPtr;
-	const TIMChannelDef * u;
-	timeuS NowuS;
-
-	// scan ALL RC inputs as the channel pulses arrive
-	// in arbitrary order depending on Rx
-	for (c = 0; c < MAX_RC_INPUTS; c++) {
-		u = &RCPins[c].Timer;
-
-		if ((u->Tim == tim) && (TIM_GetITStatus(tim, u->CC) == SET)) {
-
-			//TimerVal = TIM_GetCapture2(u->Tim);
-			TIM_ClearITPendingBit(u->Tim, u->CC);
-			switch (u->Channel) {
-			case TIM_Channel_1:
-				TimerVal = TIM_GetCapture1(u->Tim);
-				break;
-			case TIM_Channel_2:
-				TimerVal = TIM_GetCapture2(u->Tim);
-				break;
-			case TIM_Channel_3:
-				TimerVal = TIM_GetCapture3(u->Tim);
-				break;
-			case TIM_Channel_4:
-				TimerVal = TIM_GetCapture4(u->Tim);
-				break;
-			} // switch
-
-			RCPtr = &RCInp[c];
-
-			if (RCPtr->State) {
-
-				RCPtr->FallingEdge = TimerVal & 0x0000ffff; // worst case 16 bit timer
-				RCPtr->State = false;
-
-				if (RCPtr->FallingEdge > RCPtr->RisingEdge)
-					Width = (RCPtr->FallingEdge - RCPtr->RisingEdge);
-				else
-					//Width = ((0x0000ffff - RCPtr->RisingEdge) + RCPtr->FallingEdge);
-					Width = ((RCPtr->FallingEdge + 0x0000ffff)
-							- RCPtr->RisingEdge);
-
-				if (RCWidthOK(Width)) {
-					RCPtr->Raw = Width;
-					OKChannels++;
-				} else
-					incStat(RCGlitchesS);
-
-				if (c == 0) {
-
-					F.RCFrameOK = OKChannels == DiscoveredRCChannels;
-
-					F.RCNewValues = F.RCFrameOK;
-					if (F.RCNewValues) {
-						NowuS = uSClock();
-						RCFrameIntervaluS = NowuS - RCLastFrameuS;
-						RCLastFrameuS = NowuS;
-						SignalCount++;
-					} else
-						SignalCount -= RC_GOOD_RATIO;
-
-					SignalCount = Limit1(SignalCount, RC_GOOD_BUCKET_MAX);
-					OKChannels = 0;
-					F.Signal = SignalCount > 0;
-					F.RCFrameOK = false;
-				}
-				TIM_ICInitStructure.TIM_ICPolarity = TIM_ICPolarity_Rising;
-			} else {
-				RCPtr->RisingEdge = TimerVal & 0x0000ffff;
-				RCPtr->State = true;
-				TIM_ICInitStructure.TIM_ICPolarity = TIM_ICPolarity_Falling;
-			}
-			TIM_ICInitStructure.TIM_Channel = u->Channel;
-			TIM_ICInit(u->Tim, &TIM_ICInitStructure);
-		}
-	}
-
-} // RCParallelISR
 
 
 // Futaba SBus
@@ -267,12 +182,9 @@ void CheckSBusFrame(timeuS NowuS) {
 		RCLastFrameuS = NowuS;
 		SignalCount++;
 	} else {
+		RCGlitches++;
 		SignalCount -= RC_GOOD_RATIO;
-		incStat(RCGlitchesS);
 	}
-
-	if (SBusFailsafe)
-		incStat(RCGlitchesS);
 
 	SignalCount = Limit1(SignalCount, RC_GOOD_BUCKET_MAX);
 	F.Signal = SignalCount > 0;
@@ -339,7 +251,6 @@ void RCUSARTISR(uint8 v) { // based on MultiWii
 			break;
 		}
 		break;
-	case Deltang1024Rx:
 	case Spektrum1024Rx:
 	case Spektrum2048Rx:
 		if (IntervaluS > (timeuS) MIN_SPEK_SYNC_PAUSE_US) {
@@ -360,23 +271,6 @@ void RCUSARTISR(uint8 v) { // based on MultiWii
 
 } // RCUSARTISR
 
-boolean CheckDeltang(void) {
-	// http://www.deltang.co.uk/serial.htm
-	idx i;
-	uint8 CheckSum;
-	boolean OK = true;
-
-	if (CurrRxType == Deltang1024Rx) {
-		CheckSum = 0;
-		for (i = 1; i < 16; i++)
-			CheckSum += RCFrame.u.b[i];
-
-		OK &= (RCFrame.u.b[0] == CheckSum) && ((RCFrame.u.b[1] & 0x80) != 0);
-	}
-
-	return (OK);
-} // CheckDeltang
-
 
 void CheckSerialRC(void) {
 	uint8 i;
@@ -389,7 +283,6 @@ void CheckSerialRC(void) {
 		case FutabaSBusRx:
 			DoSBus();
 			break;
-		case Deltang1024Rx:
 		case Spektrum1024Rx:
 		case Spektrum2048Rx:
 
@@ -406,13 +299,10 @@ void CheckSerialRC(void) {
 					RCInp[Channel].Raw = (v - SpekOffset) * SpekScale + 1500;
 				}
 
-			if (CurrRxType == Deltang1024Rx)
-				RSSI = RCFrame.u.b[1] & 0x1f;
-			else
 				LostFrameCount = ((uint16) RCFrame.u.b[0] << 8) //TODO:???
 						| RCFrame.u.b[1];
 
-			F.RCNewValues = CheckDeltang();
+			F.RCNewValues = true;
 
 			break;
 		default:
@@ -550,15 +440,10 @@ void InitRC(void) {
 	memset((void *) &RCFrame, 0, sizeof(RCFrame));
 
 	switch (CurrRxType) {
-	case ParallelPPMRx:
-		DiscoveredRCChannels = P(RCChannels);
-		RxEnabled[RCSerial] = false;
-		break;
 	case FutabaSBusRx:
 		DiscoveredRCChannels = SBUS_CHANNELS;
 		RxEnabled[RCSerial] = true;
 		break;
-	case Deltang1024Rx:
 	case Spektrum1024Rx:
 		SpekChanShift = 2;
 		SpekChanMask = 0x03;
@@ -608,13 +493,13 @@ void InitRC(void) {
 	CamPitchTrim = 0;
 	F.ReturnHome = F.Navigate = F.AltControlEnabled = false;
 
-	mS[StickChangeUpdate] = NowmS;
-	mSTimer(RxFailsafeTimeout, RC_NO_CHANGE_TIMEOUT_MS);
+	mS[StickChangeUpdatemS] = NowmS;
+	mSTimer(RxFailsafeTimeoutmS, RC_NO_CHANGE_TIMEOUT_MS);
 
 	StickThrottle = 0.0f;
 
 	Channel = 0;
-	setStat(RCGlitchesS, 0);
+
 	SignalCount = -RC_GOOD_BUCKET_MAX;
 	F.Signal = F.RCNewValues = false;
 
@@ -641,10 +526,6 @@ void CheckRC(void) {
 	switch (CurrRxType) {
 	case CPPMRx:
 		break;
-	case ParallelPPMRx:
-		// nothing to do
-		break;
-	case Deltang1024Rx:
 	case Spektrum1024Rx:
 	case Spektrum2048Rx:
 	case FrSkyFBusRx:
@@ -794,9 +675,6 @@ void CheckRCLoopback(void) {
 		switch (CurrRxType) {
 		case CPPMRx:
 			break;
-		case ParallelPPMRx:
-			break;
-		case Deltang1024Rx:
 		case Spektrum1024Rx:
 		case Spektrum2048Rx:
 			SpekLoopback(CurrRxType == Spektrum2048Rx);
@@ -820,8 +698,8 @@ void CheckThrottleMoved(void) {
 	static real32 StickThrottleP = 0.0f;
 	real32 t;
 
-	if (mSTimeout(ThrottleUpdate)) {
-		mSTimer(ThrottleUpdate, AH_THR_UPDATE_MS);
+	if (mSTimeout(ThrottleUpdatemS)) {
+		mSTimer(ThrottleUpdatemS, AH_THR_UPDATE_MS);
 		t = StickThrottle - StickThrottleP;
 		F.ThrottleMoving = (Abs(t) > ThrottleMovingWindow);
 		StickThrottleP = StickThrottle;
@@ -831,13 +709,13 @@ void CheckThrottleMoved(void) {
 
 
 void CheckThrottleMovedOLD(void) {
-	if (mSTimeout(ThrottleUpdate)) {
+	if (mSTimeout(ThrottleUpdatemS)) {
 		ThrLow = ThrNeutral - AHThrottleWindow;
 		ThrLow = Max(ThrLow, THR_MIN_ALT_HOLD_STICK);
 		ThrHigh = ThrNeutral + AHThrottleWindow;
 
 		if ((StickThrottle <= ThrLow) || (StickThrottle >= ThrHigh)) {
-			mSTimer(ThrottleUpdate, AH_THR_UPDATE_MS);
+			mSTimer(ThrottleUpdatemS, AH_THR_UPDATE_MS);
 			F.ThrottleMoving = true;
 		} else
 			F.ThrottleMoving = false;

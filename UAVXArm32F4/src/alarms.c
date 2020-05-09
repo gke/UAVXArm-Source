@@ -70,15 +70,6 @@ boolean Armed(void) {
 		F.IsArmed = (ArmedByTx || (ArmingMethod == SwitchArming))
 				&& ArmingSwitch;
 
-	NewUplinkState = !((GPSRxSerial == TelemetrySerial) && F.IsArmed);
-	if (F.UsingUplink != NewUplinkState) {
-		RxEnabled[TelemetrySerial] = false;
-		RxQNewHead[TelemetrySerial] = RxQHead[TelemetrySerial]
-				= RxQTail[TelemetrySerial] = 0;
-		RxEnabled[TelemetrySerial] = true;
-		F.UsingUplink = NewUplinkState;
-	}
-
 	return (F.IsArmed);
 
 } // Armed
@@ -113,28 +104,28 @@ void DoCalibrationAlarm(void) {
 	if (!F.IMUCalibrated
 			|| !((F.MagnetometerActive && F.MagnetometerCalibrated)
 					|| F.IsFixedWing)) {
-		if (mSTimeout(CalibrationTimeout)) {
-			mSTimer(CalibrationTimeout, 500);
+		if (mSTimeout(CalibrationTimeoutmS)) {
+			mSTimer(CalibrationTimeoutmS, 500);
 			LEDToggle(ledYellowSel);
 		}
 	}
 
 } // DoAccCalibrationAlarm
 
-void DoBeep(uint8 t, uint8 d) {
+void DoBeep(uint16 t, uint16 d) {
 	int32 i;
 
 	BeeperOn();
-	for (i = 0; i < t; i++)
-		Delay1mS(100);
+	for (i = 0; i < t * 100; i++)
+		Delay1uS(1000);
 
 	BeeperOff();
-	for (i = 0; i < d; i++)
-		Delay1mS(100);
+	for (i = 0; i < d * 100; i++)
+		Delay1uS(1000);
 
 } // DoBeep
 
-void DoBeeps(uint8 b) {
+void DoBeeps(uint16 b) {
 	idx i;
 
 	for (i = 0; i < b; i++)
@@ -146,7 +137,7 @@ void ScheduleBeeper(timemS w) {
 
 	if (!F.BeeperInUse) {
 		BeeperOn();
-		mSTimer(BeeperTimeout, w);
+		mSTimer(BeeperTimeoutmS, w);
 	}
 
 } // ScheduleNavBeeper
@@ -176,19 +167,19 @@ void CheckAlarms(void) {
 			BeeperOnTime = 125;
 		}
 
-		if (mSTimeout(BeeperUpdate)) {
+		if (mSTimeout(BeeperUpdatemS)) {
 			if (BeeperIsOn()) {
-				mSTimer(BeeperUpdate, BeeperOffTime);
+				mSTimer(BeeperUpdatemS, BeeperOffTime);
 				BeeperOff();
 				//zzz	LEDOff(ledRedSel);
 			} else {
-				mSTimer(BeeperUpdate, BeeperOnTime);
+				mSTimer(BeeperUpdatemS, BeeperOnTime);
 				BeeperOn();
 				//zzz	LEDOn(ledRedSel);
 			}
 		}
 	} else {
-		if (mSTimeout(BeeperTimeout))
+		if (mSTimeout(BeeperTimeoutmS))
 			BeeperOff();
 	}
 
@@ -221,9 +212,9 @@ boolean UpsideDownMulticopter(void) {
 
 	if (IsMulticopter) {
 		if (Abs(Angle[Roll]) < CRASHED_ANGLE_RAD)
-			mSTimer(CrashedTimeout, CRASHED_TIMEOUT_MS);
+			mSTimer(CrashedTimeoutmS, CRASHED_TIMEOUT_MS);
 		else {
-			if (mSTimeout(CrashedTimeout) && (DesiredThrottle > IdleThrottle)
+			if (mSTimeout(CrashedTimeoutmS) && (DesiredThrottle > IdleThrottle)
 					&& F.UsingAngleControl)
 				UpsideDown = true;
 			UpsideDown = false;

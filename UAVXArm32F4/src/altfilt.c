@@ -99,11 +99,13 @@ void AltitudeKF(real32 Alt, real32 AccU, real32 dT) {
 	real32 Acceleration;
 
 	Ka = K_ACC_UP * AccConfidence;
-#if defined(TRACK_ACC_UP_BIAS)
 	EstAccUBias = Limit1(EstAccUBias * (1.0f - Ka) + AccU * Ka , 0.05f);
-#endif
 
+#if defined(USE_ACC_UP_BIAS)
 	Acceleration = AccU - EstAccUBias;
+#else
+	Acceleration = AccU;
+#endif
 
 	ps0 = DensityAltitude + ROC * dT + 0.5f * Acceleration * Sqr(dT);
 	ps1 = ROC + Acceleration * dT;

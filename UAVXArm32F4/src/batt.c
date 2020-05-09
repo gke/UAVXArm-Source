@@ -71,11 +71,11 @@ void CheckBatteries(void) {
 	uint16 dTmS;
 
 	NowmS = mSClock();
-	if (mSTimeout(BatteryUpdate)) {
-		mSTimer(BatteryUpdate, BATTERY_UPDATE_MS);
+	if (mSTimeout(BatteryUpdatemS)) {
+		mSTimer(BatteryUpdatemS, BATTERY_UPDATE_MS);
 
-		dTmS = NowmS - mS[LastBattery];
-		mS[LastBattery] = NowmS;
+		dTmS = NowmS - mS[LastBatterymS];
+		mS[LastBatterymS] = NowmS;
 
 		if (F.Emulation) {
 			BatteryCurrent = (DesiredThrottle + AltComp) * CurrentScale; // Mock Sensor

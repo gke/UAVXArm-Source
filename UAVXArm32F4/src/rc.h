@@ -148,13 +148,13 @@ void UpdateRCMap(void);
 // ISR
 
 void RCSerialISR(timeuS NowuS);
-void RCParallelISR(TIM_TypeDef *tim);
 void RCUSARTISR(uint8 ch);
 
 extern RCInpDefStruct_t RCInp[];
 extern timeuS RCLastFrameuS;
 extern timeuS RCSyncWidthuS;
 extern timeuS RCFrameIntervaluS;
+extern uint32 RCGlitches;
 extern uint8 Channel;
 extern int8 SignalCount;
 extern uint32 RCNavFrames;
