@@ -28,17 +28,19 @@
 
 #define FLAG_BYTES  12
 
-
-
 extern real32 dT, dTR, dTOn2, dTROn2;
 extern timeuS CurrPIDCycleuS;
 extern real32 CurrPIDCycleS;
 extern int16 ArmUtilisationPercent;
 
 enum uSTimes {
-	CycleUpdateuS, MemReadyuS, LastCycleTime, BaroUpdateuS, AltUpdateuS, uSLastArrayEntry
+	CycleUpdateuS,
+	MemReadyuS,
+	LastCycleTime,
+	BaroUpdateuS,
+	AltUpdateuS,
+	uSLastArrayEntry
 };
-
 
 enum mSTimes {
 	StartTime,
@@ -91,7 +93,6 @@ enum mSTimes {
 	ASUpdatemS,
 	mSLastArrayEntry
 };
-
 
 typedef volatile union {
 	uint8 AllFlags[FLAG_BYTES];
@@ -173,8 +174,8 @@ typedef volatile union {
 				NewNavUpdate :1,
 				HaveNVMem :1,
 				UsingRapidDescent :1, // was MPU6050
-				UsingTurnToWP:1,
-				Glide:1,
+				UsingTurnToWP :1,
+				Glide :1,
 
 				// 8
 				NewMagValues :1, UsingAltHoldAlarm :1, UsingAnalogGyros :1,
@@ -183,15 +184,15 @@ typedef volatile union {
 				NavigationEnabled :1,
 
 				// 9
-				ForcedLanding :1, NewGPSPosition :1,
-				EnforceDriveSymmetry :1, RCFrameOK :1, InvertMagnetometer :1,
-				NewCommands :1, UsingOffsetHome :1, UsingConvYawSense :1,
+				ForcedLanding :1, NewGPSPosition :1, EnforceDriveSymmetry :1,
+				RCFrameOK :1, InvertMagnetometer :1, NewCommands :1,
+				UsingOffsetHome :1, UsingConvYawSense :1,
 
 				// 10
 				BadBusDevConfig :1
 
-				// 11
-				; // MAXED OUT
+		// 11
+		; // MAXED OUT
 	};
 } Flags;
 
@@ -230,7 +231,7 @@ extern uint8 ResetCause;
 
 extern uint8 State;
 extern Flags F;
+extern timeuS execTimeuS, execPeakTimeuS;
 
 #endif
-
 

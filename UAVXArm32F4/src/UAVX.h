@@ -49,6 +49,9 @@
 
 #define MAX_BLHELI_ESCS 4
 //#define USE_OLED
+
+//#define USE_OPTICAL_ADNS3080
+//#define USE_SYMA_FPV_CAM
 #define USE_WS2812 // shared with Aux1 pulse
 //#define USE_WS2812B
 

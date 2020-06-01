@@ -588,16 +588,13 @@ void ConditionParameters(void) {
 	CurrESCType = LimitP(ESCType, 0, ESCUnknown);
 
 #if defined(UAVXF4V4)
+	CurrGPSType = P(GPSProtocol);
 	F.HaveGPS = true;
 #else
 	F.HaveGPS = CurrRxType == CPPMRx;
-
-	if (F.HaveGPS)
-		CurrGPSType = LimitP(GPSProtocol, 0, NoGPS);
-	else {
+	if (!F.HaveGPS)
 		SetP(GPSProtocol, NoGPS);
-		CurrGPSType = NoGPS;
-	}
+	CurrGPSType = P(GPSProtocol);
 #endif
 
 	CurrMotorStopSel = P(MotorStopSel);
@@ -622,6 +619,7 @@ void ConditionParameters(void) {
 			&& (CurrAttSensorType != FreeIMU);
 
 	CurrNoOfWSLEDs = LimitP(WS2812Leds, 0, MAX_WS2812_LEDS);
+
 
 #if (defined(USE_WS2812) || defined(USE_WS2812B))
 	UsingWS28XXLEDs = CurrNoOfWSLEDs != 0;

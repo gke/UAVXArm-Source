@@ -202,7 +202,6 @@ void DMA2_Stream2_IRQHandler(void) {
 
 } // DMA2_Stream2_IRQHandler
 
-
 void DMA2_Stream7_IRQHandler(void) {
 
 	DMA_ClearITPendingBit(DMA2_Stream7, DMA_IT_TCIF7);

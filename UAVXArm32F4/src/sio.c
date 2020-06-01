@@ -25,9 +25,9 @@ boolean SIOTokenFree = true;
 boolean SIOReadBlock(uint8 sioDev, uint8 reg, uint8 len, uint8 * data) {
 
 	if (busDev[sioDev].useSPI)
-		return (SPIReadBlock(sioDev, reg, len, data));
+		return SPIReadBlock(sioDev, reg, len, data);
 	else
-		return (I2CReadBlock(sioDev, busDev[sioDev].i2cId, reg, len, data));
+		return I2CReadBlock(sioDev, busDev[sioDev].i2cId, reg, len, data);
 
 } // SIOReadBlock
 
@@ -35,9 +35,9 @@ boolean SIOReadBlock(uint8 sioDev, uint8 reg, uint8 len, uint8 * data) {
 boolean SIOWriteBlock(uint8 sioDev, uint8 reg, uint8 len, uint8 * data) {
 
 	if (busDev[sioDev].useSPI)
-		return (SPIWriteBlock(sioDev, reg, len, data));
+		return SPIWriteBlock(sioDev, reg, len, data);
 	else
-		return (I2CWriteBlock(sioDev, busDev[sioDev].i2cId, reg, len, data));
+		return I2CWriteBlock(sioDev, busDev[sioDev].i2cId, reg, len, data);
 
 } // SIOWriteBlock
 

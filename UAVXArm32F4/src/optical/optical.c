@@ -16,11 +16,13 @@
 
 #define ADNS_ID 0xff
 
+#if defined(USE_OPTICAL_ADNS3080)
+
 typedef union {
 	int16 i16;
 	uint16 u16;
 	uint8 b[2];
-} numUnion;
+}numUnion;
 
 const real32 field_of_view = ADNS3080_08_FOV; // field of view in Radians
 
@@ -84,7 +86,7 @@ void adns3080update(uint32 NowmS) {
 		Delay1uS(50);
 		raw_dy = SIORead(flowSel, ADNS3080_DELTA_Y);
 	} else
-		raw_dx = raw_dy = 0;
+	raw_dx = raw_dy = 0;
 
 	adns3080PrevUpdatemS = NowmS;
 
@@ -179,7 +181,7 @@ void adns3080set_frame_rate_auto(boolean auto_frame_rate) {
 		Delay1uS(50);
 		r = (r & ~0x01);
 	} else
-		r = (r & ~0x01) | 0x01;
+	r = (r & ~0x01) | 0x01;
 
 	SIOWrite(flowSel, ADNS3080_EXTENDED_CONFIG, r);
 } // adns3080set_frame_rate_auto
@@ -245,7 +247,7 @@ void adns3080set_shutter_speed_auto(boolean auto_shutter_speed) {
 
 		r &= ~0x02;
 	} else
-		r |= 0x02;
+	r |= 0x02;
 
 	SIOWrite(flowSel, ADNS3080_EXTENDED_CONFIG, r);
 	Delay1uS(50);
@@ -315,13 +317,13 @@ void adns3080print_pixel_data(uint8 s) {
 		for (j = 0; j < ADNS3080_PIXELS_X; j++) {
 			r = SIORead(flowSel, ADNS3080_FRAME_CAPTURE);
 			if (isFirstPixel && (r & 0x40) == 0)
-				TxString(s, "failed to find first pixel\r\n");
+			TxString(s, "failed to find first pixel\r\n");
 
 			isFirstPixel = false;
 			pixelValue = (r << 2);
 			TxVal32(s, pixelValue, 0, 0);
 			if (j != ADNS3080_PIXELS_X - 1)
-				TxString(s, ",");
+			TxString(s, ",");
 			Delay1uS(50);
 		}
 		TxString(s, "\r\n");
@@ -403,4 +405,15 @@ void adns3080update_position(real32 roll, real32 pitch, real32 cos_yaw_x,
 
 } // adns3080update_position
 
+#elif defined(USE_SYMA_FPV_CAM)
 
+void SymaFPVCamreset(void) {
+
+	DigitalWrite(&PWMPins[Aux2Sel].P, true); // reset sensor
+	Delay1uS(1);
+	DigitalWrite(&PWMPins[Aux2Sel].P, false); // return sensor to normal
+	Delay1uS(4);
+	DigitalWrite(&PWMPins[Aux2Sel].P, true); // return sensor to normal
+} // adns3080reset
+
+#endif

@@ -28,7 +28,7 @@ timeuS FlightTimemS = 0;
 
 timeuS CurrPIDCycleuS = PID_CYCLE_2000US;
 real32 CurrPIDCycleS;
-int16 ArmUtilisationPercent;
+timeuS execTimeuS, execPeakTimeuS;
 
 uint8 ch;
 int8 i, m;
@@ -59,6 +59,8 @@ void InitMisc(void) {
 	DesiredThrottle = StickThrottle = AHThrottle = 0.0f;
 	InitialThrottle = ThrNeutral = ThrLow = ThrHigh = 1.0f;
 	IdleThrottle = FromPercent(10);
+
+	execPeakTimeuS = 0;
 
 	GyrosErected = false;
 	State = Preflight;
@@ -424,15 +426,15 @@ int main() {
 					}
 				}
 
+				execTimeuS = uSClock() - LastUpdateuS;
+				if (execTimeuS > execPeakTimeuS)
+					execPeakTimeuS = execTimeuS;
+
 				break;
 			} // switch state
 
 			SIOTokenFree = true;
 
-			ArmUtilisationPercent = ((uSClock() - LastUpdateuS) * 100)
-					/ CurrPIDCycleuS;
-
-			//	Marker();
 		}
 	} // while true
 

@@ -390,7 +390,6 @@ extern PinDef RCPins[];
 extern PinDef PWMPins[];
 
 extern boolean usartUsed[];
-extern uint8 CurrNoOfRCPins;
 extern idx CurrMaxPWMOutputs;
 extern idx GPSSerial, RCSerial, TelemetrySerial;
 

@@ -135,7 +135,6 @@ real32 dTUpdate(timeuS * LastUpdateuS) {
 	return (dT);
 } // dtUpdate
 
-
 void mSTimer(uint8 t, timemS TimePeriodmS) {
 	mS[t] = mSClock() + TimePeriodmS;
 } // mSTimer

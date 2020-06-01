@@ -721,6 +721,22 @@ void SendRCChannelsPacket(uint8 s) {
 
 } // SendRCChannelsPacket
 
+void SendExecutionTimeStatus(uint8 s) {
+
+	idx e;
+
+	SendPacketHeader(s);
+
+	TxESCu8(s, UAVXExecutionTimePacketTag);
+	TxESCu8(s, 4);
+
+	TxESCi16(s, (100 * execTimeuS) / CurrPIDCycleuS);
+	TxESCi16(s, (100 * execPeakTimeuS) / CurrPIDCycleuS);
+
+	SendPacketTrailer(s);
+
+} // SendExecutionTimeStatus
+
 void SendSerialPortStatus(uint8 s) {
 	int16 Entries;
 
@@ -728,6 +744,8 @@ void SendSerialPortStatus(uint8 s) {
 
 	TxESCu8(s, UAVXSerialPortPacketTag);
 	TxESCu8(s, 13); // 18
+
+
 	TxESCu8(s, MAX_SERIAL_PORTS);
 	TxESCi16(s, SERIAL_BUFFER_SIZE);
 
@@ -1257,6 +1275,7 @@ void UseUAVXTelemetry(uint8 s) {
 	} else {
 		if (CurrGPSType != NoGPS)
 			SendNavPacket(s); // 2+54+4 = 60
+		SendExecutionTimeStatus(s);
 		SendSerialPortStatus(s);
 		if ((State == Preflight) || (State == Ready)) //Warmup) || (State == Landed))
 			SendCalibrationPacket(s);

@@ -22,7 +22,6 @@
 #include "UAVX.h"
 
 idx GPSSerial, RCSerial, TelemetrySerial;
-uint8 CurrNoOfRCPins;
 
 #include "./targets/targets.inc"
 
@@ -917,6 +916,7 @@ void InitHarness(void) {
 	for (i = 0; i < MAX_GPIO_PINS; i++)
 		InitPin(&GPIOPins[i]);
 	BeeperOff();
+	DigitalWrite(&PWMPins[Aux2Sel].P, false);
 
 	// Drives/Servos
 	for (i = 0; i < MAX_PWM_OUTPUTS; i++)
@@ -945,8 +945,6 @@ void InitHarness(void) {
 
 	InitAnalogPorts();
 	Delay1mS(10);
-
-	DigitalWrite(&GPIOPins[Aux2Sel].P, true); // soft USART Tx
 
 } // InitHarness
 

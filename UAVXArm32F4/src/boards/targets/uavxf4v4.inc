@@ -90,7 +90,7 @@ SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
 I2CPortDef I2CPorts[MAX_I2C_PORTS] = {
 	{false, 0, }, // notionally I2C0
 	{false, I2C1, PB6, PB7, GPIO_AF_I2C1 },//
-	{false, I2C2, PB10, PB11, GPIO_AF_I2C2 }, 
+	{false, I2C2, PB10, PB11, GPIO_AF_I2C2 }, // USART3
 	{false, I2C3, }
 };
 
@@ -108,7 +108,11 @@ DevDef busDev[maxDevSel] = {
 	{false, imu1Sel, },  
 	{true, baro0Sel, ms5611Baro, true, 2, 0, PC5},
 	{true, magSel, hmc5xxxMag, true, 2, 0, PC4},
+#if defined(USE_ARM_BLACKBOX_FLASH)
 	{true, memSel, spiFlashMem, true, 2, 0, PC3},
+#else
+	{false, memSel, spiFlashMem, true, 2, 0, PC3},	
+#endif
 	{false, gpsSel, },
 	{false, rfSel, },
 	{false, asSel, },
@@ -124,7 +128,7 @@ DevDef busDev[maxDevSel] = {
 	{false, escSPISel, }, // PC13 not connected
 #endif
 	{false, escI2CSel, ESCI2C, false, 2, ESCI2C_ID, },
-	{true, baro1Sel, ms5611Baro, false, 2, MS56XX_1_ID,} // clash with GPS
+	{false, baro1Sel, ms5611Baro, false, 2, MS56XX_1_ID,} // clash with GPS
 };
 
 const uint8 IMUQuadrant = 0;
@@ -144,19 +148,19 @@ void InitTarget(void) {
 	switch (CurrRxType) {
 	case CPPMRx:
 		CurrMaxPWMOutputs = (UsingDCMotors || (CurrESCType == ESCSPI)) ? 4 : 10;
-		CurrNoOfRCPins = 1; 
 		F.HaveSerialRC = false;
 		break;
 	default:
 		CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 10;
 		F.HaveSerialRC = true;
-		RCSerial = Usart3;
+		RCSerial = Usart2;
 		InitSerialPort(RCSerial, false, CurrRxType == FutabaSBusRx);
 		break;
 	} // switch
 	
 	GPSSerial = Usart3;
-	InitSerialPort(GPSSerial, false, false); 
+	if (GPSSerial != SoftSerial)
+		InitSerialPort(GPSSerial, false, false); 
 
 	if (CurrNoOfWSLEDs > 0) // temporary KLUDGE - need to remap gimbal function
 		CurrMaxPWMOutputs = 4;
