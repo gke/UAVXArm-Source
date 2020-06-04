@@ -1286,7 +1286,6 @@ void UseUAVXTelemetry(uint8 s) {
 
 void CheckTelemetry(uint8 s) {
 	timemS NowmS;
-	static uint32 RCNavFramesP = 0;
 
 	UAVXPollRx(s);
 

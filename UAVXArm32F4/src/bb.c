@@ -81,8 +81,10 @@ void DumpBlackBox(uint8 s) {
 
 	if (F.HaveNVMem) {
 
-		for (i = 0; i < 10; i++)
+		for (i = 0; i < 10; i++) {
 			SendFlightPacket(s);
+			Delay1mS(5);
+		}
 
 		do {
 			ReadBlockNVMem(a, NVMemBlockSize, NVMemBuffer);
