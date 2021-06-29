@@ -21,11 +21,15 @@
 //  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 
-#define Revision "1445 2020/06/04 07:12:32"
-#define RevisionNo 1445
-#define BLDate "Jun 04 2020"
-#define BLTime "17:12:32"
-#define BLRev "1445"
+#if defined(UAVXF4V4)
+#define Revision "1503 V4 2021/06/29 00:53:34"
+#else
+#define Revision "1503 V3 2021/06/29 00:53:34"
+#endif
+#define RevisionNo 1503
+#define BLDate "Jun 29 2021"
+#define BLTime "10:53:34"
+#define BLRev "1503"
 
 
 
