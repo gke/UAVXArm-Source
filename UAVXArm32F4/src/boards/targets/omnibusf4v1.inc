@@ -36,9 +36,12 @@
 #endif
 */
 
+PinDef CPPMPin = {false, };
+
+PinDef SoftSerialTxPin = {false, };
+
 PinDef RCPins[MAX_RC_INPUTS] = {
-		
-		
+
 };
 
 PinDef PWMPins[MAX_PWM_OUTPUTS] = {
@@ -105,18 +108,19 @@ SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
 
 PinDef USBDisconnectPin = {true, PA12,};
 
-//imu0Sel,imu1Sel,baroSel,magSel,memSel,gpsSel,rfSel,asSel,flowSel,escSel, maxDevSel
 DevDef busDev[maxDevSel] = { // MUST be in enum order otherwise CheckBusDev fails	 	
 	{true, imu0Sel, mpu6000IMU, true, 1, 0, PA4}, 
 	{false, imu1Sel, }, 
-	{false, baroSel, noBaro },//baroSel, ms5611Baro, false, 2, MS56XX_ID,},
+	{false, baro0Sel, noBaro },//baroSel, ms5611Baro, false, 2, MS56XX_ID,},
 	{false, magSel, noMag, }, //magSel, hmc5xxxMag, false, 2, HMC5XXX_ID,},
 	{false, memSel, noMem, }, 
 	{false, gpsSel, },
 	{false, rfSel, },
 	{false, asSel, },
 	{false, flowSel, },
-	{false, escSel, }
+	{false, escSPISel, },
+	{false, escI2CSel, },
+	{false, baro1Sel,}
 };
 
 
@@ -136,11 +140,10 @@ void InitTarget(void) {
 	TelemetrySerial = Usart1; 
 	InitSerialPort(TelemetrySerial, true, false);
 
-	RxUsingSerial = false; // use CPPM for now
-	CurrNoOfRCPins = 1;
+	F.HaveSerialRC = false; // use CPPM for now
 
-	GPSRxSerial = GPSTxSerial = Usart3;
-	InitSerialPort(GPSRxSerial, false, false);
+	GPSSerial = GPSSerial = Usart3;
+	InitSerialPort(GPSSerial, false, false);
 
 	CurrMaxPWMOutputs = 4;
 
@@ -154,14 +157,12 @@ void InitTarget(void) {
 	TelemetrySerial = USBSerial;
 	InitSerialPort(TelemetrySerial, true, false);
 
-	RxUsingSerial = true;
-	CurrNoOfRCPins = 0;
-
+	F.HaveSerialRC = true;
 	RCSerial = Usart1;
 	InitSerialPort(RCSerial, false, true);
 
-	GPSRxSerial = GPSTxSerial = Usart3;
-	InitSerialPort(GPSRxSerial, false, false);
+	GPSSerial = GPSSerial = Usart3;
+	InitSerialPort(GPSSerial, false, false);
 
 	CurrMaxPWMOutputs = 4;
 

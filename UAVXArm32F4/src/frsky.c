@@ -542,7 +542,7 @@ void TxFrSkyDThrottleOrBatterySizeAsRPM(uint8 s) {
 	real32 r;
 
 	if (Armed())
-		r = Limit(DesiredThrottle + AltComp, 0.0f, 1.0f) * 20.0f;
+		r = Limit(DesiredThrottle + AltHoldThrComp, 0.0f, 1.0f) * 20.0f;
 	else
 		r = BatteryCapacitymAH * 0.2f;
 

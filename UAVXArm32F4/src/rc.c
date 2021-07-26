@@ -39,7 +39,6 @@ uint32 RCGlitches = 0;
 
 // Futaba SBus
 
-
 // The endByte is 0x00 on FrSky and some futaba RX's, on Some SBUS2 RX's the value indicates the telemetry byte that is sent after every 4th sbus frame.
 // See https://github.com/cleanflight/cleanflight/issues/590#issuecomment-101027349
 // and https://github.com/cleanflight/cleanflight/issues/590#issuecomment-101706023
@@ -130,9 +129,7 @@ void RCSerialISR(timeuS TimerVal) {
 
 } // RCSerialISR
 
-
 // Futaba SBus
-
 
 void sbusDecode(void) {
 	idx i;
@@ -172,7 +169,6 @@ void sbusDecode(void) {
 	F.RCNewValues = true;
 
 } // sbusDecode
-
 
 void RCUSARTISR(uint8 v) { // based on MultiWii
 
@@ -260,7 +256,6 @@ void RCUSARTISR(uint8 v) { // based on MultiWii
 
 } // RCUSARTISR
 
-
 // Code-based Spektrum satellite receiver binding for the HobbyKing Pocket Quad
 // Spektrum binding code due to Andrew L.
 // navigation07@gmail.com
@@ -288,7 +283,7 @@ void doSpektrumBinding(void) {
 	uint8 pulse;
 
 	pinMode(7, INPUT); // THR pin as input
-	DigitalWrite(7, HIGH); // turn on pullup resistors
+	DigitalWrite(7, HIGH);// turn on pullup resistors
 
 	if (!DigitalRead(7)) {
 
@@ -346,7 +341,6 @@ void DoSpektrumBind(void) {
 	 */
 } // DoSpektrumBind
 
-
 void spektrumDecode(void) {
 	idx i;
 	int16 v;
@@ -358,19 +352,18 @@ void spektrumDecode(void) {
 			Channel = (RCFrame.u.b[i] >> SpekChanShift) & 0x0f;
 			if ((Channel + 1) > DiscoveredRCChannels)
 				DiscoveredRCChannels = Channel + 1;
-			v = ((uint32) (RCFrame.u.b[i] & SpekChanMask) << 8) | RCFrame.u.b[i
-					+ 1];
+			v = ((uint32) (RCFrame.u.b[i] & SpekChanMask) << 8)
+					| RCFrame.u.b[i + 1];
 
 			RCInp[Channel].Raw = (v - SpekOffset) * SpekScale + 1500;
 		}
 
 	LostFrameCount = ((uint16) RCFrame.u.b[0] << 8) //TODO:???
-			| RCFrame.u.b[1];
+	| RCFrame.u.b[1];
 
 	F.RCNewValues = true;
 
 } // spektrumDecode
-
 
 void UpdateRCMap(void) {
 	uint8 c;
@@ -411,7 +404,6 @@ void UpdateRCMap(void) {
 	}
 
 } // UpdateRCMap
-
 
 void InitRC(void) {
 	timemS NowmS;
@@ -494,7 +486,6 @@ void InitRC(void) {
 
 } // InitRC
 
-
 void MapRC(void) { // re-maps captured PPM to Rx channel sequence
 	uint8 c, cc;
 	real32 Temp;
@@ -506,7 +497,6 @@ void MapRC(void) { // re-maps captured PPM to Rx channel sequence
 		RC[cc] = LPF1(RCp[cc], Temp, 0.75f);
 	}
 } // MapRC
-
 
 void CheckRC(void) {
 
@@ -525,7 +515,7 @@ void CheckRC(void) {
 			default:
 				F.RCNewValues = F.Signal = false;
 				break;
-			}// switch
+			} // switch
 		}
 
 	if (uSClock() > (RCLastFrameuS + RC_SIGNAL_TIMEOUT_US)) {
@@ -535,11 +525,9 @@ void CheckRC(void) {
 
 } // CheckRC
 
-
 inline boolean ActiveCh(uint8 c) {
 	return DiscoveredRCChannels > Map[c];
 } // ActiveCh
-
 
 void CheckThrottleMoved(void) {
 	static real32 StickThrottleP = 0.0f;
@@ -554,11 +542,9 @@ void CheckThrottleMoved(void) {
 
 } // CheckThrottleMoved
 
-
 inline boolean ActiveAndTriggered(real32 t, uint8 r) {
 	return ActiveCh(r) && (RC[r] > t);
 } // ActiveAndTriggered
-
 
 void UpdateControls(void) {
 
@@ -594,7 +580,7 @@ void UpdateControls(void) {
 		F.PassThru = ActiveAndTriggered(0.7f, PassThruRC);
 
 		if (ActiveCh(NavModeRC)) {
-			NavSwState = Limit((uint8)(RC[NavModeRC] * 3.0f), SwLow, SwHigh);
+			NavSwState = Limit((uint8 )(RC[NavModeRC] * 3.0f), SwLow, SwHigh);
 			if (NavSwState >= SwMiddle)
 				RCNavFrames++;
 		} else {
@@ -602,8 +588,8 @@ void UpdateControls(void) {
 			F.ReturnHome = F.Navigate = F.NavigationEnabled = false;
 		}
 
-		CamPitchTrim = ActiveCh(Aux1CamPitchRC) ? RC[Aux1CamPitchRC]
-				- RC_NEUTRAL : 0;
+		CamPitchTrim =
+				ActiveCh(Aux1CamPitchRC) ? RC[Aux1CamPitchRC] - RC_NEUTRAL : 0;
 
 		// COMPLICATED switching for arming, AH WP nav etc ****************
 
@@ -631,8 +617,8 @@ void UpdateControls(void) {
 			EnableWPNav();
 		}
 
-		PW[Aux1CamPitchC] = (ActiveCh(Aux1CamPitchRC)) ? RC[Aux1CamPitchRC]
-				: 0.5f;
+		PW[Aux1CamPitchC] =
+				(ActiveCh(Aux1CamPitchRC)) ? RC[Aux1CamPitchRC] : 0.5f;
 		PW[Aux2C] = (ActiveCh(Aux2RC)) ? RC[Aux2RC] : 0.0f;
 
 		UpdateRTHSwState();
@@ -642,8 +628,8 @@ void UpdateControls(void) {
 		else if ((NavSwState == SwMiddle) || (NavSwState == SwHigh))
 			AttitudeMode = AngleMode;
 		else if (ActiveCh(AttitudeModeRC))
-			AttitudeMode
-					= Limit((uint8)(RC[AttitudeModeRC] * 3.0f), AngleMode, RateMode); // captures horizon mode
+			AttitudeMode = Limit((uint8 )(RC[AttitudeModeRC] * 3.0f), AngleMode,
+					RateMode); // captures horizon mode
 		else
 			AttitudeMode = AngleMode;
 
@@ -651,8 +637,8 @@ void UpdateControls(void) {
 
 		// END COMPLICATED switching for arming, AH WP nav etc ****************
 
-		VTOLMode = ActiveAndTriggered(0.5f, TransitionRC) && (UAVXAirframe
-				== VTOLAF) && !F.PassThru;
+		VTOLMode = ActiveAndTriggered(0.5f, TransitionRC)
+				&& (UAVXAirframe == VTOLAF) && !F.PassThru;
 
 		//_________________________________________________________________________________________
 
@@ -667,5 +653,4 @@ void UpdateControls(void) {
 	}
 
 } // UpdateControls
-
 

@@ -40,7 +40,7 @@
 real32 VoltageScale, CurrentScale;
 real32 CurrentSensorSwing;
 
-real32 BatteryVolts, BatterySagR, StartupVolts, BatteryCurrent,
+real32 BatteryVolts, StartupVolts, BatteryCurrent,
 		BatteryVoltsLimit, BatteryChargeUsedmAH, BatteryCapacityLimitmAH;
 
 real32 BatteryCurrentADCZero = 0.0f; // takes a while for bipolar capture of offset
@@ -68,9 +68,6 @@ real32 MockBattery(void) {
 } // MockBattery
 
 void CheckBatteries(void) {
-	enum lvcStates {
-		lvcStart = 0, lvcMonitor, lvcWarning, lvcWait, lvcLand
-	};
 	static timemS LastUpdatemS = 0;
 	timemS NowmS;
 	real32 dTmS;
@@ -84,7 +81,7 @@ void CheckBatteries(void) {
 		LastUpdatemS = NowmS;
 
 		if (F.Emulation) {
-			BatteryCurrent = (DesiredThrottle + AltComp) * CurrentScale; // Mock Sensor
+			BatteryCurrent = (DesiredThrottle + AltHoldThrComp) * CurrentScale * 0.5f; // reduce emulated current to a sensible fraction of FS
 			if (BatteryCurrent < 0.0f)
 				BatteryCurrent = 0.0f;
 			BatteryVolts = MockBattery() * BatteryCellCount;
@@ -93,8 +90,6 @@ void CheckBatteries(void) {
 			BatteryVolts = LPF1(BatteryVolts,
 					analogRead(BattVoltsAnalogSel) * VoltageScale, BATTERY_LPF_HZ);
 		}
-
-		BatterySagR = LPF1(BatterySagR, StartupVolts / BatteryVolts, BATTERY_LPF_HZ);
 
 		BatteryChargeUsedmAH += BatteryCurrent * dTmS * (1.0f / 3600.0f);
 
@@ -128,8 +123,6 @@ void InitBattery(void) {
 				* VoltageScale;
 		BatteryCellCount = (int16) (BatteryVolts / 3.7f); // OK for 3-6 cell LiPo if charged!
 	}
-
-	BatterySagR = 1.0f;
 
 	BatteryVolts = BatteryVoltsLimit;
 	BatteryCurrent = BatteryChargeUsedmAH = 0.0f;

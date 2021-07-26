@@ -18,7 +18,6 @@
 //    You should have received a copy of the GNU General Public License along with this program.  
 //    If not, see http://www.gnu.org/licenses/
 
-
 #include "UAVX.h"
 
 idx GPSSerial, RCSerial, TelemetrySerial, FrSkySerial;
@@ -26,7 +25,7 @@ idx GPSSerial, RCSerial, TelemetrySerial, FrSkySerial;
 #include "./targets/targets.inc"
 
 boolean DigitalRead(ConnectDef * d) {
-	return GPIO_ReadInputDataBit(d->Port, d->Pin);
+	GPIO_ReadInputDataBit(d->Port, d->Pin);
 } // DigitalRead
 
 void DigitalWrite(ConnectDef * d, boolean m) {
@@ -42,11 +41,10 @@ void DigitalToggle(ConnectDef * d) {
 	d->Port->ODR ^= d->Pin;
 } // DigitalToggle
 
-
 void InitPin(PinDef * d) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 
-	if (d->Used) {// overkill
+	if (d->Used) { // overkill
 		GPIO_StructInit(&GPIO_InitStructure);
 		GPIO_InitStructure.GPIO_Pin = d->P.Pin;
 		GPIO_InitStructure.GPIO_Mode = d->Mode;
@@ -56,7 +54,6 @@ void InitPin(PinDef * d) {
 		GPIO_Init(d->P.Port, &GPIO_InitStructure);
 	}
 } // InitPin
-
 
 void InitPinMode(PinDef * d, boolean IsInput) {
 	GPIO_InitTypeDef GPIO_InitStructure;
@@ -77,7 +74,6 @@ void InitPinMode(PinDef * d, boolean IsInput) {
 	}
 } // InitPinMode
 
-
 void InitOutputPin(PinDef * d) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 
@@ -92,7 +88,6 @@ void InitOutputPin(PinDef * d) {
 	}
 } // InitOutputPin
 
-
 void NVICDisable(IRQn_Type ISR) {
 	NVIC_InitTypeDef NVIC_InitStructure;
 
@@ -103,7 +98,6 @@ void NVICDisable(IRQn_Type ISR) {
 	NVIC_Init(&NVIC_InitStructure);
 
 } // NVICDisable
-
 
 TIM_ICInitTypeDef TIM_ICInitStructure = { 0, }; // global for rc
 
@@ -205,7 +199,6 @@ void InitCPPMPin() {
 	}
 
 } // InitCPPMPin
-
 
 void InitI2C(uint8 i2cCurr) {
 	// Original source unknown but based on those in baseflight by TimeCop
@@ -361,7 +354,6 @@ void InitSPISelectPin(uint8 spiSel) {
 
 } // InitSPISelectPin
 
-
 void InitSPI(uint8 spiPort) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 	volatile uint8 dummyread __attribute__((unused));
@@ -390,31 +382,31 @@ void InitSPI(uint8 spiPort) {
 			RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1, ENABLE);
 			Delay1uS(100);
 			GPIO_PinAFConfig(p->P[sckPin].Port, p->P[sckPin].PinSource,
-					GPIO_AF_SPI1);
+			GPIO_AF_SPI1);
 			GPIO_PinAFConfig(p->P[misoPin].Port, p->P[misoPin].PinSource,
-					GPIO_AF_SPI1);
+			GPIO_AF_SPI1);
 			GPIO_PinAFConfig(p->P[mosiPin].Port, p->P[mosiPin].PinSource,
-					GPIO_AF_SPI1);
+			GPIO_AF_SPI1);
 			break;
 		case 2:
 			RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI2, ENABLE);
 			Delay1uS(100);
 			GPIO_PinAFConfig(p->P[sckPin].Port, p->P[sckPin].PinSource,
-					GPIO_AF_SPI2);
+			GPIO_AF_SPI2);
 			GPIO_PinAFConfig(p->P[misoPin].Port, p->P[misoPin].PinSource,
-					GPIO_AF_SPI2);
+			GPIO_AF_SPI2);
 			GPIO_PinAFConfig(p->P[mosiPin].Port, p->P[mosiPin].PinSource,
-					GPIO_AF_SPI2);
+			GPIO_AF_SPI2);
 			break;
 		case 3:
 			RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI3, ENABLE);
 			Delay1uS(100);
 			GPIO_PinAFConfig(p->P[sckPin].Port, p->P[sckPin].PinSource,
-					GPIO_AF_SPI3);
+			GPIO_AF_SPI3);
 			GPIO_PinAFConfig(p->P[misoPin].Port, p->P[misoPin].PinSource,
-					GPIO_AF_SPI3);
+			GPIO_AF_SPI3);
 			GPIO_PinAFConfig(p->P[mosiPin].Port, p->P[mosiPin].PinSource,
-					GPIO_AF_SPI3);
+			GPIO_AF_SPI3);
 			break;
 		}
 
@@ -440,7 +432,6 @@ void InitSPI(uint8 spiPort) {
 		dummyread = SPI_I2S_ReceiveData(p->SPIx);
 	}
 } // InitSPI
-
 
 void InitPWMPin(PinDef * u, uint16 pwmprescaler, uint32 pwmperiod,
 		uint32 pwmwidth) {
@@ -487,8 +478,9 @@ void InitPWMPin(PinDef * u, uint16 pwmprescaler, uint32 pwmperiod,
 
 			TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
 
-			if ((u->Timer.Tim == TIM1 || u->Timer.Tim == TIM8 || u->Timer.Tim
-					== TIM9 || u->Timer.Tim == TIM10 || u->Timer.Tim == TIM11))
+			if ((u->Timer.Tim == TIM1 || u->Timer.Tim == TIM8
+					|| u->Timer.Tim == TIM9 || u->Timer.Tim == TIM10
+					|| u->Timer.Tim == TIM11))
 				TIM_TimeBaseStructure.TIM_Prescaler = pwmprescaler - 1;
 			else
 				TIM_TimeBaseStructure.TIM_Prescaler = (pwmprescaler >> 1) - 1;
@@ -523,15 +515,14 @@ void SetBaudRate(uint8 s, uint32 BaudRate) {
 			USART_StructInit(&USART_InitStructure);
 			USART_InitStructure.USART_Parity = USART_Parity_No;
 			USART_InitStructure.USART_BaudRate = BaudRate;
-		//	if (BaudRate <= 9600)
-		//		USART_InitStructure.USART_StopBits = USART_StopBits_1;
+			//	if (BaudRate <= 9600)
+			//		USART_InitStructure.USART_StopBits = USART_StopBits_1;
 			USART_Init(u->USART, &USART_InitStructure);
 			USART_Cmd(u->USART, ENABLE);
 		}
 		break;
 	} // switch
 } // SetBaudRate
-
 
 void InitSerialPort(uint8 s, boolean Enable, boolean SBusConfig) {
 	GPIO_InitTypeDef GPIO_InitStructure;
@@ -653,11 +644,14 @@ void InitSerialPort(uint8 s, boolean Enable, boolean SBusConfig) {
 } // InitSerialPort
 
 void SoftSerialTxTimerStart(void) {
-	TIM_Cmd(TIM5, ENABLE);
+
+	if (SoftSerialTxPin.Used)
+		TIM_Cmd(TIM5, ENABLE);
 } // SoftSerialTimerStart
 
 void SoftSerialTxTimerStop(void) {
-	TIM_Cmd(TIM5, DISABLE);
+	if (SoftSerialTxPin.Used)
+		TIM_Cmd(TIM5, DISABLE);
 } // SoftSerialTimerStop
 
 void InitSoftSerialTxTimer(void) { // hard coded to PORTC Pin 6 Aux1
@@ -665,31 +659,35 @@ void InitSoftSerialTxTimer(void) { // hard coded to PORTC Pin 6 Aux1
 	TIM_TimeBaseInitTypeDef TIM_TimeBase_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
 
-	PinDef * u = &SoftSerialTxPin;
 
-	InitPORT_RCC_APB(u->P.Port);
-	InitTIM_RCC_APB(TIM5); //u->Timer.Tim);
 
-	InitOutputPin(u);
+	if (SoftSerialTxPin.Used) {
 
-	TIM_TimeBase_InitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
-	TIM_TimeBase_InitStructure.TIM_CounterMode = TIM_CounterMode_Up;
-	TIM_TimeBase_InitStructure.TIM_Period = 971; // 971->9592baud
-	TIM_TimeBase_InitStructure.TIM_Prescaler = 8;
+		PinDef * u = &SoftSerialTxPin;
 
-	TIM_TimeBaseInit(TIM5, &TIM_TimeBase_InitStructure);
+		InitPORT_RCC_APB(u->P.Port);
+		InitTIM_RCC_APB(TIM5); //u->Timer.Tim);
 
-	TIM_Cmd(TIM5, ENABLE);
-    TIM_ITConfig(TIM5, TIM_IT_Update, ENABLE);
+		InitOutputPin(u);
 
-	NVIC_InitStructure.NVIC_IRQChannel = TIM5_IRQn; //u->PinISR;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 4;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_Init(&NVIC_InitStructure);
+		TIM_TimeBase_InitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
+		TIM_TimeBase_InitStructure.TIM_CounterMode = TIM_CounterMode_Up;
+		TIM_TimeBase_InitStructure.TIM_Period = 971; // 971->9592baud
+		TIM_TimeBase_InitStructure.TIM_Prescaler = 8;
+
+		TIM_TimeBaseInit(TIM5, &TIM_TimeBase_InitStructure);
+
+		TIM_Cmd(TIM5, ENABLE);
+		TIM_ITConfig(TIM5, TIM_IT_Update, ENABLE);
+
+		NVIC_InitStructure.NVIC_IRQChannel = TIM5_IRQn; //u->PinISR;
+		NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 4;
+		NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+		NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+		NVIC_Init(&NVIC_InitStructure);
+	}
 
 } // InitSoftSerialTimer
-
 
 void InitAnalogPorts(void) {
 	uint8 a;
@@ -712,8 +710,8 @@ void InitAnalogPorts(void) {
 		DMA_InitStructure.DMA_BufferSize = MAX_ANALOG_CHANNELS;
 		DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
 		DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
-		DMA_InitStructure.DMA_PeripheralDataSize
-				= DMA_PeripheralDataSize_HalfWord;
+		DMA_InitStructure.DMA_PeripheralDataSize =
+		DMA_PeripheralDataSize_HalfWord;
 		DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
 		DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
 		DMA_InitStructure.DMA_Priority = DMA_Priority_High;
@@ -739,7 +737,7 @@ void InitAnalogPorts(void) {
 		for (a = 0; a < MAX_ANALOG_CHANNELS; a++) {
 			u = &AnalogPins[a];
 			ADC_RegularChannelConfig(u->ADCx, u->ADCChannel, u->Rank,
-					ADC_SampleTime_28Cycles);
+			ADC_SampleTime_28Cycles);
 		}
 
 		ADC_DMARequestAfterLastTransferCmd(ux->ADCx, ENABLE);
@@ -750,7 +748,6 @@ void InitAnalogPorts(void) {
 	}
 
 } // InitAnalog
-
 
 void EnableUSBInterrupt(void) {
 	NVIC_InitTypeDef NVIC_InitStructure;
@@ -781,48 +778,52 @@ void CheckBusDev(void) {
 	}
 } // CheckBusDev
 
-
 void InitHarness(void) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 	uint8 i;
 
 	// UGLY but covers everything for now :)
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA | RCC_AHB1Periph_GPIOB
-			| RCC_AHB1Periph_GPIOC | RCC_AHB1Periph_GPIOD
-			| RCC_AHB1Periph_GPIOE |
+	RCC_AHB1PeriphClockCmd(
+			RCC_AHB1Periph_GPIOA | RCC_AHB1Periph_GPIOB | RCC_AHB1Periph_GPIOC
+					| RCC_AHB1Periph_GPIOD | RCC_AHB1Periph_GPIOE |
 #ifdef STM32F40_41xxx
-			RCC_AHB1Periph_GPIOF |
-			RCC_AHB1Periph_GPIOG |
-			RCC_AHB1Periph_GPIOH |
-			RCC_AHB1Periph_GPIOI |
+					RCC_AHB1Periph_GPIOF |
+					RCC_AHB1Periph_GPIOG |
+					RCC_AHB1Periph_GPIOH |
+					RCC_AHB1Periph_GPIOI |
 #endif
-			RCC_AHB1Periph_CRC | RCC_AHB1Periph_FLITF | RCC_AHB1Periph_SRAM1
-			| RCC_AHB1Periph_SRAM2 | RCC_AHB1Periph_BKPSRAM
-			| RCC_AHB1Periph_DMA1 | RCC_AHB1Periph_DMA2 | 0, ENABLE);
+					RCC_AHB1Periph_CRC | RCC_AHB1Periph_FLITF
+					| RCC_AHB1Periph_SRAM1 | RCC_AHB1Periph_SRAM2
+					| RCC_AHB1Periph_BKPSRAM | RCC_AHB1Periph_DMA1
+					| RCC_AHB1Periph_DMA2 | 0, ENABLE);
 
 	RCC_AHB2PeriphClockCmd(0, ENABLE);
 #ifdef STM32F40_41xxx
 	RCC_AHB3PeriphClockCmd(
 			0, ENABLE);
 #endif
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2 | RCC_APB1Periph_TIM3
-			| RCC_APB1Periph_TIM4 | RCC_APB1Periph_TIM5 | RCC_APB1Periph_TIM6
-			| RCC_APB1Periph_TIM7 | RCC_APB1Periph_TIM12 | RCC_APB1Periph_TIM13
-			| RCC_APB1Periph_TIM14 | RCC_APB1Periph_WWDG | RCC_APB1Periph_SPI2
-			| RCC_APB1Periph_SPI3 | RCC_APB1Periph_USART2
-			| RCC_APB1Periph_USART3 | RCC_APB1Periph_UART4
-			| RCC_APB1Periph_UART5 | RCC_APB1Periph_I2C1 | RCC_APB1Periph_I2C2
-			| RCC_APB1Periph_I2C3 | RCC_APB1Periph_CAN1 | RCC_APB1Periph_CAN2
-			| RCC_APB1Periph_PWR | RCC_APB1Periph_DAC | 0, ENABLE);
+	RCC_APB1PeriphClockCmd(
+			RCC_APB1Periph_TIM2 | RCC_APB1Periph_TIM3 | RCC_APB1Periph_TIM4
+					| RCC_APB1Periph_TIM5 | RCC_APB1Periph_TIM6
+					| RCC_APB1Periph_TIM7 | RCC_APB1Periph_TIM12
+					| RCC_APB1Periph_TIM13 | RCC_APB1Periph_TIM14
+					| RCC_APB1Periph_WWDG | RCC_APB1Periph_SPI2
+					| RCC_APB1Periph_SPI3 | RCC_APB1Periph_USART2
+					| RCC_APB1Periph_USART3 | RCC_APB1Periph_UART4
+					| RCC_APB1Periph_UART5 | RCC_APB1Periph_I2C1
+					| RCC_APB1Periph_I2C2 | RCC_APB1Periph_I2C3
+					| RCC_APB1Periph_CAN1 | RCC_APB1Periph_CAN2
+					| RCC_APB1Periph_PWR | RCC_APB1Periph_DAC | 0, ENABLE);
 
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1 | RCC_APB2Periph_TIM8
-			| RCC_APB2Periph_USART1 | RCC_APB2Periph_USART6
-			| RCC_APB2Periph_ADC | RCC_APB2Periph_ADC1 | RCC_APB2Periph_ADC2
-			| RCC_APB2Periph_ADC3 | RCC_APB2Periph_SDIO |
+	RCC_APB2PeriphClockCmd(
+			RCC_APB2Periph_TIM1 | RCC_APB2Periph_TIM8 | RCC_APB2Periph_USART1
+					| RCC_APB2Periph_USART6 | RCC_APB2Periph_ADC
+					| RCC_APB2Periph_ADC1 | RCC_APB2Periph_ADC2
+					| RCC_APB2Periph_ADC3 | RCC_APB2Periph_SDIO |
 
-	RCC_APB2Periph_SPI1 | RCC_APB2Periph_SYSCFG | RCC_APB2Periph_TIM9
-			| RCC_APB2Periph_TIM10 | RCC_APB2Periph_TIM11 | RCC_APB2Periph_SPI1
-			| 0, ENABLE);
+					RCC_APB2Periph_SPI1 | RCC_APB2Periph_SYSCFG
+					| RCC_APB2Periph_TIM9 | RCC_APB2Periph_TIM10
+					| RCC_APB2Periph_TIM11 | RCC_APB2Periph_SPI1 | 0, ENABLE);
 
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA1, ENABLE);
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2, ENABLE);
@@ -837,10 +838,10 @@ void InitHarness(void) {
 	GPIO_Init(GPIOC, &GPIO_InitStructure);
 	GPIO_Init(GPIOD, &GPIO_InitStructure); // F407
 #ifdef STM32F40_41xxx
-	GPIO_Init(GPIOF, &GPIO_InitStructure);
-	GPIO_Init(GPIOG, &GPIO_InitStructure);
-	GPIO_Init(GPIOH, &GPIO_InitStructure);
-	GPIO_Init(GPIOI, &GPIO_InitStructure);
+			GPIO_Init(GPIOF, &GPIO_InitStructure);
+			GPIO_Init(GPIOG, &GPIO_InitStructure);
+			GPIO_Init(GPIOH, &GPIO_InitStructure);
+			GPIO_Init(GPIOI, &GPIO_InitStructure);
 #endif
 
 #if !(defined(UAVXF4V4) || defined(UAVXF4V3))
@@ -898,5 +899,4 @@ void InitHarness(void) {
 	Delay1mS(10);
 
 } // InitHarness
-
 

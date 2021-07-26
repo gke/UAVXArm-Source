@@ -40,11 +40,18 @@
 //
 #elif defined(OMNIBUSF4V1)
 #include "omnibusf4v1.inc"
+//
+#elif defined(OMNIBUSF4V3)
+#include "omnibusf4v3.inc"
+//
 #elif defined(OMNIBUSF4NXT)
 #include "omnibusf4nxt.inc"
 //
 #elif defined(DISCOVERYF4)
 #include "discoveryf4.inc"
+//
+#elif defined(DEVEBOXF4)
+#include "DevEBoxF4.inc"
 //
 #else
 // mbed

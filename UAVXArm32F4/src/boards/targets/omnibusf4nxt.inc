@@ -29,6 +29,9 @@
 
 #include "UAVX.h"
 
+PinDef SoftSerialTxPin = {false, };
+
+PinDef CPPMPin = {false, };
 
 PinDef RCPins[MAX_RC_INPUTS] = {		
 	{true, PB7, PWMPinConfig, PWMIn_4_2},
@@ -147,11 +150,14 @@ const DevDef busDev[] = {
 	{true, ms5611Baro, useSPI, 2, }, // baroSel
 	{true, hmc5xxxMag, useI2C, 1, HMC5XXX_ID}, // magSel 
 	{false, spiFlashMem, useSPI, 2,}, // memSel 
-	{false, }, // gpsSel
-	{false, }, // rfSel
-	{false, }, // asSel,
-	{false, }, // flowSel
-	{false, }, // escSel
+	{false, gpsSel, },
+	{false, rfSel, },
+	{false, asSel, },
+	{false, flowSel, },
+	{false, oledSel, oledDisplay,},
+	{false, escSPISel, }, // PC13 not connected
+	{false, escI2CSel, ESCI2C, false, 2, ESCI2C_ID, },
+	{false, baro1Sel, ms5611Baro, false, 2, MS56XX_1_ID,} // clash with GPS
 };
 
 const uint8 IMUQuadrant = 1;
@@ -180,20 +186,19 @@ void InitTarget(void) {
 	switch (CurrRxType) {
 	case CPPMRx:
 		CurrMaxPWMOutputs = 4;
-		CurrNoOfRCPins = 1;
-		RxUsingSerial = false;
+
+		F.HaveSerialRC = false;
 		break;
 	default:
 		CurrMaxPWMOutputs = 4;
-		CurrNoOfRCPins = 0;
-		RxUsingSerial = true;
+		F.HaveSerialRC = true;
 		RCSerial = Usart2;
 		InitSerialPort(RCSerial, false, CurrRxType == FutabaSBusRx);
 		break;
 	} // switch
 	
-	GPSRxSerial = GPSTxSerial = Uart4;
-	InitSerialPort(GPSRxSerial, false, false); 
+	GPSSerial = GPSSerial = Uart4;
+	InitSerialPort(GPSSerial, false, false);
 
 } // omnibusf4nxtInit
 #endif

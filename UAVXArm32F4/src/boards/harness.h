@@ -92,6 +92,23 @@
 #define PD14 {GPIOD,GPIO_Pin_14,GPIO_PinSource14}
 #define PD15 {GPIOD,GPIO_Pin_15,GPIO_PinSource15}
 
+#define PE0 {GPIOE,GPIO_Pin_0,GPIO_PinSource0}
+#define PE1 {GPIOE,GPIO_Pin_1,GPIO_PinSource1}
+#define PE2 {GPIOE,GPIO_Pin_2,GPIO_PinSource2}
+#define PE3 {GPIOE,GPIO_Pin_3,GPIO_PinSource3}
+#define PE4 {GPIOE,GPIO_Pin_4,GPIO_PinSource4}
+#define PE5 {GPIOE,GPIO_Pin_5,GPIO_PinSource5}
+#define PE6 {GPIOE,GPIO_Pin_6,GPIO_PinSource6}
+#define PE7 {GPIOE,GPIO_Pin_7,GPIO_PinSource7}
+#define PE8 {GPIOE,GPIO_Pin_8,GPIO_PinSource8}
+#define PE9 {GPIOE,GPIO_Pin_9,GPIO_PinSource9}
+#define PE10 {GPIOE,GPIO_Pin_10,GPIO_PinSource10}
+#define PE11 {GPIOE,GPIO_Pin_11,GPIO_PinSource11}
+#define PE12 {GPIOE,GPIO_Pin_12,GPIO_PinSource12}
+#define PE13 {GPIOE,GPIO_Pin_13,GPIO_PinSource13}
+#define PE14 {GPIOE,GPIO_Pin_14,GPIO_PinSource14}
+#define PE15 {GPIOE,GPIO_Pin_15,GPIO_PinSource15}
+
 #define PWMIn_2_1 {true,TIM2,TIM_Channel_1,TIM_IT_CC1,0,GPIO_AF_TIM2},{false,},TIM2_IRQn
 #define PWMIn_2_2 {true,TIM2,TIM_Channel_2,TIM_IT_CC2,0,GPIO_AF_TIM2},{false,},TIM2_IRQn
 #define PWMIn_2_3 {true,TIM2,TIM_Channel_3,TIM_IT_CC3,0,GPIO_AF_TIM2},{false,},TIM2_IRQn
@@ -218,17 +235,15 @@ enum GPIOSelectors {
 };
 
 enum ADCSelectors {
-#if defined(USE_RF_FOR_VOLTAGE)
-	BattVoltsAnalogSel, BattCurrentAnalogSel, RangefinderAnalogSel,
-#else
 	RangefinderAnalogSel, BattCurrentAnalogSel, BattVoltsAnalogSel,
-#endif
 	// Unused
 	RollAnalogSel,
 	PitchAnalogSel,
 	YawAnalogSel,
 	MAX_ANALOG_CHANNELS
 };
+
+enum AlternateADCSelectors { ExternalVoltsAnalogSel = RangefinderAnalogSel };
 
 enum BusDevSelectors {
 	imu0Sel,

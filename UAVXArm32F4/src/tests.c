@@ -87,6 +87,7 @@ void DoTesting(void) {
 	static int16 PrevShadow[7];
 	static int32 MaxDelta[7];
 
+
 #if defined(EXTMEM_TESTING)
 
 	for (i = 0; i < 100; i++) {
@@ -112,35 +113,35 @@ void DoTesting(void) {
 
 	while (true)
 
-		if (uSTimeout(CycleUpdateuS)) {
-			uSTimer(CycleUpdateuS, CurrPIDCycleuS);
+	if (uSTimeout(CycleUpdateuS)) {
+		uSTimer(CycleUpdateuS, CurrPIDCycleuS);
 
-			//	Marker();
+		//	Marker();
 
-			dT = dTUpdate(&LastUpdateuS);
-			dTOn2 = 0.5f * dT;
-			dTR = 1.0f / dT;
-			dTROn2 = dTR * 0.5f;
+		dT = dTUpdate(&LastUpdateuS);
+		dTOn2 = 0.5f * dT;
+		dTR = 1.0f / dT;
+		dTROn2 = dTR * 0.5f;
 
-			if (++d == 2000) {
-				d = 0;
-				IntRate[Pitch] = Angle[Pitch];
-			}
+		if (++d == 2000) {
+			d = 0;
+			IntRate[Pitch] = Angle[Pitch];
+		}
 
-			UpdateInertial();
+		UpdateInertial();
 
-			if (++i == 10) {
-				i = 0;
+		if (++i == 10) {
+			i = 0;
 
-				//TxVal32(TelemetrySerial, Rate[Pitch] * 1000.0f, 3, ',');
-				//TxVal32(TelemetrySerial, Acc[BF]* 1000.0f, 3, ',');
-				TxVal32(TelemetrySerial, Angle[Yaw]* 1000.0f, 3, ',');
-				TxVal32(TelemetrySerial, IntRate[Yaw]* 1000.0f, 3, ',');
-				TxNextLine(TelemetrySerial);
-
-			}
+			//TxVal32(TelemetrySerial, Rate[Pitch] * 1000.0f, 3, ',');
+			//TxVal32(TelemetrySerial, Acc[BF]* 1000.0f, 3, ',');
+			TxVal32(TelemetrySerial, Angle[Yaw]* 1000.0f, 3, ',');
+			TxVal32(TelemetrySerial, IntRate[Yaw]* 1000.0f, 3, ',');
+			TxNextLine(TelemetrySerial);
 
 		}
+
+	}
 
 #elif defined(ACC_TESTING)
 
@@ -174,6 +175,43 @@ void DoTesting(void) {
 
 		}
 		TxNextLine(TelemetrySerial);
+
+	}
+
+#elif defined(RC_TESTING)
+
+	static timemS LastUpdatemS = 0;
+	timemS NowmS;
+
+	CurrRxType = FutabaSBusRx;
+	InitRC();
+
+	while (true) {
+		CheckRC();
+
+		if (F.RCNewValues) {
+
+		//	if (RCInp[0].Raw < 2000) {
+
+			NowmS = mSClock();
+
+			TxVal32(TelemetrySerial, NowmS - LastUpdatemS, 0, ' ');
+			LastUpdatemS = NowmS;
+
+			for (i = 0; i < 4; i++)
+				TxVal32(TelemetrySerial, RCInp[i].Raw, 0, ',');
+
+			if (SBusSignalLost)
+				TxString(TelemetrySerial, "LOST ");
+			if (SBusFailsafe)
+				TxString(TelemetrySerial, "FS ");
+
+			TxNextLine(TelemetrySerial);
+			//}
+
+			F.RCNewValues = false;
+
+		}
 
 	}
 
@@ -216,7 +254,6 @@ void DoTesting(void) {
 			// TxVal32(TelemetrySerial, MaxShadow[i], 0, ',');
 			// }
 
-
 			//for (i = 0; i < 3; i++) {
 			i = 0;
 			//}
@@ -231,7 +268,6 @@ void DoTesting(void) {
 			//TxVal32(TelemetrySerial, ShadowRawIMU[4], 0, ',');
 			//TxVal32(TelemetrySerial, MaxShadow[4], 0, ',');
 			//TxVal32(TelemetrySerial, MPU6XXXTemperature * 1000.0f, 3, ',');
-
 
 			TxNextLine(TelemetrySerial);
 			LEDToggle(ledGreenSel);
@@ -334,7 +370,6 @@ void DoTesting(void) {
 
 #elif defined(KF_TESTING)
 
-
 	const real32 SampleHz = 1000.0f;
 	const real32 NyquistHz = 500.0f;
 	const real32 PIDHz = 500;
@@ -343,7 +378,7 @@ void DoTesting(void) {
 	real32 OverSampledT = 1.0f / SampleHz;
 	real32 PIDdT = 1.0f/ PIDHz;
 
-	filterStruct  OSLPF, FinalLPF;
+	filterStruct OSLPF, FinalLPF;
 	filterStructABG ABGF;
 
 	int kkk;
@@ -399,7 +434,7 @@ void DoTesting(void) {
 
 		TimeS += OverSampledT;
 
-	} while (TimeS < 1.0f);
+	}while (TimeS < 1.0f);
 
 	LEDsOn();
 	while (true) {
@@ -476,7 +511,6 @@ void DoTesting(void) {
 
 } // DoTesting
 
-
 #if defined(COMMISSIONING_TEST)
 
 index i;
@@ -492,7 +526,6 @@ void Calibrated(uint8 s, boolean b) {
 	if (!b)
 	TxString(s, " NOT calibrated ");
 } // Calibrated
-
 
 void CommissioningTest(uint8 s) {
 	timeuS Timeout;
@@ -764,7 +797,6 @@ void GPSDebug(uint8 s) {
 
 } // GPSDebug
 
-
 #define IM 139968
 #define IA 3877
 #define IC 29573
@@ -851,7 +883,6 @@ void SphereFitTest(void) {
 
 } // SphereFitTest
 
-
 void MagnetometerTest(uint8 s) {
 	int32 a;
 	MagCalStruct * M;
@@ -918,7 +949,6 @@ void MagnetometerTest(uint8 s) {
 
 } // MagnetometerTest
 
-
 void BaroTest(uint8 s) {
 	index i;
 	TxString(s, "\r\nAltitude test\r\n");
@@ -966,7 +996,6 @@ void BaroTest(uint8 s) {
 
 } // BaroTest
 
-
 void BatteryTest(uint8 s) {
 
 	TxString(s, "\r\nBattery test\r\n");
@@ -982,7 +1011,6 @@ void BatteryTest(uint8 s) {
 	TxNextLine(s);
 
 } // BatteryTest
-
 
 void LEDsAndBuzzer(uint8 s) {
 	int8 f, m;
@@ -1001,7 +1029,6 @@ void LEDsAndBuzzer(uint8 s) {
 	BeeperOff();
 	TxString(TelemetrySerial, "Test Finished\r\n");
 } // LEDsAndBuzzer
-
 
 void InertialTest(uint8 s) {
 	real32 AccMag;
@@ -1167,7 +1194,6 @@ void ReceiverTest(uint8 s) {
 
 } // ReceiverTest
 
-
 void ShowStat(uint8 s) {
 	int32 a;
 
@@ -1262,7 +1288,6 @@ void ShowStat(uint8 s) {
 	TxString(s, "Nav DISABLED (No fix at launch)\r\n");
 
 } // ShowStats
-
 
 #endif
 

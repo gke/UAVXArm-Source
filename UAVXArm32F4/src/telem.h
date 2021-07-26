@@ -22,6 +22,8 @@
 #ifndef _telemetry_h
 #define _telemetry_h
 
+enum inflightLogs {logUAVX, logAltitude, logPitch, logRoll, logYaw };
+
 enum MiscComms {
 	miscCalIMU,
 	miscCalMag,
@@ -73,7 +75,7 @@ enum PacketTags {
 	UAVXTuningPacketTag = 57,
 	UAVXUKFPacketTag = 58,
 	UAVXGuidancePacketTag = 59,
-	UAVXFusionPacketTag = 60,
+	UAVXAltitudeControlPacketTag = 60,
 	UAVXSoaringPacketTag = 61,
 	UAVXCalibrationPacketTag = 62,
 	UAVXAFNamePacketTag = 63,
@@ -81,7 +83,7 @@ enum PacketTags {
 	UAVXTrackPacketTag = 65,
 	UAVXSerialPortPacketTag = 66,
 	UAVXExecutionTimePacketTag = 67,
-	UAVXFusion2PacketTag = 68,
+	UAVXAttitudeControlPacketTag = 68,
 
 	FrSkyPacketTag = 99
 };
@@ -115,15 +117,15 @@ void SendFlightPacket(uint8 s);
 void SendCalibrationPacket(uint8 s);
 void SendAckPacket(uint8 s, uint8 Tag, uint8 Reason);
 void SendMinPacket(uint8 s);
-void SendFusionPacket(uint8 s);
-void SendFusion2Packet(uint8 s, real32 AltdT);
-
+void SendAltitudeControlPacket(uint8 s);
+void SendAttitudeControlPacket(uint8 s, idx a);
 void CheckTelemetry(uint8 s);
 
 void SetTelemetryBaudRate(uint8 s, uint32 b);
 
 extern uint8 CurrTelType;
 extern uint32 TrackGPSInvalid;
+extern uint8 CurrBBLogType;
 
 #endif
 

@@ -53,11 +53,12 @@ void SerialTxDMA(uint8 s) {
 	SerialPorts[s].TxStream->M0AR = (uint32) &TxQ[s][TxQHead[s]];
 
 	if (TxQTail[s] > TxQHead[s]) { // Tail not wrapped around yet
-		DMA_SetCurrDataCounter(SerialPorts[s].TxStream, TxQTail[s] - TxQHead[s]);
+		DMA_SetCurrDataCounter(SerialPorts[s].TxStream,
+				TxQTail[s] - TxQHead[s]);
 		TxQNewHead[s] = TxQTail[s];
-	} else {// Tail has wrapped do balance from Head to end of Buffer
-		DMA_SetCurrDataCounter(SerialPorts[s].TxStream, SERIAL_BUFFER_SIZE
-				- TxQHead[s]);
+	} else { // Tail has wrapped do balance from Head to end of Buffer
+		DMA_SetCurrDataCounter(SerialPorts[s].TxStream,
+				SERIAL_BUFFER_SIZE - TxQHead[s]);
 		TxQNewHead[s] = 0;
 	}
 	DMA_Cmd(SerialPorts[s].TxStream, ENABLE);
@@ -77,8 +78,8 @@ boolean SerialAvailable(uint8 s) {
 		break;
 	default:
 		if (SerialPorts[s].DMAUsed) {
-			RxQTail[s] = SERIAL_BUFFER_SIZE - DMA_GetCurrDataCounter(
-					SerialPorts[s].RxStream);
+			RxQTail[s] = SERIAL_BUFFER_SIZE
+					- DMA_GetCurrDataCounter(SerialPorts[s].RxStream);
 			r = RxQHead[s] != RxQTail[s];
 		} else if (SerialPorts[s].InterruptsUsed)
 			r = RxQTail[s] != RxQHead[s];
@@ -116,8 +117,7 @@ uint8 RxChar(uint8 s) {
 		} else
 			ch = USART_ReceiveData(SerialPorts[s].USART);
 		break;
-	}// switch
-
+	} // switch
 
 	return (ch);
 } // RxChar
@@ -169,7 +169,6 @@ void BuildSoftSerialTx(uint8 s) {
 
 } // BuildSoftSerialTx
 
-
 void SoftTxChar(uint8 s, uint8 ch) {
 	int16 NewTail, Entries;
 	uint8 b;
@@ -197,22 +196,25 @@ void SoftTxChar(uint8 s, uint8 ch) {
 
 } // SoftTxChar
 
-
 void SoftSerialTxISR(uint8 s) {
 
-	if (SoftSerialTxBits < SERIAL_CHAR_BUFFER_SIZE) {
+	if (SoftSerialTxPin.Used) {
 
-		DigitalWrite(&SoftSerialTxPin.P, SoftSerialTxBuffer[SoftSerialTxBits]);
-		SoftSerialTxBits++;
-		SoftSerialTxTimerStart();
+		if (SoftSerialTxBits < SERIAL_CHAR_BUFFER_SIZE) {
 
-	} else if (TxQTail[s] != TxQHead[s])
+			DigitalWrite(&SoftSerialTxPin.P,
+					SoftSerialTxBuffer[SoftSerialTxBits]);
+			SoftSerialTxBits++;
+			SoftSerialTxTimerStart();
+
+		} else if (TxQTail[s] != TxQHead[s])
+			BuildSoftSerialTx(s);
+		else
+			SoftSerialTxTimerStop();
+	} else
 		BuildSoftSerialTx(s);
-	else
-		SoftSerialTxTimerStop();
 
 } // SoftSerialTxISR
-
 
 void TxChar(uint8 s, uint8 ch) {
 	int16 NewTail, Entries;
@@ -284,7 +286,7 @@ void SerialISR(uint8 s) {
 
 				RxQTail[s] = (RxQTail[s] + 1) & (SERIAL_BUFFER_SIZE - 1);
 				if (RxQTail[s] == RxQHead[s]) {
-					RxOverflow[s] |= true;// full
+					RxOverflow[s] |= true; // full
 					//USART_ITConfig(SerialPorts[s].USART, USART_IT_RXNE, DISABLE);
 				}
 			}
@@ -303,5 +305,4 @@ void SerialISR(uint8 s) {
 			USART_ITConfig(SerialPorts[s].USART, USART_IT_TXE, DISABLE);
 	}
 } // SerialISR
-
 

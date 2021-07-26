@@ -95,7 +95,7 @@ void MixAndLimitCam(void) {
 void DoVTOLMix(void) {
 	real32 TempThrottle, TempElevator, TempRudder;
 
-	TempThrottle = (F.PassThru) ? DesiredThrottle : DesiredThrottle + AltComp;
+	TempThrottle = (F.PassThru) ? DesiredThrottle : DesiredThrottle + AltHoldThrComp;
 	NetThrottle = TempThrottle = Limit(TempThrottle * OUT_MAXIMUM, 0.0f, 1.0f);
 
 	if (VTOLMode) {
@@ -712,7 +712,7 @@ void DoMix(void) {
 	if (F.PassThru) // do here at lowest level rather than complicating higher level logic
 		TempThrottle = DesiredThrottle;
 	else
-		TempThrottle = ThrottleSuppressed ? 0.0f : DesiredThrottle + AltComp;
+		TempThrottle = ThrottleSuppressed ? 0.0f : DesiredThrottle + AltHoldThrComp;
 
 	NetThrottle = PW[RightThrottleC] = PW[LeftThrottleC] = Limit(
 			TempThrottle * OUT_MAXIMUM, 0.0f, 1.0f);
@@ -976,8 +976,8 @@ void DoMulticopterMix(void) {
 
 	CurrThrottlePW =
 			(State == InFlight) ?
-					(DesiredThrottle + AltComp) * OUT_MAXIMUM
-							* (TiltThrFFComp * BattThrFFComp) :
+					(DesiredThrottle + AltHoldThrComp) * OUT_MAXIMUM
+							* TiltThrScale:
 					DesiredThrottle * OUT_MAXIMUM;
 
 	CurrThrottlePW = Limit(CurrThrottlePW, IdleThrottlePW, OUT_MAXIMUM);

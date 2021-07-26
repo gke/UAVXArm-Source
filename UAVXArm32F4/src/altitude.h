@@ -104,7 +104,6 @@ extern real32 DesiredAlt, BaroVariance, OriginAltitude, RawAlt, RawDensityAltitu
 extern real32 BaroROC, ROC, ROCTrack;
 extern uint8 BaroType;
 extern real32 AltdT;
-extern timemS AltitudemS;
 extern uint16 ms56xx_ManufacturersData;
 
 extern filterStruct ROCTrackLPF, ROCLPF, AccUBumpLPF, AccUMAF;

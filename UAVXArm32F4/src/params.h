@@ -75,7 +75,7 @@
 #define ALT_ROC_THRESHOLD_MPS 	(0.03f)
 #define ALT_HOLD_DECAY_S		(3.0f)
 
-#define DEFAULT_BARO_VARIANCE	(0.5f)
+#define DEFAULT_BARO_VARIANCE	(0.2f)
 #define DEFAULT_ACCU_VARIANCE	(2.0f)
 
 #define ALT_MIN_DESCENT_DMPS 	(4)
@@ -245,7 +245,7 @@ enum Params { // MAX 128
 	YawRateKp, // 11
 	RollRateKd, // 12
 	IMUOption, // 13
-	Unused14, // 14
+	BBLogType, // 14
 	RxType, // 15
 	Config1Bits, // 16
 	RxThrottleCh, // 17
@@ -383,7 +383,7 @@ enum Params { // MAX 128
 #define	UseRapidDescentMask		(1<<6) // bit61CheckBox 16_6
 
 // Config2
-#define GenerateFusionLogMask	0x01   // bit02CheckBox 74_1
+#define Unused_74_1_Mask		0x01   // bit02CheckBox 74_1
 #define	UseFastStartMask		(1<<1) // bit12CheckBox 74_2
 #define UseBLHeliMask 			(1<<2) // bit22CheckBox 74_3
 #define UseGliderStrategyMask	(1<<3) // bit32CheckBox 74_4
@@ -405,10 +405,10 @@ extern int8 CP[];
 extern const real32 AFOrientation[];
 extern uint8 UAVXAirframe;
 extern boolean IsMulticopter, IsGroundVehicle, UsingNavBeep, UsingFastStart, UsingBLHeliPrograming,
-		UsingGliderStrategy, DisablingLEDsInFlight, GenerateFusionLog;
+		UsingCruiseCentering, UsingGliderStrategy, DisablingLEDsInFlight;
 extern uint8 CurrMotorStopSel;
 
-extern real32 AltCompDecayS;
+extern real32 AltHoldThrCompDecayS;
 extern boolean UseFastStart;
 
 extern ConfigStruct Config;

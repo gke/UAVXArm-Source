@@ -91,19 +91,17 @@ void InitControl(void);
 extern AxisStruct A[];
 
 extern idx AttitudeMode;
-extern real32 TiltThrFFFrac;
-
 extern uint8 CurrOSLPFType;
 
 extern real32 CameraAngle[3], OrbitCamAngle;
 extern real32 DesiredHeading, SavedHeading;
 extern real32 CurrMaxTiltAngle;
 extern real32 Altitude;
-extern real32 AltComp, ROC, MinROCMPS, MaxROCMPS;
-extern real32 DesiredThrottle, CruiseThrottle, CruiseThrottleTrackingRate, IdleThrottle, InitialThrottle;
+extern real32 AltHoldThrComp, ROC, MinROCMPS, MaxROCMPS;
+extern real32 DesiredThrottle, CruiseThrottle, IdleThrottle, InitialThrottle;
 extern real32 AltitudeHoldROCWindow;
-extern real32 MaxAltComp;
-extern real32 BattThrFFComp, TiltThrFFComp;
+extern real32 MaxAltHoldThrComp;
+extern real32 TiltThrScale, TiltThrScaleFrac;
 extern real32 HorizonTransScale;
 extern real32 StickDeadZone;
 extern real32 OrientationRad, OrientS, OrientC;

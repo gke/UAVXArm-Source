@@ -48,7 +48,7 @@ __ALIGN_BEGIN USB_OTG_CORE_HANDLE USB_OTG_dev __ALIGN_END;
 /*
  void USBCableDetectInit(void) {
  #if defined(USB_DETECT_PIN)
- USBDetectPin = digitalRead(&GPIOPins[USBDisconnectSel]);
+ USBDetectPin = GPIOPins[USBDisconnectSel].Used && digitalRead(&GPIOPins[USBDisconnectSel]);
 
  // IOInit(USBDetectPin, OWNER_USB_DETECT, 0);
  // IOConfigGPIO(USBDetectPin, IOCFG_OUT_PP);
@@ -57,7 +57,7 @@ __ALIGN_BEGIN USB_OTG_CORE_HANDLE USB_OTG_dev __ALIGN_END;
 
  bool USBCableIsInserted(void) {
  #if defined(USB_DETECT_PIN)
- return digitalRead(&GPIOPins[USBDisconnectSel]);
+ return GPIOPins[USBDisconnectSel].Used && digitalRead(&GPIOPins[USBDisconnectSel]);
  #else
  return false;
  #endif

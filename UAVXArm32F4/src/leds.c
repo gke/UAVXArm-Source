@@ -18,9 +18,6 @@
 //    You should have received a copy of the GNU General Public License along with this program.  
 //    If not, see http://www.gnu.org/licenses/
 
-// 	  WS281X  routines based on LEDStrip RGB-LED Driver
-//    Tobias Mache & Florian Zahn CCC Mannheim e.V.
-//    https://github.com/C3MA
 
 #include "UAVX.h"
 
@@ -38,7 +35,7 @@ void BeeperToggle(void) {
 } // BeeperToggle
 
 boolean BeeperIsOn(void) {
-	return (DigitalRead(&GPIOPins[BeeperSel].P));
+	return (GPIOPins[BeeperSel].Used && DigitalRead(&GPIOPins[BeeperSel].P));
 } // BeeperIsOn
 
 void LEDOn(uint8 l) {

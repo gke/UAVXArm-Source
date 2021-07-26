@@ -22,12 +22,6 @@
 #ifndef _uavx_h
 #define _uavx_h
 
-#if defined(UAVXF4V4)
-#define USE_RF_FOR_VOLTAGE
-#endif
-
-#define SEND_FUSION2
-
 #define USE_UAVX_DJT
 
 // Options
@@ -35,6 +29,8 @@
 //#define USE_MAHONY_AHRS
 
 //#define MADGWICK_TESTING
+
+//#define RC_TESTING
 
 //#define ACC_TESTING
 
@@ -44,7 +40,7 @@
 
 //#define ALT_KF_TESTING  // different altitude filtering schemes
 
-//#define USE_AUX3_PROBE_PIN // CAUTION DIAGNOSTIC ONLY: This disables use of Aux3 for WP Nav enable
+//#define USE_AUX3_PROBE_PIN
 
 //#define USE_CONSERVATIVE_DEF_PARAM_LOAD
 

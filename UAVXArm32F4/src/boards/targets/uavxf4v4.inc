@@ -146,14 +146,14 @@ void InitTarget(void) {
 	default:
 		CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 10;
 		F.HaveSerialRC = true;
-		RCSerial = Usart3;
+		RCSerial = Usart2;
 		InitSerialPort(RCSerial, false, CurrRxType == FutabaSBusRx);
 		break;
 	} // switch
 	
-	GPSSerial = Usart2;
-	F.HaveGPS = true;
-	InitSerialPort(GPSSerial, false, false); 
+	F.HaveGPS = CurrGPSType != NoGPS;
+    GPSSerial = Usart3;
+	InitSerialPort(GPSSerial, false, false);
 			
 	FrSkySerial = SoftSerial;
 	InitSoftSerialTxTimer();	

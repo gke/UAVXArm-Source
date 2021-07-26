@@ -28,7 +28,7 @@ volatile boolean TxSwitchArmed = false;
 
 uint8 UAVXAirframe = AFUnknown;
 boolean IsMulticopter, IsGroundVehicle;
-boolean UsingGliderStrategy, UsingFastStart, UsingBLHeliPrograming, UsingHWLPF,
+boolean UsingGliderStrategy, UsingFastStart, UsingBLHeliPrograming, UsingHWLPF, UsingCruiseCentering,
 		UsingNavBeep, DisablingLEDsInFlight;
 
 uint8 CurrConfig1, CurrConfig2;
@@ -44,11 +44,10 @@ boolean ConfigUninitialised(void) {
 
 } // ConfigUninitialised
 
-
 void RefreshConfig(void) {
 	/*
-	boolean changed = false;
-	uint32 i;
+	 boolean changed = false;
+	 uint32 i;
 
 	 i = 0;
 	 do {
@@ -85,18 +84,17 @@ uint8 LimitP(uint8 i, uint8 l, uint8 h) { // TODO: really should have a limits a
 	return (P(i));
 } // LimitP
 
-
 void ClassifyAFType(void) {
 
 	uint8 AF = P(AFType);
 
 	F.IsFixedWing = (AF == ElevonAF) || (AF == DeltaAF) || (AF == AileronAF)
-			|| (AF == AileronSpoilerFlapsAF) || (AF == AileronVTailAF) || (AF
-			== RudderElevatorAF);
-	IsMulticopter = !(F.IsFixedWing || (AF == VTOLAF) || (AF == VTOL2AF) || (AF
-			== Heli90AF) || (AF == BiAF) || (AF == DifferentialTwinAF));
-	IsGroundVehicle = (AF == TrackedAF) || (AF == TwoWheelAF) || (AF
-			== FourWheelAF);
+			|| (AF == AileronSpoilerFlapsAF) || (AF == AileronVTailAF)
+			|| (AF == RudderElevatorAF);
+	IsMulticopter = !(F.IsFixedWing || (AF == VTOLAF) || (AF == VTOL2AF)
+			|| (AF == Heli90AF) || (AF == BiAF) || (AF == DifferentialTwinAF));
+	IsGroundVehicle = (AF == TrackedAF) || (AF == TwoWheelAF)
+			|| (AF == FourWheelAF);
 
 	OrientationRad = DegreesToRadians(AFOrientation[AF]);
 
@@ -105,8 +103,7 @@ void ClassifyAFType(void) {
 
 	UAVXAirframe = AF;
 
-}// ClassifyAFType
-
+} // ClassifyAFType
 
 void DoConfigBits(void) {
 
@@ -117,9 +114,9 @@ void DoConfigBits(void) {
 	F.UsingRapidDescent = (P(Config1Bits) & UseRapidDescentMask) != 0;
 	F.Emulation = (P(Config1Bits) & EmulationEnableMask) != 0;
 	F.UsingOffsetHome = (P(Config1Bits) & UseOffsetHomeMask) != 0;
-	DisablingLEDsInFlight = (P(Config1Bits) & DisableLEDsInFlightMask ) != 0;
+	DisablingLEDsInFlight = (P(Config1Bits) & DisableLEDsInFlightMask) != 0;
 	// Config2
-	GenerateFusionLog = (P(Config2Bits) & GenerateFusionLogMask) != 0;
+	//UsingCruiseCentering = (P(Config2Bits) & Unused_74_1_Mask) != 0;
 	UsingFastStart = (P(Config2Bits) & UseFastStartMask) != 0;
 	UsingBLHeliPrograming = (P(Config2Bits) & UseBLHeliMask) != 0;
 	UsingGliderStrategy = ((P(Config2Bits) & UseGliderStrategyMask) != 0)
@@ -141,8 +138,8 @@ void InitPIDStructs(void) {
 
 	Nav.CrossTrackKp = P(NavCrossTrackKp) * 0.01f;
 	Nav.MaxCompassRate = DegreesToRadians(P(MaxCompassYawRate) * 10.0f);
-	Nav.MaxBankAngle
-			= DegreesToRadians(LimitP(NavMaxAngle, 10, P(MaxRollAngle)));
+	Nav.MaxBankAngle = DegreesToRadians(
+			LimitP(NavMaxAngle, 10, P(MaxRollAngle)));
 	Nav.HeadingTurnout = DegreesToRadians(LimitP(NavHeadingTurnout, 10, 90));
 
 	Nav.VelKp = (real32) P(NavVelKp) * 0.06f; // 20 -> 1.2f; // @45deg max
@@ -230,7 +227,7 @@ void InitPIDStructs(void) {
 	Alt.R.Ki = (real32) P(AltVelKi) * 0.00027f; // MatLab 0.0027->10
 	Alt.R.IntLim = (real32) P(AltVelIntLimit) * 0.05f;
 	Alt.R.Max = ALT_MAX_ROC_MPS;
-    MaxAltComp = FromPercent((real32) P(AltThrottleCompLimit));
+	MaxAltHoldThrComp = FromPercent((real32 ) P(AltThrottleCompLimit));
 
 	Alt.R.Kd = 0.0f;
 
@@ -250,8 +247,8 @@ void InitPIDStructs(void) {
 
 void SetPIDPeriod(void) {
 
-	CurrPIDCycleuS = busDev[imuSel].useSPI ? PID_CYCLE_1000US
-			: PID_CYCLE_2000US;
+	CurrPIDCycleuS =
+			busDev[imuSel].useSPI ? PID_CYCLE_1000US : PID_CYCLE_2000US;
 
 	CurrPIDCycleS = CurrPIDCycleuS * 1.0e-6;
 
@@ -266,7 +263,7 @@ boolean CurrAltFiltersChanged(void) {
 boolean CurrInertialFiltersChanged(void) {
 
 	return (CurrAccLPFSel != P(AccLPFSel)) //
-			|| (CurrGyroLPFSel != P(GyroLPFSel)) //
+	|| (CurrGyroLPFSel != P(GyroLPFSel)) //
 			|| (CurrYawLPFHz != P(YawLPFHz)) //
 			|| (CurrServoLPFHz != P(ServoLPFHz));
 
@@ -283,10 +280,10 @@ void UpdateParameters(void) {
 	// configuration or attached devices and forces a reboot to restore
 	// Arm registers to a known state and to initialise new devices.
 
-	if ((State == Preflight) || (State == Ready) || (State
-			== MonitorInstruments)) { // PARANOID
+	if ((State == Preflight) || (State == Ready)
+			|| (State == MonitorInstruments)) { // PARANOID
 		if ((CurrIMUOption != P(IMUOption)) //
-				|| (ArmingMethod != P(ArmingMode)) //
+		|| (ArmingMethod != P(ArmingMode)) //
 				|| (CurrAttSensorType != P(SensorHint)) //
 				|| (CurrRxType != P(RxType)) //
 				|| (CurrConfig1 != P(Config1Bits)) //
@@ -294,34 +291,35 @@ void UpdateParameters(void) {
 				|| (CurrESCType != P(ESCType)) //
 				|| (UAVXAirframe != P(AFType)) //
 				|| (CurrTelType != P(TelemetryType)) //
+				|| (CurrBBLogType != P(BBLogType)) //
 				|| (CurrRFSensorType != P(RFSensorType)) //
 				|| (CurrASSensorType != P(ASSensorType)) //
 				|| CurrInertialFiltersChanged() //
 				|| CurrAltFiltersChanged() //
 				|| (CurrGPSType != P(GPSProtocol)) //
 				|| (CurrMotorStopSel != P(MotorStopSel)) //
-		)
+				)
 			systemReset(false);
 
 		InitPIDStructs();
 
 		// Throttle
-		IdleThrottlePW = IdleThrottle
-				= FromPercent(LimitP(PercentIdleThr, RC_THRES_START + 1, 20));
+		IdleThrottlePW = IdleThrottle = FromPercent(
+				LimitP(PercentIdleThr, RC_THRES_START + 1, 20));
 
 		FWPitchThrottleFFFrac = FromPercent(P(FWPitchThrottleFF));
-		TiltThrFFFrac = FromPercent(P(TiltThrottleFF));
+		TiltThrScaleFrac = FromPercent(P(TiltThrottleFF));
 
 		CGOffset = FromPercent(Limit1(P(Balance), 100));
 
 		if (F.Emulation)
-			CruiseThrottle = F.IsFixedWing ? EM_THR_CRUISE_FW_STICK
-					: EM_THR_CRUISE_STICK;
+			CruiseThrottle =
+					F.IsFixedWing ?
+							EM_THR_CRUISE_FW_STICK : EM_THR_CRUISE_STICK;
 		else
-			CruiseThrottle = FromPercent(LimitP(EstCruiseThr,
-							ToPercent(THR_MIN_ALT_HOLD_STICK),
-							ToPercent(THR_MAX_ALT_HOLD_STICK)
-					));
+			CruiseThrottle =
+					FromPercent(
+							LimitP(EstCruiseThr, ToPercent(THR_MIN_ALT_HOLD_STICK), ToPercent(THR_MAX_ALT_HOLD_STICK) ));
 
 		//CruiseThrottleTrackingRate
 		//		= FromPercent(LimitP(CruiseTrackingRate, 1, 100) * 0.01f);
@@ -330,11 +328,11 @@ void UpdateParameters(void) {
 
 		// Attitude
 
-		FWStickScaleFrac = FromPercent(LimitP(FWStickScale, 20, 100))
-				* OUT_NEUTRAL;
+		FWStickScaleFrac = FromPercent(
+				LimitP(FWStickScale, 20, 100)) * OUT_NEUTRAL;
 
-		FWRollControlPitchLimitRad
-				= DegreesToRadians(LimitP(FWRollControlPitchLimit, 45, 60));
+		FWRollControlPitchLimitRad = DegreesToRadians(
+				LimitP(FWRollControlPitchLimit, 45, 60));
 
 		StickDeadZone = FromPercent(LimitP(StickHysteresis, 1, 5));
 
@@ -356,24 +354,25 @@ void UpdateParameters(void) {
 		// Altitude
 		InitRangefinder();
 
-		TrackBaroVariance = BaroVariance
-				= (real32) (LimitP(KFBaroVar, 10, 200)) * 0.01f;
-		TrackAccUVariance = AccUVariance
-				= (real32) (LimitP(KFAccUVar, 10, 200)) * 0.1f;
+		TrackBaroVariance = BaroVariance = (real32) (LimitP(KFBaroVar, 2, 200))
+				* 0.01f;
+		TrackAccUVariance = AccUVariance = (real32) (LimitP(KFAccUVar, 2, 200))
+				* 0.1f;
 		AccUBiasVariance = (real32) (LimitP(KFAccUBiasVar, 1, 200)) * 0.000001f;
 
 		FWAileronRudderFFFrac = FromPercent(P(FWAileronRudderMix));
 		FWAltSpoilerFFFrac = FromPercent(P(FWAltSpoilerFF));
 		FWSpoilerDecayS = P(FWSpoilerDecayTime) * 0.1f;
 
-		AHThrottleWindow
-				= FromPercent((real32) (LimitP(AHThrottleMovingTrigger, 1, 100)) * 0.1f);
+		AHThrottleWindow = FromPercent(
+				(real32) (LimitP(AHThrottleMovingTrigger, 1, 100)) * 0.1f);
 		ThrottleMovingWindow = AHThrottleWindow * AH_THR_UPDATE_S;
-		AltitudeHoldROCWindow = (timemS) LimitP(AHROCWindowMPS, 15, 200) * 0.01f;
+		AltitudeHoldROCWindow = (timemS) LimitP(AHROCWindowMPS, 15, 200)
+				* 0.01f;
 
 		// Nav
 		NavGPSTimeoutmS = 3.0f; // (timemS) LimitP(NavGPSTimeoutS, 2, 30) * 1000;
-		MagVariation = DegreesToRadians((real32)P(NavMagVar) * 0.1f);
+		MagVariation = DegreesToRadians((real32 )P(NavMagVar) * 0.1f);
 
 		GPSMinhAcc = GPS_MIN_HACC; // not set in GUI LimitP(MinhAcc, 10, GPS_MIN_HACC * 10) * 0.1f;
 		GPSMinvAcc = GPS_MIN_VACC; // not set in GUI LimitP(MinhAcc, 10, GPS_MIN_HACC * 10) * 0.1f;
@@ -455,10 +454,9 @@ void UpdateSticksState(void) {
 		break;
 	default:
 		break;
-	}// switch
+	} // switch
 
 } // UpdateSticksState
-
 
 void DoStickProgramming(void) {
 	timemS NowmS;
@@ -523,7 +521,6 @@ void DoStickProgramming(void) {
 
 } // DoStickProgramming
 
-
 void UseDefaultParameters(uint8 DefaultPS) {
 	uint16 i;
 
@@ -554,7 +551,6 @@ void UseDefaultParameters(uint8 DefaultPS) {
 
 } // UseDefaultParameters
 
-
 void ConditionParameters(void) {
 
 	F.ParametersValid = true; //unused
@@ -566,6 +562,7 @@ void ConditionParameters(void) {
 	ArmingMethod = P(ArmingMode);
 
 	CurrTelType = P(TelemetryType);
+	CurrBBLogType = P(BBLogType); //LimitP(BBLogType, logUAVX, logYaw);
 	CurrAttSensorType = P(SensorHint);
 
 	CurrRxType = P(RxType);
@@ -575,15 +572,7 @@ void ConditionParameters(void) {
 	UAVXAirframe = LimitP(AFType, 0, AFUnknown);
 	CurrESCType = LimitP(ESCType, 0, ESCUnknown);
 
-#if defined(UAVXF4V4)
 	CurrGPSType = P(GPSProtocol);
-	F.HaveGPS = true;
-#else
-	F.HaveGPS = CurrRxType == CPPMRx;
-	if (!F.HaveGPS)
-		SetP(GPSProtocol, NoGPS);
-	CurrGPSType = P(GPSProtocol);
-#endif
 
 	CurrMotorStopSel = P(MotorStopSel);
 	CurrRFSensorType = P(RFSensorType);
@@ -609,16 +598,17 @@ void ConditionParameters(void) {
 
 } // ConditionParameters
 
-
 void LoadParameters(void) {
 
-	ReadBlockArmFlash(CONFIG_FLASH_ADDR + 0, sizeof(Config), (int8 *) (&Config));
+	ReadBlockArmFlash(CONFIG_FLASH_ADDR + 0, sizeof(Config),
+			(int8 *) (&Config));
 
 	//if ((Config.CurrRevisionNo != RevisionNo))
 	if (ConfigUninitialised())
 		UseDefaultParameters(0);
-	else if ((ResetCause != SOFTWARE_RESET) || (ResetCause
-			!= POWER_ON_POWER_DOWN_RESET) || (ResetCause != UNKNOWN_RESET))
+	else if ((ResetCause != SOFTWARE_RESET)
+			|| (ResetCause != POWER_ON_POWER_DOWN_RESET)
+			|| (ResetCause != UNKNOWN_RESET))
 		SetP(PowerResetCause, ResetCause);
 
 	ConditionParameters();

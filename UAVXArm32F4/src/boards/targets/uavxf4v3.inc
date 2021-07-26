@@ -157,9 +157,9 @@ void InitTarget(void) {
 	switch (CurrRxType) {
 	case CPPMRx:
 		F.HaveSerialRC = false;
-		F.HaveGPS = true;
-	    GPSSerial = Usart2;
-	    InitSerialPort(GPSSerial, false, false);
+		F.HaveGPS = CurrGPSType != NoGPS;
+		GPSSerial = Usart2;
+		InitSerialPort(GPSSerial, false, false);
 		break;
 	default:
 		F.HaveGPS = false;
@@ -168,7 +168,7 @@ void InitTarget(void) {
 		InitSerialPort(RCSerial, false, CurrRxType == FutabaSBusRx);
 		break;
 	} // switch
-	
+
 	FrSkySerial = SoftSerial;
 	InitSoftSerialTxTimer();	
 	

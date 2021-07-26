@@ -94,8 +94,7 @@ real32 gen_random(int32 seed, real32 max);
 
 real32 Threshold(real32 v, real32 t);
 real32 DeadZone(real32 v, real32 t);
-real32 SlewLimit(real32 * Old, real32 New, const real32 Rate, real32 dT);
-int16 SensorSlewLimit(uint8 sensor, int16 * Old, int16 New, int16 Slew);
+real32 SlewLimit(real32 Old, real32 New, const real32 Rate, real32 dT);
 
 real32 Make2Pi(real32);
 real32 MakePi(real32);

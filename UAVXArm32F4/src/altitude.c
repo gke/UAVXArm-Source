@@ -64,12 +64,7 @@ filterStruct ROCTrackLPF, ROCLPF, DensityAltLPF, AccUBumpLPF;
 filterM3Struct BaroM3F, RangefinderM3F;
 filterStruct AccUMAF, BaroMAF;
 
-boolean GenerateFusionLog = false;
-
 real32 Airspeed;
-
-timemS AltitudemS;
-
 real32 BarodT, AltdT;
 
 uint8 BaroType = ms5611Baro;
@@ -353,7 +348,7 @@ void UpdateBaroVariance(real32 Alt) {
 	static real32 B[BARO_HIST_VAR_LENGTH] = { 0.0f, };
 	static idx i = 0;
 
-	if (F.Hovering || (State != InFlight)) {
+	if (F.Hovering) {
 
 		B[i++] = Alt;
 
@@ -368,6 +363,8 @@ void UpdateBaroVariance(real32 Alt) {
 
 void InitBaro(void) {
 	int16 BaroWarmupCycles;
+
+	static boolean First = true;
 
 	ms56IntervaluS = ms56xxSampleIntervaluS[MS56XXOSR >> 1];
 
@@ -391,6 +388,13 @@ void InitBaro(void) {
 			SIOTokenFree = true;
 			if (F.NewBaroValue) {
 				F.NewBaroValue = false;
+
+				if (First) {
+					OriginAltitude = RawDensityAltitude;
+					First = false;
+				} else
+					OriginAltitude = OriginAltitude * 0.9f + RawDensityAltitude * 0.1f;
+
 				BaroWarmupCycles++;
 			}
 		} while (BaroWarmupCycles < 200);
@@ -401,7 +405,6 @@ void InitBaro(void) {
 		RawDensityAltitude = 0.0f;
 	}
 
-	OriginAltitude = RawDensityAltitude;
 	SetDesiredAltitude(0.0f);
 
 } // InitBaro
@@ -409,7 +412,7 @@ void InitBaro(void) {
 void TrackOriginAltitude(void) {
 
 	WasUsingRF = false;
-	OriginAltitude = RawDensityAltitude;
+	OriginAltitude = KFDensityAltitude;
 	SetDesiredAltitude(0.0f);
 	if (F.GPSValid && (GPS.vAcc < GPSMinvAcc))
 		GPS.originAltitude = GPS.altitude;
@@ -595,7 +598,7 @@ void SetDesiredAltitude(real32 Desired) {
 
 void CaptureDesiredAltitude(real32 Desired) {
 
-	Alt.P.Desired =  Desired;
+	Alt.P.Desired = Desired;
 	SetDesiredAltitude(Desired);
 } //SetDesiredAltitude
 
@@ -627,7 +630,6 @@ void UpdateAltitudeEstimates(void) {
 	if (F.NewBaroValue) { // altitude is synchronised to baro regardless of actual sensor used!
 		F.NewBaroValue = false;
 
-		AltitudemS = mSClock();
 		AltdT = BarodT;
 
 		// do all for logging purposes
@@ -660,11 +662,8 @@ void UpdateAltitudeEstimates(void) {
 		ROCTrack = LPFn(&ROCTrackLPF, ROC, AltdT); // used for landing and cruise throttle tracking
 		F.AccUBump = LPFn(&AccUBumpLPF, AccU, AltdT) > ACCU_LANDING_MPS_S;
 
-#if defined(SEND_FUSION2)
-		if (GenerateFusionLog
-				&& ((State == InFlight) || (State == MonitorInstruments)))
-			SendFusion2Packet(TelemetrySerial, AltdT);
-#endif
+		if (CurrBBLogType == logAltitude)
+			SendAltitudeControlPacket(TelemetrySerial);
 
 		F.NewAltitudeValue = true;
 	}

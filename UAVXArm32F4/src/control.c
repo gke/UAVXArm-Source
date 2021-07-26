@@ -28,31 +28,28 @@ AltStruct Alt;
 
 real32 CameraAngle[3];
 real32 OrbitCamAngle = 0.0f;
-real32 TiltThrFF;
 
 idx AttitudeMode = AngleMode;
 real32 DesiredHeading, SavedHeading;
 real32 Altitude;
-real32 AltComp, ROC, MinROCMPS, MaxROCMPS, EffMinROCMPS;
-real32 TiltThrFFFrac = 0.0f;
-real32 TiltThrFFComp = 1.0f;
-real32 BattThrFFComp = 1.0f;
-real32 AltAccComp = 0.0f;
+real32 AltHoldThrComp, ROC, MinROCMPS, MaxROCMPS, EffMinROCMPS;
+
+real32 TiltThrScaleFrac = 0.0f;
+real32 TiltThrScale = 1.0f;
 real32 HorizonTransScale;
 real32 AngleRateMix = 1.0f;
 real32 StickDeadZone;
 real32 CruiseThrottle = 0.5f;
-real32 CruiseThrottleTrackingRate = 0.1f;
 real32 AltitudeHoldROCWindow = ALT_HOLD_MAX_ROC_MPS;
 real32 CurrMaxTiltAngle = 0.0f;
-real32 MaxAltComp = 0.05f;
+real32 MaxAltHoldThrComp = 0.05f;
 real32 TuneKpScale;
 int8 BeepTick = 0;
 real32 DesiredThrottle, IdleThrottle, InitialThrottle;
 real32 FWRollPitchFFFrac, FWAileronDifferentialFrac, FWPitchThrottleFFFrac,
-		MaxAltHoldCompFrac, FWMaxClimbAngleRad, FWBoardPitchAngleRad,
-		FWClimbThrottleFrac, FWSpoilerDecayS, FWAileronRudderFFFrac,
-		FWAltSpoilerFFFrac, VRSDescentRateMPS, FWRollControlPitchLimitRad;
+		FWMaxClimbAngleRad, FWBoardPitchAngleRad, FWClimbThrottleFrac,
+		FWSpoilerDecayS, FWAileronRudderFFFrac, FWAltSpoilerFFFrac,
+		VRSDescentRateMPS, FWRollControlPitchLimitRad;
 real32 FWGlideAngleOffsetRad = 0.0f;
 real32 ThrottleGain, AttitudeGainScale;
 real32 MaxAttitudeGainReduction = 0.0f;
@@ -62,10 +59,11 @@ boolean AltHoldAlarmActive = false;
 void DoSetPointSlews(void) {
 	idx a;
 
-	Alt.P.Desired = SlewLimit(&Alt.P.Desired, DesiredAlt, Alt.P.Max, dT);
+	Alt.P.Desired = SlewLimit(Alt.P.Desired, DesiredAlt, Alt.P.Max, dT);
 
 	for (a = Pitch; a <= Roll; a++)
-		A[a].NavCorr = SlewLimit(&A[a].NavCorr, A[a].DesiredNavCorr, A[a].R.Max, dT);
+		A[a].NavCorr = SlewLimit(A[a].NavCorr, A[a].DesiredNavCorr, A[a].R.Max,
+				dT);
 
 } // DoSetPointSlews
 
@@ -75,30 +73,23 @@ void ResetHeading(void) {
 } // SetDesiredHeading;
 
 void ZeroThrottleCompensation(void) {
-	AltComp = 0.0f;
-	BattThrFFComp = TiltThrFFComp = 1.0f;
+	AltHoldThrComp = 0.0f;
+	TiltThrScale = 1.0f;
 } // ZeroThrottleCompensation
 
-void CalcTiltThrFFComp(void) {
-	const real32 TiltFFLimit = 1.0f / cosf(NAV_MAX_ANGLE_RAD);
+void CalcTiltThrScale(void) {
+	const real32 TiltScaleLimit = 1.0f / cosf(NAV_MAX_ANGLE_RAD);
 	real32 Temp;
 
 	if (IsMulticopter && (State == InFlight) && F.UsingAngleControl) { // forget near level check
-		Temp = (1.0f / AttitudeCosine() - 1.0) * TiltThrFFFrac + 1.0f;
-		Temp = Limit(Temp, 1.0f, TiltFFLimit);
-		TiltThrFFComp = SlewLimit(&TiltThrFFComp, Temp, TiltFFLimit, dT);
+		Temp = (1.0f / AttitudeCosine() - 1.0) * TiltThrScaleFrac + 1.0f;
+		Temp = Limit(Temp, 1.0f, TiltScaleLimit);
+		TiltThrScale = SlewLimit(TiltThrScale, Temp, TiltScaleLimit, dT);
 	} else
-		TiltThrFFComp = 1.0f;
+		TiltThrScale = 1.0f;
 
-} // CalcTiltThrFFComp
+} // CalcTiltThrScale
 
-void CalcBattThrComp(void) {
-
-	BattThrFFComp =
-			IsMulticopter && (State == InFlight) && F.UsingAngleControl ?
-					BatterySagR : 1.0f;
-
-} // CalcBattThrComp
 
 void DisableFlightStuff(void) { // paranoid ;)
 
@@ -139,44 +130,22 @@ void DetermineInFlightThrottle(void) {
 
 // Altitude
 
+
 void TrackCruiseThrottle(void) {
-#define K_ALT_COMP  0.01f
-	real32 CruiseE;
-	static real32 AltCompP = 0.0f;
+#define CRUISE_TRACKING_RATE FromPercent(0.5f) // percent per second
 
 	F.Hovering = (Abs(ROCTrack) < AltitudeHoldROCWindow)
 			&& (DesiredThrottle > THR_MIN_ALT_HOLD_STICK);
 
 	if (!F.Emulation) {
 		if (F.Hovering) {
-
-			AltCompP = AltCompP * (1.0f - K_ALT_COMP) + AltComp * K_ALT_COMP;
-
-			CruiseE = ((DesiredThrottle + AltCompP) - CruiseThrottle) * 0.2f; // was 0.25
-			CruiseThrottle += CruiseE * AltdT;
+			CruiseThrottle = SlewLimit(CruiseThrottle,
+					DesiredThrottle + AltHoldThrComp,
+					CRUISE_TRACKING_RATE, AltdT);
 
 			CruiseThrottle = Limit(CruiseThrottle, THR_MIN_ALT_HOLD_STICK,
 					THR_MAX_ALT_HOLD_STICK);
 			SetP(EstCruiseThr, CruiseThrottle * 100.0f);
-		}
-	}
-} // TrackCruiseThrottle
-
-void TrackCruiseThrottle1420(void) {
-
-	F.Hovering = (Abs(ROCTrack) < AltitudeHoldROCWindow)
-			&& (DesiredThrottle > THR_MIN_ALT_HOLD_STICK);
-
-	if (!F.Emulation) {
-		if (F.Hovering) {
-			CruiseThrottle += (
-					((DesiredThrottle + AltComp) > CruiseThrottle) ?
-							CruiseThrottleTrackingRate :
-							-CruiseThrottleTrackingRate) * AltdT;
-
-			CruiseThrottle = Limit(CruiseThrottle, THR_MIN_ALT_HOLD_STICK,
-					THR_MAX_ALT_HOLD_STICK);
-			SetP(EstCruiseThr, Limit(CruiseThrottle * 100.0f, 20, 65)); // was 10, 65
 		}
 	}
 } // TrackCruiseThrottle
@@ -197,7 +166,7 @@ void DoROCControl(void) {
 	Alt.R.IntE = Limit1(Alt.R.IntE, Alt.R.IntLim);
 	Alt.R.ITerm = Alt.R.IntE;
 
-	AltComp = Limit1(Alt.R.PTerm + Alt.R.ITerm, MaxAltComp);
+	AltHoldThrComp = Limit1(Alt.R.PTerm + Alt.R.ITerm, MaxAltHoldThrComp);
 
 	CheckAltHoldAlarm();
 
@@ -227,7 +196,7 @@ void DeploySpoilers(real32 a) {
 
 	Sl = Limit(FWAltSpoilerFFFrac * (a / Alt.P.Max), 0.0, FWAltSpoilerFFFrac);
 	if (Sl > 0.0f)
-		AltComp = -1.0f;
+		AltHoldThrComp = -1.0f;
 
 } // DeploySpoilers
 
@@ -268,7 +237,7 @@ void AltitudeControlFW(void) {
 				//				: 0.0f; // TODO: slew
 				DeploySpoilers(Abs(t));
 				F.HoldingAlt = AltHoldAlarmActive = false;
-				AltComp = -1.0f;
+				AltHoldThrComp = -1.0f;
 			}
 		} else {
 			if (Navigating) { // Navigating - using CruiseThrottle
@@ -285,7 +254,8 @@ void AltitudeControlFW(void) {
 						AcquireAltitudeFW();
 					}
 				} else {
-					AltComp = DecayX(AltComp, Alt.R.IntLim * 0.33f, AltdT); // // give 3 seconds decay from max AltComp
+					AltHoldThrComp = DecayX(AltHoldThrComp,
+							Alt.R.IntLim * 0.33f, AltdT); // // give 3 seconds decay from max AltHoldThrComp
 					AHThrottle = DesiredThrottle;
 					CaptureDesiredAltitude(Altitude); // just track altitude
 					F.HoldingAlt = !ROCTooHigh(1.0f);
@@ -326,7 +296,8 @@ void AltitudeControl(void) {
 			}
 		} else {
 			// TODO: slew rather than decay?
-			AltComp = DecayX(AltComp, Alt.R.IntLim * 0.33f, AltdT); // give 3 seconds decay from max AltComp
+			AltHoldThrComp = DecayX(AltHoldThrComp, Alt.R.IntLim * 0.33f,
+					AltdT); // give 3 seconds decay from max AltHoldThrComp
 			AHThrottle = DesiredThrottle;
 			CaptureDesiredAltitude(Altitude); // just track altitude
 			F.HoldingAlt = !(F.ThrottleMoving || ROCTooHigh(0.25f));
@@ -335,22 +306,6 @@ void AltitudeControl(void) {
 
 } // AltitudeControl
 
-void AltitudeControlOLD(void) {
-
-	if (F.ForcedLanding || Navigating) { // autonomous
-		F.HoldingAlt = true;
-		AcquireAltitude();
-	} else if (F.ThrottleMoving || (ROCTooHigh(0.25f) && !F.HoldingAlt)) {
-		F.HoldingAlt = false;
-		SetDesiredAltitude(Altitude); // just track altitude
-		AltComp = 0.0f;
-	} else {
-		F.HoldingAlt = true;
-		TrackCruiseThrottle();
-		AcquireAltitude(); // using Stick Throttle NOT cruise throttle
-	}
-
-} // AltitudeControl
 
 void DoAltitudeControl(void) {
 
@@ -368,7 +323,7 @@ void DoAltitudeControl(void) {
 		} else {
 			F.RapidDescentHazard = ROC < VRSDescentRateMPS;
 			SetDesiredAltitude(Altitude);
-			AltComp = 0.0f;
+			AltHoldThrComp = 0.0f;
 			Sl = DecayX(Sl, FWSpoilerDecayS, AltdT);
 			F.HoldingAlt = false;
 		}
@@ -654,8 +609,7 @@ void DoControl(void) {
 
 	} else {
 
-		//CalcTiltThrFFComp();
-		//CalcBattThrComp(); // MUST HAVE VOLTAGE SENSOR
+		//CalcTiltThrScale();
 
 		DoTurnControl();
 
@@ -669,6 +623,20 @@ void DoControl(void) {
 				DoRateControl(a);
 				break;
 			} // switch
+	}
+
+	switch (CurrBBLogType) {
+	case logPitch:
+		SendAttitudeControlPacket(TelemetrySerial, Pitch);
+		break;
+	case logRoll:
+		SendAttitudeControlPacket(TelemetrySerial, Roll);
+		break;
+	case logYaw:
+		SendAttitudeControlPacket(TelemetrySerial, Yaw);
+		break;
+	default:
+		break;
 	}
 
 } // DoControl

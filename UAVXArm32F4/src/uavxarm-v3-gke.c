@@ -159,6 +159,7 @@ int main() {
 
 	SendFlightPacket(TelemetrySerial);
 	DoBeep(8, 2);
+
 	InitGPS(); // 11600mS !!!!!!
 
 	F.DrivesArmed = false;

@@ -36,7 +36,7 @@ real32 SavedDesiredAltitude;
 boolean NotDescending(void) {
 
 	//TODO:
-	return ((AltComp < -(Alt.R.IntLim * 0.75f)) && (ROCTrack > 0.2f));
+	return ((AltHoldThrComp < -(Alt.R.IntLim * 0.75f)) && (ROCTrack > 0.2f));
 
 } // NotDescending
 

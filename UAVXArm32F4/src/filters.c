@@ -526,30 +526,17 @@ real32 SF1eFilterAlpha(real32 rate, real32 cutoff) {
 
 //-----------------------------------------------------------------
 
-int16 SensorSlewLimit(uint8 sensor, int16 * O, int16 N, int16 Slew) {
-	int16 L, H;
 
-	L = *O - Slew;
-	H = *O + Slew;
-	if (N < L)
-		*O = L;
-	else if (N > H)
-		*O = H;
-	else
-		*O = N;
-	return (*O);
-} // SensorSlewLimit
-
-real32 SlewLimit(real32 * O, real32 N, const real32 Slew, real32 dT) {
+real32 SlewLimit(real32 O, real32 N, const real32 Slew, real32 dT) {
 	// DO NOT USE WHEN YOU HAVE 360DEG STEPS AS IT WILL NOT TRACK
 	real32 L, H, SlewD;
 
 	SlewD = Slew * dT;
 
-	L = *O - SlewD;
-	H = *O + SlewD;
-	*O = (N < L) ? L : ((N > H) ? H : N);
-	return (*O);
+	L = O - SlewD;
+	H = O + SlewD;
+	O = (N < L) ? L : ((N > H) ? H : N);
+	return (O);
 } // SlewLimit
 
 real32 Threshold(real32 v, real32 t) {

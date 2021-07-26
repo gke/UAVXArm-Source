@@ -8,6 +8,7 @@ SVN_REV := "$(shell "C:\Program Files (x86)\Subversion\bin\svnversion" -cn . | s
 
 INSTALL_DIR = "C:/Flight/gitHub/UAVXArm.git/UAVXArm/firmware"
 
+#STM32F407 VGT6 - Ming's Board
 #-------------------------------------------------------------
 
 #USE_CLI= CLI
@@ -16,6 +17,7 @@ INSTALL_DIR = "C:/Flight/gitHub/UAVXArm.git/UAVXArm/firmware"
 #BOARD= OMNIBUSF4V3
 #BOARD= OMNIBUSF4NXT
 #BOARD= DISCOVERYF4
+#BOARD= DEVEBOXF4
 #BOARD= UAVXF4V4 
 #BOARD= UAVXF4V3BBFLASH
 BOARD= UAVXF4V3

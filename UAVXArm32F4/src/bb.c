@@ -44,6 +44,7 @@ void UpdateBlackBox(void) {
 				BBQHead = (BBQHead + 1) & BBQ_BUFFER_MASK;
 				NVMemBuffer[i] = BBQ[BBQHead];
 			}
+
 			WriteNVMemBlock(CurrBBMemAddr, NVMemBlockSize, NVMemBuffer);
 			BBQEntries -= NVMemBlockSize;
 

@@ -280,6 +280,8 @@ void CalibrateHMC5XXX(uint8 s) {
 		memset(&MagSample, 0, sizeof(MagSample));
 
 		ss = 0;
+		Config.MagCal.Calibrated = 255;
+
 		mSTimer(MagnetometerUpdatemS, MAG_TIME_MS);
 
 		while (ss < MAG_CAL_SAMPLES)
@@ -315,17 +317,17 @@ void CalibrateHMC5XXX(uint8 s) {
 
 		Config.MagCal.Calibrated = 1;
 		F.MagnetometerCalibrated = true;
+		SendAckPacket(s, UAVXMiscPacketTag, 1);
 
 		DoBeep(8, 1);
 
 		ConfigChanged = true;
 		RefreshConfig();
 
-	}
+	} else
+		SendAckPacket(s, UAVXMiscPacketTag, 255);
 
 	LEDOff(ledBlueSel);
-
-	SendAckPacket(s, UAVXMiscPacketTag, F.MagnetometerCalibrated);
 
 } // CalibrateHMC5XXX
 

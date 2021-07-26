@@ -92,9 +92,9 @@ void DoEmulation(void) {
 		if (F.IsFixedWing) {
 
 			dThrottle
-					= Limit(DesiredThrottle + AltComp - CruiseThrottle, -1.0f, 1.0f);
+					= Limit(DesiredThrottle + AltHoldThrComp - CruiseThrottle, -1.0f, 1.0f);
 
-			Thrust = (DesiredThrottle + AltComp) * EM_MAX_THRUST_FW; // zzz needs tidying up
+			Thrust = (DesiredThrottle + AltHoldThrComp) * EM_MAX_THRUST_FW; // zzz needs tidying up
 			Airspeed
 					= Limit((1.0f + dThrottle) * EM_CRUISE_FW_MPS, AS_MIN_MPS, AS_MAX_MPS);
 
@@ -142,7 +142,7 @@ void DoEmulation(void) {
 			Aircraft[Pitch].Vel = -Airspeed; //-EM_CRUISE_MPS;
 
 		} else {
-			Thrust = (DesiredThrottle + AltComp) * EM_MAX_THRUST
+			Thrust = (DesiredThrottle + AltHoldThrComp) * EM_MAX_THRUST
 					* AttitudeCosine();
 			FakeAccZ = (Thrust - EM_MASS * GRAVITY_MPS_S - Drag(FakeROC))
 					* EM_MASS_R;

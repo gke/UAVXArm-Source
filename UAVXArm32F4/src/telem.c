@@ -47,6 +47,7 @@ uint32 TrackGPSInvalid = 0;
 
 uint8 TxPacketTag;
 uint8 CurrTelType = UAVXDJTTelemetry;
+uint8 CurrBBLogType = logUAVX;
 
 void TxNextLine(uint8 s) {
 	TxChar(s, ASCII_CR);
@@ -229,7 +230,6 @@ void CheckTelemetry(uint8 s) {
 
 } // CheckTelemetry
 
-
 #else
 
 void TxESCu8(uint8 s, uint8 ch) {
@@ -302,7 +302,6 @@ int32 UAVXPacketi32(uint8 p) {
 	temp |= (int32) UAVXPacket[p];
 	return temp;
 } // UAVXPacketi32
-
 
 //______________________________________________________________________________________________
 
@@ -385,8 +384,9 @@ void SendFlightPacket(uint8 s) {
 	SendPacketHeader(s);
 
 	TxESCu8(s, UAVXFlightPacketTag);
-	TxESCu8(s, TELEMETRY_FLAG_BYTES + 11 + 3 * 10 + 36 + 4 + 4 + 1
-			+ CurrMaxPWMOutputs * 3 + 3);
+	TxESCu8(s,
+			TELEMETRY_FLAG_BYTES + 11 + 3 * 10 + 36 + 4 + 4 + 1
+					+ CurrMaxPWMOutputs * 3 + 3);
 	for (b = 0; b < TELEMETRY_FLAG_BYTES; b++)
 		TxESCu8(s, F.AllFlags[b]);
 
@@ -413,9 +413,9 @@ void SendFlightPacket(uint8 s) {
 	TxESCi16(s, Heading * 1000.0f);
 	TxESCi16(s, DesiredHeading * 1000.0f);
 
-	TxESCi16(s, TiltThrFFComp * 1000.0f);
-	TxESCi16(s, BattThrFFComp * 1000.0f);
-	TxESCi16(s, AltComp * 1000.0f);
+	TxESCi16(s, TiltThrScale * 1000.0f);
+	TxESCi16(s, 0.0f * 1000.0f);
+	TxESCi16(s, AltHoldThrComp * 1000.0f);
 
 	TxESCi8(s, Limit(AccConfidence * 100.0f, 0, 100));
 	TxESCi16(s, BaroTemperature * 100.0f);
@@ -430,9 +430,9 @@ void SendFlightPacket(uint8 s) {
 
 	TxESCi16(s, MPU6XXXTemperature * 10.0f); // 0.1C
 
-	TxESCi16(
-			s,
-			Limit((100.0f * RateEnergySum) / (real32) RateEnergySamples, 0, 32000));
+	TxESCi16(s,
+			Limit((100.0f * RateEnergySum) / (real32 ) RateEnergySamples, 0,
+					32000));
 	TxESCi16(s, RadiansToDegrees(FWGlideAngleOffsetRad) * 10.0f);
 
 	SendNavState(s);
@@ -443,7 +443,6 @@ void SendFlightPacket(uint8 s) {
 
 	SendPacketTrailer(s);
 } // SendFlightPacket
-
 
 void SendControlPacket(uint8 s) {
 
@@ -465,7 +464,6 @@ void SendControlPacket(uint8 s) {
 	SendPacketTrailer(s);
 
 } // SendControlPacket
-
 
 void SendNavPacket(uint8 s) {
 
@@ -543,110 +541,99 @@ void SendSoaringPacket(uint8 s) {
 	 */
 } // SendSoaringPacket
 
-void SendFusionPacket(uint8 s) {
-	timemS NowmS;
+void SendAltitudeControlPacket(uint8 s) {
 
-	NowmS = mSClock();
+	// 65536 / (50Hz x 22 bytes) -> 1 minute only if logging
 
-	if (NowmS >= mS[TelemetryUpdatemS]) {
-		mSTimer(TelemetryUpdatemS, FUSION_TEL_INTERVAL_MS);
+	if ((State == InFlight) || (State == MonitorInstruments)) {
 
-		SendPacketHeader(s);
-
-		TxESCu8(s, UAVXFusionPacketTag);
-
-		TxESCu8(s, 51);
-
-		TxESCi32(s, AltitudemS);
-
-		TxESCi24(s, (RawDensityAltitude - OriginAltitude) * 1000.0f); // raw sensor value
-
-		TxESCi24(s, (KFDensityAltitude - OriginAltitude) * 1000.0f);
-		TxESCi16(s, KFROC * 1000.0f);
-		TxESCi16(s, AccU * 1000.0f);
-		TxESCi16(s, AccUBias * 1000.0f);
-
-		TxESCi16(s, TrackBaroVariance * 1000.0f);
-		TxESCi16(s, TrackAccUVariance * 1000.0f);
-
-		TxESCi24(s, Alt.P.Desired * 100.0f);
-		TxESCi16(s, Alt.P.Error * 1000.0f);
-		TxESCi16(s, Alt.P.PTerm * 1000.0f);
-		TxESCi16(s, Alt.P.ITerm * 1000.0f);
-
-		TxESCi16(s, Alt.R.Desired * 100.0f);
-		TxESCi16(s, Alt.R.Error * 1000.0f);
-		TxESCi16(s, Alt.R.PTerm * 1000.0f);
-		TxESCi16(s, Alt.R.ITerm * 1000.0f);
-
-		TxESCi16(s, CruiseThrottle * 1000.0f);
-		TxESCi16(s, DesiredThrottle * 1000.0f);
-		TxESCi16(s, AltComp * 1000.0f);
-
-		TxESCi24(s, (GPS.altitude - GPS.originAltitude) * 1000.0f);
-		TxESCi16(s, -GPS.velD * 1000.0f);
-
-		TxESCi16(s, BaroROC * 1000.0f);
-
-		//  "AH, VRS, TM, Alm,"
-
-		TxESCi8(s, (Navigating ? 8 : 0) + (F.RapidDescentHazard ? 4 : 0)
-				+ (F.ThrottleMoving ? 2 : 0) + (AltHoldAlarmActive ? 1 : 0));
-
-		SendPacketTrailer(s);
-
-	}
-
-} // SendFusionPacket
-
-void SendFusion2Packet(uint8 s, real32 AltdT) {
+		BlackBoxEnabled = true;
 
 		SendPacketHeader(s);
 
-		TxESCu8(s, UAVXFusion2PacketTag);
+		TxESCu8(s, UAVXAltitudeControlPacketTag);
 
-		TxESCu8(s, 24);
+		TxESCu8(s, 18);
 
-		TxESCi16(s, AltdT * 10000.0f);
 		TxESCi16(s, AccU * 1000.0f);
 		TxESCi16(s, AccUBias * 1000.0f);
 
-		TxESCi16(s, (GPS.altitude - GPS.originAltitude) * 100.0f);
 		TxESCi16(s, (RawDensityAltitude - OriginAltitude) * 100.0f); // raw sensor value
 		TxESCi16(s, (KFDensityAltitude - OriginAltitude) * 100.0f);
 
+		TxESCi16(s, Alt.P.Desired * 100.0f);
 
-		TxESCi16(s, -GPS.velD * 1000.0f);
 		TxESCi16(s, BaroROC * 1000.0f);
 		TxESCi16(s, KFROC * 1000.0f);
 
-		TxESCi16(s, CruiseThrottle * 1000.0f);
-		TxESCi16(s, DesiredThrottle * 1000.0f);
-		TxESCi16(s, AltComp * 1000.0f);
+		TxESCu8(s, BatteryVolts * 10.0f);
+		TxESCu8(s, CruiseThrottle * 200.0f);
+		TxESCu8(s, DesiredThrottle * 200.0f);
+		TxESCu8(s, AltHoldThrComp * 200.0f);
 
 		SendPacketTrailer(s);
 
-} // SendFusion2Packet
+		BlackBoxEnabled = false;
+	}
 
+} // SendAltitudeControlPacket
+
+void SendAttitudeControlPacket(uint8 s, idx a) {
+
+	// 65536 / ( 6 bytes * 250 Hz) -> 45 seconds
+
+	static boolean TickTock = false;
+
+	if ((State == InFlight) || (State == MonitorInstruments)) {
+
+		TickTock = !TickTock;
+		if (TickTock) {
+
+			BlackBoxEnabled = true;
+
+			SendPacketHeader(s);
+
+			TxESCu8(s, UAVXAttitudeControlPacketTag);
+
+			TxESCu8(s, 3);
+
+			TxESCi16(s, Rate[a] * 1000.0f);
+			TxESCi8(s, A[a].Out * 200.0f);
+
+			SendPacketTrailer(s);
+
+			BlackBoxEnabled = false;
+		}
+	}
+
+} // SendAttitudeControlPacket
 
 void SendCalibrationPacket(uint8 s) {
+	idx a, b;
+
 	SendPacketHeader(s);
-	idx a;
 
 	TxESCu8(s, UAVXCalibrationPacketTag);
-	TxESCu8(s, 2 + 64);
+	TxESCu8(s, TELEMETRY_FLAG_BYTES + 2 + 64);
+
+	for (b = 0; b < TELEMETRY_FLAG_BYTES; b++)
+		TxESCu8(s, F.AllFlags[b]);
 
 	TxESCi16(s, Config.GyroCal.ReferenceTemp * 10.0f);
 
 	for (a = X; a <= Z; a++) {
-		TxESCi16(s, RadiansToDegrees(Config.GyroCal.TempGradient[a])
-				* GyroScale[CurrAttSensorType] * 1000.0f);
-		TxESCi16(s, RadiansToDegrees(Config.GyroCal.Bias[a])
-				* GyroScale[CurrAttSensorType] * 1000.0f);
+		TxESCi16(s,
+				RadiansToDegrees(Config.GyroCal.TempGradient[a])
+						* GyroScale[CurrAttSensorType] * 1000.0f);
+		TxESCi16(s,
+				RadiansToDegrees(Config.GyroCal.Bias[a])
+						* GyroScale[CurrAttSensorType] * 1000.0f);
 
-		TxESCi16(s, Config.AccCal.Scale[a] * MPU_1G * GRAVITY_MPS_S_R * 1000.0f);
-		TxESCi16(s, Config.AccCal.Bias[a] * Config.AccCal.Scale[a]
-				* GRAVITY_MPS_S_R * 1000.0f);
+		TxESCi16(s,
+				Config.AccCal.Scale[a] * MPU_1G * GRAVITY_MPS_S_R * 1000.0f);
+		TxESCi16(s,
+				Config.AccCal.Bias[a] * Config.AccCal.Scale[a] * GRAVITY_MPS_S_R
+						* 1000.0f);
 
 		TxESCi16(s, MagScale[a] * 1000.0f);
 		TxESCi16(s, Config.MagCal.Bias[a] * 1000.0f);
@@ -658,14 +645,12 @@ void SendCalibrationPacket(uint8 s) {
 	TxESCi16(s, CurrGyroLPFHz);
 	TxESCi16(s, CurrYawLPFHz);
 	TxESCi16(s, CurrServoLPFHz);
-	TxESCi16(s, 0); //gyroGlitches);
 
-	for (a = 24; a < 32; a++)
+	for (a = 23; a < 32; a++)
 		TxESCi16(s, -1);
 
 	SendPacketTrailer(s);
 } // SendCalibrationPacket
-
 
 #define MAX_GUI_DEF_PARAM_SETS 20
 
@@ -693,13 +678,12 @@ void SendDefAFNames(uint8 s) {
 
 } // SendDefAFNames
 
-
 void SendParamsPacket(uint8 s, uint8 GUIPS) {
 	idx p;
 	const char * ResetCauseName = ResetCauseNames[ResetCause];
 
-	if ((State == Preflight) || (State == Ready) || (State
-			== MonitorInstruments)) {
+	if ((State == Preflight) || (State == Ready)
+			|| (State == MonitorInstruments)) {
 
 		SendDefAFNames(s); // refresh
 
@@ -777,11 +761,11 @@ void SendSerialPortStatus(uint8 s) {
 	TxESCu8(s, UAVXSerialPortPacketTag);
 	TxESCu8(s, 13); // 18
 
-
 	TxESCu8(s, MAX_SERIAL_PORTS);
 	TxESCi16(s, SERIAL_BUFFER_SIZE);
 
-	TxESCu8(s, (TxOverflow[TelemetrySerial] << 1) | RxOverflow[TelemetrySerial]);
+	TxESCu8(s,
+			(TxOverflow[TelemetrySerial] << 1) | RxOverflow[TelemetrySerial]);
 	TxESCi16(s, TxQEntries[TelemetrySerial]);
 	TxESCi16(s, RxQEntries[TelemetrySerial]);
 	TxQEntries[TelemetrySerial] = RxQEntries[TelemetrySerial] = 0;
@@ -824,7 +808,6 @@ void SendBBPacket(uint8 s, int32 seqNo, uint8 l, int8 * B) {
 
 } // SendBBPacket
 
-
 void SendMinPacket(uint8 s) {
 	idx b;
 
@@ -861,7 +844,6 @@ void SendMinPacket(uint8 s) {
 	SendPacketTrailer(s);
 
 } // SendMinPacket
-
 
 void SendMinimOSDPacket(uint8 s) {
 
@@ -906,7 +888,6 @@ void SendMinimOSDPacket(uint8 s) {
 	SendPacketTrailer(s);
 
 } // SendMinimOSD
-
 
 void SendOriginPacket(uint8 s) {
 	MissionStruct * M;
@@ -956,7 +937,6 @@ void SendWindPacket(uint8 s) {
 
 } // SendWindPacket
 
-
 void SendGuidancePacket(uint8 s) {
 
 	if ((State == InFlight) && F.OriginValid) {
@@ -1005,7 +985,6 @@ void SendWPPacket(uint8 s, uint8 wp) {
 	SendPacketTrailer(s);
 } // SendMissionWPPacket
 
-
 void SendMission(uint8 s) {
 	uint8 wp;
 
@@ -1016,11 +995,9 @@ void SendMission(uint8 s) {
 	SendOriginPacket(s);
 } // SendMission
 
-
 //______________________________________________________________________________________________
 
 //UAVX Telemetry
-
 
 void SetTelemetryBaudRate(uint8 s, uint32 b) {
 	static uint32 CurrTelemetryBaudRate = 42;
@@ -1036,12 +1013,11 @@ void SetTelemetryBaudRate(uint8 s, uint32 b) {
 
 // Rx UAVX Packets
 
-
 void ProcessParamsPacket(uint8 s) {
 	uint8 p;
 
-	if ((State == Preflight) || (State == Ready) || (State
-			== MonitorInstruments)) { // not inflight
+	if ((State == Preflight) || (State == Ready)
+			|| (State == MonitorInstruments)) { // not inflight
 
 		Config.CurrPS = 0;
 
@@ -1090,7 +1066,6 @@ void ProcessOriginPacket(uint8 s) {
 	UpdateNavMission();
 
 } // ProcessOriginPacket
-
 
 void ProcessGPSPassThru(void) {
 
@@ -1203,8 +1178,7 @@ void ProcessRxPacket(uint8 s) {
 				SendCalibrationPacket(s);
 				break;
 			case miscCalMag:
-				if (F.MagnetometerActive)
-					CalibrateHMC5XXX(s);
+				CalibrateHMC5XXX(s);
 				SendCalibrationPacket(s);
 				break;
 			case miscLB:
@@ -1322,23 +1296,20 @@ void SendUAVXTelemetry(uint8 s) {
 } // UseUAVXTelemetry
 
 void CheckTelemetry(uint8 s) {
-	timemS NowmS;
 
 	UAVXPollRx(s);
 
 	SendFrSkyTelemetry(FrSkySerial); // always send
 
-	BlackBoxEnabled = (State == InFlight) || (State == MonitorInstruments);
+	if ((State == InFlight) || (State == MonitorInstruments)) {
+		if (CurrBBLogType == logUAVX) {
+			BlackBoxEnabled = true;
+			SendUAVXTelemetry(s);
+			BlackBoxEnabled = false;
 
-	if (GenerateFusionLog
-			&& ((State == InFlight) || (State == MonitorInstruments))) {
-#if !defined(SEND_FUSION2)
-		SendFusionPacket(s);
-#endif
+		}
 	} else
 		SendUAVXTelemetry(s);
-
-	BlackBoxEnabled = false;
 
 	UpdateBlackBox();
 
