@@ -24,10 +24,6 @@
 
 extern uint8 CurrIMUOption;
 
-enum IMUOptions {
-	useIMU0, useIMU1, useBothIMUs, unknownIMUOption
-};
-
 void InitMadgwick(void);
 void UpdateInertial(void);
 void UpdateAccUVariance(real32 AccU);

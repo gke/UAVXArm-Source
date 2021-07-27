@@ -30,8 +30,6 @@ HistStruct AccUF;
 
 real32 EstMagHeading = 0.0f;
 
-uint8 CurrIMUOption = unknownIMUOption;
-
 real32 CalculateAccConfidence(real32 AccMag) {
 	// Gaussian decay in accelerometer value belief
 	static real32 confp = 1.0f;
@@ -342,8 +340,8 @@ void UpdateInertial(void) {
 	if (F.Emulation && (State == InFlight))
 		DoEmulation(); // produces Accs, ROC, Altitude etc.
 	else {
-		ReadFilteredGyroAndAcc(imuSel);
-		ScaleRateAndAcc(imuSel);
+		ReadFilteredGyroAndAcc();
+		ScaleRateAndAcc();
 		GetMagnetometer();
 	}
 

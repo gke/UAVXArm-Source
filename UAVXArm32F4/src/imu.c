@@ -23,16 +23,9 @@
 #include "UAVX.h"
 
 // ITG3200  1.214142088
-const real32 GyroScale[] = { //
-		13.0834, // MLX90609
-				6.98131, // ADXRS613/150
-				15.8666, // ST-AY530 0.0041
-				17.4532, // ADXRS610/300
-				0.001064225154f, // UAVXArm32IMU
-				0.001064225154f, // FreeIMU
-				0.001064225154f };
+const real32 GyroScale = 0.001064225154f; // MPUxxxx
 
-uint8 CurrAttSensorType = UAVXArm32IMU;
+uint8 CurrIMUFilterType = LPFilt;
 
 real32 GyroBias[3];
 real32 Acc[3], Rate[3], IntRate[3], Angle[3];
@@ -46,17 +39,16 @@ const boolean UsingPavelFilter = false; // don't bother using
 // P,R,Y
 // BF, LR, UD
 
-
-void ScaleRateAndAcc(uint8 imuSel) {
+void ScaleRateAndAcc(void) {
 	idx a;
 
-	UpdateGyroTempComp(imuSel);
+	UpdateGyroTempComp();
 
 	if (VTOLMode) {
 
-		Rate[Pitch] = (RawGyro[X] - GyroBias[X]) * GyroScale[CurrAttSensorType];
-		Rate[Yaw] = -(RawGyro[Y] - GyroBias[Y]) * GyroScale[CurrAttSensorType];
-		Rate[Roll] = -(RawGyro[Z] - GyroBias[Z]) * GyroScale[CurrAttSensorType];
+		Rate[Pitch] = (RawGyro[X] - GyroBias[X]) * GyroScale;
+		Rate[Yaw] = -(RawGyro[Y] - GyroBias[Y]) * GyroScale;
+		Rate[Roll] = -(RawGyro[Z] - GyroBias[Z]) * GyroScale;
 
 		Acc[UD] = -(RawAcc[Y] - Config.AccCal.Bias[Y]) * Config.AccCal.Scale[Y];
 		Acc[LR] = (RawAcc[X] - Config.AccCal.Bias[X]) * Config.AccCal.Scale[X];
@@ -65,9 +57,9 @@ void ScaleRateAndAcc(uint8 imuSel) {
 
 	} else {
 
-		Rate[Pitch] = (RawGyro[X] - GyroBias[X]) * GyroScale[CurrAttSensorType];
-		Rate[Roll] = (RawGyro[Y] - GyroBias[Y]) * GyroScale[CurrAttSensorType];
-		Rate[Yaw] = -(RawGyro[Z] - GyroBias[Z]) * GyroScale[CurrAttSensorType];
+		Rate[Pitch] = (RawGyro[X] - GyroBias[X]) * GyroScale;
+		Rate[Roll] = (RawGyro[Y] - GyroBias[Y]) * GyroScale;
+		Rate[Yaw] = -(RawGyro[Z] - GyroBias[Z]) * GyroScale;
 
 		Acc[BF] = (RawAcc[Y] - Config.AccCal.Bias[Y]) * Config.AccCal.Scale[Y];
 		Acc[LR] = (RawAcc[X] - Config.AccCal.Bias[X]) * Config.AccCal.Scale[X];
@@ -76,7 +68,7 @@ void ScaleRateAndAcc(uint8 imuSel) {
 
 } // ScaleRateAndAcc
 
-void ErectGyros(uint8 imuSel) {
+void ErectGyros(uint8 imuFilterSel) {
 
 	static boolean First = true;
 	idx a;
@@ -131,7 +123,6 @@ void ErectGyros(uint8 imuSel) {
 
 /// Initialise all inertial filters in one place
 
-
 real32 CurrAccLPFHz = 20.0f;
 real32 CurrGyroLPFHz = 100.0f;
 real32 CurrYawLPFHz = 75.0f;
@@ -140,19 +131,15 @@ real32 CurrAltLPFHz = 10.0f;
 
 filterM3Struct AccUM3F;
 filterStruct AccF[3], GyroF[3], SensorTempF;
-filterStructABG ABGF[3];
+filterStructABG ABGGyroF[3], ABGAccF[3];
 
 void InitInertialFilters(void) {
+	idx a;
 
 	const idx GyroLPFOrder = 2;
 	const idx YawLPFOrder = 2;
 	const idx AccLPFOrder = 2;
-
 	const idx DerivLPFOrder = 1;
-
-	idx a;
-
-	const real32 rKF = 88;
 
 	LPF1DriveK = initLPF1Coefficient(CurrGyroLPFHz, CurrPIDCycleS);
 	LPF1ServoK = initLPF1Coefficient(CurrServoLPFHz, CurrPIDCycleS);
@@ -161,17 +148,37 @@ void InitInertialFilters(void) {
 	CurrGyroLPFHz = MPUGyroLPFHz[CurrGyroLPFSel];
 
 	for (a = X; a <= Z; a++) {
+		switch (CurrIMUFilterType) {
+		case MPUFilt:
+			initLPFn(&A[a].R.RateF, DerivLPFOrder,
+					(a != Z ? CurrGyroLPFHz : CurrYawLPFHz) * 0.6f); // derivative
+			break;
+		case ABGFilt:
+// *******************************************************
+			//initABGLPF(&ABGAccF[a], ABGalpha, ABGType);
+			initLPFn(&AccF[a], AccLPFOrder, CurrAccLPFHz);
+			initABGLPF(&ABGGyroF[a], ABGalpha, ABGType);
+// *******************************************************
+			initLPFn(&A[a].R.RateF, DerivLPFOrder,
+					(a != Z ? CurrGyroLPFHz : CurrYawLPFHz) * 0.6f); // derivative
+			break;
+		default:
+		case LPFilt:
+			initLPFn(&AccF[a], AccLPFOrder, CurrAccLPFHz);
 
-		initLPFn(&AccF[a], AccLPFOrder, CurrAccLPFHz);
+			if (a != Z) {
+				initLPFn(&GyroF[a], GyroLPFOrder, CurrGyroLPFHz);
+				initLPFn(&A[a].R.RateF, DerivLPFOrder, CurrGyroLPFHz * 0.6f); // derivative
+			} else {
+				initLPFn(&GyroF[a], GyroLPFOrder, CurrYawLPFHz);
+				initLPFn(&A[a].R.RateF, DerivLPFOrder, CurrYawLPFHz * 0.6f); // derivative
+			}
 
-		if (a != Z) {
-			initLPFn(&GyroF[a], GyroLPFOrder, CurrGyroLPFHz);
-			initLPFn(&A[a].R.RateF, DerivLPFOrder, CurrGyroLPFHz * 0.6f); // derivative
-		} else {
-			initLPFn(&GyroF[a], GyroLPFOrder, CurrYawLPFHz);
-			initLPFn(&A[a].R.RateF, DerivLPFOrder, CurrYawLPFHz * 0.6f); // derivative
-		}
+			break;
+		} // switch
+	}
 
+	for (a = X; a <= Z; a++) {
 		// Pavel Holoborodko, see http://www.holoborodko.com/pavel/numerical-methods/
 		// numerical-derivative/smooth-low-noise-differentiators/
 		const real32 C[] = { 0.375f, 0.5f, -0.5f, -0.75, 0.125f, 0.25f };
@@ -188,7 +195,7 @@ void InitInertialFilters(void) {
 
 } // InitInertialFilters
 
-void InitIMU(uint8 imuSel) {
+void InitIMU(void) {
 	idx a;
 	boolean r;
 
@@ -198,10 +205,9 @@ void InitIMU(uint8 imuSel) {
 	memset(&Acc, 0, sizeof(Acc[3]));
 	Acc[Z] = -GRAVITY_MPS_S;
 
-	InitMPU6XXX(imuSel);
+	InitMPU6XXX();
 
 	F.AccCalibrated = F.IMUCalibrated = Config.AccCal.Calibrated == 1;
 
 } // InitIMU
-
 

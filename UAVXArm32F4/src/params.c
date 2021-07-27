@@ -262,8 +262,10 @@ boolean CurrAltFiltersChanged(void) {
 
 boolean CurrInertialFiltersChanged(void) {
 
-	return (CurrAccLPFSel != P(AccLPFSel)) //
-	|| (CurrGyroLPFSel != P(GyroLPFSel)) //
+	return
+			(CurrIMUFilterType != P(IMUFiltType))
+			|| (CurrAccLPFSel != P(AccLPFSel)) //
+			|| (CurrGyroLPFSel != P(GyroLPFSel)) //
 			|| (CurrYawLPFHz != P(YawLPFHz)) //
 			|| (CurrServoLPFHz != P(ServoLPFHz));
 
@@ -282,9 +284,7 @@ void UpdateParameters(void) {
 
 	if ((State == Preflight) || (State == Ready)
 			|| (State == MonitorInstruments)) { // PARANOID
-		if ((CurrIMUOption != P(IMUOption)) //
-		|| (ArmingMethod != P(ArmingMode)) //
-				|| (CurrAttSensorType != P(SensorHint)) //
+		if ( (ArmingMethod != P(ArmingMode)) //
 				|| (CurrRxType != P(RxType)) //
 				|| (CurrConfig1 != P(Config1Bits)) //
 				|| (CurrConfig2 != P(Config2Bits)) //
@@ -501,7 +501,7 @@ void DoStickProgramming(void) {
 				AccTrimStickAdjust(BFTrim, LRTrim);
 				// updated in Landing or disarm UpdateConfig();
 
-				UpdateGyroTempComp(imuSel);
+				UpdateGyroTempComp();
 				LEDToggle(ledBlueSel);
 				DoBeep(1, 0);
 
@@ -557,13 +557,12 @@ void ConditionParameters(void) {
 
 	ClassifyAFType();
 
-	CurrIMUOption = P(IMUOption);
+	CurrIMUFilterType = P(IMUFiltType);
 
 	ArmingMethod = P(ArmingMode);
 
 	CurrTelType = P(TelemetryType);
 	CurrBBLogType = P(BBLogType); //LimitP(BBLogType, logUAVX, logYaw);
-	CurrAttSensorType = P(SensorHint);
 
 	CurrRxType = P(RxType);
 
@@ -590,9 +589,6 @@ void ConditionParameters(void) {
 	SetPIDPeriod();
 
 	MultiPropSense = ((P(Config2Bits) & UsePropSenseMask) != 0) ? -1.0f : 1.0f;
-
-	F.UsingAnalogGyros = (CurrAttSensorType != UAVXArm32IMU)
-			&& (CurrAttSensorType != FreeIMU);
 
 	UpdateParameters();
 

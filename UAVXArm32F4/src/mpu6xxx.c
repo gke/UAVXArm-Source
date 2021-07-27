@@ -18,7 +18,6 @@
 //    You should have received a copy of the GNU General Public License aint32 with this program.
 //    If not, see http://www.gnu.org/licenses/
 
-
 #include "UAVX.h"
 
 // 0.97, 2.9, 3.9, 5.9, 9.9, 17.85, 33.48ms
@@ -30,8 +29,8 @@ const uint16 MPUAccLPFHz[] = { 480, 184, 92, 41, 20, 10, 5, 460 };
 uint8 CurrAccLPFSel = 4; // V4 Board acc is always 1Khz sampling
 
 const uint8 MPUDLPFMask[] = { MPU_RA_DLPF_BW_256, MPU_RA_DLPF_BW_188,
-		MPU_RA_DLPF_BW_98, MPU_RA_DLPF_BW_42, MPU_RA_DLPF_BW_20,
-		MPU_RA_DLPF_BW_10, MPU_RA_DLPF_BW_5 };
+MPU_RA_DLPF_BW_98, MPU_RA_DLPF_BW_42, MPU_RA_DLPF_BW_20,
+MPU_RA_DLPF_BW_10, MPU_RA_DLPF_BW_5 };
 
 const char * DHPFName[] = { "Reset/0Hz", "5Hz", "2.5Hz", "1.25Hz", "0.63Hz",
 		"?", "?", "Hold" };
@@ -41,9 +40,6 @@ uint8 MPU6XXXRev;
 uint8 MPU6XXXDLPF = 0;
 uint8 MPU6000DLPF = 0;
 uint8 MPU6XXXDHPF = 0;
-
-uint8 DisableGyroDLPF = 1;
-uint8 DisableAccDLPF = 1;
 
 const real32 MPU6XXXRefTemperature = 21.0f;
 
@@ -58,8 +54,7 @@ int32 BP[3] = { 0, };
 
 // Roll Right +, Pitch Up +, Yaw ACW +
 
-
-void UpdateMPU6XXXTemperature(uint8 imuSel, int16 T, real32 TempdT) {
+void UpdateMPU6XXXTemperature(int16 T, real32 TempdT) {
 	real32 R;
 
 	switch (busDev[imuSel].type) {
@@ -79,8 +74,7 @@ void UpdateMPU6XXXTemperature(uint8 imuSel, int16 T, real32 TempdT) {
 
 } // UpdateMPU6XXXTemperature
 
-
-void ReadRawAccAndGyro(uint8 imuSel) {
+void ReadRawAccAndGyro(void) {
 	int16 B[7];
 	int32 RateD;
 	idx a;
@@ -98,8 +92,7 @@ void ReadRawAccAndGyro(uint8 imuSel) {
 
 } // ReadRawAccAndGyro
 
-
-void ReadFilteredGyroAndAcc(uint8 imuSel) {
+void ReadFilteredGyroAndAcc(void) {
 	static timeuS LastUpdateuS = 0;
 	timeuS NowuS;
 	real32 dT;
@@ -109,21 +102,30 @@ void ReadFilteredGyroAndAcc(uint8 imuSel) {
 	dT = (NowuS - LastUpdateuS) * 0.000001f;
 	LastUpdateuS = NowuS;
 
-	ReadRawAccAndGyro(imuSel);
+	ReadRawAccAndGyro();
 
-	if (DisableAccDLPF == 1)
-		for (a = X; a <= Z; a++)
+	for (a = X; a <= Z; a++)
+		switch (CurrIMUFilterType) {
+		case MPUFilt:
+			// using hardware DLPFs
+			break;
+		case ABGFilt:
+			//ABGLPF(&ABGAccF[a], RawAcc[a], dT);
 			RawAcc[a] = LPFn(&AccF[a], RawAcc[a], dT);
-
-	if (DisableGyroDLPF == 1)
-		for (a = X; a <= Z; a++)
+			ABGLPF(&ABGGyroF[a], RawGyro[a], dT);
+			break;
+		case LPFilt:
+		default:
+			RawAcc[a] = LPFn(&AccF[a], RawAcc[a], dT);
 			RawGyro[a] = LPFn(&GyroF[a], RawGyro[a], dT);
+			break;
+		}
 
-	UpdateMPU6XXXTemperature(imuSel, RawMPU6XXXTemperature, dT);
+	UpdateMPU6XXXTemperature(RawMPU6XXXTemperature, dT);
 
 } //ReadFilteredGyroAndAcc
 
-void CalibrateAccZeros(uint8 s, uint8 imuSel) {
+void CalibrateAccZeros(uint8 s) {
 	// Simple recalibration of accelerometers
 	const int16 Samples = 300;
 	const real32 SamplesR = 1.0f / (real32) Samples;
@@ -138,16 +140,16 @@ void CalibrateAccZeros(uint8 s, uint8 imuSel) {
 	for (c = X; c <= Z; c++) {
 		a[c] = g[c] = 0.0f;
 		Config.AccCal.Scale[c] = DEF_ACC_SCALE;
-		Config.AccCal.Bias[c] = Config.GyroCal.TempGradient[c] = Config.GyroCal.Bias[c]
-				= 0.0f;
+		Config.AccCal.Bias[c] = Config.GyroCal.TempGradient[c] =
+				Config.GyroCal.Bias[c] = 0.0f;
 	}
 	t = 0.0f;
 
 	Delay1uS(2000);
-	ReadFilteredGyroAndAcc(imuSel);
+	ReadFilteredGyroAndAcc();
 	for (i = 0; i < Samples; i++) {
 		Delay1uS(2000);
-		ReadFilteredGyroAndAcc(imuSel);
+		ReadFilteredGyroAndAcc();
 		t += MPU6XXXTemperature;
 		RawAcc[Z] -= MPU_1G;
 		for (c = X; c <= Z; c++) {
@@ -182,8 +184,7 @@ void CalibrateAccZeros(uint8 s, uint8 imuSel) {
 
 } // CalibrateAccZero
 
-
-void CalibrateAccAndGyro(uint8 s, uint8 imuSel) {
+void CalibrateAccAndGyro(uint8 s) {
 	// (C) G.K. Egan 2012
 	// Basic idea from MEMSIC #AN-00MX-002 Ricardo Dao 4 Nov 2002
 	// gyro and acc temperature calibration using linear compensation
@@ -209,19 +210,19 @@ void CalibrateAccAndGyro(uint8 s, uint8 imuSel) {
 		for (i = 0; i <= 1; i++)
 			a[i][c] = g[i][c] = t[i] = 0.0f;
 		Config.AccCal.Scale[c] = DEF_ACC_SCALE;
-		Config.AccCal.Bias[c] = Config.GyroCal.TempGradient[c] = Config.GyroCal.Bias[c]
-				= 0.0f;
+		Config.AccCal.Bias[c] = Config.GyroCal.TempGradient[c] =
+				Config.GyroCal.Bias[c] = 0.0f;
 	}
 
 	ts = 0;
 	ThresholdT = -100.0f;
 	do {
 		Delay1uS(IntervaluS);
-		ReadFilteredGyroAndAcc(imuSel);
+		ReadFilteredGyroAndAcc();
 		if (MPU6XXXTemperature > ThresholdT) {
 			for (i = 0; i < Samples; i++) {
 				Delay1mS(2);
-				ReadFilteredGyroAndAcc(imuSel);
+				ReadFilteredGyroAndAcc();
 				t[ts] += MPU6XXXTemperature;
 				RawAcc[Z] -= MPU_1G;
 				for (c = X; c <= Z; c++) {
@@ -273,21 +274,20 @@ void CalibrateAccAndGyro(uint8 s, uint8 imuSel) {
 
 } // CalibrateAccAndGyro
 
-
-void UpdateGyroTempComp(uint8 imuSel) {
+void UpdateGyroTempComp(void) {
 	int32 a;
 
 	for (a = X; a <= Z; a++)
 #if defined(UAVXF4V4) // SPI temperature "unreliable"
 		GyroBias[a] = Config.GyroCal.Bias[a];
 #else
-		GyroBias[a] = Config.GyroCal.Bias[a] + Config.GyroCal.TempGradient[a]
-				* (MPU6XXXTemperature - Config.GyroCal.ReferenceTemp);
+		GyroBias[a] = Config.GyroCal.Bias[a]
+				+ Config.GyroCal.TempGradient[a]
+						* (MPU6XXXTemperature - Config.GyroCal.ReferenceTemp);
 #endif
 } // UpdateGyroTempComp
 
-
-void InitMPU6XXX(uint8 imuSel) {
+void InitMPU6XXX(void) {
 
 	// THE MPU6000? USED ON UAVXARM32F4V4 NANO BOARDS ARE VERY VERY NOISY.
 	// MUCH MORE SO THAN ON OMNIBUS CLONES AND THE V3 I2C MPU6050 - CHECK WITH KEN.
@@ -297,8 +297,11 @@ void InitMPU6XXX(uint8 imuSel) {
 	// THE UPDATING OF REGISTERS IS ASYNCHRONOUS
 	// THE MPU6050 HAS COMMON DLPF CONFIG FOR ACC/GYRO, THE MPU6500 HAS A SEPARATE DLPF CONFIG FOR ACC
 
-	CheckMPU6XXXActive(imuSel);
+	CheckMPU6XXXActive();
 	Delay1mS(100); // was 5
+
+	uint8 DisableAccDLPF = CurrIMUFilterType == MPUFilt ? 1:0;
+	uint8 DisableGyroDLPF = CurrIMUFilterType == MPUFilt ? 1:0;
 
 	switch (busDev[imuSel].type) {
 	case mpu6050IMU:
@@ -314,19 +317,19 @@ void InitMPU6XXX(uint8 imuSel) {
 		MPU6XXXRev = SIORead(imuSel, MPU_RA_PRODUCT_ID);
 
 		SIOWrite(imuSel, MPU_RA_GYRO_CONFIG, (MPU_RA_GYRO_FS_2000 << 3));
-		SIOWriteataddr(imuSel, MPU_RA_ACC_CONFIG, (MPU_RA_ACC_FS_4 << 3)
-				| MPU_RA_DHPF_1P25);
+		SIOWriteataddr(imuSel, MPU_RA_ACC_CONFIG,
+				(MPU_RA_ACC_FS_4 << 3) | MPU_RA_DHPF_1P25);
 
-		SIOWriteataddr(imuSel, MPU_RA_ACC_CONFIG2, (DisableAccDLPF << 3)
-				& MPUDLPFMask[CurrAccLPFSel]);
+		SIOWriteataddr(imuSel, MPU_RA_ACC_CONFIG2,
+				(DisableAccDLPF << 3) & MPUDLPFMask[CurrAccLPFSel]);
 
-		SIOWrite(imuSel, MPU_RA_INT_PIN_CFG, (1
-				<< MPU_RA_INTCFG_I2C_BYPASS_EN_BIT));
+		SIOWrite(imuSel, MPU_RA_INT_PIN_CFG,
+				(1 << MPU_RA_INTCFG_I2C_BYPASS_EN_BIT));
 
 		Delay1mS(100);
 
-		SIOWriteataddr(imuSel, MPU_RA_CONFIG, (DisableGyroDLPF << 3)
-				& MPUDLPFMask[CurrGyroLPFSel]);
+		SIOWriteataddr(imuSel, MPU_RA_CONFIG,
+				(DisableGyroDLPF << 3) & MPUDLPFMask[CurrGyroLPFSel]);
 
 		Delay1mS(100);
 
@@ -354,17 +357,16 @@ void InitMPU6XXX(uint8 imuSel) {
 
 		SIOWrite(imuSel, MPU_RA_GYRO_CONFIG, (MPU_RA_GYRO_FS_2000 << 3));
 
-		SIOWriteataddr(imuSel, MPU_RA_ACC_CONFIG, (MPU_RA_ACC_FS_4 << 3)
-				| MPU_RA_DHPF_1P25);
+		SIOWriteataddr(imuSel, MPU_RA_ACC_CONFIG,
+				(MPU_RA_ACC_FS_4 << 3) | MPU_RA_DHPF_1P25);
 
-		uint8 DisableAccDLPF = 1;
-		SIOWriteataddr(imuSel, MPU_RA_ACC_CONFIG2, (DisableAccDLPF << 3)
-				& MPUDLPFMask[CurrAccLPFSel]);
+		SIOWriteataddr(imuSel, MPU_RA_ACC_CONFIG2,
+				(DisableAccDLPF << 3) & MPUDLPFMask[CurrAccLPFSel]);
 
 		Delay1mS(100);
 
-		SIOWriteataddr(imuSel, MPU_RA_CONFIG, (DisableGyroDLPF << 3)
-				& MPUDLPFMask[CurrGyroLPFSel]);
+		SIOWriteataddr(imuSel, MPU_RA_CONFIG,
+				(DisableGyroDLPF << 3) & MPUDLPFMask[CurrGyroLPFSel]);
 
 		Delay1mS(100);
 
@@ -377,14 +379,12 @@ void InitMPU6XXX(uint8 imuSel) {
 
 } // InitMPU6XXX
 
-
-boolean MPU6XXXReady(uint8 imuSel) {
+boolean MPU6XXXReady(void) {
 
 	return (SIORead(imuSel, MPU_RA_INT_STATUS) && 1) != 0;
 } // MPU6XXXReady
 
-
-void CheckMPU6XXXActive(uint8 imuSel) {
+void CheckMPU6XXXActive(void) {
 	boolean r;
 
 	Delay1mS(35);
@@ -398,5 +398,4 @@ void CheckMPU6XXXActive(uint8 imuSel) {
 	F.IMUActive = r;
 
 } // CheckMPU6XXXActive
-
 

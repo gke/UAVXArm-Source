@@ -246,9 +246,8 @@ enum ADCSelectors {
 enum AlternateADCSelectors { ExternalVoltsAnalogSel = RangefinderAnalogSel };
 
 enum BusDevSelectors {
-	imu0Sel,
-	imu1Sel,
-	baro0Sel,
+	imuSel,
+	baroSel,
 	magSel,
 	memSel,
 	gpsSel,
@@ -258,7 +257,6 @@ enum BusDevSelectors {
 	oledSel,
 	escSPISel,
 	escI2CSel,
-	baro1Sel,
 	maxDevSel
 };
 
@@ -419,8 +417,6 @@ extern const uint8 MagQuadrant;
 extern const uint8 currGimbalType;
 extern const DevDef busDev[];
 extern const boolean ledsLowOn;
-
-extern const uint8 imuSel;
 
 //_______________________________________________________________
 

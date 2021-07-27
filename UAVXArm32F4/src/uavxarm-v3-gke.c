@@ -138,7 +138,7 @@ int main() {
 
 	CheckBLHeli();
 
-	InitIMU(imuSel); // 0.504mS
+	InitIMU(); // 0.504mS
 	InitMagnetometer(); // 1574mS
 	InitMadgwick(); // 0.00353mS
 
@@ -240,7 +240,7 @@ int main() {
 
 				LEDsOffExcept(ledYellowSel);
 
-				if ((UsingFastStart || GyrosErected) && !F.UsingAnalogGyros) {
+				if ((UsingFastStart || GyrosErected)) {
 					mSTimer(WarmupTimeoutmS, WARMUP_TIMEOUT_MS);
 					State = Warmup;
 				} else {

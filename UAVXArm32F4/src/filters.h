@@ -89,6 +89,8 @@ extern const uint8 ABGType;
 void initABGLPF(filterStructABG *F, real32 alpha, eABGF ftype);
 real32 ABGLPF(filterStructABG *F, real32 input, real32 dT);
 
+const real32 ABGalpha;
+const uint8 ABGType;
 
 real32 gen_random(int32 seed, real32 max);
 

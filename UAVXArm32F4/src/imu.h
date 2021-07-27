@@ -18,19 +18,12 @@
 //    You should have received a copy of the GNU General Public License along with this program.
 //    If not, see http://www.gnu.org/licenses/
 
-
 #ifndef _imu_h
 #define _imu_h
 
-enum GyroTypes {
-	MLX90609Gyro,
-	ADXRS150Gyro,
-	LY530Gyro,
-	ADXRS300Gyro,
-	UAVXArm32IMU,
-	FreeIMU,
-	InfraRedAngle,
-	GyroUnknown
+
+enum IMUFilterTypes {
+	LPFilt, MPUFilt, ABGFilt, F2, F3, F4
 };
 
 #define DEF_ACC_SCALE (GRAVITY_MPS_S / MPU_1G)
@@ -41,16 +34,17 @@ void ErectGyros(uint8 imuSel);
 
 #define ACC_TRIM_STEP 5
 
-void InitIMU(uint8 imuSel);
-void ScaleRateAndAcc(uint8 imuSel);
+void InitIMU(void);
+void ScaleRateAndAcc(void);
 
+extern uint8 CurrIMUFilterType;
 extern const boolean UsingPavelFilter;
 
 extern const uint8 MPUMap[];
 extern const real32 MPUSign[];
 
 extern real32 GyroBias[];
-extern const real32 GyroScale[];
+extern const real32 GyroScale;
 extern uint8 CurrAttSensorType;
 extern real32 Acc[], Rate[], IntRate[], Angle[];
 extern real32 RateEnergySum;
@@ -59,7 +53,7 @@ extern boolean GyrosErected;
 extern int32 GyroErectionSamples;
 extern filterM3Struct AccUM3F;
 extern filterStruct AccF[], GyroF[], SensorTempF;
-extern filterStructABG ABGF[];
+extern filterStructABG ABGAccF[], ABGGyroF[];
 
 #endif
 

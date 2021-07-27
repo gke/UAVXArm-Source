@@ -121,9 +121,8 @@ const PinDef USBDisconnectPin = { true, GPIOD, GPIO_Pin_11, GPIO_PinSource11,
 
 
 const DevDef busDev[] = {
-// imu0Sel, imu1Sel, baroSel, magSel, memSel, gpsSel, rfSel, asSel, flowSel, escSel,
-		{ true, mpu6050IMU, useI2C, 2, MPU_0x68_ID },// imu0Sel
-		{ false, },// imu1Sel 
+// imuSel,  baroSel, magSel, memSel, gpsSel, rfSel, asSel, flowSel, escSel,
+		{ true, mpu6050IMU, useI2C, 2, MPU_0x68_ID },// imuSel
 		{ true, ms5611Baro, useI2C, 2, MS56XX_ID },// baroSel
 		{ true, hmc5xxxMag, useI2C, 2, HMC5XXX_ID },// magSel 
 		{ false, noMem, useSPI, 0 },// memSel 

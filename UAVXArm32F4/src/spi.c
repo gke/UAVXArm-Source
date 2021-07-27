@@ -22,7 +22,7 @@
 
 uint32 spiErrors = 0;
 
-// imu0Sel,imu1Sel,baro0Sel,magSel,memSel,gpsSel,rfSel,asSel,flowSel,oledSel, escSPISel,escI2CSel, baro1Sel
+// imuSel,baroSel,magSel,memSel,gpsSel,rfSel,asSel,flowSel,oledSel, escSPISel,escI2CSel
 // 20 20 20 8 20 20 unused MBaud
 
 #define SPI_CLOCK_SLOW          128 //00.65625 MHz
@@ -32,8 +32,8 @@ uint32 spiErrors = 0;
 //#define SPI_BaudRatePrescaler_32        ((uint16_t)0x0020)
 //#define SPI_BaudRatePrescaler_64        ((uint16_t)0x0028)
 
-const SPIDefStruct SPIDef[] = { { false, spi_21, spi_0_65625 }, // imu0sel
-		{ false, spi_21, spi_0_65625 }, // imu1sel
+const SPIDefStruct SPIDef[] = { //
+		{ false, spi_21, spi_0_65625 }, // imusel
 		{ false, spi_10_5, spi_10_5 }, // baro0Sel
 		{ true, spi_10_5, spi_10_5 }, // magSel
 		{ false, spi_10_5, spi_10_5 }, // memSel
@@ -43,8 +43,8 @@ const SPIDefStruct SPIDef[] = { { false, spi_21, spi_0_65625 }, // imu0sel
 		{ false, spi_10_5, spi_10_5 }, // flowSel
 		{ false, spi_10_5, spi_10_5 }, // oledSel
 		{ false, spi_10_5, spi_10_5 }, // escSPISel
-		{ false, spi_10_5, spi_10_5 }, // escI2CSel
-		{ false, spi_10_5, spi_10_5 }, };// baro1Sel};
+		{ false, spi_10_5, spi_10_5 } // escI2CSel
+};
 
 
 SPI_TypeDef * SPISetBaudRate(uint8 spiDev, boolean R) {
@@ -135,7 +135,7 @@ boolean SPIReadBlock(uint8 spiDev, uint8 d, uint8 len, uint8* data) {
 
 	// KLUDGE
 
-	if ((spiDev == imu0Sel) || (spiDev == imu1Sel))
+	if (spiDev == imuSel)
 		Prefix = 0x80;
 	else if (spiDev == magSel) {
 		Prefix = (len > 1) ? 0xc0 : 0x80;

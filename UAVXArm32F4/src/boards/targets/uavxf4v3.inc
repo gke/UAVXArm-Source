@@ -112,9 +112,8 @@ SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
 PinDef USBDisconnectPin = {false, 0, };
 
 DevDef busDev[maxDevSel] = {
-	{true, imu0Sel, mpu6050IMU, false, 2, MPU_0x68_ID,},  
-	{false, imu1Sel, },  
-	{true, baro0Sel, ms5611Baro, false, 2, MS56XX_0_ID,},
+	{true, imuSel, mpu6050IMU, false, 2, MPU_0x68_ID,},
+	{true, baroSel, ms5611Baro, false, 2, MS56XX_0_ID,},
 	{true, magSel, hmc5xxxMag, false, 2, HMC5XXX_ID,},
 #if defined(USE_ARM_BLACKBOX_FLASH)
 	{false, memSel, ArmFlashMem, }, // does not use either SPI or I2C
@@ -135,8 +134,7 @@ DevDef busDev[maxDevSel] = {
 #else
 	{false, escSPISel, },
 #endif
-	{true, escI2CSel, ESCI2C, false, 2, ESCI2C_ID, },
-	{true, baro1Sel, ms5611Baro, false, 2, MS56XX_1_ID,}
+	{true, escI2CSel, ESCI2C, false, 2, ESCI2C_ID, }
 };
 
 const uint8 IMUQuadrant = 0;
@@ -144,8 +142,6 @@ const uint8 MagQuadrant = 0;
 
 const uint8 currGimbalType = noGimbal;
 const boolean ledsLowOn = false;
-const uint8 imuSel = imu0Sel;
-
 
 void InitTarget(void) {
 

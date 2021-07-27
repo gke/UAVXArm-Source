@@ -47,7 +47,6 @@ boolean AcquiringPressure;
 real32 BaroOddsEvensFrac = 0.0f;
 uint32 BaroTempVal, BaroPressVal, BaroVal;
 real32 BaroTemperature, BaroPressure, CompensatedBaroPressure;
-uint8 baroSel = baro0Sel;
 
 uint8 CurrRFSensorType;
 uint8 CurrAltSource;

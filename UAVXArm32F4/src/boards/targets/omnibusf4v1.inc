@@ -110,7 +110,6 @@ PinDef USBDisconnectPin = {true, PA12,};
 
 DevDef busDev[maxDevSel] = { // MUST be in enum order otherwise CheckBusDev fails	 	
 	{true, imu0Sel, mpu6000IMU, true, 1, 0, PA4}, 
-	{false, imu1Sel, }, 
 	{false, baro0Sel, noBaro },//baroSel, ms5611Baro, false, 2, MS56XX_ID,},
 	{false, magSel, noMag, }, //magSel, hmc5xxxMag, false, 2, HMC5XXX_ID,},
 	{false, memSel, noMem, }, 
@@ -119,8 +118,7 @@ DevDef busDev[maxDevSel] = { // MUST be in enum order otherwise CheckBusDev fail
 	{false, asSel, },
 	{false, flowSel, },
 	{false, escSPISel, },
-	{false, escI2CSel, },
-	{false, baro1Sel,}
+	{false, escI2CSel, }
 };
 
 

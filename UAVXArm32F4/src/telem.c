@@ -136,102 +136,6 @@ void TxVal32(uint8 s, int32 V, int8 dp, uint8 Separator) {
 		TxChar(s, Separator);
 } // TxVal32
 
-#if defined(CLI)
-
-uint8 SkipToDigit(uint8 s) {
-	uint8 ch;
-
-	do {
-		while(!SerialAvailable(s)) {};
-		ch = RxChar(s);
-	}while (!isdigit(ch));
-
-	return(ch);
-
-} // SkipToDigit
-
-uint32 RxU32(uint8 s) {
-	uint8 ch;
-	uint32 v = 0;
-
-	ch = SkipToDigit(s);
-	while (isdigit(ch)) {
-		v = v * 10 + (ch - '0');
-		while (!SerialAvailable(s)) {};
-		ch = RxChar(s);
-	}
-
-	return(v);
-
-} // RxU32
-
-void InitPollRxPacket(void) {};
-
-void CheckTelemetry(uint8 s) {
-	idx i;
-	uint8 p, v;
-	uint8 ch;
-
-	if (SerialAvailable(s)) {
-		ch = tolower(RxChar(s));
-		switch (ch) {
-			case 'b':
-			TxString(s, "BOOTLOADER\n");
-			Delay1mS(20);
-			systemReset(true);
-			break;
-			case 'd':
-			for (i = 0; i< MAX_PARAMETERS; i++) {
-				TxString(s,"w ");
-				TxVal32(s, i+1, 0,' ');
-				TxVal32(s, P(i), 0,' ');
-				TxNextLine(s);
-			}
-			break;
-			case 'w':
-			p = RxU32(s);
-			v = RxU32(s);
-
-			if ((p > 0) && (p <= MAX_PARAMETERS) && (v < 256)) {
-				SetP(p-1, v);
-			} else {
-				TxString(s, "RANGE ");
-				TxVal32(s, p, 0,' ');
-				TxVal32(s, v, 0,' ');
-				TxNextLine(s);
-			}
-			break;
-			case 'v':
-			TxString(s, "UPDATING FLASH AND RESETING\n");
-			RefreshConfig();
-			systemReset(false);
-			break;
-			case 'r':
-			TxString(s, "RESET\n");
-			Delay1mS(20);
-			systemReset(false);
-			break;
-			case '?':
-			case 'h':
-			TxString(s, "THERE ARE NO CHECKS ON CLI PARAMETER CHANGE VALIDITY\n");
-			TxString(TelemetrySerial, "Revision ");
-			TxVal32(TelemetrySerial, Config.CurrRevisionNo,0,' ');
-			if (CheckSumFailNV()) TxString(TelemetrySerial, "NV Checksum FAIL\n");
-			TxString(s, "b enter bootloader\n");
-			TxString(s, "r reset\n");
-			TxString(s, "d dump parameters\n");
-			TxString(s, "v update FLASH parameters\n");
-			TxString(s, "w p v update p to value v\n");
-			TxString(s, "? or h  help\n");
-			default:
-			break;
-		}
-	}
-
-} // CheckTelemetry
-
-#else
-
 void TxESCu8(uint8 s, uint8 ch) {
 	if ((ch == ASCII_SOH) || (ch == ASCII_EOT) || (ch == ASCII_ESC))
 		TxChar(s, ASCII_ESC);
@@ -303,13 +207,6 @@ int32 UAVXPacketi32(uint8 p) {
 	return temp;
 } // UAVXPacketi32
 
-//______________________________________________________________________________________________
-
-// Tx UAVX Packets
-
-#define NAV_STATS_INTERLEAVE	10
-int8 StatsNavAlternate = 0;
-
 void SendPacketHeader(uint8 s) {
 	TxChar(s, 0xff); // synchronisation to "jolt" USART
 	TxChar(s, ASCII_SOH);
@@ -337,6 +234,135 @@ void SendAckPacket(uint8 s, uint8 Tag, uint8 Reason) {
 
 	SendPacketTrailer(s);
 } // SendAckPacket
+
+#if defined(USE_CLI)
+
+uint8 SkipToDigit(uint8 s) {
+	uint8 ch;
+
+	do {
+		while(!SerialAvailable(s)) {};
+		ch = RxChar(s);
+	}while (!isdigit(ch));
+
+	return(ch);
+
+} // SkipToDigit
+
+uint32 RxU32(uint8 s) {
+	uint8 ch;
+	uint32 v = 0;
+
+	ch = SkipToDigit(s);
+	while (isdigit(ch)) {
+		v = v * 10 + (ch - '0');
+		while (!SerialAvailable(s)) {};
+		ch = RxChar(s);
+	}
+
+	return(v);
+
+} // RxU32
+
+void InitPollRxPacket(void) {};
+
+void CheckTelemetry(uint8 s) {
+	idx i;
+	uint8 p, v;
+	uint8 ch;
+
+	if (SerialAvailable(s)) {
+		ch = tolower(RxChar(s));
+		switch (ch) {
+			case 'b':
+			TxString(s, "BOOTLOADER\n");
+			Delay1mS(20);
+			systemReset(true);
+			break;
+			case 'd':
+			for (i = 0; i < MAX_PARAMETERS; i++) {
+				TxString(s, "w ");
+				TxVal32(s, i + 1, 0, ' ');
+				TxVal32(s, P(i), 0, ' ');
+				TxNextLine(s);
+			}
+			break;
+			case 'i':
+			TxString(s, "CALIBRATE IMU - commence heating cycle \n");
+			CalibrateAccAndGyro(s, imuSel);
+			SendCalibrationPacket(s);
+			break;
+			case 'z':
+			TxString(s, "ZERO IMU OFFSETS \n");
+			CalibrateAccZeros(s, imuSel);
+			SendCalibrationPacket(s);
+			break;
+			case'm':
+			TxString(s, "CALIBRATE MAGNETOMETER - rotate in all axes \n");
+			CalibrateHMC5XXX(s);
+			SendCalibrationPacket(s);
+			break;
+			case 'w':
+			p = RxU32(s);
+			v = RxU32(s);
+
+			if ((p > 0) && (p <= MAX_PARAMETERS) && (v < 256)) {
+				SetP(p - 1, v);
+			} else {
+				TxString(s, "RANGE ");
+				TxVal32(s, p, 0, ' ');
+				TxVal32(s, v, 0, ' ');
+				TxNextLine(s);
+			}
+			break;
+			case 'v':
+			TxString(s, "UPDATING FLASH AND RESETING\n");
+			RefreshConfig();
+			systemReset(false);
+			break;
+			case 'r':
+			TxString(s, "RESET\n");
+			Delay1mS(20);
+			systemReset(false);
+			break;
+			case '?':
+			case 'h':
+			TxString(s,
+					"THERE ARE NO CHECKS ON CLI PARAMETER VALIDITY\n");
+			TxString(TelemetrySerial, "Revision ");
+			TxVal32(TelemetrySerial, Config.CurrRevisionNo, 0, ' ');
+			if (CheckSumFailNV())
+			TxString(TelemetrySerial, "NV Checksum FAIL\n");
+			TxString(s, "b enter bootloader\n");
+			TxString(s, "r reset\n");
+			TxString(s, "d dump parameters\n");
+			TxString(s, "v update FLASH parameters\n");
+			TxString(s, "w p v update p to value v\n\n");
+			TxString(s, "i calibrate imu (thermal cycle)\n");
+			TxString(s, "z zero imu offsets  (simple calibration)\n");
+			TxString(s, "m calibrate magnetometer\n");
+			TxString(s, "? or h  help\n");
+			default:
+			break;
+		}
+	}
+
+} // CheckTelemetry
+
+void SendCalibrationPacket(uint8 s) {};
+void SendAltitudeControlPacket(uint8 s) {};
+void SendAttitudeControlPacket(uint8 s, idx a) {};
+void SendFlightPacket(uint8 s) {};
+void SendDefAFNames(uint8 s) {};
+
+#else
+
+//______________________________________________________________________________________________
+
+// Tx UAVX Packets
+
+#define NAV_STATS_INTERLEAVE	10
+int8 StatsNavAlternate = 0;
 
 void ShowDrives(uint8 s) {
 	real32 AvSum;
@@ -623,11 +649,9 @@ void SendCalibrationPacket(uint8 s) {
 
 	for (a = X; a <= Z; a++) {
 		TxESCi16(s,
-				RadiansToDegrees(Config.GyroCal.TempGradient[a])
-						* GyroScale[CurrAttSensorType] * 1000.0f);
+		RadiansToDegrees(Config.GyroCal.TempGradient[a]) * GyroScale * 1000.0f);
 		TxESCi16(s,
-				RadiansToDegrees(Config.GyroCal.Bias[a])
-						* GyroScale[CurrAttSensorType] * 1000.0f);
+		RadiansToDegrees(Config.GyroCal.Bias[a]) * GyroScale * 1000.0f);
 
 		TxESCi16(s,
 				Config.AccCal.Scale[a] * MPU_1G * GRAVITY_MPS_S_R * 1000.0f);
@@ -637,7 +661,6 @@ void SendCalibrationPacket(uint8 s) {
 
 		TxESCi16(s, MagScale[a] * 1000.0f);
 		TxESCi16(s, Config.MagCal.Bias[a] * 1000.0f);
-
 	}
 
 	TxESCi16(s, 1.0f / CurrPIDCycleS);
@@ -1170,11 +1193,11 @@ void ProcessRxPacket(uint8 s) {
 		case UAVXMiscPacketTag:
 			switch (UAVXPacket[3]) {
 			case miscCalIMU:
-				CalibrateAccAndGyro(s, imuSel);
+				CalibrateAccAndGyro(s);
 				SendCalibrationPacket(s);
 				break;
 			case miscCalAcc:
-				CalibrateAccZeros(s, imuSel);
+				CalibrateAccZeros(s);
 				SendCalibrationPacket(s);
 				break;
 			case miscCalMag:

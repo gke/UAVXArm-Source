@@ -145,8 +145,7 @@ SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
 PinDef USBDisconnectPin = {true, PA12,};
 
 const DevDef busDev[] = {
-    {true, imu0Sel, mpu6000IMU, true, 1, 0, PA4},
-	{false, },// imu1Sel 
+    {true, imuSel, mpu6000IMU, true, 1, 0, PA4},
 	{true, ms5611Baro, useSPI, 2, }, // baroSel
 	{true, hmc5xxxMag, useI2C, 1, HMC5XXX_ID}, // magSel 
 	{false, spiFlashMem, useSPI, 2,}, // memSel 
@@ -156,8 +155,7 @@ const DevDef busDev[] = {
 	{false, flowSel, },
 	{false, oledSel, oledDisplay,},
 	{false, escSPISel, }, // PC13 not connected
-	{false, escI2CSel, ESCI2C, false, 2, ESCI2C_ID, },
-	{false, baro1Sel, ms5611Baro, false, 2, MS56XX_1_ID,} // clash with GPS
+	{false, escI2CSel, ESCI2C, false, 2, ESCI2C_ID, }
 };
 
 const uint8 IMUQuadrant = 1;
@@ -165,7 +163,6 @@ const uint8 MagQuadrant = 1;
 
 const uint8 currGimbalType = noGimbal;
 const boolean ledsLowOn = true;
-const uint8 imuSel = imu0Sel;
 
 void InitTarget(void) {
 	

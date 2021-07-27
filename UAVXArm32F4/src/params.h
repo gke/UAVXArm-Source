@@ -95,7 +95,7 @@
 
 #define ACCU_LANDING_MPS_S			(0.5f * GRAVITY_MPS_S)
 
-#define GYRO_MAX_SHAKE_RAW (DegreesToRadians(1.0)/GyroScale[CurrAttSensorType])
+#define GYRO_MAX_SHAKE_RAW (DegreesToRadians(1.0)/GyroScale)
 
 #define THR_START_PW FromPercent(5)
 
@@ -244,7 +244,7 @@ enum Params { // MAX 128
 
 	YawRateKp, // 11
 	RollRateKd, // 12
-	IMUOption, // 13
+	IMUFiltType, // 13
 	BBLogType, // 14
 	RxType, // 15
 	Config1Bits, // 16
@@ -268,7 +268,7 @@ enum Params { // MAX 128
 	MadgwickKpMag, //Acro, // 32
 	NavRTHAlt, // 33
 	NavMagVar, // 34
-	SensorHint, // 35 UAVXPIC only
+	UnusedSensorHint, // 35 UAVXPIC only
 	ESCType, // 36
 	RCChannels, // 37
 	RxRollCh, // 38

@@ -81,7 +81,6 @@ extern real32 RangefinderAltitude, RangefinderROC;
 
 void UpdateAltitudeEstimates(void);
 
-extern uint8 baroSel;
 extern uint16 ms56xx_c[];
 
 void InitAltitude(void);
