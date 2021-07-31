@@ -81,17 +81,22 @@ void CheckBatteries(void) {
 		LastUpdatemS = NowmS;
 
 		if (F.Emulation) {
-			BatteryCurrent = (DesiredThrottle + AltHoldThrComp) * CurrentScale * 0.5f; // reduce emulated current to a sensible fraction of FS
+			BatteryCurrent = (DesiredThrottle + AltHoldThrComp) * CurrentScale
+					* 0.5f; // reduce emulated current to a sensible fraction of FS
 			if (BatteryCurrent < 0.0f)
 				BatteryCurrent = 0.0f;
 			BatteryVolts = MockBattery() * BatteryCellCount;
 		} else {
-			BatteryCurrent = LPF1(BatteryCurrent, (analogRead(BattCurrentAnalogSel) - BatteryCurrentADCZero) * CurrentScale, BATTERY_LPF_HZ);
-			BatteryVolts = LPF1(BatteryVolts,
-					analogRead(BattVoltsAnalogSel) * VoltageScale, BATTERY_LPF_HZ);
+			BatteryCurrent = LPF1(BatteryCurrent,
+					(analogRead(BattCurrentAnalogSel) - BatteryCurrentADCZero)
+							* CurrentScale, BATTERY_LPF_HZ);
+			BatteryVolts = SlewLimit(BatteryVolts,
+					analogRead(BattVoltsAnalogSel) * VoltageScale,
+					0.2f, BATTERY_UPDATE_DT);
 		}
-// TODO: filters or slew limit????
-		BatterySagR = LPF1(BatterySagR, StartupVolts / BatteryVolts, 0.25f);
+
+		BatterySagR = SlewLimit(BatterySagR, StartupVolts / BatteryVolts,
+				FromPercent(0.5f), BATTERY_UPDATE_DT);
 
 		BatteryChargeUsedmAH += BatteryCurrent * dTmS * (1.0f / 3600.0f);
 
@@ -101,16 +106,10 @@ void CheckBatteries(void) {
 	}
 } // CheckBatteries
 
-void CaptureBatteryCurrentADCZero(void) {
-
-	BatteryCurrentADCZero = LPF1(BatteryCurrentADCZero,
-			analogRead(BattCurrentAnalogSel), BATTERY_LPF_HZ);
-} // CaptureBatteryCurrentADCZero
-
 void InitBattery(void) {
 	int16 i;
 
-	VoltageScale = P(VoltageSensorFS) * 0.2f *  FromPercent(P(VoltScaleTrim));
+	VoltageScale = P(VoltageSensorFS) * 0.2f * FromPercent(P(VoltScaleTrim));
 	CurrentScale = P(CurrentSensorFS) * FromPercent(P(CurrentScaleTrim));
 
 	BatterySagR = 1.0f;
@@ -118,22 +117,29 @@ void InitBattery(void) {
 	BatteryCapacitymAH = (P(BatteryCapacity) * 100.0f);
 	BatteryCapacityLimitmAH = BatteryCapacitymAH * 0.75f;
 
+	BatteryVolts = BatteryVoltsLimit;
+	BatteryCurrent = BatteryChargeUsedmAH = 0.0f;
+
 	if (F.Emulation) {
 		BatteryCellCount = 3.0;
 		StartupVolts = BatteryVolts = 12.6f;
 	} else {
-		StartupVolts = BatteryVolts = analogRead(BattVoltsAnalogSel)
-				* VoltageScale;
+
+		StartupVolts = analogRead(BattVoltsAnalogSel) * VoltageScale;
+		BatteryCurrentADCZero = analogRead(BattCurrentAnalogSel);
+
+		for (i = 0; i < 200; i++) {
+			Delay1mS(5);
+			StartupVolts = SlewLimit(StartupVolts,
+					analogRead(BattVoltsAnalogSel) * VoltageScale,
+					2.0f, 0.005f);
+			BatteryCurrentADCZero = SlewLimit(BatteryCurrentADCZero,
+					analogRead(BattCurrentAnalogSel), 200.0f,
+					0.005f);
+		}
+
+		BatteryVolts = StartupVolts;
 		BatteryCellCount = (int16) (BatteryVolts / 3.7f); // OK for 3-6 cell LiPo if charged!
-	}
-
-	BatteryVolts = BatteryVoltsLimit;
-	BatteryCurrent = BatteryChargeUsedmAH = 0.0f;
-
-	BatteryCurrentADCZero = analogRead(BattCurrentAnalogSel);
-	for (i = 0; i < 100; i++) {
-		Delay1mS(1);
-		CaptureBatteryCurrentADCZero();
 	}
 
 } // InitBattery

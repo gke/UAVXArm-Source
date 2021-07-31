@@ -267,8 +267,6 @@ int main() {
 
 				DisableFlightStuff();
 
-				//CaptureBatteryCurrentADCZero();
-
 				if (mSTimeout(WarmupTimeoutmS)) {
 
 					if (F.HaveGPS)

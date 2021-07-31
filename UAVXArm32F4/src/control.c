@@ -614,6 +614,7 @@ void DoControl(void) {
 	} else {
 
 		CalcTiltThrFF();
+		CalcBattThrComp();
 
 		DoTurnControl();
 
