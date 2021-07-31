@@ -109,8 +109,8 @@ SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
 PinDef USBDisconnectPin = {true, PA12,};
 
 DevDef busDev[maxDevSel] = { // MUST be in enum order otherwise CheckBusDev fails	 	
-	{true, imu0Sel, mpu6000IMU, true, 1, 0, PA4}, 
-	{false, baro0Sel, noBaro },//baroSel, ms5611Baro, false, 2, MS56XX_ID,},
+	{true, imuSel, mpu6000IMU, true, 1, 0, PA4},
+	{false, baroSel, noBaro },//baroSel, ms5611Baro, false, 2, MS56XX_ID,},
 	{false, magSel, noMag, }, //magSel, hmc5xxxMag, false, 2, HMC5XXX_ID,},
 	{false, memSel, noMem, }, 
 	{false, gpsSel, },
@@ -127,7 +127,7 @@ const uint8 MagQuadrant = 1;
 
 const uint8 currGimbalType = noGimbal;
 const boolean ledsLowOn = false;
-const uint8 imuSel = imu0Sel;
+const boolean beeperLowOn = true;
 
 #define GKE // for debugging until I get USB working!!!!
 

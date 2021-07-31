@@ -127,7 +127,7 @@ void DoBeep(uint16 t, uint16 d) {
 } // DoBeep
 
 void DoBeeps(uint16 b) {
-	idx i;
+	uint16 i;
 
 	for (i = 0; i < b; i++)
 		DoBeep(2, 8);

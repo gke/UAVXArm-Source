@@ -34,8 +34,9 @@ real32 DesiredHeading, SavedHeading;
 real32 Altitude;
 real32 AltHoldThrComp, ROC, MinROCMPS, MaxROCMPS, EffMinROCMPS;
 
-real32 TiltThrScaleFrac = 0.0f;
-real32 TiltThrScale = 1.0f;
+real32 BattThrFFComp = 1.0f;
+real32 TiltThrFFFrac = 0.0f;
+real32 TiltThrFFComp = 1.0f;
 real32 HorizonTransScale;
 real32 AngleRateMix = 1.0f;
 real32 StickDeadZone;
@@ -74,22 +75,27 @@ void ResetHeading(void) {
 
 void ZeroThrottleCompensation(void) {
 	AltHoldThrComp = 0.0f;
-	TiltThrScale = 1.0f;
+	TiltThrFFComp = BattThrFFComp = 1.0f;
 } // ZeroThrottleCompensation
 
-void CalcTiltThrScale(void) {
+void CalcTiltThrFF(void) {
 	const real32 TiltScaleLimit = 1.0f / cosf(NAV_MAX_ANGLE_RAD);
 	real32 Temp;
 
-	if (IsMulticopter && (State == InFlight) && F.UsingAngleControl) { // forget near level check
-		Temp = (1.0f / AttitudeCosine() - 1.0) * TiltThrScaleFrac + 1.0f;
+	if (IsMulticopter && (State == InFlight)) { // forget near level check
+		Temp = (1.0f / AttitudeCosine() - 1.0) * TiltThrFFFrac + 1.0f;
 		Temp = Limit(Temp, 1.0f, TiltScaleLimit);
-		TiltThrScale = SlewLimit(TiltThrScale, Temp, TiltScaleLimit, dT);
+		TiltThrFFComp = SlewLimit(TiltThrFFComp, Temp, TiltScaleLimit, dT);
 	} else
-		TiltThrScale = 1.0f;
+		TiltThrFFComp = 1.0f;
 
-} // CalcTiltThrScale
+} // CalcTiltThrFF
 
+void CalcBattThrComp(void) {
+
+	BattThrFFComp = Limit((UsingBatteryComp && (State == InFlight)) ? BatterySagR : 1.0f, 1.0f, 1.2f);
+
+} // CalcBattThrComp
 
 void DisableFlightStuff(void) { // paranoid ;)
 
@@ -129,7 +135,6 @@ void DetermineInFlightThrottle(void) {
 //______________________________________________________________________________
 
 // Altitude
-
 
 void TrackCruiseThrottle(void) {
 #define CRUISE_TRACKING_RATE FromPercent(0.5f) // percent per second
@@ -305,7 +310,6 @@ void AltitudeControl(void) {
 	}
 
 } // AltitudeControl
-
 
 void DoAltitudeControl(void) {
 
@@ -609,7 +613,7 @@ void DoControl(void) {
 
 	} else {
 
-		//CalcTiltThrScale();
+		CalcTiltThrFF();
 
 		DoTurnControl();
 

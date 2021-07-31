@@ -417,6 +417,7 @@ extern const uint8 MagQuadrant;
 extern const uint8 currGimbalType;
 extern const DevDef busDev[];
 extern const boolean ledsLowOn;
+extern const boolean beeperLowOn;
 
 //_______________________________________________________________
 
@@ -435,14 +436,12 @@ void SetBaudRate(uint8 s, uint32 BaudRate);
 
 void InitPWMPin(PinDef * u, uint16 pwmprescaler, uint32 pwmperiod,
 		uint32 pwmwidth);
-void InitWSPin(uint16 wsBufferSize);
 void InitSoftSerialTxTimer(void);
 
 void InitI2C(uint8 I2CCurr);
 void UnstickI2C(uint8 I2CCurr);
 void InitSPIGPIOPins(uint8 spiPort, boolean highClock);
 
-void WSPinDMAEnable(uint16 wsBufferSize);
 void SoftSerialTxTimerStart(void);
 void SoftSerialTxTimerStop(void);
 

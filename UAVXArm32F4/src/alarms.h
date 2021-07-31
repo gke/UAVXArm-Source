@@ -25,7 +25,7 @@
 void Probe(uint8);
 void Marker(void);
 
-boolean Armed();
+boolean Armed(void);
 void CheckLandingSwitch(void);
 boolean FailPreflight(void);
 

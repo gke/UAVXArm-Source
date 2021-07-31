@@ -659,8 +659,6 @@ void InitSoftSerialTxTimer(void) { // hard coded to PORTC Pin 6 Aux1
 	TIM_TimeBaseInitTypeDef TIM_TimeBase_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
 
-
-
 	if (SoftSerialTxPin.Used) {
 
 		PinDef * u = &SoftSerialTxPin;
@@ -837,6 +835,7 @@ void InitHarness(void) {
 	GPIO_Init(GPIOB, &GPIO_InitStructure);
 	GPIO_Init(GPIOC, &GPIO_InitStructure);
 	GPIO_Init(GPIOD, &GPIO_InitStructure); // F407
+	GPIO_Init(GPIOE, &GPIO_InitStructure); // F407
 #ifdef STM32F40_41xxx
 			GPIO_Init(GPIOF, &GPIO_InitStructure);
 			GPIO_Init(GPIOG, &GPIO_InitStructure);

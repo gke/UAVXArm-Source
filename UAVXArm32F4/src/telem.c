@@ -439,8 +439,8 @@ void SendFlightPacket(uint8 s) {
 	TxESCi16(s, Heading * 1000.0f);
 	TxESCi16(s, DesiredHeading * 1000.0f);
 
-	TxESCi16(s, TiltThrScale * 1000.0f);
-	TxESCi16(s, 0.0f * 1000.0f);
+	TxESCi16(s, TiltThrFFComp * 1000.0f);
+	TxESCi16(s, BattThrFFComp * 1000.0f);
 	TxESCi16(s, AltHoldThrComp * 1000.0f);
 
 	TxESCi8(s, Limit(AccConfidence * 100.0f, 0, 100));
@@ -596,6 +596,8 @@ void SendAltitudeControlPacket(uint8 s) {
 		TxESCu8(s, CruiseThrottle * 200.0f);
 		TxESCu8(s, DesiredThrottle * 200.0f);
 		TxESCu8(s, AltHoldThrComp * 200.0f);
+
+		//TxESCu8(s, (DesiredThrottle + AltHoldThrComp) * TiltThrFFComp * BattThrFFComp * 200.0f);
 
 		SendPacketTrailer(s);
 

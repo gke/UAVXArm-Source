@@ -22,20 +22,25 @@
 #include "UAVX.h"
 
 
-void BeeperOff(void) {
-	DigitalWrite(&GPIOPins[BeeperSel].P, false); //
-} // BeeperOff
-
 void BeeperOn(void) {
-	DigitalWrite(&GPIOPins[BeeperSel].P, true);
+	DigitalWrite(&GPIOPins[BeeperSel].P, beeperLowOn);
 } // BeeperOn
+
+void BeeperOff(void) {
+	DigitalWrite(&GPIOPins[BeeperSel].P, !beeperLowOn); //
+} // BeeperOff
 
 void BeeperToggle(void) {
 	DigitalToggle(&GPIOPins[BeeperSel].P);
 } // BeeperToggle
 
 boolean BeeperIsOn(void) {
+
+if (beeperLowOn)
+	return (GPIOPins[BeeperSel].Used && !DigitalRead(&GPIOPins[BeeperSel].P));
+else
 	return (GPIOPins[BeeperSel].Used && DigitalRead(&GPIOPins[BeeperSel].P));
+
 } // BeeperIsOn
 
 void LEDOn(uint8 l) {

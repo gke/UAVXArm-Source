@@ -974,11 +974,11 @@ void DoMulticopterMix(void) {
 
 	RotateOrientation(&Rl, &Pl, Rl, Pl);
 
-	CurrThrottlePW =
+	CurrThrottlePW =(
 			(State == InFlight) ?
-					(DesiredThrottle + AltHoldThrComp) * OUT_MAXIMUM
-							* TiltThrScale:
-					DesiredThrottle * OUT_MAXIMUM;
+					(DesiredThrottle + AltHoldThrComp)
+							* TiltThrFFComp * BattThrFFComp:
+					DesiredThrottle) * OUT_MAXIMUM;
 
 	CurrThrottlePW = Limit(CurrThrottlePW, IdleThrottlePW, OUT_MAXIMUM);
 

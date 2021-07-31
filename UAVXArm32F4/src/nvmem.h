@@ -69,7 +69,7 @@ boolean EraseNVMem(void);
 
 void ReadBlockNVMem(uint32 a, uint16 l, int8 * v);
 boolean WriteNVMemBlock(uint32 a, uint16 l, int8 *v);
-void InitNVMem();
+void InitNVMem(void);
 
 void ShowStatusNVMem(uint8 s);
 

@@ -383,7 +383,7 @@ enum Params { // MAX 128
 #define	UseRapidDescentMask		(1<<6) // bit61CheckBox 16_6
 
 // Config2
-#define Unused_74_1_Mask		0x01   // bit02CheckBox 74_1
+#define UseBatteryCompMask		0x01   // bit02CheckBox 74_1
 #define	UseFastStartMask		(1<<1) // bit12CheckBox 74_2
 #define UseBLHeliMask 			(1<<2) // bit22CheckBox 74_3
 #define UseGliderStrategyMask	(1<<3) // bit32CheckBox 74_4
@@ -404,7 +404,7 @@ extern int8 CP[];
 
 extern const real32 AFOrientation[];
 extern uint8 UAVXAirframe;
-extern boolean IsMulticopter, IsGroundVehicle, UsingNavBeep, UsingFastStart, UsingBLHeliPrograming,
+extern boolean IsMulticopter, IsGroundVehicle, UsingBatteryComp, UsingNavBeep, UsingFastStart, UsingBLHeliPrograming,
 		UsingCruiseCentering, UsingGliderStrategy, DisablingLEDsInFlight;
 extern uint8 CurrMotorStopSel;
 

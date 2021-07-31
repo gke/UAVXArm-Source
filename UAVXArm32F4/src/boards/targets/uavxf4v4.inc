@@ -128,6 +128,7 @@ const uint8 MagQuadrant = 0;
 
 const uint8 currGimbalType = noGimbal;
 const boolean ledsLowOn = false;
+const boolean beeperLowOn = true;
 
 void InitTarget(void) {
 

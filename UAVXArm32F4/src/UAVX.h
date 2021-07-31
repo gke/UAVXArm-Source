@@ -56,6 +56,8 @@
 
 //#define TESTING_OPTICAL
 
+#define BEEPER_ACTIVE_LOW
+
 #define MAX_BLHELI_ESCS 4
 //#define USE_OLED
 

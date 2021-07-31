@@ -101,7 +101,7 @@ extern real32 AltHoldThrComp, ROC, MinROCMPS, MaxROCMPS;
 extern real32 DesiredThrottle, CruiseThrottle, IdleThrottle, InitialThrottle;
 extern real32 AltitudeHoldROCWindow;
 extern real32 MaxAltHoldThrComp;
-extern real32 TiltThrScale, TiltThrScaleFrac;
+extern real32 TiltThrFFComp, TiltThrFFFrac, BattThrFFComp;
 extern real32 HorizonTransScale;
 extern real32 StickDeadZone;
 extern real32 OrientationRad, OrientS, OrientC;

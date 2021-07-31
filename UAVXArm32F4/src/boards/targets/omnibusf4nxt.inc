@@ -34,43 +34,22 @@ PinDef SoftSerialTxPin = {false, };
 PinDef CPPMPin = {false, };
 
 PinDef RCPins[MAX_RC_INPUTS] = {		
-	{true, PB7, PWMPinConfig, PWMIn_4_2},
+	{true, PB7, PWMPinConfig, PWMIn_4_2}, // PPM / UART1_RX
 };
 		
 PinDef PWMPins[MAX_PWM_OUTPUTS] = {
 		// Drives 1-4
-	{true, GPIOB, GPIO_Pin_5, GPIO_PinSource5, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP, 
-		{true, TIM3, TIM_Channel_2, 0, &(TIM3->CCR2), GPIO_AF_TIM3 }}, //
-	{true, GPIOB, GPIO_Pin_4, GPIO_PinSource4, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP, 
-		{true, TIM3, TIM_Channel_1, 0,&(TIM3->CCR1), GPIO_AF_TIM3 }}, //
-	{true, GPIOB, GPIO_Pin_0, GPIO_PinSource0, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP, 
-		{true, TIM3, TIM_Channel_3, 0, &(TIM3->CCR3), GPIO_AF_TIM3 }}, //
-	{true, GPIOB, GPIO_Pin_1, GPIO_PinSource1, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP, 
-		{true, TIM3, TIM_Channel_4, 0, &(TIM3->CCR4), GPIO_AF_TIM3 }},
+	{true, PB5, PWMPinConfig, PWMOut_3_2}, // D(1, 5, 5)
+	{true, PB4, PWMPinConfig, PWMOut_3_1}, // D(1, 4, 5)
+	{true, PB0, PWMPinConfig, PWMOut_3_3}, // D(1, 7, 5)
+	{true, PB1, PWMPinConfig, PWMOut_3_4}, // D(1, 2, 5)
 		
-	{true, GPIOC, GPIO_Pin_9, GPIO_PinSource9, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP,
-		{true, TIM8, TIM_Channel_4, 0, &(TIM8->CCR4), GPIO_AF_TIM8 }}, // optionally WS2812
-	{true, GPIOC, GPIO_Pin_8, GPIO_PinSource8, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP, 
-		{true, TIM8, TIM_Channel_3, 0, &(TIM8->CCR3), GPIO_AF_TIM8 }},
+	{true, PC9, PWMPinConfig, PWMOut_8_4}, // D(2, 7, 7)
+	{true, PC8, PWMPinConfig, PWMOut_8_3}, // D(2, 2, 0)
+
+	{ true, PA9, PWMPinConfig, PWMOut_1_2},  // LED
+	{ true, PB6, PWMPinConfig, PWMOut_4_1 }, // SS1 TX / UART1_TX
 		
-		
-	{ false, GPIOB, GPIO_Pin_9, GPIO_PinSource9, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_UP, 
-		{true, TIM11, TIM_Channel_1, 0, &(TIM11->CCR1), GPIO_AF_TIM11 } }, //
-	{ false, GPIOB, GPIO_Pin_8, GPIO_PinSource8, GPIO_Mode_AF,GPIO_OType_PP, GPIO_PuPd_UP, 
-		{true, TIM10, TIM_Channel_1, 0, &(TIM10->CCR1), GPIO_AF_TIM10 } }, 
-		
-/*	I am confused as to which pins are used for the various Omnibus boards	
-		{true, PB0, PWMPinConfig, PWMOut_3_3},
-		{true, PB1, PWMPinConfig, PWMOut_3_4},
-		{true, PA3, PWMPinConfig, PWMOut_2_4},
-		{true, PA2, PWMPinConfig, PWMOut_2_3},	 
-	#if defined(IS_PRO)
-	    {true, PB6, PWMPinConfig, PWMOut_4_1},
-	#else
-	    {true, PA1, PWMPinConfig, PWMOut_5_2},
-	#endif	
-		{true, PA8, PWMPinConfig, PWMOut_1_1},
-*/		
 	{ false, },
 	{ false, }
 };
@@ -125,20 +104,9 @@ I2CPortDef I2CPorts[MAX_I2C_PORTS] = {
 
 SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
 	{false, 0, }, // notionally SPI0
-	{true, SPI1, {
-			PA5, 
-			PA6, 
-			PA7
-	}}, //
-	{true, SPI2, {
-			PB13, 
-			PB14, 
-			PC3 // PC3????
-	}}, 
-	{true, SPI3, {
-			PC10, // PC10, alt UART3_TX, UART4_TX
-			PC11, // PC11, alt UART3_RX, UART4_RX
-			PC12  // PC12, alt UART5_TX 
+	{true, SPI1, { PA5, PA6, PA7}}, //
+	{true, SPI2, { PB13, PB14,  PC3 }}, // PC3????
+	{true, SPI3, { PC10, PC11, PC12   // PC10, alt UART3_TX, UART4_TX PC11, alt UART3_RX, UART4_RX PC12, alt UART5_TX
 	}} 
 };
 
@@ -163,6 +131,7 @@ const uint8 MagQuadrant = 1;
 
 const uint8 currGimbalType = noGimbal;
 const boolean ledsLowOn = true;
+const boolean beeperLowOn = true;
 
 void InitTarget(void) {
 	

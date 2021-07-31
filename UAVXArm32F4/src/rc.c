@@ -389,11 +389,11 @@ void UpdateRCMap(void) {
 	NewMap[PassThruRC] = P(RxAux6Ch);
 	NewMap[Unused11RC] = P(RxAux7Ch);
 
-	for (c = 0; c < RC_MAX_GUI_CHANNELS; c++)
+	for (c = 0; c < RC_MAX_CHANNELS; c++)
 		++Count[NewMap[c]];
 
 	F.RCMapFail = false;
-	for (c = 0; c < RC_MAX_GUI_CHANNELS; c++)
+	for (c = 0; c < RC_MAX_CHANNELS; c++)
 		F.RCMapFail = F.RCMapFail || (Count[c] != 1);
 
 	if (!F.RCMapFail) {

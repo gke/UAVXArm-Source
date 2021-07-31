@@ -44,14 +44,13 @@ PinDef PWMPins[MAX_PWM_OUTPUTS] = {
 	{true, PA7, PWMPinConfig, PWMOut_3_2}, 
 	{true, PB0, PWMPinConfig, PWMOut_3_3},
 	{true, PB1, PWMPinConfig, PWMOut_3_4}
-
 };
 
 PinDef GPIOPins[MAX_GPIO_PINS] = { 
 	{true, PA12, OutPinConfig,}, // Beeper 4? // USB
 	{true, PC10, InpPinConfig,}, // Armed
 	{true, PC9, InpPinConfig,}, // Landing
-	{true, PC6, OutPinConfig,}, // Aux1  
+	{true, PC6, OutPinConfig,}, // Aux1
 	{true, PC7, OutPinConfig,}, // Aux2 //can be used for camera trigger
 #if defined(USE_AUX3_PROBE_PIN)
 	{true, PC8, OutPinConfig,}, // Aux3 (Probe for timing diagnostics)
@@ -62,12 +61,6 @@ PinDef GPIOPins[MAX_GPIO_PINS] = {
 	{false, } // HMC5XXXRdySel
 };
 
-#if defined(USE_WS2812) || defined(USE_WS2812B)
-PinDef WSPin = // Aux1 Pin
-	{true, PC6, GPIO_Mode_AF, GPIO_OType_PP, GPIO_PuPd_NOPULL, 
-		{true, TIM8, TIM_Channel_1, TIM_DMA_CC1, &(TIM8->CCR1), GPIO_AF_TIM8 },
-		{true, DMA_Channel_0, DMA2_Stream2}, DMA2_Stream2_IRQn };
-#endif
 
 PinDef LEDPins[MAX_LED_PINS] = { 
 	{true, PB3, LEDPinConfig,}, // Yellow
@@ -142,6 +135,7 @@ const uint8 MagQuadrant = 0;
 
 const uint8 currGimbalType = noGimbal;
 const boolean ledsLowOn = false;
+const boolean beeperLowOn = true;
 
 void InitTarget(void) {
 

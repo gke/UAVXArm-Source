@@ -28,7 +28,7 @@ volatile boolean TxSwitchArmed = false;
 
 uint8 UAVXAirframe = AFUnknown;
 boolean IsMulticopter, IsGroundVehicle;
-boolean UsingGliderStrategy, UsingFastStart, UsingBLHeliPrograming, UsingHWLPF, UsingCruiseCentering,
+boolean UsingBatteryComp, UsingGliderStrategy, UsingFastStart, UsingBLHeliPrograming, UsingHWLPF, UsingCruiseCentering,
 		UsingNavBeep, DisablingLEDsInFlight;
 
 uint8 CurrConfig1, CurrConfig2;
@@ -116,7 +116,7 @@ void DoConfigBits(void) {
 	F.UsingOffsetHome = (P(Config1Bits) & UseOffsetHomeMask) != 0;
 	DisablingLEDsInFlight = (P(Config1Bits) & DisableLEDsInFlightMask) != 0;
 	// Config2
-	//UsingCruiseCentering = (P(Config2Bits) & Unused_74_1_Mask) != 0;
+	UsingBatteryComp = (P(Config2Bits) & UseBatteryCompMask) != 0;
 	UsingFastStart = (P(Config2Bits) & UseFastStartMask) != 0;
 	UsingBLHeliPrograming = (P(Config2Bits) & UseBLHeliMask) != 0;
 	UsingGliderStrategy = ((P(Config2Bits) & UseGliderStrategyMask) != 0)
@@ -308,7 +308,7 @@ void UpdateParameters(void) {
 				LimitP(PercentIdleThr, RC_THRES_START + 1, 20));
 
 		FWPitchThrottleFFFrac = FromPercent(P(FWPitchThrottleFF));
-		TiltThrScaleFrac = FromPercent(P(TiltThrottleFF));
+		TiltThrFFFrac = FromPercent(P(TiltThrottleFF));
 
 		CGOffset = FromPercent(Limit1(P(Balance), 100));
 
@@ -557,7 +557,7 @@ void ConditionParameters(void) {
 
 	ClassifyAFType();
 
-	CurrIMUFilterType = P(IMUFiltType);
+	CurrIMUFilterType = LimitP(IMUFiltType, LPFilt, F4);
 
 	ArmingMethod = P(ArmingMode);
 

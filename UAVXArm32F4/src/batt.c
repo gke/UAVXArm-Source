@@ -40,7 +40,7 @@
 real32 VoltageScale, CurrentScale;
 real32 CurrentSensorSwing;
 
-real32 BatteryVolts, StartupVolts, BatteryCurrent,
+real32 BatteryVolts, StartupVolts, BatterySagR, BatteryCurrent,
 		BatteryVoltsLimit, BatteryChargeUsedmAH, BatteryCapacityLimitmAH;
 
 real32 BatteryCurrentADCZero = 0.0f; // takes a while for bipolar capture of offset
@@ -90,6 +90,8 @@ void CheckBatteries(void) {
 			BatteryVolts = LPF1(BatteryVolts,
 					analogRead(BattVoltsAnalogSel) * VoltageScale, BATTERY_LPF_HZ);
 		}
+// TODO: filters or slew limit????
+		BatterySagR = LPF1(BatterySagR, StartupVolts / BatteryVolts, 0.25f);
 
 		BatteryChargeUsedmAH += BatteryCurrent * dTmS * (1.0f / 3600.0f);
 
@@ -111,6 +113,7 @@ void InitBattery(void) {
 	VoltageScale = P(VoltageSensorFS) * 0.2f *  FromPercent(P(VoltScaleTrim));
 	CurrentScale = P(CurrentSensorFS) * FromPercent(P(CurrentScaleTrim));
 
+	BatterySagR = 1.0f;
 	BatteryVoltsLimit = Limit(P(LowVoltThres) * 0.1f, 0.1f, 25.0f);
 	BatteryCapacitymAH = (P(BatteryCapacity) * 100.0f);
 	BatteryCapacityLimitmAH = BatteryCapacitymAH * 0.75f;
