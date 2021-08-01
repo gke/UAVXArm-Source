@@ -46,12 +46,14 @@ boolean overflow; // true if the x or y data buffers overflowed
 
 // reset sensor by holding a pin high (or is it low?) for 10us.
 void adns3080reset(void) {
+	if (PWMPins[Aux2Sel].Used) {
 	// return immediately if the reset pin is not defined
 	//if (_reset_pin != 0) {
 	DigitalWrite(&PWMPins[Aux2Sel].P, true); // reset sensor
 	Delay1uS(10);
 	DigitalWrite(&PWMPins[Aux2Sel].P, false); // return sensor to normal
 	//}
+	}
 } // adns3080reset
 
 
@@ -409,11 +411,13 @@ void adns3080update_position(real32 roll, real32 pitch, real32 cos_yaw_x,
 
 void SymaFPVCamreset(void) {
 
+	if (PWMPins[Aux2Sel].Used) {
 	DigitalWrite(&PWMPins[Aux2Sel].P, true); // reset sensor
 	Delay1uS(1);
 	DigitalWrite(&PWMPins[Aux2Sel].P, false); // return sensor to normal
 	Delay1uS(4);
 	DigitalWrite(&PWMPins[Aux2Sel].P, true); // return sensor to normal
+	}
 } // adns3080reset
 
 #endif

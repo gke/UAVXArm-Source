@@ -84,11 +84,13 @@ boolean isEscLo(uint8_t selEsc) {
 }
 
 void setEscHi(uint8_t selEsc) {
-	DigitalWrite(&PWMPins[selEsc].P, true);
+	if (PWMPins[selEsc].Used)
+		DigitalWrite(&PWMPins[selEsc].P, true);
 }
 
 void setEscLo(uint8_t selEsc) {
-	DigitalWrite(&PWMPins[selEsc].P, false);
+	if (PWMPins[selEsc].Used)
+		DigitalWrite(&PWMPins[selEsc].P, false);
 }
 
 void setEscInput(uint8_t selEsc) {
@@ -118,12 +120,12 @@ int esc4wayInit(void) {
 	StopPwmAllMotors();
 
 	/* zzz
-	for (i = 0; i < NoOfDrives; i++)
-		if (i < MAX_PWM_OUTPUTS) {// switch off all (potential) motor output pins
-			InitPinMode(&PWMPins[i], true); // TODO: original code uses 2MHz pin clock?
-			setEscHi(i);
-		}
-*/
+	 for (i = 0; i < NoOfDrives; i++)
+	 if (i < MAX_PWM_OUTPUTS) {// switch off all (potential) motor output pins
+	 InitPinMode(&PWMPins[i], true); // TODO: original code uses 2MHz pin clock?
+	 setEscHi(i);
+	 }
+	 */
 	escCount = NoOfDrives; // escIdx;
 	return escCount;
 }
@@ -238,8 +240,8 @@ uint8_t connect(escDeviceInfo_t *pDeviceInfo) {
 	int try;
 
 	for (try = 0; try < 3; try++) {
-		if (Stk_ConnectEx(pDeviceInfo) && signatureMatch(
-				pDeviceInfo->signature, signaturesAtmel)) {
+		if (Stk_ConnectEx(pDeviceInfo)
+				&& signatureMatch(pDeviceInfo->signature, signaturesAtmel)) {
 			currentInterfaceMode = imSK;
 			return 1;
 		}
@@ -328,8 +330,11 @@ void esc4wayProcess(uint8 s) {
 
 				outLen = 0; // output handling code will send single zero byte if necessary
 
-				replyAck = crcIn == 0 ? esc4wayProcessCmd(command, addr,
-						paramBuf, inLen, &outLen) : esc4wayAck_I_INVALID_CRC;
+				replyAck =
+						crcIn == 0 ?
+								esc4wayProcessCmd(command, addr, paramBuf,
+										inLen, &outLen) :
+								esc4wayAck_I_INVALID_CRC;
 
 				// send single '\0' byte is output when length is zero (len ==0 -> 256 bytes)
 				if (outLen == 0) {
@@ -401,7 +406,7 @@ esc4wayAck_e esc4wayProcessCmd(esc4wayCmd_e command, uint16_t addr,
 		// Only interface itself, no matter what Device
 		// outLen=16;
 		memcpy(data, SERIAL_4WAY_INTERFACE_NAME_STR, strlen(
-				SERIAL_4WAY_INTERFACE_NAME_STR));
+		SERIAL_4WAY_INTERFACE_NAME_STR));
 		*outLen = strlen(SERIAL_4WAY_INTERFACE_NAME_STR);
 		return esc4wayAck_OK;
 	case cmd_InterfaceGetVersion:
@@ -492,7 +497,8 @@ esc4wayAck_e esc4wayProcessCmd(esc4wayCmd_e command, uint16_t addr,
 		if (len == 0)
 			len = 0x100;
 		ioMem.len = len;
-		switch (INTFMEM(currentInterfaceMode, (command == cmd_DeviceRead) ? M_FLASH : M_EEPROM)) {
+		switch (INTFMEM(currentInterfaceMode,
+				(command == cmd_DeviceRead) ? M_FLASH : M_EEPROM)) {
 		case INTFMEM(imSIL_BLB, M_FLASH):
 			if (!BL_ReadFlashSIL(&ioMem))
 				return esc4wayAck_D_GENERAL_ERROR;
@@ -525,7 +531,8 @@ esc4wayAck_e esc4wayProcessCmd(esc4wayCmd_e command, uint16_t addr,
 	case cmd_DeviceWrite:
 	case cmd_DeviceWriteEEprom:
 		ioMem.len = inLen;
-		switch (INTFMEM(currentInterfaceMode, (command == cmd_DeviceWrite) ? M_FLASH : M_EEPROM)) {
+		switch (INTFMEM(currentInterfaceMode,
+				(command == cmd_DeviceWrite) ? M_FLASH : M_EEPROM)) {
 		case INTFMEM(imSIL_BLB, M_FLASH):
 		case INTFMEM(imATM_BLB, M_FLASH):
 			if (!BL_WriteFlash(&ioMem))
@@ -836,8 +843,8 @@ void DoBLHeliSuite(uint8_t s) {
 }
 
 void CheckBLHeli(void) {
-if ((P(Config2Bits) & UseBLHeliMask) != 0)
-	DoBLHeliSuite(TelemetrySerial);
-else
-	Delay1mS(1000); // let things settle!
+	if ((P(Config2Bits) & UseBLHeliMask) != 0)
+		DoBLHeliSuite(TelemetrySerial);
+	else
+		Delay1mS(1000); // let things settle!
 } // CheckBLHeli

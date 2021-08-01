@@ -190,7 +190,7 @@ void ScheduleNavPulse(NavPulseStruct * n, timemS w, timemS p) {
 
 void UpdateNavPulse(boolean v) {
 #if defined(UAVXF4V3)|| defined(UAVXF4V3BBFLASH)
-	if (Navigating)
+	if (GPIOPins[Aux1Sel].Used && Navigating)
 	DigitalWrite(&GPIOPins[Aux1Sel].P, v);
 #endif
 } // DoNavPulse

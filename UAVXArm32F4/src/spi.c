@@ -34,18 +34,17 @@ uint32 spiErrors = 0;
 
 const SPIDefStruct SPIDef[] = { //
 		{ false, spi_21, spi_0_65625 }, // imusel
-		{ false, spi_10_5, spi_10_5 }, // baro0Sel
-		{ true, spi_10_5, spi_10_5 }, // magSel
-		{ false, spi_10_5, spi_10_5 }, // memSel
-		{ false, spi_10_5, spi_10_5 }, // gpsSel
-		{ false, spi_10_5, spi_10_5 }, // rfSel
-		{ false, spi_10_5, spi_10_5 }, // asSel
-		{ false, spi_10_5, spi_10_5 }, // flowSel
-		{ false, spi_10_5, spi_10_5 }, // oledSel
-		{ false, spi_10_5, spi_10_5 }, // escSPISel
-		{ false, spi_10_5, spi_10_5 } // escI2CSel
-};
-
+				{ false, spi_10_5, spi_10_5 }, // baro0Sel
+				{ true, spi_10_5, spi_10_5 }, // magSel
+				{ false, spi_10_5, spi_10_5 }, // memSel
+				{ false, spi_10_5, spi_10_5 }, // gpsSel
+				{ false, spi_10_5, spi_10_5 }, // rfSel
+				{ false, spi_10_5, spi_10_5 }, // asSel
+				{ false, spi_10_5, spi_10_5 }, // flowSel
+				{ false, spi_10_5, spi_10_5 }, // oledSel
+				{ false, spi_10_5, spi_10_5 }, // escSPISel
+				{ false, spi_10_5, spi_10_5 } // escI2CSel
+		};
 
 SPI_TypeDef * SPISetBaudRate(uint8 spiDev, boolean R) {
 	// It would be good if there was some consistency with SPI protocols!!!
@@ -70,8 +69,9 @@ SPI_TypeDef * SPISetBaudRate(uint8 spiDev, boolean R) {
 			lastDevClockHigh = SPIDef[spiDev].ClockHigh;
 
 			SPIx->CR1 = (SPIx->CR1 & 0b1111111111111100)
-					| ((SPIDef[spiDev].ClockHigh) ? SPI_CPOL_High
-							& SPI_CPHA_2Edge : SPI_CPOL_Low & SPI_CPHA_1Edge);
+					| ((SPIDef[spiDev].ClockHigh) ?
+							SPI_CPOL_High & SPI_CPHA_2Edge :
+							SPI_CPOL_Low & SPI_CPHA_1Edge);
 
 			Delay1uS(5);
 		}
@@ -83,18 +83,17 @@ SPI_TypeDef * SPISetBaudRate(uint8 spiDev, boolean R) {
 
 } // SPISetBaudRate
 
-
 void SPISelect(uint8 spiDev, boolean Sel) {
 
-	if (Sel)
-		DigitalWrite(&busDev[spiDev].P, false);
-	else {
-		DigitalWrite(&busDev[spiDev].P, true);
-		Delay1uS(1);
-	}
+	if (busDev[spiDev].Used)
+		if (Sel)
+			DigitalWrite(&busDev[spiDev].P, false);
+		else {
+			DigitalWrite(&busDev[spiDev].P, true);
+			Delay1uS(1);
+		}
 
 } // SPISelect
-
 
 void SPIClearSelects(void) {
 	idx i;
@@ -156,7 +155,6 @@ boolean SPIReadBlock(uint8 spiDev, uint8 d, uint8 len, uint8* data) {
 
 } // SPIReadBlock
 
-
 boolean SPIWriteBlock(uint8 spiDev, uint8 d, uint8 len, uint8 *data) {
 	idx i;
 	SPI_TypeDef * s;
@@ -197,7 +195,6 @@ void spiBlockTransfer(SPI_TypeDef *SPIx, GPIO_TypeDef* CS_GPIO, uint16 CS_PIN,
 	GPIO_SetBits(CS_GPIO, CS_PIN);
 } // spiBlockTransfer
 
-
 void spiBlockTransfer_i16(SPI_TypeDef *SPIx, GPIO_TypeDef* CS_GPIO,
 		uint16 CS_PIN, uint8 reg, uint8 len, int16 * data, boolean read,
 		boolean swap) {
@@ -209,8 +206,8 @@ void spiBlockTransfer_i16(SPI_TypeDef *SPIx, GPIO_TypeDef* CS_GPIO,
 		SPITransfer(SPIx, reg | 0x80);
 		for (i = 0; i < len; i++)
 			if (swap)
-				data[i] = (int16) SPITransfer(SPIx, 0x00) << 8 | SPITransfer(
-						SPIx, 0x00);
+				data[i] = (int16) SPITransfer(SPIx, 0x00) << 8
+						| SPITransfer(SPIx, 0x00);
 			else {
 				t = SPITransfer(SPIx, 0x00);
 				data[i] = (int16) SPITransfer(SPIx, 0x00) << 8 | t;
@@ -230,7 +227,6 @@ void spiBlockTransfer_i16(SPI_TypeDef *SPIx, GPIO_TypeDef* CS_GPIO,
 	GPIO_SetBits(CS_GPIO, CS_PIN);
 } // spiBlockTransfer_i16
 
-
 void spiWrite(SPI_TypeDef *SPIx, GPIO_TypeDef* CS_GPIO, uint16 CS_PIN,
 		uint8 reg, uint8 data) {
 
@@ -242,7 +238,6 @@ void spiWrite(SPI_TypeDef *SPIx, GPIO_TypeDef* CS_GPIO, uint16 CS_PIN,
 	Delay1uS(1);
 
 } // spiWrite
-
 
 uint8 spiRead(SPI_TypeDef *SPIx, GPIO_TypeDef* CS_GPIO, uint16 CS_PIN,
 		uint8 reg) {

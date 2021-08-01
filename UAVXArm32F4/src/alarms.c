@@ -26,7 +26,8 @@ uint8 ArmingMethod;
 
 void Probe(boolean p) {
 #if defined(USE_AUX3_PROBE_PIN)
-	DigitalWrite(&GPIOPins[WPMissionOrProbeSel].P, p);
+	if (GPIOPins[WPMissionOrProbeSel].Used)
+		DigitalWrite(&GPIOPins[WPMissionOrProbeSel].P, p);
 #endif
 } // Probe
 

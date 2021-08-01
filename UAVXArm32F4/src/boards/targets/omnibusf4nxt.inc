@@ -145,7 +145,7 @@ void InitTarget(void) {
     GPIO_Init(GPIOC, &GPIO_InitStructure);
 
     TelemetrySerial = USBSerial;
-    InitSerialPort(TelemetrySerial, true, false);
+// No should be USBInit    InitSerialPort(TelemetrySerial, true, false);
 
 	CurrRxType = FutabaSBusRx;
 	

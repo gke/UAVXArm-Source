@@ -202,7 +202,7 @@ void SoftSerialTxISR(uint8 s) {
 
 		if (SoftSerialTxBits < SERIAL_CHAR_BUFFER_SIZE) {
 
-			DigitalWrite(&SoftSerialTxPin.P,
+			if (SoftSerialTxPin.Used) DigitalWrite(&SoftSerialTxPin.P,
 					SoftSerialTxBuffer[SoftSerialTxBits]);
 			SoftSerialTxBits++;
 			SoftSerialTxTimerStart();

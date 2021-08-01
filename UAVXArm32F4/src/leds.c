@@ -18,16 +18,16 @@
 //    You should have received a copy of the GNU General Public License along with this program.  
 //    If not, see http://www.gnu.org/licenses/
 
-
 #include "UAVX.h"
 
-
 void BeeperOn(void) {
-	DigitalWrite(&GPIOPins[BeeperSel].P, beeperLowOn);
+	if (GPIOPins[BeeperSel].Used)
+		DigitalWrite(&GPIOPins[BeeperSel].P, beeperLowOn);
 } // BeeperOn
 
 void BeeperOff(void) {
-	DigitalWrite(&GPIOPins[BeeperSel].P, !beeperLowOn); //
+	if (GPIOPins[BeeperSel].Used)
+		DigitalWrite(&GPIOPins[BeeperSel].P, !beeperLowOn); //
 } // BeeperOff
 
 void BeeperToggle(void) {
@@ -36,23 +36,29 @@ void BeeperToggle(void) {
 
 boolean BeeperIsOn(void) {
 
-if (beeperLowOn)
-	return (GPIOPins[BeeperSel].Used && !DigitalRead(&GPIOPins[BeeperSel].P));
-else
-	return (GPIOPins[BeeperSel].Used && DigitalRead(&GPIOPins[BeeperSel].P));
+	if (GPIOPins[BeeperSel].Used)
+		return beeperLowOn ?
+				!DigitalRead(&GPIOPins[BeeperSel].P) :
+				DigitalRead(&GPIOPins[BeeperSel].P);
+	else
+		return false;
 
-} // BeeperIsOn
+}
+// BeeperIsOn
 
 void LEDOn(uint8 l) {
-	DigitalWrite(&LEDPins[l].P, ledsLowOn);
+	if (LEDPins[l].Used)
+		DigitalWrite(&LEDPins[l].P, ledsLowOn);
 } // LEDOn
 
 void LEDOff(uint8 l) {
-	DigitalWrite(&LEDPins[l].P, !ledsLowOn);
+	if (LEDPins[l].Used)
+		DigitalWrite(&LEDPins[l].P, !ledsLowOn);
 } // LEDOff
 
 void LEDToggle(uint8 l) {
-	DigitalToggle(&LEDPins[l].P);
+	if (LEDPins[l].Used)
+		DigitalToggle(&LEDPins[l].P);
 } // LEDToggle
 
 void LEDsOn(void) {
@@ -113,12 +119,12 @@ void LEDRandom(void) {
 
 } // LEDRandom
 
-
 void InitLEDs(void) {
 	idx l;
 
 	for (l = 0; l < MAX_LED_PINS; l++)
-		DigitalWrite(&LEDPins[l].P, !ledsLowOn);
+		if (LEDPins[l].Used)
+			DigitalWrite(&LEDPins[l].P, !ledsLowOn);
 
 	LEDsOff();
 	BeeperOff();

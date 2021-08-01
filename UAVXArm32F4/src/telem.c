@@ -569,7 +569,7 @@ void SendSoaringPacket(uint8 s) {
 
 void SendAltitudeControlPacket(uint8 s) {
 
-	// 65536 / (50Hz x 22 bytes) -> 1 minute only if logging
+	// 65536 / (50Hz x 27 bytes) -> 1 minute only if logging
 
 	if ((State == InFlight) || (State == MonitorInstruments)) {
 
@@ -579,7 +579,7 @@ void SendAltitudeControlPacket(uint8 s) {
 
 		TxESCu8(s, UAVXAltitudeControlPacketTag);
 
-		TxESCu8(s, 20);
+		TxESCu8(s, 25);
 
 		TxESCi16(s, AccU * 1000.0f);
 		TxESCi16(s, AccUBias * 1000.0f);
@@ -596,9 +596,11 @@ void SendAltitudeControlPacket(uint8 s) {
 		TxESCu8(s, CruiseThrottle * 200.0f);
 		TxESCu8(s, DesiredThrottle * 200.0f);
 
-		TxESCu8(s, TiltThrFFComp * 200.0f);
-		TxESCu8(s, BattThrFFComp * 200.0f);
-		TxESCu8(s, AltHoldThrComp * 200.0f);
+		TxESCi16(s, TiltThrFFComp * 10000.0f);
+		TxESCi16(s, BattThrFFComp * 10000.0f);
+		TxESCi16(s, AltHoldThrComp * 1000.00f);
+		TxESCi16(s, (DesiredThrottle + AltHoldThrComp)
+				* TiltThrFFComp * BattThrFFComp * 10000.0f);
 
 		SendPacketTrailer(s);
 

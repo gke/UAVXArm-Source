@@ -340,7 +340,7 @@ enum {
 void InitSPISelectPin(uint8 spiSel) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 
-	if (busDev[spiSel].useSPI) {
+	if (busDev[spiSel].Used && busDev[spiSel].useSPI) {
 		GPIO_StructInit(&GPIO_InitStructure);
 		GPIO_InitStructure.GPIO_Pin = busDev[spiSel].P.Pin;
 		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
@@ -857,17 +857,21 @@ void InitHarness(void) {
 
 	//-----------------
 
-	for (i = 0; i < MAX_LED_PINS; i++) {
-		InitPin(&LEDPins[i]);
-		DigitalWrite(&LEDPins[i].P, ledsLowOn);
-	}
+	for (i = 0; i < MAX_LED_PINS; i++)
+		if (LEDPins[i].Used) {
+			InitPin(&LEDPins[i]);
+			DigitalWrite(&LEDPins[i].P, ledsLowOn);
+		}
 
 	CheckBusDev();
 
 	for (i = 0; i < MAX_GPIO_PINS; i++)
 		InitPin(&GPIOPins[i]);
-	BeeperOff();
-	DigitalWrite(&PWMPins[Aux2Sel].P, false);
+
+		BeeperOff();
+
+	if (PWMPins[Aux2Sel].Used)
+		DigitalWrite(&PWMPins[Aux2Sel].P, false);
 
 	// Drives/Servos
 	for (i = 0; i < MAX_PWM_OUTPUTS; i++)

@@ -112,7 +112,7 @@ void CheckBatteries(void) {
 		BatteryCurrent = LPF1(BatteryCurrent, RawBatteryCurrent,
 				BATTERY_LPF_HZ);
 
-		BatteryVolts = SlewLimit(BatteryVolts, RawBatteryVolts, 0.2f,
+		BatteryVolts = SlewLimit(BatteryVolts, RawBatteryVolts, 1.0f,
 				BattdT);
 
 		F.LowBatt = ((BatteryVolts <= BatteryVoltsLimit)
