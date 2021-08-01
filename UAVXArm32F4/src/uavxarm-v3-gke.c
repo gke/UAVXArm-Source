@@ -71,8 +71,9 @@ void InitMisc(void) {
 
 void DoHouseKeeping(void) {
 
+	CheckBatteries(); // for battery compensation
+
 	CheckLandingSwitch();
-	CheckBatteries();
 	CheckAlarms();
 	DoCalibrationAlarm();
 

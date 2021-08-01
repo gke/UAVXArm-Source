@@ -579,7 +579,7 @@ void SendAltitudeControlPacket(uint8 s) {
 
 		TxESCu8(s, UAVXAltitudeControlPacketTag);
 
-		TxESCu8(s, 18);
+		TxESCu8(s, 20);
 
 		TxESCi16(s, AccU * 1000.0f);
 		TxESCi16(s, AccUBias * 1000.0f);
@@ -595,9 +595,10 @@ void SendAltitudeControlPacket(uint8 s) {
 		TxESCu8(s, BatteryVolts * 10.0f);
 		TxESCu8(s, CruiseThrottle * 200.0f);
 		TxESCu8(s, DesiredThrottle * 200.0f);
-		TxESCu8(s, AltHoldThrComp * 200.0f);
 
-		//TxESCu8(s, (DesiredThrottle + AltHoldThrComp) * TiltThrFFComp * BattThrFFComp * 200.0f);
+		TxESCu8(s, TiltThrFFComp * 200.0f);
+		TxESCu8(s, BattThrFFComp * 200.0f);
+		TxESCu8(s, AltHoldThrComp * 200.0f);
 
 		SendPacketTrailer(s);
 

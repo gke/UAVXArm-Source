@@ -40,7 +40,7 @@
 real32 VoltageScale, CurrentScale;
 real32 CurrentSensorSwing;
 
-real32 BatteryVolts, StartupVolts, BatterySagR, BatteryCurrent,
+real32 BatteryVolts, StartupVolts, BatteryCurrent,
 		BatteryVoltsLimit, BatteryChargeUsedmAH, BatteryCapacityLimitmAH;
 
 real32 BatteryCurrentADCZero = 0.0f; // takes a while for bipolar capture of offset
@@ -67,43 +67,59 @@ real32 MockBattery(void) {
 
 } // MockBattery
 
-void CheckBatteries(void) {
-	static timemS LastUpdatemS = 0;
-	timemS NowmS;
-	real32 dTmS;
+void CalcBatThrFFComp(real32 RawBatteryVolts, real32 BattdT) {
+	static real32 BatteryBoost = 1.0f;
 
-	NowmS = mSClock();
+	BatteryBoost = SlewLimit(BatteryBoost, StartupVolts / RawBatteryVolts,
+			FromPercent(5.0f), BattdT);
+
+	BattThrFFComp = Limit(
+			(UsingBatteryComp && (State == InFlight)) ? BatteryBoost : 1.0f,
+			1.0f, 1.2f);
+
+} // CalcBattThrFFComp
+
+void CheckBatteries(void) {
+	static timeuS LastUpdateuS = 0;
+	real32 RawBatteryVolts, RawBatteryCurrent;
+	timeuS NowuS;
+	real32 BattdT;
+
+	NowuS = uSClock();
 
 	if (mSTimeout(BatteryUpdatemS)) {
 		mSTimer(BatteryUpdatemS, BATTERY_UPDATE_MS);
 
-		dTmS = (LastUpdatemS > 0) ? NowmS - LastUpdatemS : 0.0f;
-		LastUpdatemS = NowmS;
+		BattdT = ((LastUpdateuS > 0) ? NowuS - LastUpdateuS : 0.0f) * 0.000001f;
+		LastUpdateuS = NowuS;
 
 		if (F.Emulation) {
-			BatteryCurrent = (DesiredThrottle + AltHoldThrComp) * CurrentScale
-					* 0.5f; // reduce emulated current to a sensible fraction of FS
-			if (BatteryCurrent < 0.0f)
-				BatteryCurrent = 0.0f;
-			BatteryVolts = MockBattery() * BatteryCellCount;
+			RawBatteryCurrent = (DesiredThrottle + AltHoldThrComp)
+					* CurrentScale * 0.5f; // reduce emulated current to a sensible fraction of FS
+			if (RawBatteryCurrent < 0.0f)
+				RawBatteryCurrent = 0.0f;
+			RawBatteryVolts = MockBattery() * BatteryCellCount;
 		} else {
-			BatteryCurrent = LPF1(BatteryCurrent,
-					(analogRead(BattCurrentAnalogSel) - BatteryCurrentADCZero)
-							* CurrentScale, BATTERY_LPF_HZ);
-			BatteryVolts = SlewLimit(BatteryVolts,
-					analogRead(BattVoltsAnalogSel) * VoltageScale,
-					0.2f, BATTERY_UPDATE_DT);
+			RawBatteryCurrent = (analogRead(BattCurrentAnalogSel)
+					- BatteryCurrentADCZero) * CurrentScale;
+			RawBatteryVolts = analogRead(BattVoltsAnalogSel) * VoltageScale;
 		}
 
-		BatterySagR = SlewLimit(BatterySagR, StartupVolts / BatteryVolts,
-				FromPercent(0.5f), BATTERY_UPDATE_DT);
+		CalcBatThrFFComp(RawBatteryVolts, BattdT);
 
-		BatteryChargeUsedmAH += BatteryCurrent * dTmS * (1.0f / 3600.0f);
+		BatteryChargeUsedmAH += RawBatteryCurrent * BattdT * (1.0f / 3.6f);
+
+		BatteryCurrent = LPF1(BatteryCurrent, RawBatteryCurrent,
+				BATTERY_LPF_HZ);
+
+		BatteryVolts = SlewLimit(BatteryVolts, RawBatteryVolts, 0.2f,
+				BattdT);
 
 		F.LowBatt = ((BatteryVolts <= BatteryVoltsLimit)
 				&& (P(LowVoltThres) > 0))
 				|| (BatteryChargeUsedmAH > BatteryCapacityLimitmAH);
 	}
+
 } // CheckBatteries
 
 void InitBattery(void) {
@@ -112,7 +128,7 @@ void InitBattery(void) {
 	VoltageScale = P(VoltageSensorFS) * 0.2f * FromPercent(P(VoltScaleTrim));
 	CurrentScale = P(CurrentSensorFS) * FromPercent(P(CurrentScaleTrim));
 
-	BatterySagR = 1.0f;
+	BattThrFFComp = 1.0f;
 	BatteryVoltsLimit = Limit(P(LowVoltThres) * 0.1f, 0.1f, 25.0f);
 	BatteryCapacitymAH = (P(BatteryCapacity) * 100.0f);
 	BatteryCapacityLimitmAH = BatteryCapacitymAH * 0.75f;
@@ -131,15 +147,16 @@ void InitBattery(void) {
 		for (i = 0; i < 200; i++) {
 			Delay1mS(5);
 			StartupVolts = SlewLimit(StartupVolts,
-					analogRead(BattVoltsAnalogSel) * VoltageScale,
-					2.0f, 0.005f);
-			BatteryCurrentADCZero = SlewLimit(BatteryCurrentADCZero,
-					analogRead(BattCurrentAnalogSel), 200.0f,
+					analogRead(BattVoltsAnalogSel) * VoltageScale, 2.0f,
 					0.005f);
+			BatteryCurrentADCZero = SlewLimit(BatteryCurrentADCZero,
+					analogRead(BattCurrentAnalogSel), 200.0f, 0.005f);
 		}
 
 		BatteryVolts = StartupVolts;
 		BatteryCellCount = (int16) (BatteryVolts / 3.7f); // OK for 3-6 cell LiPo if charged!
+
+		// TODO: StartupVolts = BatteryCellCount * 4.2f;
 	}
 
 } // InitBattery

@@ -91,11 +91,6 @@ void CalcTiltThrFF(void) {
 
 } // CalcTiltThrFF
 
-void CalcBattThrComp(void) {
-
-	BattThrFFComp = Limit((UsingBatteryComp && (State == InFlight)) ? BatterySagR : 1.0f, 1.0f, 1.2f);
-
-} // CalcBattThrComp
 
 void DisableFlightStuff(void) { // paranoid ;)
 
@@ -614,7 +609,6 @@ void DoControl(void) {
 	} else {
 
 		CalcTiltThrFF();
-		CalcBattThrComp();
 
 		DoTurnControl();
 

@@ -22,16 +22,18 @@
 #ifndef _battery_h
 #define _battery_h
 
-#define BATTERY_UPDATE_MS 100
-#define BATTERY_UPDATE_DT (BATTERY_UPDATE_MS*0.001f)
-#define BATTERY_UPDATE_HZ (1000/BATTERY_UPDATE_MS)
+
+#define BATTERY_UPDATE_HZ 50
+#define BATTERY_UPDATE_MS (1000/BATTERY_UPDATE_HZ)
+#define BATTERY_UPDATE_DT (BATTERY_UPDATE_MS * 0.001f)
+
 #define BATTERY_LPF_HZ 0.25f
 
 void InitBattery(void);
 void CheckBatteries(void);
 void BatteryTest(uint8 s);
 
-extern real32 BatteryVolts, BatterySagR, BatteryCurrent, BatteryVoltsLimit, StartupVolts,
+extern real32 BatteryVolts, BatteryCurrent, BatteryVoltsLimit, StartupVolts,
 		BatteryChargeUsedmAH, BatteryCapacitymAH;
 extern uint8 BatteryCellCount;
 extern real32 BatteryCurrentADCZero;
