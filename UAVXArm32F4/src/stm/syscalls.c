@@ -46,9 +46,9 @@ caddr_t _sbrk(int incr) {
 
 uint8 ResetCause = 0;
 
-//const char * ResetCauseNames[] = { "UNKNOWN_CAUSE", "LOW_POWER", "WINDOW_WATCHDOG",
-//		"INDEPENDENT_WATCHDOG", "SOFTWARE", "POWER_ON_POWER_DOWN",
-//		"EXTERNAL_RESET_PIN", "BROWNOUT" };
+const char * ResetCauseNames[] = { "UNKNOWN_CAUSE", "LOW_POWER", "WINDOW_WATCHDOG",
+		"INDEPENDENT_WATCHDOG", "SOFTWARE", "POWER_ON_POWER_DOWN",
+		"EXTERNAL_RESET_PIN", "BROWNOUT" };
 
 uint8 GetResetCause(void) {
 	uint8 c;

@@ -78,7 +78,6 @@ typedef struct {
 AltStruct Alt;
 
 void DetermineInFlightThrottle(void);
-void ZeroThrottleCompensation(void);
 void ResetHeading(void);
 void DoAltitudeControl(void);
 void ZeroIntegrators(void);

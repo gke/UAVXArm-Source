@@ -26,6 +26,8 @@
 
 // Options
 
+//#define USB_TESTING
+
 //#define USE_MAHONY_AHRS
 
 //#define MADGWICK_TESTING

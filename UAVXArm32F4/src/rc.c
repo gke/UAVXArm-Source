@@ -525,7 +525,7 @@ void CheckRC(void) {
 
 } // CheckRC
 
-inline boolean ActiveCh(uint8 c) {
+boolean ActiveCh(uint8 c) {
 	return DiscoveredRCChannels > Map[c];
 } // ActiveCh
 
@@ -542,7 +542,7 @@ void CheckThrottleMoved(void) {
 
 } // CheckThrottleMoved
 
-inline boolean ActiveAndTriggered(real32 t, uint8 r) {
+boolean ActiveAndTriggered(real32 t, uint8 r) {
 	return ActiveCh(r) && (RC[r] > t);
 } // ActiveAndTriggered
 

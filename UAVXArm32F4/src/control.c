@@ -73,10 +73,6 @@ void ResetHeading(void) {
 			Heading;
 } // SetDesiredHeading;
 
-void ZeroThrottleCompensation(void) {
-	AltHoldThrComp = 0.0f;
-	TiltThrFFComp = BattThrFFComp = 1.0f;
-} // ZeroThrottleCompensation
 
 void CalcTiltThrFF(void) {
 	const real32 TiltScaleLimit = 1.0f / cosf(NAV_MAX_ANGLE_RAD);
@@ -96,8 +92,8 @@ void DisableFlightStuff(void) { // paranoid ;)
 
 	F.HoldingAlt = false;
 	DesiredThrottle = 0.0f;
+	AltHoldThrComp = 0.0f;
 	ZeroIntegrators();
-	ZeroThrottleCompensation();
 	ZeroNavCorrections();
 	ResetHeading();
 
@@ -644,7 +640,7 @@ void InitControl(void) {
 
 	Sl = 0.0f;
 	DesiredAlt = 0.0f;
-	ZeroThrottleCompensation();
+	AltHoldThrComp = 0.0f;
 
 } // InitControl
 

@@ -24,12 +24,12 @@
 
 #include "UAVX.h"
 
-PinDef CPPMPin = { false, }; //PA0, PWMPinConfig, PWMIn_2_1 };
+const PinDef CPPMPin = { false, }; //PA0, PWMPinConfig, PWMIn_2_1 };
 
-PinDef SoftSerialTxPin = // old RC2 Pin
+const PinDef SoftSerialTxPin = // old RC2 Pin
 		{ false, }; //PA1, OutPinConfig }; // use TIM5
 
-PinDef PWMPins[MAX_PWM_OUTPUTS] = {
+const PinDef PWMPins[MAX_PWM_OUTPUTS] = {
 // Drives 1-4
 		{ true, PB9, PWMPinConfig, PWMOut_4_4 },
 		{ true, PB8, PWMPinConfig, PWMOut_4_3 },
@@ -44,7 +44,7 @@ PinDef PWMPins[MAX_PWM_OUTPUTS] = {
 		{ false, PB0, PWMPinConfig, PWMOut_3_3 },
 		{ false, PB1, PWMPinConfig, PWMOut_3_4 } };
 
-PinDef GPIOPins[MAX_GPIO_PINS] = { //
+const PinDef GPIOPins[MAX_GPIO_PINS] = { //
 		{ true, PE14, OutPinConfig, }, // BeeperSel
 		{ true, PB0, InpPinConfig, }, // ArmedSel
 		{ true, PE13, InpPinConfig, }, // LandingSel
@@ -60,20 +60,20 @@ PinDef GPIOPins[MAX_GPIO_PINS] = { //
 		{ false, } // HMC5XXXRdySel
 };
 
-PinDef LEDPins[MAX_LED_PINS] = { //
+const PinDef LEDPins[MAX_LED_PINS] = { //
 		{ true, PD13, LEDPinConfig, }, // Yellow
 		{ true, PD14, LEDPinConfig, }, // Red
 		{ true, PD11, LEDPinConfig, }, // Blue
 		{ true, PD12, LEDPinConfig, }, // Green
 };
 
-AnalogPinDef AnalogPins[MAX_ANALOG_CHANNELS] = { { true, ADC1, PC0,
+const AnalogPinDef AnalogPins[MAX_ANALOG_CHANNELS] = { { true, ADC1, PC0,
 		ADC_Channel_10, DMA2_0_0_noIRQn, 1 }, // RF
 		{ true, ADC1, PC1, ADC_Channel_11, DMA2_0_0_noIRQn, 2 }, // Current aka Aux4
 		{ true, ADC1, PC2, ADC_Channel_12, DMA2_0_0_noIRQn, 3 }, // Volts
 };
 
-SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
+const SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
 		{ false, }, // mapped to USBSerial
 		{ true, USART1, PA9, PA10, 115200, true, false, USART1Config }, //
 		{ true, USART2, PD5, PD6, 115200, true, false, USART2Config }, // Sbus/Spektrum
@@ -82,20 +82,20 @@ SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
 		{ false, 0 } // SoftSerial
 };
 
-I2CPortDef I2CPorts[MAX_I2C_PORTS] = { { false, 0, }, // notionally I2C0
+const I2CPortDef I2CPorts[MAX_I2C_PORTS] = { { false, 0, }, // notionally I2C0
 		{ false, I2C1, PB6, PB7, GPIO_AF_I2C1 }, //
 		{ true, I2C2, PB10, PB11, GPIO_AF_I2C2 }, // USART3
 		{ false, I2C3, }
 };
 
-SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
+const SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
 		{ false, 0, }, // notionally SPI0
 		{ true, SPI1, { PA5, PA6, PA7 } }, // Aux1, RC5, RC6 <- SPIESC?
 		{ true, SPI2, { PB13, PB14, PB15 } }, //
 		{ true, SPI3, { PC10, PC11, PC12 } } // Arming, LED3, LED2
 };
 
-DevDef busDev[maxDevSel] = {
+const DevDef busDev[maxDevSel] = {
 		{ true, imuSel, mpu6050IMU, false, 2, MPU_0x68_ID, },
 		{ true, baroSel, ms5611Baro, false, 2, MS56XX_0_ID, },
 		{ true, magSel, hmc5xxxMag, false, 2, HMC5XXX_ID, },
@@ -104,14 +104,16 @@ DevDef busDev[maxDevSel] = {
 #else
 		{ true, memSel, i2cEEPROMMem, false, 2, EEPROM_ID, },
 #endif
-		{ false, gpsSel, }, { false, rfSel, },
-		{ false, asSel, }, { false, flowSel, },
-		{ false, oledSel, oledDisplay, },
-		{ false, escSPISel, },
+		{ false, gpsSel, }, //
+		{ false, rfSel, }, //
+		{ false, asSel, }, //
+		{ false, flowSel, }, //
+		{ false, oledSel, oledDisplay, }, //
+		{ false, escSPISel, }, //
 		{ false, escI2CSel, ESCI2C, false, 2, ESCI2C_ID, }
 };
 
-PinDef USBDisconnectPin = { false, 0, };
+const PinDef USBDisconnectPin = { false, 0, };
 
 const uint8 IMUQuadrant = 0;
 const uint8 MagQuadrant = 0;
@@ -123,7 +125,6 @@ const boolean beeperLowOn = true;
 void InitTarget(void) {
 
 	TelemetrySerial = Usart1;
-
 	InitSerialPort(TelemetrySerial, true, false);
 
 	switch (CurrRxType) {

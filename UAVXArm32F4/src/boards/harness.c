@@ -24,11 +24,11 @@ idx GPSSerial, RCSerial, TelemetrySerial, FrSkySerial;
 
 #include "./targets/targets.inc"
 
-boolean DigitalRead(ConnectDef * d) {
+boolean DigitalRead(const ConnectDef * d) {
 	GPIO_ReadInputDataBit(d->Port, d->Pin);
 } // DigitalRead
 
-void DigitalWrite(ConnectDef * d, boolean m) {
+void DigitalWrite(const ConnectDef * d, boolean m) {
 
 	if (m)
 		d->Port->BSRRL = d->Pin;
@@ -37,11 +37,11 @@ void DigitalWrite(ConnectDef * d, boolean m) {
 
 } // DigitalWrite
 
-void DigitalToggle(ConnectDef * d) {
+void DigitalToggle(const ConnectDef * d) {
 	d->Port->ODR ^= d->Pin;
 } // DigitalToggle
 
-void InitPin(PinDef * d) {
+void InitPin(const PinDef * d) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 
 	if (d->Used) { // overkill
@@ -55,7 +55,7 @@ void InitPin(PinDef * d) {
 	}
 } // InitPin
 
-void InitPinMode(PinDef * d, boolean IsInput) {
+void InitPinMode(const PinDef * d, boolean IsInput) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 
 	GPIO_StructInit(&GPIO_InitStructure);
@@ -74,7 +74,7 @@ void InitPinMode(PinDef * d, boolean IsInput) {
 	}
 } // InitPinMode
 
-void InitOutputPin(PinDef * d) {
+void InitOutputPin(const PinDef * d) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 
 	if (d->Used) {
@@ -533,22 +533,26 @@ void InitSerialPort(uint8 s, boolean Enable, boolean SBusConfig) {
 
 	u = &SerialPorts[s];
 
-	if (u->Used) {
+	if ((u->Used) && (s >= Usart1) && (s <= Uart4)) {
 		switch (s) {
-		case 0:
+		case USBSerial:
+			RxEnabled[USBSerial] = true;
 			USBConnect();
 			break;
-		case 1:
+		case Usart1:
 			RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
 			break;
-		case 2:
+		case Usart2:
 			RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART2, ENABLE);
 			break;
-		case 3:
+		case Usart3:
 			RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3, ENABLE);
 			break;
-		case 4:
+		case Uart4:
 			RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART4, ENABLE);
+			break;
+		case SoftSerial:
+			RxEnabled[SoftSerial] = false;
 			break;
 		default:
 			break;
@@ -638,9 +642,9 @@ void InitSerialPort(uint8 s, boolean Enable, boolean SBusConfig) {
 
 		RxEnabled[s] = Enable;
 		USART_Cmd(u->USART, ENABLE);
-	} else {
+	} else
 		RxEnabled[s] = false;
-	}
+
 } // InitSerialPort
 
 void SoftSerialTxTimerStart(void) {
@@ -857,28 +861,28 @@ void InitHarness(void) {
 
 	//-----------------
 
-	for (i = 0; i < MAX_LED_PINS; i++)
-		if (LEDPins[i].Used) {
-			InitPin(&LEDPins[i]);
+	for (i = 0; i < MAX_LED_PINS; i++) {
+		InitPin(&LEDPins[i]);
+		if (LEDPins[i].Used)
 			DigitalWrite(&LEDPins[i].P, ledsLowOn);
-		}
+	}
 
 	CheckBusDev();
 
 	for (i = 0; i < MAX_GPIO_PINS; i++)
 		InitPin(&GPIOPins[i]);
 
-		BeeperOff();
+	BeeperOff();
 
 	if (PWMPins[Aux2Sel].Used)
 		DigitalWrite(&PWMPins[Aux2Sel].P, false);
 
 	// Drives/Servos
-	for (i = 0; i < MAX_PWM_OUTPUTS; i++)
-		if (PWMPins[i].Used) { // switch off all (potential) motor output pins
-			InitOutputPin(&PWMPins[i]);
+	for (i = 0; i < MAX_PWM_OUTPUTS; i++) { // switch off all (potential) motor output pins
+		InitOutputPin(&PWMPins[i]);
+		if (PWMPins[i].Used)
 			DigitalWrite(&PWMPins[i].P, false);
-		}
+	}
 
 	if ((CurrESCType == ESCUnknown) || (UAVXAirframe == AFUnknown))
 		DrivesInitialised = false;

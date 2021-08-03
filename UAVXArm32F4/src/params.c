@@ -74,7 +74,8 @@ void SetP(uint8 i, uint8 v) {
 	}
 } // SetP
 
-uint8 LimitP(uint8 i, uint8 l, uint8 h) { // TODO: really should have a limits array for all params as a prepass
+// TODO: really should have a limits array for all params as a prepass
+uint8 LimitP(uint8 i, uint8 l, uint8 h) {
 
 	if (P(i) < l)
 		SetP(i, l);
@@ -564,7 +565,12 @@ void ConditionParameters(void) {
 	CurrTelType = P(TelemetryType);
 	CurrBBLogType = P(BBLogType); //LimitP(BBLogType, logUAVX, logYaw);
 
+#if (defined(UAVXF4V3) || defined(UAVXF4V4) || defined(UAVXF4V3BBFLASH))
 	CurrRxType = P(RxType);
+#else
+	CurrRxType = FutabaSBusRx;
+	SetP(RxType, CurrRxType);
+#endif
 
 	CurrConfig1 = P(Config1Bits);
 	CurrConfig2 = P(Config2Bits);

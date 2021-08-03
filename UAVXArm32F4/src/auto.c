@@ -119,7 +119,7 @@ boolean DoLanding(void) {
 
 
 void InitiateShutdown(uint8 s) {
-	ZeroThrottleCompensation();
+	AltHoldThrComp = 0.0f;
 	ZeroNavCorrections();
 	DesiredThrottle = 0.0f;
 	F.DrivesArmed = false;
@@ -206,7 +206,7 @@ void InitiateRTH(void) {
 void InitiatePerch(void) {
 	idx a;
 
-	ZeroThrottleCompensation();
+	AltHoldThrComp = 0.0f;
 	ZeroIntegrators();
 
 	for (a = NorthC; a <= EastC; a++)
@@ -279,7 +279,7 @@ void UpdateRTHSwState(void) { // called in rc.c on every rx packet
 		F.ForcedLanding = F.Navigate = F.ReturnHome = F.AltControlEnabled
 				= F.HoldingAlt = F.Glide = F.FenceAlarm = false;
 		CaptureDesiredAltitude(Altitude);
-		ZeroThrottleCompensation();
+		AltHoldThrComp = 0.0f;
 		ZeroNavCorrections();
 
 		if (F.OriginValid)

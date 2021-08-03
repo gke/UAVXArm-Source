@@ -151,9 +151,9 @@ void InitTarget(void) {
 
 void InitTarget(void) {
 
-
 	TelemetrySerial = USBSerial;
-	InitSerialPort(TelemetrySerial, true, false);
+	RxEnabled[USBSerial] = true;
+	USBConnect();
 
 	F.HaveSerialRC = true;
 	RCSerial = Usart1;

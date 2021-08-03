@@ -708,7 +708,6 @@ void SendDefAFNames(uint8 s) {
 
 void SendParamsPacket(uint8 s, uint8 GUIPS) {
 	idx p;
-	const char * ResetCauseName = ResetCauseNames[ResetCause];
 
 	if ((State == Preflight) || (State == Ready)
 			|| (State == MonitorInstruments)) {

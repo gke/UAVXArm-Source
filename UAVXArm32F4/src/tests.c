@@ -276,21 +276,18 @@ void DoTesting(void) {
 
 #elif defined(USB_TESTING)
 
-	USBConnect();
-
 	LEDOn(ledGreenSel);
 
 	USBTxString("starting USB Test (! to force restart)\n");
 
 	while (true) {
+
 		if (SerialAvailable(USBSerial)) {
 			LEDToggle(ledYellowSel);
 			uint8 ch = RxChar(USBSerial);
-			if (ch == '!')
-			systemReset(false);
-			else
 			TxChar(USBSerial, ch);
 		}
+
 	}
 #elif defined(COMMISSIONING_TEST)
 

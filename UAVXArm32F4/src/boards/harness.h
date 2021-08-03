@@ -394,20 +394,17 @@ typedef const struct { // C2 Port GUI changeable UAVX
 
 //______________________________________________________________________
 
-extern PinDef GPIOPins[];
-extern PinDef LEDPins[];
-extern AnalogPinDef AnalogPins[];
-extern PinDef USBDisconnectPin;
-extern I2CPortDef I2CPorts[];
-extern SPIPortDef SPIPorts[];
-extern SerialPortDef SerialPorts[];
-extern PinDef WSPin;
-extern PinDef SoftSerialTxPin;
+extern const PinDef GPIOPins[];
+extern const PinDef LEDPins[];
+extern const AnalogPinDef AnalogPins[];
+extern const PinDef USBDisconnectPin;
+extern const I2CPortDef I2CPorts[];
+extern const SPIPortDef SPIPorts[];
+extern const SerialPortDef SerialPorts[];
+extern const PinDef SoftSerialTxPin;
 
-extern PinDef RCPins[];
-extern PinDef PWMPins[];
+extern const PinDef PWMPins[];
 
-extern boolean usartUsed[];
 extern idx CurrMaxPWMOutputs;
 extern idx GPSSerial, RCSerial, TelemetrySerial, FrSkySerial;
 
@@ -427,14 +424,14 @@ void InitClocks(void);
 void InitHarness(void);
 void InitTarget(void);
 
-void InitPin(PinDef * d);
-void InitOutputPin(PinDef * d);
-void InitPinMode(PinDef * d, boolean IsInput);
+void InitPin(const PinDef * d);
+void InitOutputPin(const PinDef * d);
+void InitPinMode(const PinDef * d, boolean IsInput);
 
 void InitSerialPort(uint8 s, boolean Enable, boolean SBusConfig);
 void SetBaudRate(uint8 s, uint32 BaudRate);
 
-void InitPWMPin(PinDef * u, uint16 pwmprescaler, uint32 pwmperiod,
+void InitPWMPin(const PinDef * u, uint16 pwmprescaler, uint32 pwmperiod,
 		uint32 pwmwidth);
 void InitSoftSerialTxTimer(void);
 
@@ -445,8 +442,8 @@ void InitSPIGPIOPins(uint8 spiPort, boolean highClock);
 void SoftSerialTxTimerStart(void);
 void SoftSerialTxTimerStop(void);
 
-boolean DigitalRead(ConnectDef * d);
-void DigitalWrite(ConnectDef * d, boolean m);
-void DigitalToggle(ConnectDef * d);
+boolean DigitalRead(const ConnectDef * d);
+void DigitalWrite(const ConnectDef * d, boolean m);
+void DigitalToggle(const ConnectDef * d);
 
 #endif
