@@ -1326,7 +1326,8 @@ void CheckTelemetry(uint8 s) {
 
 	UAVXPollRx(s);
 
-	SendFrSkyTelemetry(FrSkySerial); // always send
+	if (SoftSerialTxPin.Used)
+		SendFrSkyTelemetry(FrSkySerial); // always send
 
 	if ((State == InFlight) || (State == MonitorInstruments)) {
 		if (CurrBBLogType == logUAVX) {

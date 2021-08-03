@@ -34,8 +34,7 @@ const PinDef SoftSerialTxPin = { false, };
 
 const PinDef CPPMPin = { false, };
 
-const PinDef RCPins[MAX_RC_INPUTS] = { { true, PB7, PWMPinConfig, PWMIn_4_2 }, // PPM / UART1_RX
-		};
+const PinDef RCPins[MAX_RC_INPUTS] = { { false, }}; // SBus only No CPPM
 
 const PinDef PWMPins[MAX_PWM_OUTPUTS] = {
 // Drives 1-4
@@ -47,14 +46,15 @@ const PinDef PWMPins[MAX_PWM_OUTPUTS] = {
 		{ false, PC9, PWMPinConfig, PWMOut_8_4 }, // D(2, 7, 7)
 		{ false, PC8, PWMPinConfig, PWMOut_8_3 }, // D(2, 2, 0)
 
-		{ false,  }, //
-		{ false,  }, //
+		{ false, }, //
+		{ false, }, //
 
 		{ false, }, //
 		{ false, } //
 };
 
-const PinDef GPIOPins[MAX_GPIO_PINS] = { { false, PB4, OutPinConfig, }, // Beeper
+const PinDef GPIOPins[MAX_GPIO_PINS] = { //
+		{ false, PC13, OutPinConfig, }, // Beeper
 		{ false, }, // Armed
 		{ false, }, // Landing
 		{ false, }, // Aux1
@@ -89,29 +89,25 @@ const SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { //
 		{ false, 0 } // SoftSerial
 };
 
-const I2CPortDef I2CPorts[MAX_I2C_PORTS] = { { false, 0, }, // notionally I2C0
-		{ false, I2C1,
-		PB8, // PB8, alt MST8
-		PB9, // PB9, alt MST7
-		GPIO_AF_I2C1 }, //
-		{ false, I2C2,
-		PB10, // PB10 alt UART3TX
-		PB11, // PB11 alt UART3RX
-		GPIO_AF_I2C2 }, // used by usart3
-		{ false, I2C3, } };
+const I2CPortDef I2CPorts[MAX_I2C_PORTS] = { //
+		{ false, 0, }, // notionally I2C0
+		{ true, I2C1, PB8, PB9, GPIO_AF_I2C1 }, //
+		{ false, I2C2, PB10,  PB11,  GPIO_AF_I2C2 }, // used by usart3
+		{ false, I2C3, } //
+};
 
 const SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
 		{ false, 0, }, //
 		{ true, SPI1, { PA5, PA6, PA7 } }, //
 		{ false, SPI2, { PB13, PB14, PC3 } }, //
-		{ false,  } // USART clashes
-						 };
+		{ false, SPI3, {PC10, PC11, PC12 } } // USART clashes
+};
 
 const DevDef busDev[] = {
 		{ true, imuSel, mpu6000IMU, true, 1, 0, PB12 },
 		{ false, baroSel,  }, // baroSel
 		{ false, magSel, hmc5xxxMag, false, 1, HMC5XXX_ID,},
-		{ false, memSel, }, // memSel
+		{ false, memSel, spiFlashMem, true, 2, 0, PC14}, //
 		{ false, gpsSel, }, //
 		{ false, rfSel, }, //
 		{ false, asSel, },//
@@ -154,10 +150,11 @@ void InitTarget(void) {
 	InitSerialPort(RCSerial, false, CurrRxType == FutabaSBusRx);
 
 	F.HaveGPS = false; // removed for debug
-	if (F.HaveGPS) {
-		GPSSerial = GPSSerial = Uart4;
-		InitSerialPort(GPSSerial, false, false);
-	}
+	GPSSerial = GPSSerial = Uart4;
+	InitSerialPort(GPSSerial, false, false);
+
+	FrSkySerial = SoftSerial;
+	InitSerialPort(FrSkySerial, true, false);
 
 } // omnibusf4nxtInit
 #endif

@@ -78,7 +78,7 @@ const SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
 	{true, USART2, PA2, PA3, 115200, true, false, USART2Config},
 	{true, USART3, PB10, PB11, 115200, true, false, USART3Config},
 	{false, UART4, PB10, PB11, 115200, true, false, UART4Config},
-	{false, 0 } // SoftSerial
+	{true, 0 } // SoftSerial
 };
 
 const I2CPortDef I2CPorts[MAX_I2C_PORTS] = {
@@ -90,9 +90,9 @@ const I2CPortDef I2CPorts[MAX_I2C_PORTS] = {
 
 const SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
 	{false, 0, }, // notionally SPI0
-	{true, SPI1, {PA5, PA6, PA7}}, // Aux1, RC5, RC6 <- SPIESC?
+	{false, SPI1, {PA5, PA6, PA7}}, // Aux1, RC5, RC6 <- SPIESC?
 	{true, SPI2, {PB13, PB14, PB15}}, //
-	{true, SPI3, {PC10, PC11, PC12}} // Arming, LED3, LED2
+	{false, SPI3, {PC10, PC11, PC12}} // Arming, LED3, LED2
 };
 
 const PinDef USBDisconnectPin = { false, 0, };
@@ -153,7 +153,7 @@ void InitTarget(void) {
 	InitSerialPort(GPSSerial, false, false);
 			
 	FrSkySerial = SoftSerial;
-	InitSoftSerialTxTimer();	
+	InitSerialPort(FrSkySerial, true, false);
 
 } // uavxf4v4Init
 #endif

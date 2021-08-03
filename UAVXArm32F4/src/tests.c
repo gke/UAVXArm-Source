@@ -282,11 +282,13 @@ void DoTesting(void) {
 
 	while (true) {
 
-		if (SerialAvailable(USBSerial)) {
-			LEDToggle(ledYellowSel);
-			uint8 ch = RxChar(USBSerial);
-			TxChar(USBSerial, ch);
-		}
+		CheckTelemetry(TelemetrySerial);
+
+		//if (SerialAvailable(USBSerial)) {
+		//	LEDToggle(ledYellowSel);
+		//	uint8 ch = RxChar(USBSerial);
+		//	TxChar(USBSerial, ch);
+		//}
 
 	}
 #elif defined(COMMISSIONING_TEST)

@@ -533,7 +533,8 @@ void InitSerialPort(uint8 s, boolean Enable, boolean SBusConfig) {
 
 	u = &SerialPorts[s];
 
-	if ((u->Used) && (s >= Usart1) && (s <= Uart4)) {
+	if (u->Used) {
+
 		switch (s) {
 		case USBSerial:
 			RxEnabled[USBSerial] = true;
@@ -552,98 +553,103 @@ void InitSerialPort(uint8 s, boolean Enable, boolean SBusConfig) {
 			RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART4, ENABLE);
 			break;
 		case SoftSerial:
-			RxEnabled[SoftSerial] = false;
+			InitSoftSerialTxTimer();
+			RxEnabled[SoftSerial] = true;
 			break;
 		default:
 			break;
 		} // switch
 
-		GPIO_StructInit(&GPIO_InitStructure);
-		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-		GPIO_InitStructure.GPIO_Pin = u->Tx.Pin | u->Rx.Pin;
-		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-		//GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
-		GPIO_Init(u->Tx.Port, &GPIO_InitStructure);
+		if ((s > USBSerial) && (s < SoftSerial)) {
 
-		GPIO_PinAFConfig(u->Tx.Port, u->Tx.PinSource, u->USART_AF);
-		GPIO_PinAFConfig(u->Rx.Port, u->Rx.PinSource, u->USART_AF);
+			GPIO_StructInit(&GPIO_InitStructure);
+			GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+			GPIO_InitStructure.GPIO_Pin = u->Tx.Pin | u->Rx.Pin;
+			GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+			//GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+			GPIO_Init(u->Tx.Port, &GPIO_InitStructure);
 
-		USART_StructInit(&USART_InitStructure); // 9600 8-N-1 default
+			GPIO_PinAFConfig(u->Tx.Port, u->Tx.PinSource, u->USART_AF);
+			GPIO_PinAFConfig(u->Rx.Port, u->Rx.PinSource, u->USART_AF);
 
-		if (SBusConfig) {
-			USART_InitStructure.USART_BaudRate = 100000; // 96000; //100000;
-			USART_InitStructure.USART_WordLength = USART_WordLength_9b;
-			USART_InitStructure.USART_StopBits = USART_StopBits_2;
-			USART_InitStructure.USART_Parity = USART_Parity_Even;
+			USART_StructInit(&USART_InitStructure); // 9600 8-N-1 default
+
+			if (SBusConfig) {
+				USART_InitStructure.USART_BaudRate = 100000; // 96000; //100000;
+				USART_InitStructure.USART_WordLength = USART_WordLength_9b;
+				USART_InitStructure.USART_StopBits = USART_StopBits_2;
+				USART_InitStructure.USART_Parity = USART_Parity_Even;
+				USART_Init(u->USART, &USART_InitStructure);
+			} else {
+				USART_InitStructure.USART_BaudRate = 115200;
+				USART_InitStructure.USART_StopBits = USART_StopBits_2;
+				USART_InitStructure.USART_Parity = USART_Parity_No;
+			}
 			USART_Init(u->USART, &USART_InitStructure);
-		} else {
-			USART_InitStructure.USART_BaudRate = 115200;
-			USART_InitStructure.USART_StopBits = USART_StopBits_2;
-			USART_InitStructure.USART_Parity = USART_Parity_No;
+
+			NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+			NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;
+			NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+
+			TxQTail[s] = TxQHead[s] = TxQNewHead[s] = 0;
+
+			if (u->InterruptsUsed) {
+				RxQTail[s] = RxQHead[s] = 0;
+				NVIC_InitStructure.NVIC_IRQChannel = u->ISR;
+				NVIC_Init(&NVIC_InitStructure);
+
+				USART_ITConfig(u->USART, USART_IT_RXNE, ENABLE);
+			} else {
+				// Common
+				DMA_StructInit(&DMA_InitStructure);
+				DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+				DMA_InitStructure.DMA_Priority = DMA_Priority_Medium;
+				DMA_InitStructure.DMA_PeripheralBaseAddr =
+						(uint32) &u->USART->DR;
+				DMA_InitStructure.DMA_BufferSize = SERIAL_BUFFER_SIZE;
+
+				// Receive DMA
+				DMA_DeInit(u->RxStream);
+				while (DMA_GetCmdStatus(u->RxStream) != DISABLE) {
+				};
+
+				DMA_InitStructure.DMA_PeripheralBaseAddr =
+						(uint32) &u->USART->DR;
+				DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
+				DMA_InitStructure.DMA_Channel = u->DMAChannel;
+				DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralToMemory;
+				DMA_InitStructure.DMA_Memory0BaseAddr = (uint32) RxQ[s];
+
+				DMA_Init(u->RxStream, &DMA_InitStructure);
+				DMA_Cmd(u->RxStream, ENABLE);
+				USART_DMACmd(u->USART, USART_DMAReq_Rx, ENABLE);
+
+				RxQTail[s] = RxQHead[s] = SERIAL_BUFFER_SIZE
+						- DMA_GetCurrDataCounter(u->RxStream);
+
+				// Transmit DMA
+				NVIC_InitStructure.NVIC_IRQChannel = u->TxDMAISR;
+				NVIC_Init(&NVIC_InitStructure);
+
+				DMA_DeInit(u->TxStream);
+				while (DMA_GetCmdStatus(u->TxStream) != DISABLE) {
+				};
+
+				DMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToPeripheral;
+				//	DMA_InitStructure.DMA_Memory0BaseAddr = (uint32) TxQ[s];
+				DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
+				DMA_Init(u->TxStream, &DMA_InitStructure);
+
+				DMA_SetCurrDataCounter(u->TxStream, 0);
+				DMA_ITConfig(u->TxStream, DMA_IT_TC, ENABLE);
+
+				USART_DMACmd(u->USART, USART_DMAReq_Tx, ENABLE);
+			}
+
+			RxEnabled[s] = Enable;
+			USART_Cmd(u->USART, ENABLE);
 		}
-		USART_Init(u->USART, &USART_InitStructure);
-
-		NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
-		NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;
-		NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-
-		TxQTail[s] = TxQHead[s] = TxQNewHead[s] = 0;
-
-		if (u->InterruptsUsed) {
-			RxQTail[s] = RxQHead[s] = 0;
-			NVIC_InitStructure.NVIC_IRQChannel = u->ISR;
-			NVIC_Init(&NVIC_InitStructure);
-
-			USART_ITConfig(u->USART, USART_IT_RXNE, ENABLE);
-		} else {
-			// Common
-			DMA_StructInit(&DMA_InitStructure);
-			DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
-			DMA_InitStructure.DMA_Priority = DMA_Priority_Medium;
-			DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32) &u->USART->DR;
-			DMA_InitStructure.DMA_BufferSize = SERIAL_BUFFER_SIZE;
-
-			// Receive DMA
-			DMA_DeInit(u->RxStream);
-			while (DMA_GetCmdStatus(u->RxStream) != DISABLE) {
-			};
-
-			DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32) &u->USART->DR;
-			DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
-			DMA_InitStructure.DMA_Channel = u->DMAChannel;
-			DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralToMemory;
-			DMA_InitStructure.DMA_Memory0BaseAddr = (uint32) RxQ[s];
-
-			DMA_Init(u->RxStream, &DMA_InitStructure);
-			DMA_Cmd(u->RxStream, ENABLE);
-			USART_DMACmd(u->USART, USART_DMAReq_Rx, ENABLE);
-
-			RxQTail[s] = RxQHead[s] = SERIAL_BUFFER_SIZE
-					- DMA_GetCurrDataCounter(u->RxStream);
-
-			// Transmit DMA
-			NVIC_InitStructure.NVIC_IRQChannel = u->TxDMAISR;
-			NVIC_Init(&NVIC_InitStructure);
-
-			DMA_DeInit(u->TxStream);
-			while (DMA_GetCmdStatus(u->TxStream) != DISABLE) {
-			};
-
-			DMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToPeripheral;
-			//	DMA_InitStructure.DMA_Memory0BaseAddr = (uint32) TxQ[s];
-			DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
-			DMA_Init(u->TxStream, &DMA_InitStructure);
-
-			DMA_SetCurrDataCounter(u->TxStream, 0);
-			DMA_ITConfig(u->TxStream, DMA_IT_TC, ENABLE);
-
-			USART_DMACmd(u->USART, USART_DMAReq_Tx, ENABLE);
-		}
-
-		RxEnabled[s] = Enable;
-		USART_Cmd(u->USART, ENABLE);
-	} else
-		RxEnabled[s] = false;
+	}
 
 } // InitSerialPort
 

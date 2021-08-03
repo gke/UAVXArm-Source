@@ -24,9 +24,13 @@
 
 #include "UAVX.h"
 
-const PinDef SoftSerialTxPin = {false,  };
+#define USE_VCP
+#define VBUS_SENSING_PIN        PC5
+#define VBUS_SENSING_ENABLED
 
-const PinDef USBDisconnectPin = { true, PD11,  };
+const PinDef SoftSerialTxPin = { false, };
+
+const PinDef USBDisconnectPin = { true, PD11, };
 
 const PinDef CPPMPin = { false, };
 
@@ -48,67 +52,62 @@ const PinDef GPIOPins[MAX_GPIO_PINS] = { //
 		{ false, 0, }, // Landing
 		{ false, 0, }, // Aux1/WS2812 (WS2812 hard coded)
 		{ false, 0, }, // Aux2/SoftUSARTTx
-		{ true, PB4, OutPinConfig,  }, // Aux3/Probe
+		{ true, PB4, OutPinConfig, }, // Aux3/Probe
 		{ false, 0, }, // Aux4/Inverter
 		{ false, 0, }, // MPU6XXXIntSel
 		{ false, 0, }, // HMC5XXXRdySel
 };
 
-const PinDef LEDPins[MAX_LED_PINS] = {
-		{ true, PD13, OutPinConfig, }, // Yellow
+const PinDef LEDPins[MAX_LED_PINS] = { { true, PD13, OutPinConfig, }, // Yellow
 		{ true, PD14, OutPinConfig, }, // Red
 		{ true, PD15, OutPinConfig, }, // Blue
 		{ true, PD12, OutPinConfig, } // Green
-		};
+};
 
 const AnalogPinDef AnalogPins[MAX_ANALOG_CHANNELS] = { //
-		{true, ADC1, PC0, ADC_Channel_10, DMA2_0_0_noIRQn, 1}, // RF
-		{true, ADC1, PC1, ADC_Channel_11, DMA2_0_0_noIRQn, 2}, // Current
-		{true, ADC1, PC2, ADC_Channel_12, DMA2_0_0_noIRQn, 3}, // Volts
+		{ true, ADC1, PC0, ADC_Channel_10, DMA2_0_0_noIRQn, 1 }, // RF
+		{ true, ADC1, PC1, ADC_Channel_11, DMA2_0_0_noIRQn, 2 }, // Current
+		{ true, ADC1, PC2, ADC_Channel_12, DMA2_0_0_noIRQn, 3 }, // Volts
 
-		{false, }, //
-		{false, }, //
-		{false, } //
+		{ false, }, //
+		{ false, }, //
+		{ false, } //
 };
 
-	
 const SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
-	{true, }, // mapped to USBSerial
-	{true, USART1, PA9, PA10, 115200, true, false, USART1Config},
-	{true, USART2, PA2, PA3, 9600, true, false, USART2Config},
-	{true, USART3, PD8, PD9, 115200, true, false, USART3Config},
-	{false, UART4, PC10, PC11, 115200, true, false, UART4Config},
-	{false, 0 } // SoftSerial
+		{ true, }, // mapped to USBSerial
+		{ false, USART1, PA9, PA10, 115200, true, false, USART1Config }, // USB clash
+		{ true, USART2, PA2, PA3, 9600, true, false, USART2Config }, //
+		{ false, USART3, PD8, PD9, 115200, true, false, USART3Config }, //
+		{ true, UART4, PC10, PC11, 115200, true, false, UART4Config }, //
+		{ true, 0 } // SoftSerial
 };
 
-const I2CPortDef I2CPorts[MAX_I2C_PORTS] = {
-	{false, 0, }, // notionally I2C0
-	{true, I2C1, PB6, PB7, GPIO_AF_I2C1 },//
-	{true, I2C2, PB10, PB11, GPIO_AF_I2C2},
-	{false, I2C3,}
+const I2CPortDef I2CPorts[MAX_I2C_PORTS] = { { false, 0, }, // notionally I2C0
+		{ true, I2C1, PB6, PB7, GPIO_AF_I2C1 }, //
+		{ true, I2C2, PB10, PB11, GPIO_AF_I2C2 }, //
+		{ false, I2C3, } //
 };
 
 const SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
-	{false, 0, }, // notionally SPI0
-	{true, SPI1, {PA5, PA6, PA7}}, // Aux1, RC5, RC6
-	{true, SPI2, {PB13, PB14, PB15}}, //
-	{true, SPI3, {PC10, PC11, PC12}} // Arming, LED3, LED2
+		{ false, 0, }, // notionally SPI0
+		{ false, SPI1, { PA5, PA6, PA7 } }, // Aux1, RC5, RC6
+		{ false, SPI2, { PB13, PB14, PB15 } }, //
+		{ false, SPI3, { PC10, PC11, PC12 } } // Arming, LED3, LED2
 };
 
-
-const DevDef busDev[] = {
-		{ true, imuSel, mpu6050IMU, useI2C, 2, MPU_0x68_ID },// imuSel
-		{ true, baroSel, ms5611Baro, useI2C, 2, MS56XX_ID },// baroSel
-		{ true, magSel, hmc5xxxMag, useI2C, 2, HMC5XXX_ID },// magSel
-		{ false, memSel, noMem, useSPI, 0 },// memSel
+const DevDef busDev[] = { //
+		{ true, imuSel, mpu6050IMU, false, 2, MPU_0x68_ID }, // imuSel
+		{ true, baroSel, ms5611Baro, false, 2, MS56XX_ID }, // baroSel
+		{ true, magSel, hmc5xxxMag, false, 2, HMC5XXX_ID }, // magSel
+		{ false, memSel, noMem, true, 0 }, // memSel
 		{ false, gpsSel, }, //
 		{ false, rfSel, }, //
 		{ false, asSel, }, //
 		{ false, flowSel, }, //
 		{ false, oledSel, oledDisplay, }, //
 		{ false, escSPISel, }, //
-		{ false, escI2CSel, ESCI2C, false, 2, ESCI2C_ID, }
-		};
+		{ false, escI2CSel, ESCI2C, false, 2, ESCI2C_ID, } };
 
 const uint8 IMUQuadrant = 0;
 const uint8 MagQuadrant = 0;
@@ -119,23 +118,21 @@ const boolean beeperLowOn = true;
 
 void InitTarget(void) {
 
-	TelemetrySerial = USBSerial;
-	RxEnabled[USBSerial] = true;
-	USBConnect();
+	CurrMaxPWMOutputs = 4;
+
+	TelemetrySerial = USBSerial; // Uart3;
+	InitSerialPort(TelemetrySerial, true, false);
 
 	F.HaveSerialRC = true;
-	if (F.HaveSerialRC) {
-		RCSerial = Usart2;
-		InitSerialPort(RCSerial, false, true);
-	}
+	RCSerial = Usart2;
+	InitSerialPort(RCSerial, false, true);
 
-	F.HaveGPS = false; // removed for debug
-	if (F.HaveGPS) {
-		GPSSerial = Usart3;
-		InitSerialPort(GPSSerial, false, false);
-	}
+	F.HaveGPS = true; // removed for debug
+	GPSSerial = Uart4;
+	InitSerialPort(GPSSerial, false, false);
 
-	CurrMaxPWMOutputs = 4;
+	FrSkySerial = SoftSerial;
+	InitSerialPort(FrSkySerial, true, false);
 
 } // InitTarget
 
