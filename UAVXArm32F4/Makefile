@@ -2,25 +2,20 @@ SHELL=cmd
 
 #V1 = -DV1_BOARD  // Beeper reversed but must be re-wired to 5V
 
-USE_CLI= gui
-
 SVN_REV := "$(shell "C:\Program Files (x86)\Subversion\bin\svnversion" -cn . | sed -e 's/[MS]//g' -e 's/^[[:digit:]]*://')" 
 
 INSTALL_DIR = "C:/Flight/gitHub/UAVXArm.git/UAVXArm/firmware"
 
 #-------------------------------------------------------------
-# Select board type and optionally enable CLI
 
-#USE_CLI = USE_CLI
 
-#BOARD= DISCOVERYF4
-#BOARD= OMNIBUSF4V1
-BOARD= OMNIBUSF4NXT
+##BOARD= OMNIBUSF4V1
+#BOARD= OMNIBUSF4NXT
 
 #BOARD= DEVEBOXF4
 
 #BOARD= UAVXF4V3BBFLASH   
-#BOARD= UAVXF4V3
+BOARD= UAVXF4V3
 #BOARD= UAVXF4V4 
 
 #########BOARD= OMNIBUSF4V3 NOT COMMISSIONED
@@ -29,7 +24,7 @@ BOARD= OMNIBUSF4NXT
 
 #-------------------------------------------------------------
  
-TARGET=uavx_$(BOARD)_$(USE_CLI)_r$(SVN_REV)
+TARGET=uavx_$(BOARD)_r$(SVN_REV)
 CONFIG= -DARM_MATH_CM4  -DHSE_VALUE=8000000
 
 LINK_SCRIPT=stm32f4_eeprom16k.ld
@@ -76,7 +71,7 @@ LINKER_FLAGS= -lm $(FPFLAGS) -Wl,--gc-sections -T$(LINK_SCRIPT) -static \
 ASSEMBLER_FLAGS=-c -g $(OPT) $(FPFLAGS) -x assembler-with-cpp  $(INCLUDES)
 
 #-Wall 
-COMPILER_FLAGS=-c -g $(OPT) $(FPFLAGS) $(CONFIG) -D$(BOARD) -D$(USE_CLI) -finline-functions -ffunction-sections -fdata-sections \
+COMPILER_FLAGS=-c -g $(OPT) $(FPFLAGS) $(CONFIG) -D$(BOARD) -finline-functions -ffunction-sections -fdata-sections \
 	-D"STM32F407xx" -D"USE_STDPERIPH_DRIVER" $(INCLUDES)
 
 # Define sources and objects

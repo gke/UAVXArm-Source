@@ -278,19 +278,28 @@ void DoTesting(void) {
 
 	LEDOn(ledGreenSel);
 
-	USBTxString("starting USB Test (! to force restart)\n");
+	//USBTxString("starting USB Test (! to force restart)\n");
 
 	while (true) {
 
-		CheckTelemetry(TelemetrySerial);
+		//LEDChaser();
+
+		Delay1mS(500);
+		//SendExecutionTimeStatus(TelemetrySerial);
+
+		//SendUAVXTelemetry(USBSerial);
+		//SendSerialPortStatus(USBSerial);
+		SendMinPacket(USBSerial);
 
 		//if (SerialAvailable(USBSerial)) {
 		//	LEDToggle(ledYellowSel);
 		//	uint8 ch = RxChar(USBSerial);
 		//	TxChar(USBSerial, ch);
 		//}
+		//TxChar(USBSerial, '?');
 
 	}
+
 #elif defined(COMMISSIONING_TEST)
 
 	ReadBlockNV(0, sizeof(NV), (int8 *) (&NV));

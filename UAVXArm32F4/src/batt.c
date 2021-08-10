@@ -40,8 +40,8 @@
 real32 VoltageScale, CurrentScale;
 real32 CurrentSensorSwing;
 
-real32 BatteryVolts, StartupVolts, BatteryCurrent,
-		BatteryVoltsLimit, BatteryChargeUsedmAH, BatteryCapacityLimitmAH;
+real32 BatteryVolts, StartupVolts, BatteryCurrent, BatteryVoltsLimit,
+		BatteryChargeUsedmAH, BatteryCapacityLimitmAH;
 
 real32 BatteryCurrentADCZero = 0.0f; // takes a while for bipolar capture of offset
 
@@ -70,12 +70,13 @@ real32 MockBattery(void) {
 void CalcBatThrFFComp(real32 RawBatteryVolts, real32 BattdT) {
 	static real32 BatteryBoost = 1.0f;
 
-	BatteryBoost = SlewLimit(BatteryBoost, StartupVolts / RawBatteryVolts,
-			FromPercent(5.0f), BattdT);
+	if (UsingBatteryComp && (P(LowVoltThres) > 0) && (State == InFlight))
+		BatteryBoost = SlewLimit(BatteryBoost, StartupVolts / RawBatteryVolts,
+				FromPercent(5.0f), BattdT);
+	else
+		BatteryBoost = 1.0f;
 
-	BattThrFFComp = Limit(
-			(UsingBatteryComp && (State == InFlight)) ? BatteryBoost : 1.0f,
-			1.0f, 1.2f);
+	BattThrFFComp = Limit(BatteryBoost, 1.0f, 1.2f);
 
 } // CalcBattThrFFComp
 
@@ -110,10 +111,9 @@ void CheckBatteries(void) {
 		BatteryChargeUsedmAH += RawBatteryCurrent * BattdT * (1.0f / 3.6f);
 
 		BatteryCurrent = LPF1(BatteryCurrent, RawBatteryCurrent,
-				BATTERY_LPF_HZ);
+		BATTERY_LPF_HZ);
 
-		BatteryVolts = SlewLimit(BatteryVolts, RawBatteryVolts, 1.0f,
-				BattdT);
+		BatteryVolts = SlewLimit(BatteryVolts, RawBatteryVolts, 1.0f, BattdT);
 
 		F.LowBatt = ((BatteryVolts <= BatteryVoltsLimit)
 				&& (P(LowVoltThres) > 0))

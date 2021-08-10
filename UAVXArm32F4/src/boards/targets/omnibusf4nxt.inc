@@ -22,13 +22,17 @@
 #ifndef _omnibusf4nxt_h
 #define _omnibusf4nxt_h
 
-#define USE_VCP
-#define VBUS_SENSING_PIN        PC5
-#define VBUS_SENSING_ENABLED
-
 #include "UAVX.h"
 
-const PinDef USBDisconnectPin = { true, PA12, }; // initialisation done in USBConnect
+// I do not like USB!!!!!
+// Flight Control Boards do not usually use the default USB VBUS pins
+// so disable library VBUS definition
+
+#define USB_VCP_DISABLE_VBUS
+#define USB_VCP_DISABLE_ID
+
+#define VBUS_SENSING_ENABLED
+const PinDef VBusPin {true, PC5, GPIO_Mode_IN, GPIO_OType_OD, GPIO_PuPd_NOPULL, };
 
 const PinDef SoftSerialTxPin = { false, };
 
@@ -126,20 +130,9 @@ const boolean beeperLowOn = true;
 
 void InitTarget(void) {
 
-	// ????
-	GPIO_InitTypeDef GPIO_InitStructure;
-
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_2MHz;
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_OD;
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-	GPIO_Init(GPIOC, &GPIO_InitStructure);
-	//?????
-
+	InitPin(&VBusPin);
 	TelemetrySerial = USBSerial;
-	RxEnabled[USBSerial] = true;
-	USBConnect();
+	InitSerialPort(TelemetrySerial, true, false);
 
 	// CurrRxType always FutabaSBus - forced in params.c
 

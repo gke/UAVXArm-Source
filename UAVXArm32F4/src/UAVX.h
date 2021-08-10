@@ -24,7 +24,9 @@
 
 #define USE_UAVX_DJT
 
+
 // Options
+
 
 //#define USB_TESTING
 
@@ -141,9 +143,9 @@
 #include "tune.h"
 #include "wind.h"
 
-#include "vcp/drivers/drv_usb.h"
-#include "vcp/drivers/drv_system.h"
-#include "vcp/vcpf4/usbd_cdc_vcp.h"
+//#include "vcp/drv_usb.h"
+#include "tm_stm32f4_usb_vcp/usbd_cdc_vcp.h"
+#include "tm_stm32f4_usb_vcp/tm_stm32f4_usb_vcp.h"
 
 #include "soar/ekf.h"
 #include "soar/soar.h"

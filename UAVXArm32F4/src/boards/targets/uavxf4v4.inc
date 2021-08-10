@@ -95,7 +95,6 @@ const SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
 	{false, SPI3, {PC10, PC11, PC12}} // Arming, LED3, LED2
 };
 
-const PinDef USBDisconnectPin = { false, 0, };
 
 const DevDef busDev[maxDevSel] = {
 	{true, imuSel, mpu6000IMU, true, 2, 0, PB12},

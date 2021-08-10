@@ -111,8 +111,6 @@ const DevDef busDev[maxDevSel] = { //
 		{ false, escSPISel, }, //
 		{ false, escI2CSel, ESCI2C, false, 2, ESCI2C_ID, } };
 
-const PinDef USBDisconnectPin = { false, 0, };
-
 const uint8 IMUQuadrant = 0;
 const uint8 MagQuadrant = 0;
 

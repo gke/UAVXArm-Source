@@ -50,7 +50,7 @@ void InitPin(const PinDef * d) {
 		GPIO_InitStructure.GPIO_Mode = d->Mode;
 		GPIO_InitStructure.GPIO_OType = d->OType;
 		GPIO_InitStructure.GPIO_PuPd = d->PuPd;
-		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz; //50MHz; for USB?
 		GPIO_Init(d->P.Port, &GPIO_InitStructure);
 	}
 } // InitPin
@@ -538,7 +538,7 @@ void InitSerialPort(uint8 s, boolean Enable, boolean SBusConfig) {
 		switch (s) {
 		case USBSerial:
 			RxEnabled[USBSerial] = true;
-			USBConnect();
+			boolean OK = TM_USB_VCP_Init() == TM_USB_VCP_OK;
 			break;
 		case Usart1:
 			RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);

@@ -36,6 +36,16 @@
 #endif
 */
 
+// I do not like USB!!!!!
+// Flight Control Boards do not usually use the default USB VBUS pins
+// so disable library VBUS definition
+
+#define USB_VCP_DISABLE_VBUS
+#define USB_VCP_DISABLE_ID
+
+#define VBUS_SENSING_ENABLED
+const PinDef VBusPin {true, PC5, GPIO_Mode_IN, GPIO_OType_OD, GPIO_PuPd_NOPULL, };
+
 PinDef CPPMPin = {false, };
 
 PinDef SoftSerialTxPin = {false, };
@@ -110,8 +120,6 @@ SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
 	{true, SPI3, {PC10, PC11, PC12}}
 };
 
-PinDef USBDisconnectPin = {true, PA12,};
-
 DevDef busDev[maxDevSel] = { // MUST be in enum order otherwise CheckBusDev fails	 	
 	{true, imuSel, mpu6000IMU, true, 1, 0, PA4},
 	{false, baroSel, noBaro },//baroSel, ms5611Baro, false, 2, MS56XX_ID,},
@@ -155,9 +163,9 @@ void InitTarget(void) {
 
 void InitTarget(void) {
 
+	InitPin(&VBusPin);
 	TelemetrySerial = USBSerial;
-	RxEnabled[USBSerial] = true;
-	USBConnect();
+	InitSerialPort(TelemetrySerial, true, false);
 
 	F.HaveSerialRC = true;
 	RCSerial = Usart1;

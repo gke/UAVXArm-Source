@@ -71,7 +71,7 @@ boolean SerialAvailable(uint8 s) {
 
 	switch (s) {
 	case USBSerial:
-		r = usbAvailable();
+		r = !TM_USB_VCP_BufferEmpty();
 		break;
 	case SoftSerial:
 		r = false;
@@ -101,7 +101,7 @@ uint8 RxChar(uint8 s) {
 	case SoftSerial:
 		break;
 	case USBSerial:
-		ch = USBRxChar();
+		TM_USB_VCP_Getc(&ch);
 		break;
 	default:
 		if (SerialPorts[s].DMAUsed || SerialPorts[s].InterruptsUsed) {
@@ -131,9 +131,9 @@ uint8 PollRxChar(uint8 s) {
 		break;
 	case USBSerial:
 		if (SerialAvailable(s)) {
-			ch = USBRxChar();
+			TM_USB_VCP_Getc(&ch);
 			if (!Armed())
-				USBTxChar(ch); // echo for UAVPSet
+				TM_USB_VCP_Putc(ch); // echo for UAVPSet
 			return (ch);
 		} else
 			return (ASCII_NUL);
@@ -230,7 +230,7 @@ void TxChar(uint8 s, uint8 ch) {
 
 	switch (s) {
 	case USBSerial:
-		USBTxChar(ch);
+		TM_USB_VCP_Putc(ch);
 		break;
 	case SoftSerial:
 		SoftTxChar(s, ch);

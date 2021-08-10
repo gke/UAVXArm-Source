@@ -397,7 +397,6 @@ typedef const struct { // C2 Port GUI changeable UAVX
 extern const PinDef GPIOPins[];
 extern const PinDef LEDPins[];
 extern const AnalogPinDef AnalogPins[];
-extern const PinDef USBDisconnectPin;
 extern const I2CPortDef I2CPorts[];
 extern const SPIPortDef SPIPorts[];
 extern const SerialPortDef SerialPorts[];

@@ -119,7 +119,10 @@ void SendAckPacket(uint8 s, uint8 Tag, uint8 Reason);
 void SendMinPacket(uint8 s);
 void SendAltitudeControlPacket(uint8 s);
 void SendAttitudeControlPacket(uint8 s, idx a);
+void SendExecutionTimeStatus(uint8 s);
 void CheckTelemetry(uint8 s);
+void SendUAVXTelemetry(uint8 s);
+void SendSerialPortStatus(uint8 s);
 
 void SetTelemetryBaudRate(uint8 s, uint32 b);
 

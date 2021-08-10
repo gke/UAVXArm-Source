@@ -24,13 +24,11 @@
 
 #include "UAVX.h"
 
-#define USE_VCP
-#define VBUS_SENSING_PIN        PC5
-#define VBUS_SENSING_ENABLED
+//#define VBUS_SENSING_ENABLED
+//#define USB_VCP_DISABLE_VBUS // disable library VBUS definition
+//#define USB_VCP_DISABLE_ID
 
 const PinDef SoftSerialTxPin = { false, };
-
-const PinDef USBDisconnectPin = { true, PD11, };
 
 const PinDef CPPMPin = { false, };
 
@@ -58,7 +56,8 @@ const PinDef GPIOPins[MAX_GPIO_PINS] = { //
 		{ false, 0, }, // HMC5XXXRdySel
 };
 
-const PinDef LEDPins[MAX_LED_PINS] = { { true, PD13, OutPinConfig, }, // Yellow
+const PinDef LEDPins[MAX_LED_PINS] = {
+		{ true, PD13, OutPinConfig, }, // Yellow
 		{ true, PD14, OutPinConfig, }, // Red
 		{ true, PD15, OutPinConfig, }, // Blue
 		{ true, PD12, OutPinConfig, } // Green
@@ -78,13 +77,13 @@ const SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
 		{ true, }, // mapped to USBSerial
 		{ false, USART1, PA9, PA10, 115200, true, false, USART1Config }, // USB clash
 		{ true, USART2, PA2, PA3, 9600, true, false, USART2Config }, //
-		{ false, USART3, PD8, PD9, 115200, true, false, USART3Config }, //
+		{ true, USART3, PD8, PD9, 115200, true, false, USART3Config }, //
 		{ true, UART4, PC10, PC11, 115200, true, false, UART4Config }, //
 		{ true, 0 } // SoftSerial
 };
 
 const I2CPortDef I2CPorts[MAX_I2C_PORTS] = { { false, 0, }, // notionally I2C0
-		{ true, I2C1, PB6, PB7, GPIO_AF_I2C1 }, //
+		{ false, I2C1, PB6, PB7, GPIO_AF_I2C1 }, //
 		{ true, I2C2, PB10, PB11, GPIO_AF_I2C2 }, //
 		{ false, I2C3, } //
 };
@@ -120,7 +119,7 @@ void InitTarget(void) {
 
 	CurrMaxPWMOutputs = 4;
 
-	TelemetrySerial = USBSerial; // Uart3;
+	TelemetrySerial = Uart4; //Uart4; //USBSerial;
 	InitSerialPort(TelemetrySerial, true, false);
 
 	F.HaveSerialRC = true;
@@ -128,7 +127,7 @@ void InitTarget(void) {
 	InitSerialPort(RCSerial, false, true);
 
 	F.HaveGPS = true; // removed for debug
-	GPSSerial = Uart4;
+	GPSSerial = Usart3;
 	InitSerialPort(GPSSerial, false, false);
 
 	FrSkySerial = SoftSerial;
