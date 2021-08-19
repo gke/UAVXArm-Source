@@ -173,14 +173,12 @@ void CheckAlarms(void) {
 		}
 
 		if (mSTimeout(BeeperUpdatemS)) {
-			if (BeeperIsOn()) {
+			if (BeeperIsOn) {
 				mSTimer(BeeperUpdatemS, BeeperOffTime);
 				BeeperOff();
-				//zzz	LEDOff(ledRedSel);
 			} else {
 				mSTimer(BeeperUpdatemS, BeeperOnTime);
 				BeeperOn();
-				//zzz	LEDOn(ledRedSel);
 			}
 		}
 	} else {

@@ -34,7 +34,7 @@ boolean ReadMagnetometer(void);
 void GetMagnetometer(void);
 real32 CalculateMagneticHeading(void);
 
-void CalibrateHMC5XXX(uint8 s);
+void CalibrateHMC5XXX(uint8 s, boolean SimpleCal);
 void CalibrateMagnetometer(uint8 s);
 void CheckMagnetometerIsCalibrated(void);
 

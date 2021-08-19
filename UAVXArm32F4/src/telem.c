@@ -973,23 +973,6 @@ void ProcessOriginPacket(uint8 s) {
 
 } // ProcessOriginPacket
 
-void ProcessGPSPassThru(void) {
-
-	while (true) {
-
-		if (SerialAvailable(GPSSerial)) {
-			LEDToggle(ledBlueSel);
-			TxChar(TelemetrySerial, RxChar(GPSSerial));
-		}
-
-		if (SerialAvailable(TelemetrySerial)) {
-			TxChar(GPSSerial, RxChar(TelemetrySerial));
-			LEDToggle(ledRedSel);
-		}
-
-	}
-} // ProcessGPSPassThru
-
 void InitPollRxPacket(void) {
 
 	RxPacketByteCount = 0;
@@ -1084,7 +1067,7 @@ void ProcessRxPacket(uint8 s) {
 				SendCalibrationPacket(s);
 				break;
 			case miscCalMag:
-				CalibrateHMC5XXX(s);
+				CalibrateHMC5XXX(s, false);
 				SendCalibrationPacket(s);
 				break;
 			case miscLB:
@@ -1094,13 +1077,9 @@ void ProcessRxPacket(uint8 s) {
 				BBReplaySpeed = UAVXPacket[4];
 				DumpBlackBox(s);
 				break;
-			case miscGPSPassThru:
-				if (!Armed()) {
-					InitiateShutdown(GPSSerialPassThru);
-					SendAckPacket(s, miscGPSPassThru, true);
-					ProcessGPSPassThru(); // requires power cycle to escape
-				} else
-					SendAckPacket(s, miscLB, false);
+			case miscSimpleCalMag:
+				CalibrateHMC5XXX(s, true);
+				SendCalibrationPacket(s);
 				break;
 			case miscBootLoader:
 				// goes to bootloader - careful with GPS and Serial Rx

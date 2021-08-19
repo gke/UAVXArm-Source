@@ -78,7 +78,6 @@ boolean ReadMagnetometer(void) {
 	return (r);
 } // ReadMagnetometer
 
-
 void GetMagnetometer(void) {
 	static timeuS LastMagUpdateuS = 0;
 	int32 a;
@@ -122,7 +121,6 @@ void GetMagnetometer(void) {
 
 } // GetMagnetometer
 
-
 real32 CalculateMagneticHeading(void) {
 	real32 xh, yh;
 	real32 cR, sR, cP, sP;
@@ -144,7 +142,6 @@ real32 CalculateMagneticHeading(void) {
 		return 0.0f;
 
 } // CalculateMagneticHeading
-
 
 #define HMC58X3_R_CONFA 0
 #define HMC58X3_R_CONFB 1
@@ -230,7 +227,6 @@ void InitMagnetometer(void) {
 
 } // InitMagnetometer
 
-
 void CheckMagnetometerIsCalibrated(void) {
 
 	F.MagnetometerCalibrated = Config.MagCal.Calibrated == 1;
@@ -245,7 +241,7 @@ void InitMagnetometerBias(void) {
 		Config.MagCal.Bias[a] = 0.0f;
 
 	Config.MagCal.Calibrated = 0xff;
-	F.MagnetometerCalibrated =  false;
+	F.MagnetometerCalibrated = false;
 
 } // InitMagnetometerBias
 
@@ -264,9 +260,10 @@ void GetMagSample(int16 ss) {
 
 #define I2(i) (i>0?1:0)
 
-void CalibrateHMC5XXX(uint8 s) {
+void CalibrateHMC5XXX(uint8 s, boolean SimpleCal) {
 	real32 MagOrigin[3];
 	uint16 Population[2][2][2];
+	uint8 QX, QY, QZ;
 	idx a;
 	uint16 ss;
 
@@ -280,7 +277,6 @@ void CalibrateHMC5XXX(uint8 s) {
 		memset(&MagSample, 0, sizeof(MagSample));
 
 		ss = 0;
-		Config.MagCal.Calibrated = 255;
 
 		mSTimer(MagnetometerUpdatemS, MAG_TIME_MS);
 
@@ -292,21 +288,38 @@ void CalibrateHMC5XXX(uint8 s) {
 
 					GetMagSample(ss);
 
-					if (Population[I2(MagSample[ss][X])][I2(MagSample[ss][Y])][I2(MagSample[ss][Z])]
-							< (MAG_CAL_SAMPLES / 7)) {
-						Population[I2(MagSample[ss][X])][I2(MagSample[ss][Y])][I2(MagSample[ss][Z])]++;
+					if (SimpleCal) {
 
+						if ((ss % (MAG_CAL_SAMPLES / 12)) == 0) {
+							DoBeep(1, 1);
+							Delay1mS(2000);
+						}
 						ss++;
-						LEDOff(ledYellowSel);
-						LEDOn(ledGreenSel);
+
 					} else {
-						LEDOn(ledYellowSel);
-						LEDOff(ledGreenSel);
+
+						QX = I2(MagSample[ss][X]);
+						QY = I2(MagSample[ss][Y]);
+						QZ = I2(MagSample[ss][Z]);
+
+						if (Population[QX][QY][QZ] < (MAG_CAL_SAMPLES / 7)) {
+
+							Population[QX][QY][QZ]++;
+
+							ss++;
+							LEDOff(ledYellowSel);
+							LEDOn(ledGreenSel);
+						} else {
+							LEDOn(ledYellowSel);
+							LEDOff(ledGreenSel);
+						}
 					}
 				}
 			}
 		LEDsOff();
 		LEDOn(ledYellowSel);
+
+		DoBeeps(2);
 
 		// Actually it will be an ellipsoid due to hard iron effects
 		SphereIterations = SphereFit(MagSample, MAG_CAL_SAMPLES, 200, 0.01f,
@@ -331,7 +344,6 @@ void CalibrateHMC5XXX(uint8 s) {
 
 } // CalibrateHMC5XXX
 
-
 void CheckMagnetometerActive(void) {
 
 	if (busDev[magSel].Used && (busDev[magSel].type == hmc5xxxMag)) {
@@ -347,5 +359,4 @@ void CheckMagnetometerActive(void) {
 		F.MagnetometerActive = false;
 
 } //  CheckMagnetometerActive
-
 

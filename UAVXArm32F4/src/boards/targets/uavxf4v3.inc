@@ -59,7 +59,8 @@ const PinDef GPIOPins[MAX_GPIO_PINS] = { { true, PA12, OutPinConfig, }, // Beepe
 		{ false, } // HMC5XXXRdySel
 };
 
-const PinDef LEDPins[MAX_LED_PINS] = { { true, PB3, LEDPinConfig, }, // Yellow
+const PinDef LEDPins[MAX_LED_PINS] = { //
+		{ true, PB3, LEDPinConfig, }, // Yellow
 		{ true, PB4, LEDPinConfig, }, // Red
 		{ true, PC11, LEDPinConfig, }, // Blue
 		{ true, PC12, LEDPinConfig, }, // Green
@@ -130,10 +131,10 @@ const boolean beeperLowOn = true;
 
 void InitTarget(void) {
 
+	CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 10;
+
 	TelemetrySerial = Usart1;
 	InitSerialPort(TelemetrySerial, true, false);
-
-	CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 10;
 
 	switch (CurrRxType) {
 	case CPPMRx:

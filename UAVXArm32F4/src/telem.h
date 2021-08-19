@@ -30,7 +30,7 @@ enum MiscComms {
 	miscLB,
 	miscUnused,
 	miscBBDump,
-	miscGPSPassThru,
+	miscSimpleCalMag,
 	miscCalAcc,
 	miscCalGyro,
 	miscBootLoader

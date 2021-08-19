@@ -75,10 +75,10 @@ const AnalogPinDef AnalogPins[MAX_ANALOG_CHANNELS] = { //
 
 const SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
 		{ false, }, // mapped to USBSerial
-		{ false, USART1, PA9, PA10, 115200, true, false, USART1Config }, // USB Clash
+		{ true, USART1, PA9, PA10, 115200, true, false, USART1Config }, // USB Clash
 		{ true, USART2, PD5, PD6, 115200, true, false, USART2Config }, // Sbus/Spektrum
 		{ true, USART3, PD8, PD9, 115200, true, false, USART3Config }, //
-		{ true, UART4, PC10, PC11, 115200, true, false, UART4Config }, //
+		{ false, UART4, PC10, PC11, 115200, true, false, UART4Config }, //
 		{ true, 0 } // SoftSerial
 };
 
@@ -89,9 +89,9 @@ const I2CPortDef I2CPorts[MAX_I2C_PORTS] = { { false, 0, }, // notionally I2C0
 
 const SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
 		{ false, 0, }, // notionally SPI0
-		{ true, SPI1, { PA5, PA6, PA7 } }, // Aux1, RC5, RC6 <- SPIESC?
-		{ true, SPI2, { PB13, PB14, PB15 } }, //
-		{ true, SPI3, { PC10, PC11, PC12 } } // Arming, LED3, LED2
+		{ false, SPI1, { PA5, PA6, PA7 } }, // Aux1, RC5, RC6 <- SPIESC?
+		{ false, SPI2, { PB13, PB14, PB15 } }, //
+		{ false, SPI3, { PC10, PC11, PC12 } } // Arming, LED3, LED2
 };
 
 const DevDef busDev[maxDevSel] = { //
@@ -101,7 +101,7 @@ const DevDef busDev[maxDevSel] = { //
 #if defined(USE_ARM_BLACKBOX_FLASH)
 		{ false, memSel, ArmFlashMem,}, // does not use either SPI or I2C
 #else
-		{ true, memSel, i2cEEPROMMem, false, 2, EEPROM_ID, },
+		{ false, memSel, i2cEEPROMMem, false, 2, EEPROM_ID, },
 #endif
 		{ false, gpsSel, }, //
 		{ false, rfSel, }, //
@@ -120,12 +120,13 @@ const boolean beeperLowOn = true;
 
 void InitTarget(void) {
 
+	CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 10;
+
 	TelemetrySerial = Usart1;
 	InitSerialPort(TelemetrySerial, true, false);
 
 	// CurrRxType always FutabaSBus - forced in params.c
 
-	CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 10;
 	F.HaveSerialRC = true;
 	RCSerial = Usart2;
 	InitSerialPort(RCSerial, false, CurrRxType == FutabaSBusRx);

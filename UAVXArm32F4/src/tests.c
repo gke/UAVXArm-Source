@@ -451,7 +451,7 @@ void DoTesting(void) {
 
 	int16 ii, jj;
 
-	CalibrateHMC5XXX(0);
+	CalibrateHMC5XXX(0, false);
 
 	for (ii = 0; ii < MAG_CAL_SAMPLES; ii++) {
 

@@ -586,7 +586,7 @@ void TxFrSkyDHeading(uint8 s) {
 } // TxFrSkyDHeading
 
 void TxFrSkyDBeeper(uint8 s) {
-	TxFrSkyDPacket(s, ID_BEEPER, BeeperIsOn());
+	TxFrSkyDPacket(s, ID_BEEPER, BeeperIsOn);
 } // TxFrSkyDBeeper
 
 
