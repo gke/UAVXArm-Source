@@ -53,8 +53,6 @@
 #define USE_THERMALS
 #define HAVE_WIND_ESTIMATE
 
-#define USE_SIMPLE_MAG_CAL
-
 //#define USE_ATT_BATT_COMP
 
 #define NAV_ENFORCE_ALTITUDE_CEILING		// limit all autonomous altitudes

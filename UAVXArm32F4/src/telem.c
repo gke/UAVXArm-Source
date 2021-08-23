@@ -48,6 +48,7 @@ uint32 TrackGPSInvalid = 0;
 uint8 TxPacketTag;
 uint8 CurrTelType = UAVXDJTTelemetry;
 uint8 CurrBBLogType = logUAVX;
+boolean EnableGPSPassThru = false;
 
 void TxNextLine(uint8 s) {
 	TxChar(s, ASCII_CR);
@@ -234,7 +235,6 @@ void SendAckPacket(uint8 s, uint8 Tag, uint8 Reason) {
 
 	SendPacketTrailer(s);
 } // SendAckPacket
-
 
 //______________________________________________________________________________________________
 
@@ -478,8 +478,9 @@ void SendAltitudeControlPacket(uint8 s) {
 		TxESCi16(s, TiltThrFFComp * 10000.0f);
 		TxESCi16(s, BattThrFFComp * 10000.0f);
 		TxESCi16(s, AltHoldThrComp * 1000.00f);
-		TxESCi16(s, (DesiredThrottle + AltHoldThrComp)
-				* TiltThrFFComp * BattThrFFComp * 10000.0f);
+		TxESCi16(s,
+				(DesiredThrottle + AltHoldThrComp) * TiltThrFFComp
+						* BattThrFFComp * 10000.0f);
 
 		SendPacketTrailer(s);
 
@@ -519,7 +520,7 @@ void SendAttitudeControlPacket(uint8 s, idx a) {
 } // SendAttitudeControlPacket
 
 void SendCalibrationPacket(uint8 s) {
-	idx a, b;
+	idx a, b, x, y, z;
 
 	SendPacketHeader(s);
 
@@ -553,8 +554,11 @@ void SendCalibrationPacket(uint8 s) {
 	TxESCi16(s, CurrYawLPFHz);
 	TxESCi16(s, CurrServoLPFHz);
 
-	for (a = 23; a < 32; a++)
-		TxESCi16(s, -1);
+	for (z = 0; z <= 1; z++)
+		for (y = 0; y<= 1; y++)
+			for (x = 0; x <= 1; x++)
+				TxESCi16(s, Population[x][y][z]);
+	TxESCi16(s, mm);
 
 	SendPacketTrailer(s);
 } // SendCalibrationPacket
@@ -973,6 +977,28 @@ void ProcessOriginPacket(uint8 s) {
 
 } // ProcessOriginPacket
 
+void ProcessGPSPassThru(void) {
+
+	LEDsOff();
+
+	Delay1mS(1000);
+	EnableGPSPassThru = true;
+
+	while (true) {
+
+		//if (SerialAvailable(GPSSerial)) {
+		//	LEDToggle(ledBlueSel);
+		//	TxChar(TelemetrySerial, RxChar(GPSSerial));
+		//}
+
+		if (SerialAvailable(TelemetrySerial)) {
+			TxChar(GPSSerial, RxChar(TelemetrySerial));
+			LEDToggle(ledRedSel);
+		}
+
+	}
+} // ProcessGPSPassThru
+
 void InitPollRxPacket(void) {
 
 	RxPacketByteCount = 0;
@@ -1067,7 +1093,7 @@ void ProcessRxPacket(uint8 s) {
 				SendCalibrationPacket(s);
 				break;
 			case miscCalMag:
-				CalibrateHMC5XXX(s, false);
+				CalibrateHMC5XXX(s);
 				SendCalibrationPacket(s);
 				break;
 			case miscLB:
@@ -1077,9 +1103,13 @@ void ProcessRxPacket(uint8 s) {
 				BBReplaySpeed = UAVXPacket[4];
 				DumpBlackBox(s);
 				break;
-			case miscSimpleCalMag:
-				CalibrateHMC5XXX(s, true);
-				SendCalibrationPacket(s);
+			case miscGPSPassThru:
+				if (!Armed()) {
+					InitiateShutdown(GPSSerialPassThru);
+					SendAckPacket(s, miscGPSPassThru, true);
+					ProcessGPSPassThru(); // requires power cycle to escape
+				} else
+					SendAckPacket(s, miscLB, false);
 				break;
 			case miscBootLoader:
 				// goes to bootloader - careful with GPS and Serial Rx
@@ -1201,5 +1231,4 @@ void CheckTelemetry(uint8 s) {
 	UpdateBlackBox();
 
 } // CheckTelemetry
-
 

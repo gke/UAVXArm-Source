@@ -64,11 +64,10 @@
 #define MAG_MAX_SLEW_RAD_S  (DegreesToRadians(720.0f))
 #define COMPASS_TIME_MS		50			// 20Hz
 
-#if defined (USE_SIMPLE_MAG_CAL)
-#define MAG_CAL_SAMPLES (12*40) // must be divisible by 12
-#else
-#define MAG_CAL_SAMPLES (8*50) // must be divisible by 8
-#endif
+#define MAG_CAL_BINS 8
+#define MAG_CAL_BIN_SAMPLES 50
+#define MAG_CAL_BIN_MAX (MAG_CAL_BIN_SAMPLES+5)
+#define MAG_CAL_SAMPLES (MAG_CAL_BINS*MAG_CAL_BIN_SAMPLES)
 
 #define ALT_UPDATE_HZ 100
 #define ALT_UPDATE_US (1000000/ALT_UPDATE_HZ)

@@ -30,7 +30,7 @@ enum MiscComms {
 	miscLB,
 	miscUnused,
 	miscBBDump,
-	miscSimpleCalMag,
+	miscGPSPassThru,
 	miscCalAcc,
 	miscCalGyro,
 	miscBootLoader
@@ -126,6 +126,7 @@ void SendSerialPortStatus(uint8 s);
 
 void SetTelemetryBaudRate(uint8 s, uint32 b);
 
+extern boolean EnableGPSPassThru;
 extern uint8 CurrTelType;
 extern uint32 TrackGPSInvalid;
 extern uint8 CurrBBLogType;

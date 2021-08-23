@@ -22,14 +22,14 @@
 
 
 #if defined(UAVXF4V4)
-#define Revision "1524 V4 2021/08/16 23:30:00"
+#define Revision "1526 V4 2021/08/23 00:33:13"
 #else
-#define Revision "1524 V3 2021/08/16 23:30:00"
+#define Revision "1526 V3 2021/08/23 00:33:13"
 #endif
-#define RevisionNo 1524
-#define BLDate "Aug 17 2021"
-#define BLTime "09:30:00"
-#define BLRev "1524"
+#define RevisionNo 1526
+#define BLDate "Aug 23 2021"
+#define BLTime "10:33:13"
+#define BLRev "1526"
 
 
 

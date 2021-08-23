@@ -24,7 +24,8 @@
 
 extern int16 RawMag[];
 extern real32 MagScale[];
-extern real32 MagSample[][3];
+extern real32 MagSamples[][3];
+extern uint16 Population[2][2][2];
 
 // HMC5XXX Honeywell Magnetometer
 
@@ -34,7 +35,7 @@ boolean ReadMagnetometer(void);
 void GetMagnetometer(void);
 real32 CalculateMagneticHeading(void);
 
-void CalibrateHMC5XXX(uint8 s, boolean SimpleCal);
+void CalibrateHMC5XXX(uint8 s);
 void CalibrateMagnetometer(uint8 s);
 void CheckMagnetometerIsCalibrated(void);
 
@@ -56,6 +57,7 @@ extern uint8 CompassType;
 extern real32 Mag[];
 extern real32 MagTemperature;
 extern real32 MagdT;
+extern uint16 mm;
 
 #endif
 
