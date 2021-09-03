@@ -22,6 +22,7 @@
 #ifndef _gps_h
 #define _gps_h
 
+enum ubxResets {stopGNSS = 8, startGNSS = 9};
 
 enum WaitStates {
 	WaitSentinel,
@@ -51,6 +52,8 @@ typedef struct {
 } GPSCoord;
 
 typedef struct {
+	char swVersion[30];
+	uint32 hwVersion;
 	real32 lag;
 	boolean datevalid;
 	uint16 year;
@@ -62,7 +65,7 @@ typedef struct {
 	uint8 noofsats;
 	uint8 fix;
 	timemS missionTime, startTime;
-	timemS lastVelUpdatemS, lastPosUpdatemS;
+	timemS lastPosUpdatemS;
 	real32 altitude, relAltitude, originAltitude, geoidheight;
 	GPSCoord C[3];
 	real32 longitudeCorrection;
@@ -114,10 +117,11 @@ void ParseGXRMCSentence(void);
 void ParseGXGGASentence(void);
 void SetGPSOrigin(void);
 void ParseGPSSentence(void);
+void CheckGPSUpdate(void);
 void CheckGPSTimeouts(void);
 void ShowGPSStatus(uint8 s);
+void UbxReset(uint8 s, uint16 resetType);
 void GPSISR(char ch);
-boolean GPSOK(void);
 void InitGPS(void);
 
 #define MAXTAGINDEX 4
@@ -138,7 +142,7 @@ extern NMEAStruct NMEA;
 extern const uint8 NMEATags[MAX_NMEA_SENTENCES][5];
 
 extern uint8 GPSPacketTag;
-extern real32 GPSdT;
+extern timemS GPSdTmS;
 extern timemS LastGPSUpdatemS;
 extern timemS NavGPSTimeoutmS;
 extern uint8 nll, cc, lo, hi;

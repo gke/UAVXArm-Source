@@ -364,25 +364,9 @@ void UpdateInertial(void) {
 	// one cycle delay OK
 	UpdateHeading();
 
-	if (F.NewGPSPosition) {
-		F.NewGPSPosition = false;
-
-		for (a = NorthC; a <= DownC; a++) {
-			Nav.C[a].Pos = GPS.C[a].Pos;
-			Nav.C[a].Vel = GPS.C[a].Vel;
-		}
-
-		UpdateWindEstimator();
-		UpdateWhere();
-
-		F.NavigationEnabled = true;
-		F.NewNavUpdate = Nav.Sensitivity > NAV_SENS_THRESHOLD_STICK;
-	}
-
 	UpdateAltitudeEstimates();
 
-	if (!F.Emulation)
-		UpdateAirspeed();
+	UpdateAirspeed();
 
 	TrackPitchAttitude();
 

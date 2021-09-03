@@ -120,6 +120,8 @@ void CaptureHomePosition(void) {
 
 	if (F.GPSValid && (GPS.hAcc <= GPSMinhAcc) && (GPS.vAcc <= GPSMinvAcc)) {
 
+		Delay1mS(5000); // GPS packets are still arriving under interrupts
+
 		mS[LastGPSmS] = mSClock();
 
 		GPS.startTime = GPS.missionTime;
@@ -148,7 +150,6 @@ void CaptureHomePosition(void) {
 
 		CapturePosition();
 
-		Delay1mS(500);
 		DoBeep(2, 2);
 		DoBeep(6, 2);
 	}
@@ -190,7 +191,7 @@ void ScheduleNavPulse(NavPulseStruct * n, timemS w, timemS p) {
 
 void UpdateNavPulse(boolean v) {
 #if defined(UAVXF4V3)|| defined(UAVXF4V3BBFLASH)
-	if (GPIOPins[Aux1Sel].Used && Navigating)
+	if (GPIOPins[Aux1Sel].Used && F.NavigationEnabled)
 	DigitalWrite(&GPIOPins[Aux1Sel].P, v);
 #endif
 } // DoNavPulse
@@ -200,7 +201,7 @@ void CheckNavPulse(NavPulseStruct * n) {
 	if (mSTimeout(NavPulseUpdatemS)) {
 		switch (n->State) {
 		case false:
-			if (Navigating && n->Active || UsingSurveyPulse) {
+			if (F.NavigationEnabled && n->Active || UsingSurveyPulse) {
 				UpdateNavPulse(true);
 				mSTimer(NavPulseUpdatemS, n->WidthmS);
 			}

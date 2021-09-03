@@ -75,11 +75,17 @@ void UpdateMPU6XXXTemperature(int16 T, real32 TempdT) {
 } // UpdateMPU6XXXTemperature
 
 void ReadRawAccAndGyro(void) {
+	idx i;
+	uint8 buf[14];
 	int16 B[7];
-	int32 RateD;
+	boolean r;
 	idx a;
 
-	SIOReadBlocki16vataddr(imuSel, MPU_RA_ACC_XOUT_H, 7, B, true);
+	r = SIOReadBlockataddr(imuSel, MPU_RA_ACC_XOUT_H, 14, buf);
+
+	for (i = 0; i < 7; i++)
+		B[i] = ((int16)buf[i*2]<<8) + buf[i*2+1];
+
 
 	RotateSensor(&B[X], &B[Y], IMUQuadrant);
 

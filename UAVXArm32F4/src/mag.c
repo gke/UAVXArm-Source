@@ -22,13 +22,7 @@
 
 #include "UAVX.h"
 
-#define HMC5XXX_CONFIG_A 	0x00
-#define HMC5XXX_CONFIG_B 	0x01
-#define HMC5XXX_MODE 		0x02
-#define HMC5XXX_DATA 		0x03
-#define HMC5XXX_TEMP 		0x31
-#define HMC5XXX_STATUS 		0x09
-#define HMC5XXX_TAG 		0x0a
+
 
 real32 MagTemperature = 0.0f;
 real32 MagVariation = 0.0f;
@@ -55,30 +49,30 @@ void WriteVerifyMag(uint8 a, uint8 v) {
 
 	do {
 		Delay1mS(10);
-		SIOWrite(magSel, a, v);
+		SIOWrite(CurrMagSel, a, v);
 		Delay1mS(10);
-		r = SIORead(magSel, a);
+		r = SIORead(CurrMagSel, a);
 	} while (r != v);
 
 } // WriteVerifyMag
 
 boolean ReadMagnetometer(void) {
 	//int16 RawTemp = 0;
+	idx i;
 	boolean r;
+	uint8 buf[6];
 
-	SIOReadBlocki16vataddr(magSel, HMC5XXX_DATA, 3, RawMag, true);
+	r = SIOReadBlockataddr(CurrMagSel, HMC5XXX_DATA, 6, buf);
 
-	//if (spiDevUsed[magSel])
-	//	SIOReadBlocki16vataddr(magSel, HMC5XXX_TEMP, 1, &RawTemp,
-	//true);
-
-	//MagTemperature = (real32) RawTemp * 0.0078125 + 25.0f;
+	for (i = 0; i < 3; i++)
+		RawMag[i] = ((int16)buf[i*2]<<8) + buf[i*2+1];
 
 	RotateSensor(&RawMag[X], &RawMag[Y], MagQuadrant);
 
 	r = (RawMag[0] != -4096) && (RawMag[1] != -4096) && (RawMag[2] != -4096);
 
 	return (r);
+
 } // ReadMagnetometer
 
 void GetMagnetometer(void) {
@@ -186,7 +180,7 @@ void InitMagnetometer(void) {
 		for (s = 0; s < Samples; s++) {
 			LEDToggle(ledRedSel);
 
-			SIOWrite(magSel, HMC5XXX_MODE, 0x01); // Perform single conversion
+			SIOWrite(CurrMagSel, HMC5XXX_MODE, 0x01); // Perform single conversion
 			Delay1mS(50);
 
 			ReadMagnetometer();
@@ -203,10 +197,10 @@ void InitMagnetometer(void) {
 
 		Delay1mS(50);
 
-		if (busDev[magSel].useSPI)
-			SIOWriteBlockataddr(magSel, HMC5XXX_CONFIG_A, 4, HMC5983Config);
+		if (busDev[CurrMagSel].useSPI)
+			SIOWriteBlockataddr(CurrMagSel, HMC5XXX_CONFIG_A, 4, HMC5983Config);
 		else
-			SIOWriteBlockataddr(magSel, HMC5XXX_CONFIG_A, 4, HMC5883LConfig);
+			SIOWriteBlockataddr(CurrMagSel, HMC5XXX_CONFIG_A, 4, HMC5883LConfig);
 
 		mSTimer(MagnetometerUpdatemS, MAG_TIME_MS);
 		Delay1mS(MAG_TIME_MS * 2);
@@ -248,16 +242,16 @@ void InitMagnetometerBias(void) {
 
 } // InitMagnetometerBias
 
-void GetMagSample(int16 ss) {
+void GetMagSample(int16 mm) {
 
 	if (F.InvertMagnetometer) {
-		MagSamples[ss][BF] = -(real32) RawMag[MY] * MagScale[MY];
-		MagSamples[ss][LR] = (real32) RawMag[MX] * MagScale[MX];
-		MagSamples[ss][UD] = (real32) RawMag[MZ] * MagScale[MZ];
+		MagSamples[mm][BF] = -(real32) RawMag[MY] * MagScale[MY];
+		MagSamples[mm][LR] = (real32) RawMag[MX] * MagScale[MX];
+		MagSamples[mm][UD] = (real32) RawMag[MZ] * MagScale[MZ];
 	} else {
-		MagSamples[ss][BF] = (real32) RawMag[MY] * MagScale[MY];
-		MagSamples[ss][LR] = (real32) RawMag[MX] * MagScale[MX];
-		MagSamples[ss][UD] = -(real32) RawMag[MZ] * MagScale[MZ];
+		MagSamples[mm][BF] = (real32) RawMag[MY] * MagScale[MY];
+		MagSamples[mm][LR] = (real32) RawMag[MX] * MagScale[MX];
+		MagSamples[mm][UD] = -(real32) RawMag[MZ] * MagScale[MZ];
 	}
 } // GetMagSample
 
@@ -278,6 +272,7 @@ void CalibrateHMC5XXX(uint8 s) {
 		InitMagnetometerBias();
 
 		memset(&MagSamples, 0, sizeof(MagSamples));
+		memset(&Population, 0, sizeof(Population));
 
 		mm = 0;
 
@@ -301,6 +296,9 @@ void CalibrateHMC5XXX(uint8 s) {
 						Population[QX][QY][QZ]++;
 
 						mm++;
+
+						SendCalibrationPacket(TelemetrySerial);
+
 						LEDOff(ledYellowSel);
 						LEDOn(ledGreenSel);
 					} else {
@@ -308,7 +306,6 @@ void CalibrateHMC5XXX(uint8 s) {
 						LEDOff(ledGreenSel);
 					}
 
-					SendCalibrationPacket(TelemetrySerial);
 				}
 			}
 
@@ -350,19 +347,24 @@ void CalibrateHMC5XXX(uint8 s) {
 
 void CheckMagnetometerActive(void) {
 
-	memset(&Population, 0, sizeof(Population));
-
-	if (busDev[magSel].Used && (busDev[magSel].type == hmc5xxxMag)) {
+	if (busDev[CurrMagSel].Used && (busDev[CurrMagSel].type == hmc5xxxMag)) {
 		uint8 v = 0;
 
-		SIOWriteBlockataddr(magSel, HMC5XXX_CONFIG_A, 3, HMC5XXXSetReset);
+		SIOWriteBlockataddr(CurrMagSel, HMC5XXX_CONFIG_A, 3, HMC5XXXSetReset);
 		Delay1mS(50);
 
-		SIOReadBlock(magSel, HMC5XXX_TAG, 1, &v);
+		v = 77;
+		SIOReadBlock(CurrMagSel, HMC5XXX_TAG, 1, &v);
+
 		F.MagnetometerActive = v == 'H';
+
+	//	F.MagnetometerActive = v != 0x48;
 
 	} else
 		F.MagnetometerActive = false;
 
 } //  CheckMagnetometerActive
+
+
+
 

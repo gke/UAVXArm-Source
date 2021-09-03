@@ -68,8 +68,9 @@ void InitMisc(void) {
 
 } // InitMisc
 
-
 void DoHouseKeeping(void) {
+
+	CheckGPSUpdate();
 
 	CheckBatteries(); // for battery compensation
 
@@ -140,7 +141,7 @@ int main() {
 	CheckBLHeli();
 
 	InitIMU(); // 0.504mS
-	InitMagnetometer(); // 1574mS
+  	InitMagnetometer(); // 1574mS
 	InitMadgwick(); // 0.00353mS
 
 	InitAltitude();
@@ -207,8 +208,8 @@ int main() {
 
 					DoBeep(8, 2);
 
-					FirstPass = F.OriginValid = F.NavigationEnabled
-							= F.OffsetOriginValid = false;
+					FirstPass = F.OriginValid = F.NavigationEnabled =
+							F.OffsetOriginValid = false;
 					AlarmState = NoAlarms;
 					InitialThrottle = StickThrottle;
 
@@ -243,6 +244,7 @@ int main() {
 
 				if ((UsingFastStart || GyrosErected)) {
 					mSTimer(WarmupTimeoutmS, WARMUP_TIMEOUT_MS);
+					LEDsOffExcept(ledYellowSel);
 					State = Warmup;
 				} else {
 					GyrosErected = false;
@@ -264,14 +266,12 @@ int main() {
 				}
 
 				break;
+
 			case Warmup:
 
 				DisableFlightStuff();
 
 				if (mSTimeout(WarmupTimeoutmS)) {
-
-					if (F.HaveGPS)
-						UbxSaveConfig(GPSSerial); //does this save ephemeris stuff?
 
 					DoBeeps(3);
 					DoBeep(8, 2);
@@ -283,19 +283,35 @@ int main() {
 						F.DrivesArmed = false;
 						DisableFlightStuff();
 						State = MonitorInstruments;
-					} else
+					} else if (CurrGPSType == NoGPS)
 						State = ThrottleOpenCheck;
+					else {
+						LEDsOffExcept(ledBlueSel);
+						State = InitialisingGPS;
+					}
 				}
+
 				break;
+
 			case MonitorInstruments:
 
-				if ((CurrGPSType != NoGPS) && !F.OriginValid) {
-					CaptureHomePosition();
-					if (F.OriginValid)
-						TrackOriginAltitude();
-				}
+				// stay here - does not use Rx for now
 
 				break;
+
+			case InitialisingGPS:
+
+				if (Armed()) {
+					if (F.OriginValid) {
+						//UbxReset(GPSSerial, stopGNSS);
+						State = ThrottleOpenCheck;
+					} else
+						CaptureHomePosition();
+				} else
+					State = Preflight;
+
+				break;
+
 			case ThrottleOpenCheck:
 
 				DisableFlightStuff();
@@ -308,7 +324,9 @@ int main() {
 					AlarmState = NoAlarms;
 					State = Landed;
 				}
+
 				break;
+
 			case Landed:
 
 				DisableFlightStuff();
@@ -319,15 +337,11 @@ int main() {
 
 					DoStickProgramming(); // blue toggle if trimming acc
 
-					if ((CurrGPSType != NoGPS) && !F.OriginValid)
-						CaptureHomePosition();
-
-					if ((StickThrottle >= IdleThrottle) && ((CurrGPSType
-							== NoGPS) || F.OriginValid)) {
-
+					if (F.HaveGPS && !F.GPSValid) {
+						// just wait for GPS to come back
+					} else if (StickThrottle >= IdleThrottle)
 						InitiateFlight();
-
-					} else if (mSTimeout(ArmedTimeoutmS))
+					else if (mSTimeout(ArmedTimeoutmS))
 						InitiateShutdown(ArmingTimeout);
 
 				} else { // became disarmed mid state change
@@ -353,13 +367,11 @@ int main() {
 					if (mSTimeout(ThrottleIdleTimeoutmS)) {
 						DesiredThrottle = 0.0f;
 
-						if (NavState != Perching)
-							F.OriginValid = F.OffsetOriginValid = false;
+						//	if (NavState != Perching)
+						//		F.OriginValid = F.OffsetOriginValid = false;
 
 						//SetP(KFBaroVar, Limit(TrackBaroVariance * 100.0f, 10, 200));
 						//SetP(KFAccUVar, Limit(TrackAccUVariance * 10.0f, 10, 200));
-
-
 
 						ResetMainTimeouts();
 
@@ -393,9 +405,11 @@ int main() {
 
 				CheckNavPulse(&NavPulse);
 
-				if ((StickThrottle < RC_THRES_START_STICK) && (IsMulticopter
-						|| (((ArmingMethod == SwitchArming) || (ArmingMethod
-								== TxArming)) && !Armed()))) {
+				if ((StickThrottle < RC_THRES_START_STICK)
+						&& (IsMulticopter
+								|| (((ArmingMethod == SwitchArming)
+										|| (ArmingMethod == TxArming))
+										&& !Armed()))) {
 
 					ResetMainTimeouts();
 					mSTimer(ThrottleIdleTimeoutmS, 500); //THR_LOW_DELAY_MS);
@@ -412,8 +426,8 @@ int main() {
 						InitiateShutdown(UpsideDown);
 					else {
 
-						RateEnergySum
-								+= Sqr(Abs(Rate[X]) + Abs(Rate[Y]) + Abs(Rate[Z]));
+						RateEnergySum += Sqr(
+								Abs(Rate[X]) + Abs(Rate[Y]) + Abs(Rate[Z]));
 						RateEnergySamples++;
 
 						DoAltitudeControl();
@@ -444,5 +458,4 @@ int main() {
 
 }
 // loop
-
 

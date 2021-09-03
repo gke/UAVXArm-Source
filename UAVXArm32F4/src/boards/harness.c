@@ -20,7 +20,7 @@
 
 #include "UAVX.h"
 
-idx GPSSerial, RCSerial, TelemetrySerial, FrSkySerial;
+idx GPSSerial, RCSerial, TelemetrySerial, FrSkySerial, OpenLogSerial;
 
 #include "./targets/targets.inc"
 
@@ -211,7 +211,6 @@ void InitI2C(uint8 i2cCurr) {
 	if (d->Used) {
 
 		GPIO_PinAFConfig(d->SCL.Port, d->SCL.PinSource, d->I2C_AF);
-
 		GPIO_PinAFConfig(d->SDA.Port, d->SDA.PinSource, d->I2C_AF);
 
 		UnstickI2C(i2cCurr); // attempt to unfreeze slave(s) - initialises pins

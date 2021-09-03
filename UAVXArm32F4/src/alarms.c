@@ -89,7 +89,7 @@ boolean FailPreflight(void) {
 					&& F.IMUCalibrated //
 					&& (F.BaroActive || (busDev[baroSel].type == noBaro)) //
 					&& ((F.MagnetometerActive && F.MagnetometerCalibrated) //
-							|| ((busDev[magSel].type == noMag) //
+							|| ((busDev[CurrMagSel].type == noMag) //
 									|| F.IsFixedWing)) //
 					&& !(F.LowBatt || F.sioFatal || F.ReturnHome || F.Navigate) //
 			));

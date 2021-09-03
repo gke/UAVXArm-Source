@@ -30,7 +30,7 @@ void OK(uint8 s, boolean b);
 void Calibrated(uint8 s, boolean b);
 void CommissioningTest(uint8 s);
 void ShowSIODeviceName(uint8 s, uint8 d);
-uint8 ScanSIOBus(uint8 s);
+uint8 ScanSIOBus(uint8 s, uint8 bus);
 
 void SphereFitTest(void);
 

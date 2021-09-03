@@ -367,9 +367,9 @@ void InitNavigation(void) {
 	//DEFINITELY not memset(&Nav, 0, sizeof(NavStruct));
 
 	Nav.Elevation = Nav.Bearing = Nav.Distance = Nav.TakeoffBearing
-			= Nav.WPDistance = Nav.WPBearing = Nav.CrossTrackE = 0.0f;
+			= Nav.WPDistance = Nav.WPBearing = Nav.CrossTrackE = Nav.Sensitivity = 0.0f;
 
-	F.OriginValid = F.OffsetOriginValid = F.NavigationEnabled = F.UsingPOI
+	F.OriginValid = F.OffsetOriginValid = F.NewNavUpdate = F.UsingPOI
 			= false;
 
 	//GPS.C[NorthC].OriginRaw = GPS.C[NorthC].Raw = 0;

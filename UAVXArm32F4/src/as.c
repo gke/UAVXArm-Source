@@ -103,7 +103,6 @@ void ReadASDiffPressureI2C(void) {
 
 } // ReadAirspeedI2C
 
-
 void InitASDiffPressureI2C(void) {
 
 	SIOWrite(asSel, 0, 0); // 8.4mS to first data
@@ -112,31 +111,32 @@ void InitASDiffPressureI2C(void) {
 
 } // InitAirspeedI2C
 
-
 void UpdateAirspeed(void) {
 
-	if (F.ASActive) {
-		if (mSTimeout(ASUpdatemS)) { // use mS[]
+	if (!F.Emulation) {
+		if (F.ASActive) {
+			if (mSTimeout(ASUpdatemS)) { // use mS[]
 
-			mSTimer(ASUpdatemS, 500); // make faster with filter and out of bound checks
+				mSTimer(ASUpdatemS, 500); // make faster with filter and out of bound checks
 
-			switch (CurrASSensorType) {
-			case MS4525D0I2C:
-				//ReadASDiffPressureI2C();
-				break;
-			case MPXV7002DPAnalog:
-				break;
-			case ASThermopileAnalog:
-				break;
-			case ASGPSDerived:
-				break;
-			default:
-				break;
-			} // switch
-		}
-		Airspeed = 0.5f * (AS_MIN_MPS + AS_MAX_MPS);
-	} else
-		Airspeed = 0.0f;
+				switch (CurrASSensorType) {
+				case MS4525D0I2C:
+					//ReadASDiffPressureI2C();
+					break;
+				case MPXV7002DPAnalog:
+					break;
+				case ASThermopileAnalog:
+					break;
+				case ASGPSDerived:
+					break;
+				default:
+					break;
+				} // switch
+			}
+			Airspeed = 0.5f * (AS_MIN_MPS + AS_MAX_MPS);
+		} else
+			Airspeed = 0.0f;
+	}
 
 } // UpdateAirspeed
 

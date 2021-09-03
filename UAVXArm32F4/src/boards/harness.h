@@ -257,6 +257,7 @@ enum BusDevSelectors {
 	oledSel,
 	escSPISel,
 	escI2CSel,
+	mag2Sel,
 	maxDevSel
 };
 
@@ -267,7 +268,7 @@ enum {
 	ms5611Baro, ms5607Baro, bmp085Baro, noBaro
 };
 enum {
-	hmc5xxxMag, noMag
+	hmc5xxxMag, ist8310Mag, noMag
 };
 enum {
 	servoGimbal, noGimbal
@@ -405,7 +406,7 @@ extern const PinDef SoftSerialTxPin;
 extern const PinDef PWMPins[];
 
 extern idx CurrMaxPWMOutputs;
-extern idx GPSSerial, RCSerial, TelemetrySerial, FrSkySerial;
+extern idx GPSSerial, RCSerial, TelemetrySerial, FrSkySerial, OpenLogSerial;
 
 extern const uint8 IMUQuadrant;
 extern const uint8 MagQuadrant;
@@ -414,6 +415,8 @@ extern const uint8 currGimbalType;
 extern const DevDef busDev[];
 extern const boolean ledsLowOn;
 extern const boolean beeperLowOn;
+extern boolean UsingOpenLog;
+extern uint8 CurrMagSel;
 
 //_______________________________________________________________
 

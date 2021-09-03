@@ -134,7 +134,6 @@ void InitiateShutdown(uint8 s);
 extern uint8 NavState, NavSwState, NavSwStateP, AlarmState;
 extern real32 DesiredNavHeading;
 extern boolean WPNavEnabled;
-extern boolean Navigating;
 
 #endif
 

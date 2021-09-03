@@ -106,7 +106,9 @@ const DevDef busDev[] = { //
 		{ false, flowSel, }, //
 		{ false, oledSel, oledDisplay, }, //
 		{ false, escSPISel, }, //
-		{ false, escI2CSel, ESCI2C, false, 2, ESCI2C_ID, } };
+		{ false, escI2CSel, ESCI2C, false, 2, ESCI2C_ID, }, //
+		{ true, mag2Sel, hmc5xxxMag, false, 2, HMC5XXX_ID }, // mag2Sel
+};
 
 const uint8 IMUQuadrant = 0;
 const uint8 MagQuadrant = 0;
@@ -114,6 +116,7 @@ const uint8 MagQuadrant = 0;
 const uint8 currGimbalType = noGimbal;
 const boolean ledsLowOn = true;
 const boolean beeperLowOn = true;
+const uint8 CurrMagSel = magSel;
 
 void InitTarget(void) {
 

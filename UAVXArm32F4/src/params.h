@@ -133,7 +133,7 @@
 #define NAV_MIN_ALT_M 5.0f // minimum altitude after takeoff before going to next WP
 #define GPS_TIMEOUT_MS 2000 // mS. TODO: too short for forced landing trigger?
 #define GPS_MIN_SATELLITES 6 // preferably > 5 for 3D fix
-#define GPS_MIN_HACC 5.0f
+#define GPS_MIN_HACC 3.0f // was 5
 #define GPS_MIN_VACC 5.0f
 #define GPS_MIN_SACC 1.0f
 #define GPS_MIN_CACC 1.0f // deg

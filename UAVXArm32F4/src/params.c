@@ -372,7 +372,7 @@ void UpdateParameters(void) {
 				* 0.01f;
 
 		// Nav
-		NavGPSTimeoutmS = 3.0f; // (timemS) LimitP(NavGPSTimeoutS, 2, 30) * 1000;
+		NavGPSTimeoutmS = 3000.0f; // (timemS) LimitP(NavGPSTimeoutS, 2, 30) * 1000;
 		MagVariation = DegreesToRadians((real32 )P(NavMagVar) * 0.1f);
 
 		GPSMinhAcc = GPS_MIN_HACC; // not set in GUI LimitP(MinhAcc, 10, GPS_MIN_HACC * 10) * 0.1f;

@@ -130,7 +130,8 @@ DevDef busDev[maxDevSel] = { // MUST be in enum order otherwise CheckBusDev fail
 	{false, asSel, },
 	{false, flowSel, },
 	{false, escSPISel, },
-	{false, escI2CSel, }
+	{false, escI2CSel, },
+	{false, mag2Sel, noMag, },
 };
 
 

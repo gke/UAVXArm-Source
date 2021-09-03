@@ -404,8 +404,9 @@ void SendNavPacket(uint8 s) {
 
 	TxESCi24(s, mS[NavStateTimeoutmS] - mSClock()); // mS
 
-	TxESCi16(s, 0); // was MPU Temp
-	TxESCi32(s, GPS.missionTime);
+	TxESCi16(s, Limit(GPSdTmS, 0, 32000)); // was MPU Temp
+
+	TxESCi32(s, GPS.hwVersion);
 
 	TxESCi16(s, Nav.Sensitivity * 1000.0f);
 

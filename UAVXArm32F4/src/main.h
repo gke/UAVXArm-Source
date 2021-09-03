@@ -183,7 +183,7 @@ typedef volatile union {
 				NavigationEnabled :1,
 
 				// 9
-				ForcedLanding :1, NewGPSPosition :1, EnforceDriveSymmetry :1,
+				ForcedLanding :1, unusedNewGPSPosition :1, EnforceDriveSymmetry :1,
 				RCFrameOK :1, InvertMagnetometer :1, NewCommands :1,
 				UsingOffsetHome :1, ValidGPSHeading:1,
 

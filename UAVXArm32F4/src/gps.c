@@ -41,16 +41,19 @@ NMEAStruct NMEA;
 
 uint8 GPSPacketTag;
 
+boolean UseSBAS = false; // false for USA?
+boolean GalileoCapable = false;
+boolean UseGalileo = false;
+
 GPSRec GPS;
 const uint32 GPSBaud = 115200;
 const uint32 UbxGPSBaud = 115200; //230400;
 
-real32 GPSdT;
+timemS GPSdTmS;
 real32 GPSLag = 1.0f; // MTK 0.5 for UBlox
 real32 GPSMinhAcc = GPS_MIN_HACC;
 real32 GPSMinvAcc = GPS_MIN_VACC;
 
-timemS GPSPosUpdatemSP = 0;
 timemS NavGPSTimeoutmS;
 
 uint8 nll, cc, lo, hi, ll, ss, tt, GPSCheckSumChar;
@@ -81,6 +84,7 @@ int16 UbxVersion;
 #define UBX_INF_CLASS		0x04
 #define UBX_ACK_CLASS		0x05
 #define UBX_CFG_CLASS		0x06
+#define UBX_UPD_CLASS		0x09
 #define UBX_MON_CLASS		0x0a
 #define UBX_AID_CLASS	    0x0b
 #define UBX_TIM_CLASS	    0x0d
@@ -102,6 +106,7 @@ int16 UbxVersion;
 
 #define UBX_CFG_PRT       	0x00
 #define UBX_CFG_MSG			0x01
+#define UBX_CFG_RST			0x04
 #define UBX_CFG_DAT			0x09
 #define UBX_CFG_TP			0x07
 #define UBX_CFG_RATE		0X08
@@ -109,6 +114,9 @@ int16 UbxVersion;
 #define UBX_CFG_EKF			0x12
 #define UBX_CFG_SBAS		0x16
 #define UBX_CFG_NAV5		0x24
+#define UBX_CFG_GNSS		0x3e
+
+#define UBX_UPD_SOS			0x14
 
 #define UBX_MON_VER	    	0x04
 #define UBX_MON_HW	    	0x09
@@ -181,10 +189,11 @@ const uint8 DISABLE_UBX[][2] = { // fill out Ids later ;)
 
 #define UBX_MAX_PAYLOAD   384
 #define GPS_LATENCY	    75000	// us (comment out to use Ubx timepulse)
+
 typedef struct {
-	char swVersion[30];
-	char hwVersion[10];
-	char extension[30][7];
+	uint8 swVersion[30];
+	uint8 hwVersion[10];
+	uint8 extension[30][7];
 }__attribute__((packed)) UbxStructVER;
 
 typedef struct {
@@ -341,6 +350,7 @@ struct {
 		UbxStructVALNED valned;
 		UbxStructSOL sol;
 		UbxStructPVT pvt;
+		UbxStructSBAS sbas;
 		UbxStructSTATUS status;
 		UbxStructDOP dop;
 		UbxStructTP tp;
@@ -485,24 +495,134 @@ void UbxSaveConfig(uint8 s) {
 
 } // UbxSaveConfig
 
-void UbxSetSBAS(uint8 s, uint8 enable) {
+// INAV **********************************************************************
 
-	enum Usage {
-		range = _b0, diffcor = _b1, integrity = _b2
-	};
+typedef struct {
+	uint8 gnssId;
+	uint8 resTrkCh;
+	uint8 maxTrkCh;
+	uint8 reserved1;
+// flags
+	uint8 enabled;
+	uint8 undefined0;
+	uint8 sigCfgMask;
+	uint8 undefined1;
+} ubx_gnss_element_t;
+
+typedef struct {
+	uint8_t msgVer;
+	uint8_t numTrkChHw;
+	uint8_t numTrkChUse;
+	uint8_t numConfigBlocks;
+	ubx_gnss_element_t config[0];
+} ubx_gnss_msg_t;
+
+static const uint8 default_payload[] = { 0xFF, 0xFF, 0x03, 0x03, 0x00, // CFG-NAV5 - Set engine settings (original MWII code)
+		0x00, 0x00, 0x00, 0x10, 0x27, 0x00, 0x00, 0x05, 0x00, 0xFA, 0x00, // Collected by resetting a GPS unit to defaults. Changing mode to Pedestrian and
+		0xFA, 0x00, 0x64, 0x00, 0x2C, 0x01, 0x00, 0x3C, 0x00, 0x00, 0x00, // capturing the data from the U-Center binary console.
+		0x00, 0xC8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+
+#define GNSSID_SBAS 1
+#define GNSSID_GALILEO 2
+
+uint8 configureGNSS_SBAS(uint8 s) {
+
+	TxUbxu8(s, GNSSID_SBAS);
+	TxUbxu8(s, 3);
+	TxUbxu8(s, 1);
+	if (UseSBAS) {
+		TxUbxu8(s, 1);
+		TxUbxu8(s, 1);
+	} else {
+		TxUbxu8(s, 0);
+		TxUbxu8(s, 0);
+	}
+
+	return (1);
+}
+
+int configureGNSS_GALILEO(uint8 s) {
+
+	if (GalileoCapable) {
+
+		TxUbxu8(s, GNSSID_GALILEO);
+		TxUbxu8(s, 8);
+		TxUbxu8(s, 1);
+		if (UseGalileo) {
+			TxUbxu8(s, 1);
+			TxUbxu8(s, 4);
+		} else {
+			TxUbxu8(s, 0);
+			TxUbxu8(s, 0);
+		}
+
+		return (1);
+	} else
+		return (0);
+}
+
+void UbxSetGNSS(uint8 s) {
+	// max blocks 7
+	uint8 blocksUsed = 0;
+
+	TxUbxu8(s, UBX_CFG_CLASS);
+	TxUbxu8(s, UBX_CFG_GNSS);
+	TxUbxu8(s, 0);
+	TxUbxu8(s, 0); // read only, so unset
+	TxUbxu8(s, 32);
+
+	blocksUsed += configureGNSS_SBAS(s);
+	blocksUsed += configureGNSS_GALILEO(s);
+
+	TxUbxu8(s, blocksUsed);
+	TxUbxu8(s,
+			(sizeof(ubx_gnss_msg_t) + sizeof(ubx_gnss_element_t) * blocksUsed));
+
+	Delay1mS(50);
+
+} // UbxSetGNSS
+
+void UbxSetMode_INAV(uint8 s, uint8 dynModel, uint8 fixMode) {
+	idx i;
+
+	TxUbxu8(s, UBX_CFG_CLASS);
+	TxUbxu8(s, UBX_CFG_NAV5);
+	TxUbxu8(s, 36);
+	for (i = 0; i < sizeof(default_payload); i++)
+		TxUbxu8(s, default_payload[i]);
+	TxUbxu8(s, dynModel);
+	TxUbxu8(s, fixMode);
+
+	Delay1mS(50);
+} // UbxSetMode_INAV
+
+// INAV END **********************************************************
+
+void UbxReset(uint8 s, uint16 resetType) {
+
 	UbxSendPreamble(s);
 	TxUbxu8(s, UBX_CFG_CLASS);
-	TxUbxu8(s, UBX_CFG_SBAS);
-	TxUbxu16(s, 8);
-	TxUbxu8(s, enable); // disable in USA?
-	TxUbxu8(s, diffcor | integrity);
-	TxUbxu8(s, 3); // maxSBAS 3 was 0
-	TxUbxu8(s, 0); // scan mode 2
-	TxUbxu32(s, 0); // scan mode 1
+	TxUbxu8(s, UBX_CFG_RST);
+	TxUbxu8(s, 4);
+	TxUbxu16(s, 0);
+	TxUbxu16(s, resetType);
 	TxUbxCheckSum(s);
 
 	Delay1mS(50);
-} // UbxSetSBAS
+
+	if (resetType == stopGNSS) {
+		UbxSendPreamble(s);
+		TxUbxu8(s, UBX_UPD_CLASS);
+		TxUbxu8(s, UBX_UPD_SOS);
+		TxUbxu8(s, 4);
+		TxUbxu16(s, 2);
+		TxUbxu16(s, 0);
+		TxUbxCheckSum(s);
+
+		Delay1mS(50);
+	}
+
+} // UbxStopAndSave
 
 void UbxSetMode(uint8 s) {
 
@@ -536,13 +656,21 @@ void UbxSetMode(uint8 s) {
 	TxUbxu8(s, UBX_CFG_CLASS);
 	TxUbxu8(s, UBX_CFG_NAV5);
 	TxUbxu16(s, 36);
+
+#if defined(USE_KEN_GPS_M8)
+	TxUbxu8(s, fixMode | dyn); // mask LSB (fixMode, dyn)
+	TxUbxu8(s, 0);// mask MSB (reserved)
+	TxUbxu8(s, Portable);
+	TxUbxu8(s, ThreeD);
+#else
 	TxUbxu8(s, fixMode | dyn); // mask LSB (fixMode, dyn)
 	TxUbxu8(s, 0); // mask MSB (reserved)
 	if (F.IsFixedWing)
 		TxUbxu8(s, Airborne1G);
 	else
 		TxUbxu8(s, Pedestrian);
-	TxUbxu8(s, Automatic); // ThreeD
+	TxUbxu8(s, Automatic);
+#endif
 	TxUbxu32(s, 0); // altitude
 	TxUbxu32(s, 10000); // 0.0001 altitude variance for 2D
 
@@ -553,7 +681,7 @@ void UbxSetMode(uint8 s) {
 	TxUbxu16(s, 100); // pacc m
 	TxUbxu16(s, 300); // tacc m
 	TxUbxu8(s, 0); // hold threshold cm/S
-	TxUbxu8(s, 60); // dgps timeout was 0
+	TxUbxu8(s, 60); // dgnss timeout was 0
 	TxUbxu32(s, 0); // reserved
 	TxUbxu32(s, 0); // reserved
 	TxUbxu32(s, 0); // reserved
@@ -562,6 +690,25 @@ void UbxSetMode(uint8 s) {
 
 	Delay1mS(50);
 } // UbxSetMode
+
+void UbxSetSBAS(uint8 s) {
+
+	enum Usage {
+		range = _b0, diffcor = _b1, integrity = _b2
+	};
+	UbxSendPreamble(s);
+	TxUbxu8(s, UBX_CFG_CLASS);
+	TxUbxu8(s, UBX_CFG_SBAS);
+	TxUbxu16(s, 8);
+	TxUbxu8(s, UseSBAS); // disable in USA?
+	TxUbxu8(s, diffcor | range); // was diffcor and integrity
+	TxUbxu8(s, 3); // maxSBAS 3 was 0
+	TxUbxu8(s, 0); // scan mode 2
+	TxUbxu32(s, 0); // scan mode 1
+	TxUbxCheckSum(s);
+
+	Delay1mS(50);
+} // UbxSetSBAS
 
 void UbxInitPort(uint8 s) {
 
@@ -642,8 +789,7 @@ void ParseUbxPacket(void) {
 	case UBX_NAV_CLASS:
 		switch (ubx.id) {
 		case UBX_NAV_PVT:
-			GPS.missionTime = GPS.lastPosUpdatemS = GPS.lastVelUpdatemS =
-					mSClock(); //ubx.payload.pvt.iTOW;
+			GPS.missionTime = GPS.lastPosUpdatemS = mSClock(); //ubx.payload.pvt.iTOW;
 			GPS.year = ubx.payload.pvt.year;
 			GPS.month = ubx.payload.pvt.month;
 			GPS.day = ubx.payload.pvt.day;
@@ -712,7 +858,7 @@ void ParseUbxPacket(void) {
 			GPS.vAcc = ubx.payload.posllh.vAcc * 0.001f; // mm => m
 			break;
 		case UBX_NAV_VELNED:
-			GPS.lastVelUpdatemS = mSClock(); //ubx.payload.valned.iTOW;
+			//ubx.payload.valned.iTOW;
 			GPS.velN = GPS.C[NorthC].Vel = ubx.payload.valned.velN * 0.01f; // cm => m
 			GPS.velE = GPS.C[EastC].Vel = ubx.payload.valned.velE * 0.01f; // cm => m
 			GPS.velD = ubx.payload.valned.velD * 0.01f; // cm => m
@@ -748,7 +894,15 @@ void ParseUbxPacket(void) {
 
 			break;
 		case UBX_NAV_SBAS:
-			// zzz use field names direct??
+			GPS.iTOW = ubx.payload.sbas.iTOW;
+			//uint8 geo;
+			//uint8 mode;
+			//int8 sys;
+			//uint8 service;
+			//uint8 cnt;
+			//uint8 res[3];
+			//SVStruct SV[16];
+
 			// UbxEnableMessage(GPSSerial, UBX_NAV_CLASS, UBX_NAV_SBAS, 0); // disable message
 			break;
 		default:
@@ -761,7 +915,10 @@ void ParseUbxPacket(void) {
 
 			break;
 		case UBX_MON_VER:
-			//unused UbxVersion = atoi(ubx.payload.ver.hwVersion) / 10000;
+			memcpy(&GPS.swVersion, ubx.payload.ver.swVersion, 30);
+			GPS.hwVersion = atoi(ubx.payload.ver.hwVersion);
+			//ubx.payload.ver.extension[30][7];
+			//UbxEnableMessage(GPSSerial, UBX_MON_CLASS, UBX_MON_VER, 0);
 			break;
 		default:
 			break;
@@ -782,10 +939,10 @@ void ParseUbxPacket(void) {
 	F.ValidGPSVel = GPS.sAcc <= GPS_MIN_SACC;
 	F.ValidGPSHeading = GPS.cAcc <= GPS_MIN_CACC;
 
-	F.GPSValid = F.ValidGPSVel
-			&& ((ubx.payload.pvt.fixtype == Fix3D)
-					|| (ubx.payload.pvt.fixtype == Fix2D)
-					|| (ubx.payload.pvt.fixtype == FixGPSDeadReckoning));
+	F.GPSValid = ((GPS.fix == Fix3D) || (GPS.fix == Fix2D)
+			|| (GPS.fix == FixGPSDeadReckoning));
+
+	//F.GPSValid &= (GPS.hAcc <= GPSMinhAcc) && (GPS.vAcc <= GPSMinvAcc);
 
 	GPS.lastMessage = uSClock() * 0.000001f;
 
@@ -843,14 +1000,36 @@ void InitUbxGPS(uint8 s, int16 UbxVersion) {
 
 	UbxSetMode(s); // dynamic filter etc
 
+	UseSBAS = false; // false for USA?
+	UbxSetSBAS(s);
+
+	UbxPollVersion(s);
+
 	if (UbxVersion == 8) {
+
 		UbxSetInterval(s, 100);
+
 		UbxEnableMessage(s, UBX_NAV_CLASS, UBX_NAV_PVT, 1);
+
+#if defined(USE_KEN_GPS_M8)
+
+		UbxEnableMessage(s, UBX_NAV_CLASS, UBX_NAV_SOL, 1); // for fix and # of sats
+		UbxEnableMessage(s, UBX_NAV_CLASS, UBX_NAV_VELNED, 1);
+		UbxEnableMessage(s, UBX_NAV_CLASS, UBX_NAV_POSLLH, 1);
+
+#endif
+
+		//	boolean GalileoCapable = UseGalileo = false;
+		//	UbxSetGNSS(s);
+
 	} else {
+
 		UbxSetInterval(s, 200);
 		UbxEnableMessage(s, UBX_NAV_CLASS, UBX_NAV_SOL, 1); // for fix and # of sats
 		UbxEnableMessage(s, UBX_NAV_CLASS, UBX_NAV_VELNED, 1);
 		UbxEnableMessage(s, UBX_NAV_CLASS, UBX_NAV_POSLLH, 1);
+
+		// UbxEnableMessage(s, UBX_NAV_CLASS, UBX_NAV_STATUS, 1);
 		// Ken reports problems UbxEnableMessage(s, UBX_NAV_CLASS, UBX_NAV_TIMEUTC, 255);
 	}
 
@@ -859,7 +1038,6 @@ void InitUbxGPS(uint8 s, int16 UbxVersion) {
 	//	UbxEnableMessage(s, UBX_NAV_CLASS, UBX_NAV_DOP, 1);
 	//	UbxEnableMessage(s, UBX_NAV_CLASS, UBX_NAV_SVINFO, 5);
 	//	UbxEnableMessage(s, UBX_NAV_CLASS, UBX_NAV_SAT, 5);
-	//	UbxEnableMessage(s, UBX_MON_CLASS, UBX_MON_HW, 1);
 
 	UbxSaveConfig(s);
 
@@ -1005,7 +1183,7 @@ void ParseGXRMCSentence() { // main current position and heading
 	UpdateField();
 	if (NMEA.s[lo] == 'A') {
 
-		GPS.missionTime = GPS.lastPosUpdatemS = GPS.lastVelUpdatemS = mSClock(); //ConvertUTime(lo, hi);
+		GPS.missionTime = GPS.lastPosUpdatemS = mSClock(); //ConvertUTime(lo, hi);
 
 		UpdateField(); //Lat
 		GPS.C[NorthC].Raw = ConvertLatLon(lo, hi);
@@ -1043,7 +1221,8 @@ void ParseGXRMCSentence() { // main current position and heading
 		// GPS.magvariation = -GPS.magvariation;
 
 		for (a = NorthC; a <= EastC; a++) {
-			GPS.C[a].Vel = GPSToM(GPS.C[a].Raw - GPS.C[a].RawP) / GPSdT;
+			GPS.C[a].Vel = GPSToM(GPS.C[a].Raw - GPS.C[a].RawP)
+					/ (GPSdTmS * 0.001f);
 			GPS.C[a].RawP = GPS.C[a].Raw;
 		}
 
@@ -1052,51 +1231,6 @@ void ParseGXRMCSentence() { // main current position and heading
 	}
 
 } // ParseGXRMCSentence
-
-boolean GPSSanityCheck(void) {
-	boolean r;
-
-	r = F.Emulation ?
-			true :
-			(Abs(GPS.C[NorthC].Raw) <= 900000000L)
-					&& (Abs(GPS.C[EastC].Raw) <= 1800000000L)
-					&& (GPS.C[NorthC].Raw != 0) && (GPS.C[EastC].Raw != 0);
-
-	return (r);
-
-} // GPSSanityCheck
-
-void ProcessGPSSentence(void) {
-	int32 a;
-
-	if (F.GPSValid && GPSSanityCheck()) {
-		if (F.OriginValid) {
-			if (!F.Emulation) {
-				for (a = NorthC; a <= EastC; a++)
-					GPS.C[a].Pos = GPSToM(GPS.C[a].Raw - GPS.C[a].OriginRaw);
-				GPS.C[EastC].Pos *= GPS.longitudeCorrection;
-			}
-		}
-	}
-
-	if (F.GPSValid) {
-
-		GPSdT = (real32) (GPS.lastPosUpdatemS - GPSPosUpdatemSP) * 0.001f;
-		GPSPosUpdatemSP = GPS.lastPosUpdatemS;
-
-		F.NewGPSPosition = GPSOK();
-
-		if ((State == Ready) || (State == Landed)) {
-			LEDOn(ledBlueSel);
-			if (F.NewGPSPosition)
-				LEDOff(ledYellowSel);
-			else
-				LEDToggle(ledYellowSel);
-		}
-		mSTimer(GPSTimeoutmS, NavGPSTimeoutmS);
-	}
-
-} // ProcessGPSSentence
 
 void RxGPSUbxPacket(char c) {
 
@@ -1222,67 +1356,109 @@ void RxGPSNMEAPacket(char c) {
 
 } // RxGPSNMEAPacket
 
-boolean GPSOK(void) {
-	return F.GPSValid
-			&& (F.OriginValid || (F.IsFixedWing && F.OffsetOriginValid));
-} // GPSOK
+boolean GPSSanityCheck(void) {
+	boolean r;
+
+	r = (Abs(GPS.C[NorthC].Raw) <= 900000000L)
+			&& (Abs(GPS.C[EastC].Raw) <= 1800000000L)
+			&& (GPS.C[NorthC].Raw != 0) && (GPS.C[EastC].Raw != 0);
+
+	return (r);
+
+} // GPSSanityCheck
+
+void ProcessGPSSentence(void) {
+	idx a;
+	static timemS GPSPosUpdatemSP = 0;
+
+	if (F.GPSValid) {
+
+		mSTimer(GPSTimeoutmS, NavGPSTimeoutmS);
+
+		if (GPSSanityCheck() && F.OriginValid
+				|| (F.IsFixedWing && F.OffsetOriginValid) && !F.Emulation) {
+
+			for (a = NorthC; a <= EastC; a++) {
+				Nav.C[a].Pos = GPS.C[a].Pos = GPSToM(
+						GPS.C[a].Raw - GPS.C[a].OriginRaw);
+				Nav.C[a].Vel = GPS.C[a].Vel;
+			}
+			GPS.C[EastC].Pos *= GPS.longitudeCorrection;
+
+			if (GPSPosUpdatemSP == 0)
+				GPSPosUpdatemSP = GPS.lastPosUpdatemS;
+			GPSdTmS = GPS.lastPosUpdatemS - GPSPosUpdatemSP;
+			GPSPosUpdatemSP = GPS.lastPosUpdatemS;
+
+			F.NewNavUpdate =
+					(ArmingMethod == SwitchArming) ?
+							(Nav.Sensitivity > NAV_SENS_THRESHOLD_STICK) :
+							true;
+
+			UpdateWindEstimator();
+			UpdateWhere();
+
+			if ((State == Ready) || (State == Landed))
+				LEDOn(ledBlueSel);
+			else
+				LEDToggle(ledYellowSel);
+		}
+	}
+
+} // ProcessGPSSentence
 
 void CheckGPSTimeouts(void) {
 
-	if (F.Emulation) {
-		if ((ArmingMethod != SwitchArming) || (Armed()))
-			GPSEmulation(); // real GPS preferably unplugged
-	} else {
+	if (mSTimeout(GPSTimeoutmS)) {
 
-		if ((mSClock() - GPS.lastPosUpdatemS) > 1000)
-			F.GPSValid = F.ValidGPSVel = false; // stale
+		mSTimer(GPSTimeoutmS, NavGPSTimeoutmS);
 
-		if (mSTimeout(GPSTimeoutmS)) {
-			ZeroNavCorrections();
-			F.GPSValid = F.ValidGPSVel = F.NewGPSPosition =
-					F.NavigationEnabled = false;
+		ZeroNavCorrections();
+		F.GPSValid = F.ValidGPSVel = F.NewNavUpdate = F.NavigationEnabled =
+		false;
 
-			LEDOff(ledBlueSel);
-			LEDOff(ledYellowSel);
-			mSTimer(GPSTimeoutmS, NavGPSTimeoutmS);
-		}
+		LEDOff(ledBlueSel);
+		LEDOff(ledYellowSel);
 	}
 
 } // CheckGPSTimeouts
 
+void CheckGPSUpdate(void) {
+
+	if (F.GPSPacketReceived) {
+		F.GPSPacketReceived = false;
+		ProcessGPSSentence();
+	} else
+		CheckGPSTimeouts();
+
+} // CheckGPSUpdate
+
 void GPSISR(char ch) {
 
-	if (!F.Emulation && F.HaveGPS) {
-
-		if (EnableGPSPassThru) {
-
-			LEDToggle(ledBlueSel);
-			TxChar(TelemetrySerial, ch); // just echo raw GPS to telemetry
-
-		} else {
-			switch (CurrGPSType) { // 1.5uS/char
-			case UbxM8GPSInit:
-			case UbxLegacyGPSInit:
-			case UbxGPS:
-				RxGPSUbxPacket(ch);
-				break;
-			case NMEAGPS:
-				RxGPSNMEAPacket(ch);
-				break;
-			case NoGPS:
-			default:
-				break;
-			} // switch
-
-			if (F.GPSPacketReceived) {
-				F.GPSPacketReceived = false;
-				ProcessGPSSentence(); // ~8.5uS
+	if (EnableGPSPassThru) {
+		LEDToggle(ledBlueSel);
+		TxChar(TelemetrySerial, ch); // just echo raw GPS to telemetry
+	} else {
+		if (F.HaveGPS) {
+			if (F.Emulation)
+				GPSEmulation();
+			else {
+				switch (CurrGPSType) { // 1.5uS/char
+				case UbxM8GPSInit:
+				case UbxLegacyGPSInit:
+				case UbxGPS:
+					RxGPSUbxPacket(ch);
+					break;
+				case NMEAGPS:
+					RxGPSNMEAPacket(ch);
+					break;
+				case NoGPS:
+				default:
+					break;
+				} // switch
 			}
 		}
-
 	}
-
-	CheckGPSTimeouts();
 
 } // GPSISR
 
@@ -1306,6 +1482,8 @@ void InitGPS(void) {
 			InitUbxGPS(GPSSerial, 0);
 			break;
 		case UbxGPS:
+			UbxPollVersion(GPSSerial);
+			break;
 		case NMEAGPS:
 		case NoGPS:
 		default:

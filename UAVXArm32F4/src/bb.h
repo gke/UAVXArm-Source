@@ -28,8 +28,9 @@ void UpdateBlackBox(void);
 void DumpBlackBox(uint8 s);
 void InitBlackBox(void);
 
-boolean BlackBoxEnabled;
-uint8 BBReplaySpeed;
+extern boolean BlackBoxEnabled;
+extern uint8 BBReplaySpeed;
+extern boolean UsingOpenLog;
 
 #endif
 

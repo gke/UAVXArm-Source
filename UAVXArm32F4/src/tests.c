@@ -33,6 +33,9 @@ void ShowSIODeviceName(uint8 s, uint8 d) {
 	case HMC5XXX_ID:
 		TxString(s, "HMC5XXX Mag");
 		break;
+	case IST8310_ID:
+		TxString(s, "IST8310 Mag");
+		break;
 	case TMP100_ID:
 		TxString(s, "Temperature");
 		break;
@@ -46,14 +49,14 @@ void ShowSIODeviceName(uint8 s, uint8 d) {
 
 } // ShowSIODeviceName
 
-uint8 ScanSIOBus(uint8 s) {
+uint8 ScanSIOBus(uint8 s, uint8 bus) {
 	uint8 nd, d, v;
 
 	nd = 0;
 
 	for (d = 0x10; d <= 0xf6; d += 2) {
 		v = 0;
-		if (I2CReadBlock(2, d, 0, 1, &v)) {
+		if (I2CReadBlock(bus, d, 0, 1, &v)) {
 			nd++;
 			TxString(s, "\t0x");
 			TxValH(s, d);
@@ -86,7 +89,7 @@ void DoTesting(void) {
 	static int16 MinShadow[7];
 	static int16 PrevShadow[7];
 	static int32 MaxDelta[7];
-
+	uint8 buf[32];
 
 #if defined(EXTMEM_TESTING)
 
@@ -178,6 +181,40 @@ void DoTesting(void) {
 
 	}
 
+#elif defined(MAG_TESTING)
+
+	uint8 v = 0;
+
+	while(1) {
+		SIOReadBlock(CurrMagSel, HMC5XXX_TAG, 1, &v);
+		Delay1mS(1);
+	}
+
+	timemS NextUpdatemS = 0;
+
+	mSTimer(MagnetometerUpdatemS, MAG_TIME_MS);
+	while (true) {
+		if (mSTimeout(MagnetometerUpdatemS)) {
+			mSTimer(MagnetometerUpdatemS, MAG_TIME_MS);
+			//ScanSIOBus(TelemetrySerial, CurrMagSel);
+
+			//boolean r = I2CReadBlock(CurrMagSel, HMC5XXX_ID, HMC5XXX_DATA, 6, buf);
+			//boolean r = SIOReadBlocki16vataddr(CurrMagSel, HMC5XXX_DATA, 3, RawMag, true);
+			ReadMagnetometer();
+
+			if (mSClock() > NextUpdatemS) {
+
+				NextUpdatemS = mSClock() + 1000;
+				for (i = 0; i < 3; i++)
+					TxVal32(TelemetrySerial, RawMag[i], 0, ' ');
+				TxNextLine(TelemetrySerial);
+
+			}
+		}
+
+	}
+
+
 #elif defined(RC_TESTING)
 
 	static timemS LastUpdatemS = 0;
@@ -191,7 +228,7 @@ void DoTesting(void) {
 
 		if (F.RCNewValues) {
 
-		//	if (RCInp[0].Raw < 2000) {
+			//	if (RCInp[0].Raw < 2000) {
 
 			NowmS = mSClock();
 
@@ -199,12 +236,12 @@ void DoTesting(void) {
 			LastUpdatemS = NowmS;
 
 			for (i = 0; i < 4; i++)
-				TxVal32(TelemetrySerial, RCInp[i].Raw, 0, ',');
+			TxVal32(TelemetrySerial, RCInp[i].Raw, 0, ',');
 
 			if (SBusSignalLost)
-				TxString(TelemetrySerial, "LOST ");
+			TxString(TelemetrySerial, "LOST ");
 			if (SBusFailsafe)
-				TxString(TelemetrySerial, "FS ");
+			TxString(TelemetrySerial, "FS ");
 
 			TxNextLine(TelemetrySerial);
 			//}

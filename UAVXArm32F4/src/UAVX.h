@@ -24,8 +24,11 @@
 
 #define USE_UAVX_DJT
 
+//#define MAG_TESTING
 
 // Options
+
+//#define USE_KEN_GPS_M8
 
 
 //#define USB_TESTING

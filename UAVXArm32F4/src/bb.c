@@ -33,11 +33,12 @@ volatile uint16 BBQTail;
 volatile uint16 BBQEntries;
 boolean BlackBoxEnabled = false;
 uint8 BBReplaySpeed = 1;
+boolean UsingOpenLog = false;
 
 void UpdateBlackBox(void) {
 	uint32 i;
 
-	if (F.HaveNVMem)
+	if (F.HaveNVMem && !UsingOpenLog)
 		if ((uSClock() >= uS[MemReadyuS]) && (BBQEntries >= NVMemBlockSize)) {
 
 			for (i = 0; i < NVMemBlockSize; i++) {
@@ -54,66 +55,71 @@ void UpdateBlackBox(void) {
 				CurrBBMemAddr = 0;
 
 		}
+
 } // UpdateBlackBox
 
-
 void BlackBox(uint8 ch) {
-	uint16 NewTail;
+uint16 NewTail;
 
-	if (BlackBoxEnabled) {
+if (BlackBoxEnabled) {
+	if (UsingOpenLog) {
+	   TxChar(OpenLogSerial, ch);
+	} else {
 		NewTail = (BBQTail + 1) & BBQ_BUFFER_MASK;
 		BBQ[NewTail] = ch;
 		BBQTail = NewTail;
 		BBQEntries++;
 	}
+}
 
 } // BlackBox
 
 void DumpBlackBox(uint8 s) {
-	int32 seqNo;
-	int32 a;
-	uint32 MaxMemoryUsed;
-	uint16 i;
-	boolean Finish;
+int32 seqNo;
+int32 a;
+uint32 MaxMemoryUsed;
+uint16 i;
+boolean Finish;
 
-	F.DumpingBlackBox = true;
+F.DumpingBlackBox = true;
 
-	seqNo = 0;
+seqNo = 0;
 
-	if (F.HaveNVMem) {
+if (F.HaveNVMem) {
 
-		for (i = 0; i < 10; i++) {
-			SendFlightPacket(s);
-			Delay1mS(5);
-		}
-
-		do {
-			ReadBlockNVMem(a, NVMemBlockSize, NVMemBuffer);
-			Finish = true;
-			for (i = 0; i < NVMemBlockSize; i++)
-				Finish &= NVMemBuffer[i] == -1;
-			if (!Finish) {
-				if (NVMemBlockSize > 128) {
-					SendBBPacket(s, seqNo++, 128, &NVMemBuffer[0]);
-					SendBBPacket(s, seqNo++, NVMemBlockSize - 128, &NVMemBuffer[128]);
-				} else
-					SendBBPacket(s, seqNo++, (uint8) NVMemBlockSize, &NVMemBuffer[0]);
-				a += NVMemBlockSize;
-			}
-		} while ((a < NVMemSize) && !Finish);
-
-		NVMemBuffer[0] = 0;
-		SendBBPacket(s, -1, 1, NVMemBuffer);
+	for (i = 0; i < 10; i++) {
+		SendFlightPacket(s);
+		Delay1mS(5);
 	}
 
-	F.DumpingBlackBox = false;
+	do {
+		ReadBlockNVMem(a, NVMemBlockSize, NVMemBuffer);
+		Finish = true;
+		for (i = 0; i < NVMemBlockSize; i++)
+			Finish &= NVMemBuffer[i] == -1;
+		if (!Finish) {
+			if (NVMemBlockSize > 128) {
+				SendBBPacket(s, seqNo++, 128, &NVMemBuffer[0]);
+				SendBBPacket(s, seqNo++, NVMemBlockSize - 128,
+						&NVMemBuffer[128]);
+			} else
+				SendBBPacket(s, seqNo++, (uint8) NVMemBlockSize,
+						&NVMemBuffer[0]);
+			a += NVMemBlockSize;
+		}
+	} while ((a < NVMemSize) && !Finish);
+
+	NVMemBuffer[0] = 0;
+	SendBBPacket(s, -1, 1, NVMemBuffer);
+}
+
+F.DumpingBlackBox = false;
 
 } // DumpBlackBox
 
-
 void InitBlackBox(void) {
 
-	BBQHead = BBQTail = BBQEntries = 0;
-	CurrBBMemAddr = 0;
+BBQHead = BBQTail = BBQEntries = 0;
+CurrBBMemAddr = 0;
 
 } // InitBlackBox

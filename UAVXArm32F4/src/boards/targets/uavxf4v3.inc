@@ -119,7 +119,8 @@ const DevDef busDev[maxDevSel] = {
 #else
 		{ false, escSPISel, }, //
 #endif
-		{ true, escI2CSel, ESCI2C, false, 2, ESCI2C_ID, } //
+		{ true, escI2CSel, ESCI2C, false, 2, ESCI2C_ID, }, //
+		{ true, mag2Sel, hmc5xxxMag, false, 3, HMC5XXX_ID, }//
 };
 
 const uint8 IMUQuadrant = 0;
@@ -128,6 +129,7 @@ const uint8 MagQuadrant = 0;
 const uint8 currGimbalType = noGimbal;
 const boolean ledsLowOn = false;
 const boolean beeperLowOn = true;
+uint8 CurrMagSel = magSel;
 
 void InitTarget(void) {
 

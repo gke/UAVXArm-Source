@@ -149,6 +149,8 @@ void DoEmulation(void) {
 			FakeROC += FakeAccZ * dT + Thermal(Nav.C[EastC].Pos,
 					Nav.C[NorthC].Pos) * 0.01f;
 
+			Airspeed = GPS.gspeed; // TODO: rubbish
+
 			for (a = Pitch; a <= Roll; a++) {
 				Rate[a] -= (EM_MAX_THRUST * 0.25f * A[a].Out * EM_ARM_LEN
 						* InertiaR[a] - 2.0f * Sign(A[a].Out) * Sqr(Rate[a]))
@@ -202,13 +204,11 @@ void DoEmulation(void) {
 
 void GPSEmulation(void) {
 
-	if (F.HaveGPS)
-		while (SerialAvailable(GPSSerial))
-			RxChar(GPSSerial); // flush
-
-	if (mSTimeout(FakeGPSUpdatemS)) { // && ((mSClock() < BINGO) || (mSClock() > BINGO + 10000))) {
-		GPS.lastPosUpdatemS = GPS.lastVelUpdatemS = mSClock();
+	if (mSTimeout(FakeGPSUpdatemS)) {
+		GPS.lastPosUpdatemS = mSClock();
 		mSTimer(FakeGPSUpdatemS, FAKE_GPS_DT_MS);
+
+		mSTimer(GPSTimeoutmS, NavGPSTimeoutmS);
 
 		GPS.heading = Heading;
 		GPS.cAcc = 0.5f; // degrees
@@ -220,7 +220,7 @@ void GPSEmulation(void) {
 		GPS.hAcc = GPSMinhAcc * 0.25f;
 		GPS.vAcc = GPSMinvAcc * 0.25f;
 		GPS.sAcc = 1.0f;
-		F.GPSValid = F.GPSPacketReceived = F.NewGPSPosition = true;
+		F.GPSValid = true;
 	}
 
 } // GPSEmulation

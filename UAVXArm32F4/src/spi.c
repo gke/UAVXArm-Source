@@ -43,7 +43,8 @@ const SPIDefStruct SPIDef[] = { //
 				{ false, spi_10_5, spi_10_5 }, // flowSel
 				{ false, spi_10_5, spi_10_5 }, // oledSel
 				{ false, spi_10_5, spi_10_5 }, // escSPISel
-				{ false, spi_10_5, spi_10_5 } // escI2CSel
+				{ false, spi_10_5, spi_10_5 }, // escI2CSel
+				{ true, spi_10_5, spi_10_5 } // mag2Sel
 		};
 
 SPI_TypeDef * SPISetBaudRate(uint8 spiDev, boolean R) {
@@ -136,7 +137,7 @@ boolean SPIReadBlock(uint8 spiDev, uint8 d, uint8 len, uint8* data) {
 
 	if (spiDev == imuSel)
 		Prefix = 0x80;
-	else if (spiDev == magSel) {
+	else if (spiDev == CurrMagSel) {
 		Prefix = (len > 1) ? 0xc0 : 0x80;
 	} else
 		Prefix = 0;

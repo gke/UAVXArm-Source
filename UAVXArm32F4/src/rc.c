@@ -585,7 +585,7 @@ void UpdateControls(void) {
 				RCNavFrames++;
 		} else {
 			NavSwState = SwLow;
-			F.ReturnHome = F.Navigate = F.NavigationEnabled = false;
+			F.ReturnHome = F.Navigate = F.NewNavUpdate = false;
 		}
 
 		CamPitchTrim =
@@ -604,11 +604,19 @@ void UpdateControls(void) {
 								NavQualificationRC);
 				EnableWPNav();
 			} else {
-				Nav.Sensitivity = F.Emulation ? 0.5f : 1.0f;
+
+#if defined(PRE_20210828)
 				TxSwitchArmed = ActiveAndTriggered(0.2f, NavQualificationRC);
+				Nav.Sensitivity = 0.5f;
 				F.AltControlEnabled = F.AltControlEnabled
 						&& ActiveAndTriggered(0.45f, NavQualificationRC);
 				WPNavEnabled = ActiveAndTriggered(0.7f, NavQualificationRC);
+#else
+				TxSwitchArmed = ActiveAndTriggered(0.1f, NavQualificationRC);
+				WPNavEnabled = true; //ActiveAndTriggered(0.2f, NavQualificationRC);
+				Nav.Sensitivity = Limit(RC[NavQualificationRC] - 0.1f, 0.0f, 1.0f);
+#endif
+
 			}
 		else {
 			TxSwitchArmed = false;

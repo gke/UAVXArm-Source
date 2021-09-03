@@ -47,7 +47,7 @@ const PinDef PWMPins[MAX_PWM_OUTPUTS] = {
 const PinDef GPIOPins[MAX_GPIO_PINS] = { //
 		{ true, PE14, OutPinConfig, }, // BeeperSel
 		{ true, PB0, InpPinConfig, }, // ArmedSel
-		{ true, PE13, InpPinConfig, }, // LandingSel
+		{true, PE13, InpPinConfig,}, // LandingSel
 		{ true, PE11, OutPinConfig, }, // Aux1Sel
 		{ false, }, 					// Aux2Sel
 #if defined(USE_AUX3_PROBE_PIN)
@@ -78,14 +78,16 @@ const SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
 		{ true, USART1, PA9, PA10, 115200, true, false, USART1Config }, // USB Clash
 		{ true, USART2, PD5, PD6, 115200, true, false, USART2Config }, // Sbus/Spektrum
 		{ true, USART3, PD8, PD9, 115200, true, false, USART3Config }, //
-		{ false, UART4, PC10, PC11, 115200, true, false, UART4Config }, //
+		{ true, UART4, PC10, PC11, 115200, true, false, UART4Config }, //
 		{ true, 0 } // SoftSerial
 };
 
-const I2CPortDef I2CPorts[MAX_I2C_PORTS] = { { false, 0, }, // notionally I2C0
-		{ false, I2C1, PB6, PB7, GPIO_AF_I2C1 }, //
+const I2CPortDef I2CPorts[MAX_I2C_PORTS] = { //
+		{ false, 0, }, // notionally I2C0
+		{ false, I2C1, }, // PWM4 clash
 		{ true, I2C2, PB10, PB11, GPIO_AF_I2C2 }, // USART3
-		{ false, I2C3, } };
+		{ true, I2C3, PA8, PC9, GPIO_AF_I2C3 } // SCL SDA
+};
 
 const SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
 		{ false, 0, }, // notionally SPI0
@@ -97,19 +99,17 @@ const SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
 const DevDef busDev[maxDevSel] = { //
 		{ true, imuSel, mpu6050IMU, false, 2, MPU_0x68_ID, }, //
 		{ true, baroSel, ms5611Baro, false, 2, MS56XX_0_ID, }, //
-		{ true, magSel, hmc5xxxMag, false, 2, HMC5XXX_ID, },
-#if defined(USE_ARM_BLACKBOX_FLASH)
+		{ true, magSel, hmc5xxxMag, false, 2, HMC5XXX_ID, }, //
 		{ false, memSel, ArmFlashMem,}, // does not use either SPI or I2C
-#else
-		{ false, memSel, i2cEEPROMMem, false, 2, EEPROM_ID, },
-#endif
 		{ false, gpsSel, }, //
 		{ false, rfSel, }, //
 		{ false, asSel, }, //
 		{ false, flowSel, }, //
 		{ false, oledSel, oledDisplay, }, //
 		{ false, escSPISel, }, //
-		{ false, escI2CSel, ESCI2C, false, 2, ESCI2C_ID, } };
+		{ false, escI2CSel, ESCI2C, false, 2, ESCI2C_ID, } ,//
+		{ true, mag2Sel, hmc5xxxMag, false, 3, HMC5XXX_ID, }
+};
 
 const uint8 IMUQuadrant = 0;
 const uint8 MagQuadrant = 0;
@@ -117,8 +117,11 @@ const uint8 MagQuadrant = 0;
 const uint8 currGimbalType = noGimbal;
 const boolean ledsLowOn = true;
 const boolean beeperLowOn = true;
+uint8 CurrMagSel = mag2Sel;
 
 void InitTarget(void) {
+
+	CurrMagSel = (F.InvertMagnetometer) ? mag2Sel : magSel;
 
 	CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 10;
 
@@ -137,6 +140,10 @@ void InitTarget(void) {
 
 	FrSkySerial = SoftSerial;
 	InitSerialPort(FrSkySerial, true, false);
+
+	UsingOpenLog = true;
+	OpenLogSerial = Uart4;
+	InitSerialPort(OpenLogSerial, false, false);
 
 
 } // InitTarget

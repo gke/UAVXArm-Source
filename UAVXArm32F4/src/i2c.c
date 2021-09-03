@@ -64,7 +64,7 @@ void i2c_er_handler(uint8 i2cCurr) {
 } // i2c_er_handler
 
 void i2c_ev_handler(uint8 i2cCurr) {
-	static int8 index; //index is signed -1==send the sub-address
+	static int8 index[MAX_I2C_PORTS]; //index is signed -1==send the sub-address
 	uint8 SReg_1; //read the status register here
 	I2CPortDef * d;
 	I2CStateDef * s;
@@ -77,7 +77,7 @@ void i2c_ev_handler(uint8 i2cCurr) {
 	if (SReg_1 & 0x0001) { //we just sent a start - EV5 in reference manual
 		d->I2C->CR1 &= ~0x0800; //reset the POS bit so ACK/NACK applied to the current byte
 		I2C_AcknowledgeConfig(d->I2C, ENABLE); //make sure ACK is on
-		index = 0; //reset the index
+		index[i2cCurr] = 0; //reset the index
 		if (s->reading && (s->subaddress_sent || (0xff == s->reg))) { //we have sent the sub-address
 			s->subaddress_sent = true; //make sure this is set in case of no sub-address, so following code runs correctly
 			if (s->bytes == 2)
@@ -86,7 +86,7 @@ void i2c_ev_handler(uint8 i2cCurr) {
 		} else { //direction is Tx, or we haven't sent the sub and rep start
 			I2C_Send7bitAddress(d->I2C, s->addr, I2C_Direction_Transmitter); //send the address and set hardware mode
 			if (s->reg != 0xff) //0xff as sub-address means it will be ignored, in Tx or Rx mode
-				index = -1; //send a sub-address
+				index[i2cCurr] = -1; //send a sub-address
 		}
 	} else if (SReg_1 & 0x0002) { //we just sent the address - EV6 in ref manual
 		//Read SR1,2 to clear ADDR
@@ -116,19 +116,19 @@ void i2c_ev_handler(uint8 i2cCurr) {
 		if (s->reading && s->subaddress_sent) { //EV7_2, EV7_3
 			if (s->bytes > 2) { //EV7_2
 				I2C_AcknowledgeConfig(d->I2C, DISABLE); //turn off ACK
-				s->read_p[index++] = I2C_ReceiveData(d->I2C); //read data N-2
+				s->read_p[index[i2cCurr]++] = I2C_ReceiveData(d->I2C); //read data N-2
 				I2C_GenerateSTOP(d->I2C, ENABLE);
 				s->final_stop = true; //required to fix hardware
-				s->read_p[index++] = I2C_ReceiveData(d->I2C); //read data N-1
+				s->read_p[index[i2cCurr]++] = I2C_ReceiveData(d->I2C); //read data N-1
 				I2C_ITConfig(d->I2C, I2C_IT_BUF, ENABLE); //enable TXE to allow the final EV7
 			} else { //EV7_3
 				if (s->final_stop)
 					I2C_GenerateSTOP(d->I2C, ENABLE);
 				else
 					I2C_GenerateSTART(d->I2C, ENABLE); //repeated start
-				s->read_p[index++] = I2C_ReceiveData(d->I2C); //read data N-1
-				s->read_p[index++] = I2C_ReceiveData(d->I2C); //read data N
-				index++; //to show job completed
+				s->read_p[index[i2cCurr]++] = I2C_ReceiveData(d->I2C); //read data N-1
+				s->read_p[index[i2cCurr]++] = I2C_ReceiveData(d->I2C); //read data N
+				index[i2cCurr]++; //to show job completed
 			}
 		} else { //EV8_2, which may be due to a sub-address sent or a write completion
 			if (s->subaddress_sent || (s->writing)) {
@@ -136,7 +136,7 @@ void i2c_ev_handler(uint8 i2cCurr) {
 					I2C_GenerateSTOP(d->I2C, ENABLE);
 				else
 					I2C_GenerateSTART(d->I2C, ENABLE); //repeated start
-				index++; //to show that the job is complete
+				index[i2cCurr]++; //to show that the job is complete
 			} else { //send a sub-address
 				I2C_GenerateSTART(d->I2C, ENABLE); //repeated Start
 				s->subaddress_sent = true; //this is set back to zero upon completion of the current task
@@ -146,24 +146,24 @@ void i2c_ev_handler(uint8 i2cCurr) {
 		while (d->I2C->CR1 & 0x0100) {
 		}
 	} else if (SReg_1 & 0x0040) { //Byte received - EV7
-		s->read_p[index++] = I2C_ReceiveData(d->I2C);
-		if (s->bytes == (index + 3))
+		s->read_p[index[i2cCurr]++] = I2C_ReceiveData(d->I2C);
+		if (s->bytes == (index[i2cCurr] + 3))
 			I2C_ITConfig(d->I2C, I2C_IT_BUF, DISABLE); //disable TXE to allow the buffer to flush so we can get an EV7_2
-		if (s->bytes == index) //We have completed a final EV7
-			index++; //to show job is complete
+		if (s->bytes == index[i2cCurr]) //We have completed a final EV7
+			index[i2cCurr]++; //to show job is complete
 	} else if (SReg_1 & 0x0080) { //Byte transmitted -EV8/EV8_1
-		if (index != -1) { //we don't have a sub-address to send
-			I2C_SendData(d->I2C, s->write_p[index++]);
-			if (s->bytes == index) //we have sent all the data
+		if (index[i2cCurr] != -1) { //we don't have a sub-address to send
+			I2C_SendData(d->I2C, s->write_p[index[i2cCurr]++]);
+			if (s->bytes == index[i2cCurr]) //we have sent all the data
 				I2C_ITConfig(d->I2C, I2C_IT_BUF, DISABLE); //disable TXE to allow the buffer to flush
 		} else {
-			index++;
+			index[i2cCurr]++;
 			I2C_SendData(d->I2C, s->reg); //send the sub-address
 			if (s->reading || (s->bytes == 0)) //if receiving or sending 0 bytes, flush now
 				I2C_ITConfig(d->I2C, I2C_IT_BUF, DISABLE); //disable TXE to allow the buffer to flush
 		}
 	}
-	if (index == s->bytes + 1) { //we have completed the current job
+	if (index[i2cCurr] == s->bytes + 1) { //we have completed the current job
 		//Completion Tasks go here
 		//End of completion tasks
 		s->subaddress_sent = false; //reset this here

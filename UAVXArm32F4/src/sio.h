@@ -29,17 +29,11 @@ boolean SIOWriteBlock(uint8 sioDev, uint8 reg, uint8 len,
 
 uint8 SIORead(uint8 sioDev, uint8 reg);
 uint8 SIOReadataddr(uint8 sioDev, uint8 reg);
-//extern boolean SIOReadBlockataddr(uint8 sioDev, uint8 reg, uint8 len, uint8 * data);
-boolean SIOReadBlocki16v(uint8 sioDev, uint8 len,
-		int16 * data, boolean h);
-boolean SIOReadBlocki16vataddr(uint8 sioDev, uint8 reg,
-		uint8 len, int16 * data, boolean h);
-
+boolean SIOReadBlockataddr(uint8 sioDev, uint8 reg, uint8 len, uint8 * data);
 boolean SIOWrite(uint8 sioDev, uint8 reg, uint8 data);
 //extern boolean SIOWritebyte(uint8 sioDev, uint8 id, uint8 v);
 boolean SIOWriteataddr(uint8 sioDev, uint8 a, uint8 v);
-boolean SIOWriteBlockataddr(uint8 sioDev, uint8 reg,
-		uint8 len, uint8 * data);
+boolean SIOWriteBlockataddr(uint8 sioDev, uint8 reg, uint8 len, uint8 * data);
 
 boolean SIOResponse(uint8 sioDev);
 

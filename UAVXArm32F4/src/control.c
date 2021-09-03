@@ -108,7 +108,7 @@ void DetermineInFlightThrottle(void) {
 			F.AltControlEnabled = F.HoldingAlt = true;
 			DesiredThrottle = CruiseThrottle;
 		} else {
-			if (Navigating) {
+			if (F.NavigationEnabled) {
 				if (NavState == HoldingStation)
 					DesiredThrottle = StickThrottle;
 				else {
@@ -236,7 +236,7 @@ void AltitudeControlFW(void) {
 				AltHoldThrComp = -1.0f;
 			}
 		} else {
-			if (Navigating) { // Navigating - using CruiseThrottle
+			if (F.NavigationEnabled) { // Navigating - using CruiseThrottle
 				F.HoldingAlt = true;
 				AcquireAltitudeFW();
 			} else {
@@ -278,7 +278,7 @@ void AcquireAltitude(void) {
 void AltitudeControl(void) {
 	real32 t;
 
-	if (F.ForcedLanding || Navigating) { // autonomous
+	if (F.ForcedLanding || F.NavigationEnabled) { // autonomous
 		F.HoldingAlt = true;
 		AcquireAltitude();
 	} else {

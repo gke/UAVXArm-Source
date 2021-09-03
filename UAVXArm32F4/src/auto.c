@@ -25,7 +25,6 @@
 real32 NavdT;
 
 uint8 NavState, AlarmState;
-boolean Navigating = false;
 uint8 LandingState = InitDescent;
 
 uint8 NavSwState = SwLow;
@@ -117,7 +116,6 @@ boolean DoLanding(void) {
 	return (HasLanded);
 } // DoLanding
 
-
 void InitiateShutdown(uint8 s) {
 	AltHoldThrComp = 0.0f;
 	ZeroNavCorrections();
@@ -127,7 +125,6 @@ void InitiateShutdown(uint8 s) {
 	AlarmState = s;
 	State = Shutdown;
 } // InitiateShutdown
-
 
 void DoAutoLanding(void) {
 
@@ -156,29 +153,33 @@ void DoForcedLanding(void) {
 
 } // DoForcedLanding
 
-
-
 void CheckRapidDescentHazard(void) {
 
-	F.RapidDescentHazard = F.UsingRapidDescent && ((Altitude - Alt.P.Desired)
-			> DESCENT_ALT_DIFF_M) && (Altitude > DESCENT_SAFETY_ALT_M);
+	F.RapidDescentHazard = F.UsingRapidDescent
+			&& ((Altitude - Alt.P.Desired) > DESCENT_ALT_DIFF_M)
+			&& (Altitude > DESCENT_SAFETY_ALT_M);
 
 } // CheckRapidDescentHazard
 
-
 void CheckFailsafes(void) {
 
-	if ((State == InFlight) && (F.Navigate || F.ReturnHome)) { // TODO: battery etc.
+	if (!F.GPSValid) {
 		if (!F.ForcedLanding) {
 			SavedDesiredAltitude = Alt.P.Desired;
 			F.ForcedLanding = true;
+			AlarmState = ForcedLanding;
 			InitiateDescent();
 		}
-	} else
-		F.ForcedLanding = false;
+		DoForcedLanding();
+	} else if (F.ForcedLanding) {
+		if (Altitude > 15.0f) {
+			F.ForcedLanding = false;
+			AlarmState = NoAlarms;
+			SetDesiredAltitude(SavedDesiredAltitude);
+		}
+	}
 
 } // CheckFailsafes
-
 
 void CapturePosition(void) {
 
@@ -189,11 +190,10 @@ void CapturePosition(void) {
 
 } // CapturePosition
 
-
 void InitiateRTH(void) {
 
-	F.RapidDescentHazard = F.NewNavUpdate = F.WayPointAchieved
-			= F.WayPointCentred = false;
+	F.RapidDescentHazard = F.NewNavUpdate = F.WayPointAchieved =
+			F.WayPointCentred = false;
 	CurrWPNo = 0;
 	PrevWPNo = 255;
 	SetWPHome();
@@ -201,7 +201,6 @@ void InitiateRTH(void) {
 	F.ReturnHome = true;
 
 } // InitiateRTH
-
 
 void InitiatePerch(void) {
 	idx a;
@@ -267,17 +266,15 @@ void DoGliderStuff(void) {
 	}
 } // DoGliderStuff
 
-
 void UpdateRTHSwState(void) { // called in rc.c on every rx packet
-
 
 	if (F.PassThru || (State != InFlight)) {
 
 		NavSwState = SwLow;
 		NavSwStateP = SwUnknown;
 
-		F.ForcedLanding = F.Navigate = F.ReturnHome = F.AltControlEnabled
-				= F.HoldingAlt = F.Glide = F.FenceAlarm = false;
+		F.ForcedLanding = F.Navigate = F.ReturnHome = F.AltControlEnabled =
+				F.HoldingAlt = F.Glide = F.FenceAlarm = false;
 		CaptureDesiredAltitude(Altitude);
 		AltHoldThrComp = 0.0f;
 		ZeroNavCorrections();
@@ -319,19 +316,14 @@ void UpdateRTHSwState(void) { // called in rc.c on every rx packet
 
 } // UpdateRTHSwState
 
-
 void DoNavigation(void) {
 
-	Navigating = F.NavigationEnabled && (F.Navigate || F.ReturnHome)
+	F.NavigationEnabled = (F.Navigate || F.ReturnHome)
 			&& !((NavState == PIC) || F.PassThru);
 
-	if (Navigating) {
+	if (F.NavigationEnabled) {
 
-		if (F.ForcedLanding) { // recover from GPS loss
-			F.ForcedLanding = false;
-			AlarmState = NoAlarms;
-			SetDesiredAltitude(SavedDesiredAltitude);
-		}
+		CheckFailsafes();
 
 		if (F.NewNavUpdate) {
 			F.NewNavUpdate = false;
@@ -449,8 +441,9 @@ void DoNavigation(void) {
 
 				switch (WP.Action) {
 				case navOrbit:
-					OrbitCamAngle = HALF_PI - atan2f(Altitude
-							- WP.OrbitAltitude, WP.OrbitRadius);
+					OrbitCamAngle = HALF_PI
+							- atan2f(Altitude - WP.OrbitAltitude,
+									WP.OrbitRadius);
 					OrbitCamAngle = Limit(OrbitCamAngle, 0.0f, HALF_PI);
 					break;
 				case navVia:
@@ -504,15 +497,9 @@ void DoNavigation(void) {
 		}
 	} else { // PIC
 
-		CheckFailsafes();
-
-		if (F.ForcedLanding)
-			DoForcedLanding();
-		else
-			AlarmState = NoAlarms;
-
-		if (F.NewNavUpdate)
-			F.NewNavUpdate = false;
+		F.ForcedLanding = false;
+		AlarmState = NoAlarms;
+		F.NewNavUpdate = false;
 		Nav.WPBearing = DesiredHeading;
 	}
 

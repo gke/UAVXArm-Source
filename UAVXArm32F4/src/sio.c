@@ -72,48 +72,10 @@ boolean SIOReadBlockataddr(uint8 sioDev, uint8 a, uint8 l, uint8 *S) {
 	if (busDev[sioDev].useSPI)
 		return (SIOReadBlock(sioDev, a, l, S)); // d & 0xfe,
 	else
-		return (I2CReadBlock(busDev[sioDev].busNo, busDev[sioDev].i2cId & 0xfe,
+		return (I2CReadBlock(sioDev, busDev[sioDev].i2cId & 0xfe,
 				a, l, S)); //
 } // blockreadataddr
 
-
-boolean SIOReadBlocki16v(uint8 sioDev, uint8 l, int16 *v, boolean h) {
-	uint8 ll, b;
-	uint8 S[32];
-	boolean r;
-
-	ll = l * 2;
-	r = SIOReadBlock(sioDev, 0, ll, S);
-
-	if (h) {
-		for (b = 0; b < ll; b += 2)
-			v[b >> 1] = ((int16) S[b] << 8) | S[b + 1];
-	} else {
-		for (b = 0; b < ll; b += 2)
-			v[b >> 1] = ((int16) S[b + 1] << 8) | S[b];
-	}
-
-	return (r);
-} // readi16v
-
-boolean SIOReadBlocki16vataddr(uint8 sioDev, uint8 a, uint8 l, int16 *v,
-		boolean h) {
-	uint8 b, ll;
-	uint8 S[32];
-
-	ll = l * 2;
-	SIOReadBlockataddr(sioDev, a, ll, S);
-
-	if (h) {
-		for (b = 0; b < ll; b += 2)
-			v[b >> 1] = ((int16) S[b] << 8) | S[b + 1];
-	} else {
-		for (b = 0; b < ll; b += 2)
-			v[b >> 1] = ((int16) S[b + 1] << 8) | S[b];
-	}
-
-	return (true);
-} // readi16v
 
 boolean SIOWritebyte(uint8 sioDev, uint8 v) {
 
