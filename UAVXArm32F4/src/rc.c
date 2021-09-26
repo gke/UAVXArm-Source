@@ -48,10 +48,24 @@ boolean SBusSignalLost = false;
 
 uint8 RSSI;
 
+// CRSF
+
+#define RSSI_MAX_VALUE 1023
+
+#define CRSF_TIME_NEEDED_PER_FRAME_US   1100 // 700 ms + 400 ms for potential ad-hoc request
+#define CRSF_TIME_BETWEEN_FRAMES_US     6667 // At fastest, frames are sent by the transmitter every 6.667 milliseconds, 150 Hz
+
+#define CRSF_DIGITAL_CHANNEL_MIN 172
+#define CRSF_DIGITAL_CHANNEL_MAX 1811
+#define CRSF_PAYLOAD_OFFSET offsetof(crsfFrameDef, type)
+
+rcLinkQualityTrackerStruct lqTracker;
+rcLinkStatsStruct rcLinkStats;
+
 // Common
 
-RCInpDefStruct_t RCInp[RC_MAX_CHANNELS];
-RCInpDefStruct_t RCCaptureInp;
+RCInpDefStruct RCInp[RC_MAX_CHANNELS];
+RCInpDefStruct RCCaptureInp;
 
 timeuS RCLastFrameuS = 0;
 timeuS RCSyncWidthuS = 0;
@@ -129,9 +143,8 @@ void RCSerialISR(timeuS TimerVal) {
 
 } // RCSerialISR
 
-// Futaba SBus
+void ExtractAndScaleRCInp(void) {
 
-void sbusDecode(void) {
 	idx i;
 
 	RCInp[0].Raw = RCFrame.u.c.c1;
@@ -153,10 +166,17 @@ void sbusDecode(void) {
 
 	for (i = 0; i < 16; i++)
 		RCInp[i].Raw = (real32) RCInp[i].Raw * 0.625f + 880;
-	//RCInp[i].Raw = Limit((real32)RCInp[i].Raw * 0.625f + 880, RC_MIN_WIDTH_US, RC_MAX_WIDTH_US);
 
-	RCInp[16].Raw = RCFrame.u.b[22] & 0b0001 ? 2000 : 1000;
-	RCInp[17].Raw = RCFrame.u.b[22] & 0b0010 ? 2000 : 1000;
+} // ExtractAndScaleRCInp
+
+// Futaba SBus
+
+void sbusDecode(void) {
+
+	ExtractAndScaleRCInp();
+
+	//RCInp[16].Raw = RCFrame.u.b[22] & 0b0001 ? 2000 : 1000;
+	//RCInp[17].Raw = RCFrame.u.b[22] & 0b0010 ? 2000 : 1000;
 
 	SBusSignalLost = (RCFrame.u.b[22] & SBUS_SIGNALLOST_MASK) != 0;
 	SBusFailsafe = (RCFrame.u.b[22] & SBUS_FAILSAFE_MASK) != 0;
@@ -170,10 +190,161 @@ void sbusDecode(void) {
 
 } // sbusDecode
 
+// CRSF ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+// * This file is part of Cleanflight.
+
+int scaleRange(int x, int srcMin, int srcMax, int destMin, int destMax) {
+	long int a = ((long int) destMax - (long int) destMin)
+			* ((long int) x - (long int) srcMin);
+	long int b = (long int) srcMax - (long int) srcMin;
+	return ((a / b) + destMin);
+}
+
+uint8 crc8_dvb_s2(uint8 crc, unsigned char a) {
+	crc ^= a;
+	for (int ii = 0; ii < 8; ++ii) {
+		if (crc & 0x80) {
+			crc = (crc << 1) ^ 0xD5;
+		} else {
+			crc = crc << 1;
+		}
+	}
+	return crc;
+} // scaleRange
+
+static uint8 telemetryBuf[CRSF_FRAME_SIZE_MAX];
+static uint8 telemetryBufLen = 0;
+
+// The power levels represented by uplinkTXPower above in mW (250mW added to full TX in v4.00 firmware)
+const uint16 crsfPowerStates[] = { 0, 10, 25, 100, 500, 1000, 2000, 250 };
+
+// CRSF protocol
+//
+// CRSF protocol uses a single wire half duplex uart connection.
+// The master sends one frame every 4ms and the slave replies between two frames from the master.
+//
+// 420000 baud
+// not inverted
+// 8 Bit
+// 1 Stop bit
+// Big endian
+// 420000 bit/s = 46667 byte/s (including stop bit) = 21.43us per byte
+// Max frame size is 64 bytes
+// A 64 byte frame plus 1 sync byte can be transmitted in 1393 microseconds.
+//
+// CRSF_TIME_NEEDED_PER_FRAME_US is set conservatively at 1500 microseconds
+//
+// Every frame has the structure:
+// <Device address> <Frame length> < Type> <Payload> < CRC>
+//
+// Device address: (uint8)
+// Frame length:   length in  bytes including Type (uint8)
+// Type:           (uint8)
+//  <Payload>
+// CRC:            (uint8)
+
+uint8 crsfFrameCRC(void) {
+	idx i;
+	uint8 crc;
+
+	// CRC includes type and payload
+	crc = crc8_dvb_s2(0, RCFrame.type);
+	for (i = 0; i < RCFrame.length; i++)
+		crc = crc8_dvb_s2(crc, RCFrame.u.b[i]);
+
+	return crc;
+} // crsfFrameCRC
+
+void lqTrackerReset(void) {
+	lqTracker.lastUpdatedmS = mSClock();
+	lqTracker.lqAccumulator = 0;
+	lqTracker.lqCount = 0;
+	lqTracker.lqValue = 0;
+} // lqTrackerReset
+
+void lqTrackerAccumulate(uint16 rawValue) {
+	const timemS NowmS = mSClock();
+
+	if (((NowmS - lqTracker.lastUpdatedmS) > RX_LQ_INTERVAL_MS)
+			&& lqTracker.lqCount) {
+		lqTrackerSet(lqTracker.lqAccumulator / lqTracker.lqCount);
+		lqTracker.lqAccumulator = 0;
+		lqTracker.lqCount = 0;
+	}
+
+	lqTracker.lqAccumulator += rawValue;
+	lqTracker.lqCount++;
+} // lqTrackerAccumulate
+
+void lqTrackerSet(uint16 rawValue) {
+	lqTracker.lqValue = rawValue;
+	lqTracker.lastUpdatedmS = mSClock();
+} // lqTrackerSet
+
+uint16 lqTrackerGet(void) {
+	if ((mSClock() - lqTracker.lastUpdatedmS) > RX_LQ_TIMEOUT_MS)
+		lqTracker.lqValue = 0;
+
+	return lqTracker.lqValue;
+} // lqTrackerGet
+
+uint8 crsfDecode(void) { //rxRuntimeConfig *rxRuntimeConfig) {
+	idx i;
+	uint8 crc;
+
+	switch (RCFrame.type) {
+	case CRSF_FRAMETYPE_RC_CHANNELS_PACKED:
+
+		//RCFrame.length = CRSF_FRAME_RC_CHANNELS_PAYLOAD_SIZE + CRSF_FRAME_LENGTH_TYPE_CRC;
+
+		ExtractAndScaleRCInp();
+
+		F.RCNewValues = true;
+
+		if (SoftSerialTxPin.Used) // soft serial baud rate too slow? TODO:
+			SendFrSkyTelemetry(FrSkySerial);
+
+		break;
+	case CRSF_FRAMETYPE_LINK_STATISTICS:
+
+		//RCFrame.length = CRSF_FRAME_LINK_STATISTICS_PAYLOAD_SIZE + CRSF_FRAME_LENGTH_TYPE_CRC;
+
+		memcpy(&rcLinkStats, &RCFrame.u.ls, sizeof(rcLinkStatsStruct)); // assume infrequent updates so save
+
+		int Temp = Limit(rcLinkStats.uplinkLQ, 0, 100);
+		RCInp[17].Raw = scaleRange(Temp, 0, 100, 191, 1791); // will map to [1000;2000] range
+		lqTrackerSet(scaleRange(Temp, 0, 100, 0, RSSI_MAX_VALUE));
+
+		RSSI = rcLinkStats.downlinkRSSI;
+		//RSSI = -1 * (rcLinkStats.activeAntenna ? rcLinkStats.uplinkRSSIAnt2 : rcLinkStats.uplinkRSSIAnt1);
+		rcLinkStats.uplinkTXPower = crsfPowerStates[rcLinkStats.uplinkTXPower];
+
+		break;
+	default:
+		// bad frame
+		break;
+	} // switch
+
+} // crsfDecode
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
 void RCUSARTISR(uint8 v) { // based on MultiWii
+	static uint32 sample = 0;
+	idx i;
+
+	uint8 crc;
+	static uint16 length;
 
 	enum {
-		SBusWaitSentinel, SBusWaitData, SBusWaitEnd
+		SBusWaitSentinel,
+		SBusWaitData,
+		SBusWaitEnd,
+		CRSFWaitLength,
+		CRSFWaitType,
+		CRSFWaitData,
+		CRSFWaitNext
 	};
 
 	timeuS IntervaluS, NowuS;
@@ -227,7 +398,45 @@ void RCUSARTISR(uint8 v) { // based on MultiWii
 			F.RCFrameReceived = F.Signal = true;
 		}
 		break;
+	case CRSFRx:
 
+		if ((NowuS - RCFrame.frameStartuS) > CRSF_TIME_NEEDED_PER_FRAME_US) { // TODO:
+			// We've received a character after max time needed to complete a frame,
+			// so this must be the start of a new frame.
+			RCFrame.busy = true;
+			RCFrame.device = v;
+			RCFrame.frameStartuS = NowuS;
+			RCFrame.state = CRSFWaitLength;
+		} else
+			switch (RCFrame.state) {
+			case CRSFWaitLength:
+				RCFrame.length = v - 2;
+				RCFrame.state = CRSFWaitType;
+				break;
+			case CRSFWaitType:
+				RCFrame.type = v;
+				RCFrame.index = 0;
+				RCFrame.state = CRSFWaitData;
+				break;
+			case CRSFWaitData:
+				if (RCFrame.index < RCFrame.length)
+					RCFrame.u.b[RCFrame.index++] = v;
+				else {
+					RCFrameIntervaluS = NowuS - RCLastFrameuS;
+					RCLastFrameuS = NowuS;
+					crc = crsfFrameCRC();
+					F.RCFrameReceived = F.Signal = (v == crc);
+
+					RCFrame.busy = false;
+					RCFrame.state = CRSFWaitNext;
+				}
+				break;
+			case CRSFWaitNext:
+
+				break;
+			} // switch
+
+		break;
 	case FrSkyFBusRx:
 		/*
 		 RxFrSkySPort(v);
@@ -408,7 +617,7 @@ void UpdateRCMap(void) {
 void InitRC(void) {
 	timemS NowmS;
 	uint8 c;
-	RCInpDefStruct_t * R;
+	RCInpDefStruct * R;
 
 	DiscoveredRCChannels = 1;
 
@@ -443,12 +652,19 @@ void InitRC(void) {
 		SetBaudRate(RCSerial, 115200);
 		RxEnabled[RCSerial] = true;
 		break;
+	case CRSFRx:
+		memset(&rcLinkStats, 0, sizeof(rcLinkStatsStruct));
+		lqTrackerReset();
+		DiscoveredRCChannels = CRSF_CHANNELS;
+		SetBaudRate(RCSerial, 420000); // 115200
+		RxEnabled[RCSerial] = true;
+		break;
 	default:
 		RxEnabled[RCSerial] = false;
 		break;
 	} // switch
 
-	//DoSpektrumBind();
+//DoSpektrumBind();
 
 	UpdateRCMap();
 
@@ -511,6 +727,9 @@ void CheckRC(void) {
 			case Spektrum1024Rx:
 			case Spektrum2048Rx:
 				spektrumDecode();
+				break;
+			case CRSFRx:
+				crsfDecode();
 				break;
 			default:
 				F.RCNewValues = F.Signal = false;
@@ -609,12 +828,13 @@ void UpdateControls(void) {
 				TxSwitchArmed = ActiveAndTriggered(0.2f, NavQualificationRC);
 				Nav.Sensitivity = 0.5f;
 				F.AltControlEnabled = F.AltControlEnabled
-						&& ActiveAndTriggered(0.45f, NavQualificationRC);
+				&& ActiveAndTriggered(0.45f, NavQualificationRC);
 				WPNavEnabled = ActiveAndTriggered(0.7f, NavQualificationRC);
 #else
 				TxSwitchArmed = ActiveAndTriggered(0.1f, NavQualificationRC);
 				WPNavEnabled = true; //ActiveAndTriggered(0.2f, NavQualificationRC);
-				Nav.Sensitivity = Limit(RC[NavQualificationRC] - 0.1f, 0.0f, 1.0f);
+				Nav.Sensitivity = Limit(RC[NavQualificationRC] - 0.1f, 0.0f,
+						1.0f);
 #endif
 
 			}

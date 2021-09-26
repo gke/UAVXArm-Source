@@ -34,9 +34,6 @@ enum Sensors {
 	X, Y, Z
 };
 
-enum MagSensors {
-	MX, MZ, MY
-};
 enum Directions {
 	BF, LR, UD
 };

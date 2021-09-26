@@ -153,16 +153,16 @@ void UpdateThermalEstimate(void) {
 	dy = Nav.C[EastC].Pos - Soar.Th[EastC].Pos;
 
 	// Wind correction
-	if (F.WindEstValid) {
-		KFdT = (NowmS - LastKFUpdatemS) * 0.001f;
-		dx_w = Wind.Est[X] * KFdT;
-		dy_w = Wind.Est[Y] * KFdT;
-		dx -= dx_w;
-		dy -= dy_w;
-	} else {
+	//if (F.WindEstValid) {
+	//	KFdT = (NowmS - LastKFUpdatemS) * 0.001f;
+	//	dx_w = Wind.Est[X] * KFdT;
+	//	dy_w = Wind.Est[Y] * KFdT;
+	//	dx -= dx_w;
+	//	dy -= dy_w;
+	//} else {
 		dx_w = 0.0f;
 		dy_w = 0.0f;
-	}
+	//}
 
 	// write log - save the data.
 	SoaringTune.mS = NowmS;

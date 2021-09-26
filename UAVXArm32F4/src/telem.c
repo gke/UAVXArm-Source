@@ -556,7 +556,7 @@ void SendCalibrationPacket(uint8 s) {
 	TxESCi16(s, CurrServoLPFHz);
 
 	for (z = 0; z <= 1; z++)
-		for (y = 0; y<= 1; y++)
+		for (y = 0; y <= 1; y++)
 			for (x = 0; x <= 1; x++)
 				TxESCi16(s, Population[x][y][z]);
 	TxESCi16(s, mm);
@@ -663,6 +663,31 @@ void SendExecutionTimeStatus(uint8 s) {
 	SendPacketTrailer(s);
 
 } // SendExecutionTimeStatus
+
+void SendLinkStats(uint8 s) {
+
+	SendPacketHeader(s);
+
+	TxESCu8(s, UAVXLinkStatsPacketTag);
+	TxESCu8(s, 11);
+
+	//lqTrackerGet();
+
+	TxESCu8(s, rcLinkStats.uplinkRSSIAnt1);
+	TxESCu8(s, rcLinkStats.uplinkRSSIAnt2);
+	TxESCu8(s, rcLinkStats.uplinkLQ);
+	TxESCi8(s, rcLinkStats.uplinkSNR);
+	TxESCu8(s, rcLinkStats.activeAntenna);
+	TxESCu8(s, rcLinkStats.rfMode);
+	TxESCu8(s, rcLinkStats.uplinkTXPower);
+	TxESCu8(s, rcLinkStats.downlinkRSSI);
+	TxESCu8(s, rcLinkStats.downlinkLQ);
+	TxESCi8(s, rcLinkStats.downlinkSNR);
+	TxESCu8(s, rcLinkStats.activeAnt);
+
+	SendPacketTrailer(s);
+
+} // SendLinkStats
 
 void SendSerialPortStatus(uint8 s) {
 	int16 Entries;
@@ -828,25 +853,27 @@ void SendOriginPacket(uint8 s) {
 	SendPacketTrailer(s);
 } // SendOriginPacket
 
-void SendWindPacket(uint8 s) {
-	idx a;
+/*
+ void SendWindPacket(uint8 s) {
+ idx a;
 
-	if ((State == InFlight) && F.WindEstValid) {
-		SendPacketHeader(s);
+ if ((State == InFlight) && F.WindEstValid) {
+ SendPacketHeader(s);
 
-		TxESCu8(s, UAVXWindPacketTag);
-		TxESCu8(s, 10);
+ TxESCu8(s, UAVXWindPacketTag);
+ TxESCu8(s, 10);
 
-		TxESCi16(s, Wind.Speed * 100.0f);
-		TxESCi16(s, Wind.Direction * 1000.0f);
+ TxESCi16(s, Wind.Speed * 100.0f);
+ TxESCi16(s, Wind.Direction * 1000.0f);
 
-		for (a = X; a <= Z; a++)
-			TxESCi16(s, Wind.Est[a] * 100.0f);
+ for (a = X; a <= Z; a++)
+ TxESCi16(s, Wind.Est[a] * 100.0f);
 
-		SendPacketTrailer(s);
-	}
+ SendPacketTrailer(s);
+ }
 
-} // SendWindPacket
+ } // SendWindPacket
+ */
 
 void SendGuidancePacket(uint8 s) {
 
@@ -1195,10 +1222,11 @@ void SendUAVXTelemetry(uint8 s) {
 		if (SendFlight) {
 			SendFlightPacket(s); // 78
 			SendGuidancePacket(s); // 2+24
-			//SendFusionPacket(s); // 2+7
-			if (F.WindEstValid)
-				SendWindPacket(s); // 2+10
+			//if (F.WindEstValid)
+			//	SendWindPacket(s); // 2+10
 			SendRCChannelsPacket(s); // 27 -> 105
+			if (CurrRxType == CRSFRx)
+				SendLinkStats(s);
 		} else {
 			if (CurrGPSType != NoGPS)
 				SendNavPacket(s); // 2+54+4 = 60
@@ -1216,7 +1244,7 @@ void CheckTelemetry(uint8 s) {
 
 	UAVXPollRx(s);
 
-	if (SoftSerialTxPin.Used)
+	if (SoftSerialTxPin.Used && (CurrRxType != CRSFRx))
 		SendFrSkyTelemetry(FrSkySerial); // always send
 
 	if ((State == InFlight) || (State == MonitorInstruments)) {

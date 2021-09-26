@@ -24,6 +24,11 @@
 
 #define USE_UAVX_DJT
 
+
+//#define USE_CRSF_V3
+
+//#define USE_CRUISE_FOR_PH
+
 //#define MAG_TESTING
 
 // Options
@@ -54,7 +59,6 @@
 #define USE_SENSOR_NOISE // for emulation adds noise to acc and baro sensors
 
 #define USE_THERMALS
-#define HAVE_WIND_ESTIMATE
 
 //#define USE_ATT_BATT_COMP
 
@@ -144,7 +148,6 @@
 #include "temp.h"
 #include "tests.h"
 #include "tune.h"
-#include "wind.h"
 
 //#include "vcp/drv_usb.h"
 #include "tm_stm32f4_usb_vcp/usbd_cdc_vcp.h"

@@ -141,9 +141,10 @@ void InitTarget(void) {
 	FrSkySerial = SoftSerial;
 	InitSerialPort(FrSkySerial, true, false);
 
-	UsingOpenLog = true;
+	UsingOpenLog = false; // problems - baud rate?
 	OpenLogSerial = Uart4;
 	InitSerialPort(OpenLogSerial, false, false);
+	SetBaudRate(OpenLogSerial, 9600);
 
 
 } // InitTarget

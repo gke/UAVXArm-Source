@@ -402,6 +402,7 @@ extern const I2CPortDef I2CPorts[];
 extern const SPIPortDef SPIPorts[];
 extern const SerialPortDef SerialPorts[];
 extern const PinDef SoftSerialTxPin;
+extern PinDef WSPin;
 
 extern const PinDef PWMPins[];
 
@@ -417,6 +418,7 @@ extern const boolean ledsLowOn;
 extern const boolean beeperLowOn;
 extern boolean UsingOpenLog;
 extern uint8 CurrMagSel;
+
 
 //_______________________________________________________________
 
@@ -440,6 +442,9 @@ void InitSoftSerialTxTimer(void);
 void InitI2C(uint8 I2CCurr);
 void UnstickI2C(uint8 I2CCurr);
 void InitSPIGPIOPins(uint8 spiPort, boolean highClock);
+
+void WSPinDMAEnable(uint16 wsBufferSize);
+void InitWSPin(uint16 wsBufferSize);
 
 void SoftSerialTxTimerStart(void);
 void SoftSerialTxTimerStop(void);

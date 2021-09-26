@@ -326,7 +326,6 @@ void DoNavigation(void) {
 		CheckFailsafes();
 
 		if (F.NewNavUpdate) {
-			F.NewNavUpdate = false;
 
 			CheckFence();
 
@@ -499,11 +498,11 @@ void DoNavigation(void) {
 
 		F.ForcedLanding = false;
 		AlarmState = NoAlarms;
-		F.NewNavUpdate = false;
+
 		Nav.WPBearing = DesiredHeading;
 	}
 
-	F.NewCommands = false; // Navigate modifies Desired Roll, Pitch and Yaw values.
+	F.NewNavUpdate = F.NewCommands = false; // Navigate modifies Desired Roll, Pitch and Yaw values.
 
 } // DoNavigation
 

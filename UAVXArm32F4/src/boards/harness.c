@@ -718,7 +718,7 @@ void InitAnalogPorts(void) {
 		DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
 		DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
 		DMA_InitStructure.DMA_PeripheralDataSize =
-		DMA_PeripheralDataSize_HalfWord;
+				DMA_PeripheralDataSize_HalfWord;
 		DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
 		DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
 		DMA_InitStructure.DMA_Priority = DMA_Priority_High;
@@ -744,7 +744,7 @@ void InitAnalogPorts(void) {
 		for (a = 0; a < MAX_ANALOG_CHANNELS; a++) {
 			u = &AnalogPins[a];
 			ADC_RegularChannelConfig(u->ADCx, u->ADCChannel, u->Rank,
-			ADC_SampleTime_28Cycles);
+					ADC_SampleTime_28Cycles);
 		}
 
 		ADC_DMARequestAfterLastTransferCmd(ux->ADCx, ENABLE);
@@ -872,6 +872,8 @@ void InitHarness(void) {
 			DigitalWrite(&LEDPins[i].P, ledsLowOn);
 	}
 
+	LEDsOff();
+
 	CheckBusDev();
 
 	for (i = 0; i < MAX_GPIO_PINS; i++)
@@ -909,6 +911,8 @@ void InitHarness(void) {
 
 	InitAnalogPorts();
 	Delay1mS(10);
+
+
 
 } // InitHarness
 

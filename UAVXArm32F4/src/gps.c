@@ -1376,32 +1376,26 @@ void ProcessGPSSentence(void) {
 		mSTimer(GPSTimeoutmS, NavGPSTimeoutmS);
 
 		if (GPSSanityCheck() && F.OriginValid
-				|| (F.IsFixedWing && F.OffsetOriginValid) && !F.Emulation) {
+				|| (F.IsFixedWing && F.OffsetOriginValid)) {
 
-			for (a = NorthC; a <= EastC; a++) {
-				Nav.C[a].Pos = GPS.C[a].Pos = GPSToM(
-						GPS.C[a].Raw - GPS.C[a].OriginRaw);
-				Nav.C[a].Vel = GPS.C[a].Vel;
+			for (a = NorthC; a <= DownC; a++) {
+				GPS.C[a].Pos = GPSToM(GPS.C[a].Raw - GPS.C[a].OriginRaw);
+				GPS.C[a].Vel;
 			}
 			GPS.C[EastC].Pos *= GPS.longitudeCorrection;
 
 			if (GPSPosUpdatemSP == 0)
 				GPSPosUpdatemSP = GPS.lastPosUpdatemS;
+
 			GPSdTmS = GPS.lastPosUpdatemS - GPSPosUpdatemSP;
 			GPSPosUpdatemSP = GPS.lastPosUpdatemS;
-
-			F.NewNavUpdate =
-					(ArmingMethod == SwitchArming) ?
-							(Nav.Sensitivity > NAV_SENS_THRESHOLD_STICK) :
-							true;
-
-			UpdateWindEstimator();
-			UpdateWhere();
 
 			if ((State == Ready) || (State == Landed))
 				LEDOn(ledBlueSel);
 			else
 				LEDToggle(ledYellowSel);
+
+			F.NewGPSPosition = true;
 		}
 	}
 
@@ -1410,7 +1404,6 @@ void ProcessGPSSentence(void) {
 void CheckGPSTimeouts(void) {
 
 	if (mSTimeout(GPSTimeoutmS)) {
-
 		mSTimer(GPSTimeoutmS, NavGPSTimeoutmS);
 
 		ZeroNavCorrections();
@@ -1423,41 +1416,38 @@ void CheckGPSTimeouts(void) {
 
 } // CheckGPSTimeouts
 
-void CheckGPSUpdate(void) {
-
-	if (F.GPSPacketReceived) {
-		F.GPSPacketReceived = false;
-		ProcessGPSSentence();
-	} else
-		CheckGPSTimeouts();
-
-} // CheckGPSUpdate
 
 void GPSISR(char ch) {
 
 	if (EnableGPSPassThru) {
+
 		LEDToggle(ledBlueSel);
 		TxChar(TelemetrySerial, ch); // just echo raw GPS to telemetry
-	} else {
-		if (F.HaveGPS) {
-			if (F.Emulation)
-				GPSEmulation();
-			else {
-				switch (CurrGPSType) { // 1.5uS/char
-				case UbxM8GPSInit:
-				case UbxLegacyGPSInit:
-				case UbxGPS:
-					RxGPSUbxPacket(ch);
-					break;
-				case NMEAGPS:
-					RxGPSNMEAPacket(ch);
-					break;
-				case NoGPS:
-				default:
-					break;
-				} // switch
-			}
+
+	} else if (F.Emulation) {
+
+	} else
+
+	if (F.HaveGPS) {
+		switch (CurrGPSType) { // 1.5uS/char
+		case UbxM8GPSInit:
+		case UbxLegacyGPSInit:
+		case UbxGPS:
+			RxGPSUbxPacket(ch);
+			break;
+		case NMEAGPS:
+			RxGPSNMEAPacket(ch);
+			break;
+		case NoGPS:
+		default:
+			break;
+		} // switch
+
+		if (F.GPSPacketReceived) {
+			F.GPSPacketReceived = false;
+			ProcessGPSSentence();
 		}
+
 	}
 
 } // GPSISR

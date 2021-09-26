@@ -70,7 +70,10 @@ void InitMisc(void) {
 
 void DoHouseKeeping(void) {
 
-	CheckGPSUpdate();
+	if (F.Emulation)
+		GPSEmulation();
+	else
+		CheckGPSTimeouts();
 
 	CheckBatteries(); // for battery compensation
 
@@ -141,12 +144,13 @@ int main() {
 	CheckBLHeli();
 
 	InitIMU(); // 0.504mS
-  	InitMagnetometer(); // 1574mS
+	InitMagnetometer(); // 1574mS
 	InitMadgwick(); // 0.00353mS
 
 	InitAltitude();
 
 	InitNVMem();
+
 
 	InitTemperature(); // 0.0003mS
 
@@ -171,6 +175,17 @@ int main() {
 
 	FirstPass = true;
 	State = Preflight;
+
+#if defined(DEBUG_CRSF)
+
+	LEDsOff();
+	while (true) {
+
+		UpdateControls();
+		LEDToggle(ledBlueSel);
+	};
+
+#endif
 
 	while (true) {
 

@@ -197,12 +197,12 @@ void UpdateHeading(void) {
 
 	if (F.Emulation) {
 		MagHeading = EstMagHeading;
-		Heading = Make2Pi(MagHeading + MagVariation);
+		Heading = Make2Pi(MagHeading - MagVariation);
 	} else {
 		if (F.IsFixedWing && F.ValidGPSHeading) { // no wind adjustment for now
 
 			Heading = GPS.heading;
-			MagHeading = Make2Pi(Heading - MagVariation); // fake for compass reading
+			MagHeading = Make2Pi(Heading + MagVariation); // fake for compass reading
 
 			// lock Yaw angle to GPS
 			Angle[Yaw] = MagHeading;
@@ -210,7 +210,7 @@ void UpdateHeading(void) {
 
 		} else {
 			MagHeading = Angle[Yaw];
-			Heading = Make2Pi(MagHeading + MagVariation);
+			Heading = Make2Pi(MagHeading - MagVariation);
 		}
 	}
 } // UpdateHeading
@@ -326,7 +326,7 @@ void MadgwickUpdate(real32 gx, real32 gy, real32 gz, real32 ax, real32 ay,
 void TrackPitchAttitude(void) {
 
 	if (F.IsFixedWing && (DesiredThrottle < IdleThrottle)
-			&& (State == InFlight)) {
+			&& (State == InFlight)) { // gliding
 		if (mSTimeout(GlidingTimemS))
 			FWGlideAngleOffsetRad = LPF1(FWGlideAngleOffsetRad, Angle[Pitch],
 					0.1f);
@@ -335,7 +335,7 @@ void TrackPitchAttitude(void) {
 } // TrackPitchAttitude
 
 void UpdateInertial(void) {
-	int32 a;
+	idx a;
 
 	if (F.Emulation && (State == InFlight))
 		DoEmulation(); // produces Accs, ROC, Altitude etc.
@@ -363,6 +363,20 @@ void UpdateInertial(void) {
 
 	// one cycle delay OK
 	UpdateHeading();
+
+	if (F.NewGPSPosition) {
+		F.NewGPSPosition = false;
+
+		for (a = NorthC; a <= DownC; a++) {
+			Nav.C[a].Pos = GPS.C[a].Pos;
+			Nav.C[a].Vel = GPS.C[a].Vel;
+		}
+
+		UpdateWhere();
+
+		F.NavigationEnabled = true;
+		F.NewNavUpdate = Nav.Sensitivity > NAV_SENS_THRESHOLD_STICK;
+	}
 
 	UpdateAltitudeEstimates();
 

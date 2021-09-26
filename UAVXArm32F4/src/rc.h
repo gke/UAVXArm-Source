@@ -47,6 +47,20 @@ enum SwStates {
 	SwLow, SwMiddle, SwHigh, SwUnknown
 };
 
+typedef struct  {
+	uint8 uplinkRSSIAnt1;
+	uint8 uplinkRSSIAnt2;
+	uint8 uplinkLQ;
+	int8 uplinkSNR;
+	uint8 activeAntenna;
+	uint8 rfMode;
+	uint8 uplinkTXPower;
+	uint8 downlinkRSSI;
+	uint8 downlinkLQ;
+	int8 downlinkSNR;
+	uint8 activeAnt;
+}__attribute__ ((__packed__)) rcLinkStatsStruct;
+
 typedef struct {
     unsigned int c1  : 11;
     unsigned int c2  : 11;
@@ -64,20 +78,26 @@ typedef struct {
     unsigned int c14 : 11;
     unsigned int c15 : 11;
     unsigned int c16 : 11;
-    }  __attribute__((packed)) SBUSChannelStruct_t;
+    }  __attribute__((packed)) SBUSChannelStruct;
 
 typedef struct {
     union {
-	uint8_t b[RXBUF_SIZE];
-	SBUSChannelStruct_t c;
+    rcLinkStatsStruct ls;
+	uint8 b[RXBUF_SIZE];
+	SBUSChannelStruct c;
     } u;
+    volatile boolean busy;
 	uint8 state;
 	uint8 index;
 	uint8 channel;
+	uint8 device;
+	uint8 length;
+	uint8 type;
 	timeuS lastByteReceiveduS;
-} RCFrameStruct_t;
+	timeuS frameStartuS;
+} RCFrameStruct;
 
-RCFrameStruct_t RCFrame;
+RCFrameStruct RCFrame;
 
 // PPM
 #define MIN_PPM_SYNC_PAUSE_US 2800 // 8x2+2=18 FrSky broken
@@ -91,7 +111,7 @@ typedef struct {
 	int32 FallingEdge;
 	int32 Raw;
 	int32 SpekRaw;
-} RCInpDefStruct_t;
+} RCInpDefStruct;
 
 // Spektrum
 
@@ -117,7 +137,6 @@ void DoSpektrum(void);
 
 #define SBUS_CHANNELS 18
 #define SBUS_FRAME_SIZE 25
-#define SBUS_FRAME_SIZE 25
 
 #define SBUS_START_BYTE	0x0f
 #define SBUS_END_BYTE 0x00
@@ -128,6 +147,14 @@ void DoSpektrum(void);
 #define SBUS_CH18_MASK (1<1)
 #define SBUS_SIGNALLOST_MASK (1<2)
 #define SBUS_FAILSAFE_MASK (1<3)
+
+// CRSF
+
+#define MSP_RSSI_TIMEOUT_US     1500000   // 1.5 sec
+#define RX_LQ_INTERVAL_MS       200
+#define RX_LQ_TIMEOUT_MS        1000
+
+#define CRSF_CHANNELS SBUS_CHANNELS
 
 // General
 void InitRC(void);
@@ -145,7 +172,7 @@ void UpdateRCMap(void);
 void RCSerialISR(timeuS NowuS);
 void RCUSARTISR(uint8 ch);
 
-extern RCInpDefStruct_t RCInp[];
+extern RCInpDefStruct RCInp[];
 extern timeuS RCLastFrameuS;
 extern timeuS RCSyncWidthuS;
 extern timeuS RCFrameIntervaluS;
@@ -174,6 +201,137 @@ extern uint8 RSSI;
 extern boolean SBusFailsafe;
 extern boolean SBusSignalLost;
 extern boolean SBusFutabaValidFrame;
+
+#define CRSF_BAUDRATE           420000
+//#define CRSF_PORT_OPTIONS       (SERIAL_STOPBITS_1 | SERIAL_PARITY_NO)
+#define CRSF_PORT_MODE          MODE_RXTX
+
+#define CRSF_MAX_CHANNEL        17
+
+enum { CRSF_SYNC_BYTE = 0xC8 };
+
+enum { CRSF_FRAME_SIZE_MAX = 64 }; // 62 bytes frame plus 2 bytes frame header(<length><type>)
+enum { CRSF_PAYLOAD_SIZE_MAX = CRSF_FRAME_SIZE_MAX - 6 };
+
+enum {
+    CRSF_DISPLAYPORT_SUBCMD_UPDATE = 0x01, // transmit displayport buffer to remote
+    CRSF_DISPLAYPORT_SUBCMD_CLEAR = 0X02, // clear client screen
+    CRSF_DISPLAYPORT_SUBCMD_OPEN = 0x03,  // client request to open cms menu
+    CRSF_DISPLAYPORT_SUBCMD_CLOSE = 0x04,  // client request to close cms menu
+    CRSF_DISPLAYPORT_SUBCMD_POLL = 0x05,  // client request to poll/refresh cms menu
+};
+
+enum {
+    CRSF_DISPLAYPORT_OPEN_ROWS_OFFSET = 1,
+    CRSF_DISPLAYPORT_OPEN_COLS_OFFSET = 2,
+};
+
+enum {
+    CRSF_FRAME_GPS_PAYLOAD_SIZE = 15,
+    CRSF_FRAME_VARIO_SENSOR_PAYLOAD_SIZE = 2,
+    CRSF_FRAME_BATTERY_SENSOR_PAYLOAD_SIZE = 8,
+    CRSF_FRAME_LINK_STATISTICS_PAYLOAD_SIZE = 10,
+    CRSF_FRAME_RC_CHANNELS_PAYLOAD_SIZE = 22, // 11 bits per channel * 16 channels = 22 bytes.
+    CRSF_FRAME_ATTITUDE_PAYLOAD_SIZE = 6,
+    CRSF_FRAME_LENGTH_ADDRESS = 1, // length of ADDRESS field
+    CRSF_FRAME_LENGTH_FRAMELENGTH = 1, // length of FRAMELENGTH field
+    CRSF_FRAME_LENGTH_TYPE = 1, // length of TYPE field
+    CRSF_FRAME_LENGTH_CRC = 1, // length of CRC field
+    CRSF_FRAME_LENGTH_TYPE_CRC = 2, // length of TYPE and CRC fields combined
+    CRSF_FRAME_LENGTH_EXT_TYPE_CRC = 4, // length of Extended Dest/Origin, TYPE and CRC fields combined
+    CRSF_FRAME_LENGTH_NON_PAYLOAD = 4, // combined length of all fields except payload
+};
+
+enum {
+    CRSF_FRAME_TX_MSP_FRAME_SIZE = 58,
+    CRSF_FRAME_RX_MSP_FRAME_SIZE = 8,
+    CRSF_FRAME_ORIGIN_DEST_SIZE = 2,
+};
+
+// Clashes with CRSF_ADDRESS_FLIGHT_CONTROLLER
+#define CRSF_TELEMETRY_SYNC_BYTE  0XC8
+
+typedef enum {
+    CRSF_ADDRESS_BROADCAST = 0x00,
+    CRSF_ADDRESS_USB = 0x10,
+    CRSF_ADDRESS_TBS_CORE_PNP_PRO = 0x80,
+    CRSF_ADDRESS_RESERVED1 = 0x8A,
+    CRSF_ADDRESS_CURRENT_SENSOR = 0xC0,
+    CRSF_ADDRESS_GPS = 0xC2,
+    CRSF_ADDRESS_TBS_BLACKBOX = 0xC4,
+    CRSF_ADDRESS_FLIGHT_CONTROLLER = 0xC8,
+    CRSF_ADDRESS_RESERVED2 = 0xCA,
+    CRSF_ADDRESS_RACE_TAG = 0xCC,
+    CRSF_ADDRESS_RADIO_TRANSMITTER = 0xEA,
+    CRSF_ADDRESS_CRSF_RECEIVER = 0xEC,
+    CRSF_ADDRESS_CRSF_TRANSMITTER = 0xEE
+} crsfAddress_e;
+
+typedef enum {
+    CRSF_FRAMETYPE_GPS = 0x02,
+    CRSF_FRAMETYPE_VARIO_SENSOR = 0x07,
+    CRSF_FRAMETYPE_BATTERY_SENSOR = 0x08,
+    CRSF_FRAMETYPE_LINK_STATISTICS = 0x14,
+    CRSF_FRAMETYPE_RC_CHANNELS_PACKED = 0x16,
+    CRSF_FRAMETYPE_ATTITUDE = 0x1E,
+    CRSF_FRAMETYPE_FLIGHT_MODE = 0x21,
+    // Extended Header Frames, range: 0x28 to 0x96
+    CRSF_FRAMETYPE_DEVICE_PING = 0x28,
+    CRSF_FRAMETYPE_DEVICE_INFO = 0x29,
+    CRSF_FRAMETYPE_PARAMETER_SETTINGS_ENTRY = 0x2B,
+    CRSF_FRAMETYPE_PARAMETER_READ = 0x2C,
+    CRSF_FRAMETYPE_PARAMETER_WRITE = 0x2D,
+    CRSF_FRAMETYPE_COMMAND = 0x32,
+    // MSP commands
+    CRSF_FRAMETYPE_MSP_REQ = 0x7A,   // response request using msp sequence as command
+    CRSF_FRAMETYPE_MSP_RESP = 0x7B,  // reply with 58 byte chunked binary
+    CRSF_FRAMETYPE_MSP_WRITE = 0x7C,  // write with 8 byte chunked binary (OpenTX outbound telemetry buffer limit)
+    CRSF_FRAMETYPE_DISPLAYPORT_CMD = 0x7D, // displayport control command
+} crsfFrameType_e;
+
+typedef struct crsfFrameDef_s {
+    uint8 deviceAddress;
+    uint8 frameLength;
+    uint8 type;
+    uint8 payload[CRSF_PAYLOAD_SIZE_MAX + 1]; // +1 for CRC at end of payload
+} crsfFrameDef;
+
+typedef struct rcLinkQualityTracker_s {
+    timemS lastUpdatedmS;
+    uint32_t lqAccumulator;
+    uint32_t lqCount;
+    uint32_t lqValue;
+} rcLinkQualityTrackerStruct;
+
+typedef struct rcLinkStatistics_s {
+    int16_t     uplinkRSSI;     // RSSI value in dBm
+    uint8_t     uplinkLQ;       // A protocol specific measure of the link quality in [0..100]
+    int8_t      uplinkSNR;      // The SNR of the uplink in dB
+    uint8_t     rfMode;         // A protocol specific measure of the transmission bandwidth [2 = 150Hz, 1 = 50Hz, 0 = 4Hz]
+    uint16_t    uplinkTXPower;  // power in mW
+    uint8_t     activeAnt;
+} rcLinkStatisticsStruct;
+
+typedef union  {
+    uint8 bytes[CRSF_FRAME_SIZE_MAX];
+    crsfFrameDef frame;
+} crsfFrame_u;
+
+extern rcLinkStatisticsStruct rcLinkStatistics;
+extern rcLinkStatsStruct rcLinkStats;
+
+void lqTrackerReset(void);
+void lqTrackerAccumulate(uint16_t rawValue);
+void lqTrackerSet(uint16 rawValue);
+uint16_t lqTrackerGet(void);
+
+extern rcLinkQualityTrackerStruct lqTracker;
+
+void crsfRxWriteTelemetryData(const void *data, int len);
+void crsfRxSendTelemetryData(void);
+
+struct rxConfig_s;
+struct rxRuntimeConfig_s;
 
 #endif
 

@@ -21,6 +21,7 @@
 #include "UAVX.h"
 
 boolean BeeperIsOn;
+boolean LEDsSaved[MAX_LED_PINS];
 
 void BeeperOn(void) {
 	if (GPIOPins[BeeperSel].Used)
@@ -39,18 +40,22 @@ void BeeperToggle(void) {
 	BeeperIsOn = !BeeperIsOn;
 } // BeeperToggle
 
-
 void LEDOn(uint8 l) {
+
 	if (LEDPins[l].Used)
 		DigitalWrite(&LEDPins[l].P, ledsLowOn);
+
 } // LEDOn
 
 void LEDOff(uint8 l) {
+
 	if (LEDPins[l].Used)
 		DigitalWrite(&LEDPins[l].P, !ledsLowOn);
+
 } // LEDOff
 
 void LEDToggle(uint8 l) {
+
 	if (LEDPins[l].Used)
 		DigitalToggle(&LEDPins[l].P);
 } // LEDToggle
@@ -85,7 +90,7 @@ void LEDChaser(void) {
 	static boolean blink = false;
 
 	if (mSTimeout(chaserTimeoutmS)) {
-		mSTimer(chaserTimeoutmS, 100);
+		mSTimer(chaserTimeoutmS, 1000);
 
 		LEDOff(lastLED);
 		lastLED++;
@@ -104,11 +109,12 @@ void LEDRandom(void) {
 	if (mSTimeout(chaserTimeoutmS)) {
 		mSTimer(chaserTimeoutmS, 100);
 
-		for (l = 0; l < MAX_LED_PINS; l++)
+		for (l = 0; l < MAX_LED_PINS; l++) {
 			if (SensorNoise(1.0f) > 0.0f)
 				LEDOn(l);
 			else
 				LEDOff(l);
+		}
 	}
 
 } // LEDRandom
@@ -124,3 +130,4 @@ void InitLEDs(void) {
 	BeeperOff();
 
 } // InitLEDs
+

@@ -149,7 +149,7 @@
 #define ATTITUDE_THRESHOLD_STICK FromPercent(2) // make sure neutral is 1500uS with no trims
 #define ATTITUDE_HOLD_RESET_INTERVAL 25 // number of impulse cycles before GPS position is re-acquired
 
-#define UAVX_TEL_INTERVAL_MS 1000 // 200 // mS. emit an interleaved telemetry packet
+#define UAVX_TEL_INTERVAL_MS 500 // 200 // mS. emit an interleaved telemetry packet
 #define FRSKY_TEL_INTERVAL_MS 125
 #define FUSION_TEL_INTERVAL_MS 125
 
@@ -191,6 +191,7 @@ enum RxTypes {
 	FutabaSBusRx,
 	Spektrum1024Rx,
 	Spektrum2048Rx,
+	CRSFRx,
 	FrSkyFBusRx,
 	UnknownRx
 };
@@ -379,11 +380,12 @@ enum Params { // MAX 128
 // Config1
 #define UseInvertMagMask 		0x01   // bit01CheckBox 16_0
 #define	UseRTHDescendMask		(1<<1) // bit11CheckBox 16_1
-#define DisableLEDsInFlightMask 	(1<<2) // bit21CheckBox 16_2
+#define DisableLEDsInFlightMask (1<<2) // bit21CheckBox 16_2
 #define EmulationEnableMask		(1<<3) // bit31CheckBox 16_3
 #define UseAltHoldAlarmMask 	(1<<4) // bit41CheckBox 16_4
 #define	UseOffsetHomeMask		(1<<5) // bit51CheckBox 16_5
 #define	UseRapidDescentMask		(1<<6) // bit61CheckBox 16_6
+// bit 7 unusable in UAVPSet
 
 // Config2
 #define UseBatteryCompMask		0x01   // bit02CheckBox 74_1
@@ -393,7 +395,6 @@ enum Params { // MAX 128
 #define UsePropSenseMask		(1<<4) // bit42CheckBox
 #define	UseTurnToWPMask			(1<<5)
 #define	UseNavBeepMask			(1<<6) // bit32CheckBox 74_7
-
 // bit 7 unusable in UAVPSet
 
 extern volatile boolean TxSwitchArmed;

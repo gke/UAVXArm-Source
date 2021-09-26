@@ -28,6 +28,7 @@ void LEDToggle(uint8 l);
 void LEDOn(uint8 l);
 void LEDOff(uint8 l);
 void LEDsOffExcept(uint8 l);
+void LEDRandom(void);
 void LEDChaser(void);
 
 void LEDsAndBuzzer(uint8 s);
@@ -37,8 +38,6 @@ void BeeperOff(void);
 void BeeperOn(void);
 void BeeperToggle(void);
 extern boolean BeeperIsOn;
-
-void LEDRandom(void);
 
 #endif
 

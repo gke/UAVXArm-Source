@@ -31,6 +31,10 @@
 #define HMC5XXX_STATUS 		0x09
 #define HMC5XXX_TAG 		0x0a
 
+enum MagSensors {
+	MX, MZ, MY
+};
+
 extern int16 RawMag[];
 extern real32 MagScale[];
 extern real32 MagSamples[][3];

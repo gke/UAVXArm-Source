@@ -84,6 +84,7 @@ enum PacketTags {
 	UAVXSerialPortPacketTag = 66,
 	UAVXExecutionTimePacketTag = 67,
 	UAVXAttitudeControlPacketTag = 68,
+	UAVXLinkStatsPacketTag = 69,
 
 	FrSkyPacketTag = 99
 };

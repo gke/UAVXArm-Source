@@ -8,10 +8,9 @@ INSTALL_DIR = "C:/Flight/gitHub/UAVXArm.git/UAVXArm/firmware"
 
 #-------------------------------------------------------------
 
-
 ##BOARD= OMNIBUSF4V1
 #BOARD= OMNIBUSF4NXT
-
+#BOARD= DISCOVERYF4
 #BOARD= DEVEBOXF4
 
 #BOARD= UAVXF4V3BBFLASH   
@@ -19,7 +18,6 @@ BOARD= UAVXF4V3
 #BOARD= UAVXF4V4 
 
 #########BOARD= OMNIBUSF4V3 NOT COMMISSIONED
-#########BOARD= DISCOVERYF4 SUPERSEDED BY MING'S DEVEBOX VERSION
 #########BOARD= UAVXF4V2 RETIRED
 
 #-------------------------------------------------------------

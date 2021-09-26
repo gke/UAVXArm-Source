@@ -177,7 +177,7 @@ typedef volatile union {
 				Glide :1,
 
 				// 8
-				NewMagValues :1, UsingAltHoldAlarm :1, Unused_8_2 :1,
+				NewMagValues :1, UsingAltHoldAlarm :1, NewGPSPosition :1,
 				sioFatal :1, GPSPacketReceived :1, WindEstValid :1,
 				CrossTrackActive :1,
 				NavigationEnabled :1,

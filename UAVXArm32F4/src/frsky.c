@@ -596,6 +596,14 @@ void SendFrSkyTelemetry(uint8 s) {
 
 	NowmS = mSClock();
 
+	/*
+	if ((timeSinceStartOfFrame < CRSF_TIME_NEEDED_PER_FRAME_US)
+				//				|| (timeSinceStartOfFrame
+				//						> CRSF_TIME_BETWEEN_FRAMES_US
+				//								- CRSF_TIME_NEEDED_PER_FRAME_US)) {
+				//			return;
+				//		}
+			*/
 	if (NowmS >= mS[FrSkyTelemetryUpdatemS]) {
 		mSTimer(FrSkyTelemetryUpdatemS, 125);
 

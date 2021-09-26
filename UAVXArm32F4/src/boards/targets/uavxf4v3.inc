@@ -45,7 +45,8 @@ const PinDef PWMPins[MAX_PWM_OUTPUTS] = {
 		{ true, PB1, PWMPinConfig, PWMOut_3_4 } //
 };
 
-const PinDef GPIOPins[MAX_GPIO_PINS] = { { true, PA12, OutPinConfig, }, // Beeper 4? // USB
+const PinDef GPIOPins[MAX_GPIO_PINS] = { //
+		{ true, PA12, OutPinConfig, }, // Beeper 4? // USB
 		{ true, PC10, InpPinConfig, }, // Armed
 		{ true, PC9, InpPinConfig, }, // Landing
 		{ true, PC6, OutPinConfig, }, // Aux1
@@ -87,7 +88,8 @@ const AnalogPinDef AnalogPins[MAX_ANALOG_CHANNELS] = { { true, ADC1, PC0,
 
 const I2CPortDef I2CPorts[MAX_I2C_PORTS] = { { false, 0, }, // notionally I2C0
 		{ false, I2C1, PB6, PB7, GPIO_AF_I2C1 }, //
-		{ true, I2C2, PB10, PB11, GPIO_AF_I2C2 }, { false, I2C3, } };
+		{ true, I2C2, PB10, PB11, GPIO_AF_I2C2 },
+		{ false, I2C3, } };
 
 const SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
 		{ false, 0, }, // notionally SPI0
@@ -97,16 +99,17 @@ const SPIPortDef SPIPorts[MAX_SPI_PORTS] = { // SCK, MISO, MOSI
 };
 
 
-const DevDef busDev[maxDevSel] = {
+const DevDef busDev[maxDevSel] = {	//imuSel,baroSel,magSel,memSel,gpsSel,rfSel,asSel,flowSel,oledSel,escSPISel,escI2CSel,mag2Sel,
 		{ true, imuSel, mpu6050IMU, false, 2, MPU_0x68_ID, }, //
 		{ true, baroSel, ms5611Baro, false, 2, MS56XX_0_ID, }, //
 		{ true, magSel, hmc5xxxMag, false, 2, HMC5XXX_ID, }, //
 #if defined(USE_ARM_BLACKBOX_FLASH)
 		{ false, memSel, ArmFlashMem,}, // does not use either SPI or I2C
 #else
-		{ true, memSel, i2cEEPROMMem, false, 2, EEPROM_ID, },//
+		{ false, memSel, i2cEEPROMMem, false, 2, EEPROM_ID, },//
 #endif
-		{ false, gpsSel, }, { false, rfSel, }, //
+		{ false, gpsSel, }, //
+		{ false, rfSel, }, //
 		{ false, asSel, }, //
 		{ false, flowSel, }, //
 #if defined(USE_OLED)
@@ -120,7 +123,7 @@ const DevDef busDev[maxDevSel] = {
 		{ false, escSPISel, }, //
 #endif
 		{ true, escI2CSel, ESCI2C, false, 2, ESCI2C_ID, }, //
-		{ true, mag2Sel, hmc5xxxMag, false, 3, HMC5XXX_ID, }//
+		{ false, mag2Sel, hmc5xxxMag, false, 3, HMC5XXX_ID, }//
 };
 
 const uint8 IMUQuadrant = 0;
@@ -130,6 +133,7 @@ const uint8 currGimbalType = noGimbal;
 const boolean ledsLowOn = false;
 const boolean beeperLowOn = true;
 uint8 CurrMagSel = magSel;
+
 
 void InitTarget(void) {
 
@@ -155,6 +159,8 @@ void InitTarget(void) {
 
 	FrSkySerial = SoftSerial;
 	InitSerialPort(FrSkySerial, true, false);
+
+	UsingOpenLog = false;
 
 } // InitTarget
 

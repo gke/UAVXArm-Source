@@ -25,7 +25,7 @@
 #define BARO_NOISE 0.25f
 #define ACC_NOISE 5.0f
 
-#define FAKE_GPS_DT_MS	 200
+#define FAKE_GPS_DT_MS	 100
 
 #define EM_THR_CRUISE_FW_STICK 0.3f
 #define EM_THR_CRUISE_STICK 0.5f
