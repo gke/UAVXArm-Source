@@ -24,9 +24,6 @@
 
 #define USE_UAVX_DJT
 
-
-//#define USE_CRSF_V3
-
 //#define USE_CRUISE_FOR_PH
 
 //#define MAG_TESTING
@@ -34,7 +31,6 @@
 // Options
 
 //#define USE_KEN_GPS_M8
-
 
 //#define USB_TESTING
 

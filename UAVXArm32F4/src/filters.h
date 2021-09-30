@@ -22,6 +22,15 @@
 #ifndef _filters_h
 #define _filters_h
 
+
+typedef struct { // filtering between telemetry updates
+    timemS lastUpdatedmS;
+    int32_t total;
+    uint32_t count;
+    int32_t value;
+} TrackerStruct;
+
+
 #define MAX_FILTER_ORDER 10 //6
 typedef struct {
 	boolean initialised;
@@ -42,6 +51,12 @@ typedef struct {
 	uint8 head;
 	real32 h[3]; // for rate of change use
 } filterM3Struct;
+
+
+void TrackerReset(TrackerStruct * Tracker);
+void TrackerAccumulate(TrackerStruct * Tracker, int16 rawValue);
+void TrackerSet(TrackerStruct * Tracker, int16 rawValue);
+int16 TrackerGet(TrackerStruct * Tracker);
 
 real32 SensorNoise(real32 N);
 

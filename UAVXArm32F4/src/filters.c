@@ -20,6 +20,39 @@
 
 #include "UAVX.h"
 
+void TrackerReset(TrackerStruct * Tracker) {
+	Tracker->lastUpdatedmS = mSClock();
+	Tracker->total = 0;
+	Tracker->count = 0;
+	Tracker->value = 0;
+} // TrackerReset
+
+void TrackerAccumulate(TrackerStruct * Tracker, int16 rawValue) {
+	const timemS NowmS = mSClock();
+
+	if (((NowmS - Tracker->lastUpdatedmS) > TRACKER_INTERVAL_MS)
+			&& Tracker->count) {
+		TrackerSet(Tracker, Tracker->total / Tracker->count);
+		Tracker->total = 0;
+		Tracker->count = 0;
+	}
+
+	Tracker->total += rawValue;
+	Tracker->count++;
+} // TrackerAccumulate
+
+void TrackerSet(TrackerStruct * Tracker, int16 rawValue) {
+	Tracker->value = rawValue;
+	Tracker->lastUpdatedmS = mSClock();
+} // TrackerSet
+
+int16 TrackerGet(TrackerStruct * Tracker) {
+	if ((mSClock() - Tracker->lastUpdatedmS) > TRACKER_TIMEOUT_MS)
+		Tracker->value = 0;
+
+	return Tracker->value;
+} // TrackerGet
+
 real32 SensorNoise(real32 N) {
 
 	return (N * (((real64) rand() / (real64) RAND_MAX) - 0.5f));

@@ -81,11 +81,9 @@ boolean SerialAvailable(uint8 s) {
 			RxQTail[s] = SERIAL_BUFFER_SIZE
 					- DMA_GetCurrDataCounter(SerialPorts[s].RxStream);
 			r = RxQHead[s] != RxQTail[s];
-		} else if (SerialPorts[s].InterruptsUsed)
+		} else
 			r = RxQTail[s] != RxQHead[s];
-		else
-			r = (USART_GetFlagStatus(SerialPorts[s].USART, USART_FLAG_RXNE)
-					== SET);
+
 		break;
 	} // switch
 
@@ -104,18 +102,14 @@ uint8 RxChar(uint8 s) {
 		TM_USB_VCP_Getc(&ch);
 		break;
 	default:
-		if (SerialPorts[s].DMAUsed || SerialPorts[s].InterruptsUsed) {
-			ch = RxQ[s][RxQHead[s]];
-			RxQHead[s] = (RxQHead[s] + 1) & (SERIAL_BUFFER_SIZE - 1);
+		ch = RxQ[s][RxQHead[s]];
+		RxQHead[s] = (RxQHead[s] + 1) & (SERIAL_BUFFER_SIZE - 1);
 
-			Entries = RxQTail[s] - RxQHead[s];
-			if (Entries < 0)
-				Entries += SERIAL_BUFFER_SIZE;
-			if (Entries > RxQEntries[s])
-				RxQEntries[s] = Entries;
-
-		} else
-			ch = USART_ReceiveData(SerialPorts[s].USART);
+		Entries = RxQTail[s] - RxQHead[s];
+		if (Entries < 0)
+			Entries += SERIAL_BUFFER_SIZE;
+		if (Entries > RxQEntries[s])
+			RxQEntries[s] = Entries;
 		break;
 	} // switch
 
@@ -236,37 +230,29 @@ void TxChar(uint8 s, uint8 ch) {
 		SoftTxChar(s, ch);
 		break;
 	default:
-		if (SerialPorts[s].DMAUsed || SerialPorts[s].InterruptsUsed) {
-			NewTail = (TxQTail[s] + 1) & (SERIAL_BUFFER_SIZE - 1);
-			while (NewTail == TxQHead[s]) // BLOCKING!!!!!!!!!!!!
-				TxOverflow[s] |= true;
+		NewTail = (TxQTail[s] + 1) & (SERIAL_BUFFER_SIZE - 1);
+		while (NewTail == TxQHead[s]) // BLOCKING!!!!!!!!!!!!
+			TxOverflow[s] |= true;
 
-			TxQ[s][TxQTail[s]] = ch;
+		TxQ[s][TxQTail[s]] = ch;
 
-			// tail points to NEXT free slot
-			TxQTail[s] = NewTail;
+		// tail points to NEXT free slot
+		TxQTail[s] = NewTail;
 
-			if (SerialPorts[s].DMAUsed) {
-				if (DMA_GetCmdStatus(SerialPorts[s].TxStream) == DISABLE)
-					SerialTxDMA(s);
-			} else {
-				// if TXE then interrupt will be pending
-				USART_ITConfig(SerialPorts[s].USART, USART_IT_TXE, ENABLE);
-			}
-
-			Entries = TxQTail[s] - TxQHead[s];
-			if (Entries < 0)
-				Entries += SERIAL_BUFFER_SIZE;
-			if (Entries > TxQEntries[s])
-				TxQEntries[s] = Entries;
-
+		if (SerialPorts[s].DMAUsed) {
+			if (DMA_GetCmdStatus(SerialPorts[s].TxStream) == DISABLE)
+				SerialTxDMA(s);
 		} else {
-			while (USART_GetFlagStatus(SerialPorts[s].USART, USART_FLAG_TXE)
-					== RESET) // BLOCKING!!!!!!
-				TxOverflow[s] |= true;
-
-			USART_SendData(SerialPorts[s].USART, ch);
+			// if TXE then interrupt will be pending
+			USART_ITConfig(SerialPorts[s].USART, USART_IT_TXE, ENABLE);
 		}
+
+		Entries = TxQTail[s] - TxQHead[s];
+		if (Entries < 0)
+			Entries += SERIAL_BUFFER_SIZE;
+		if (Entries > TxQEntries[s])
+			TxQEntries[s] = Entries;
+
 		break;
 	} //switch
 

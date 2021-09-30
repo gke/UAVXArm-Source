@@ -75,10 +75,10 @@ const AnalogPinDef AnalogPins[MAX_ANALOG_CHANNELS] = { //
 
 const SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
 		{ false, }, // mapped to USBSerial
-		{ true, USART1, PA9, PA10, 115200, true, false, USART1Config }, // USB Clash
-		{ true, USART2, PD5, PD6, 115200, true, false, USART2Config }, // Sbus/Spektrum
-		{ true, USART3, PD8, PD9, 115200, true, false, USART3Config }, //
-		{ true, UART4, PC10, PC11, 115200, true, false, UART4Config }, //
+		{ true, USART1, PA9, PA10, 115200, USART_Parity_No, USART_StopBits_2,false, USART1Config }, // USB Clash
+		{ true, USART2, PD5, PD6, 115200, USART_Parity_No, USART_StopBits_2,false, USART2Config }, // Sbus/Spektrum
+		{ true, USART3, PD8, PD9, 115200, USART_Parity_No, USART_StopBits_2,false, USART3Config }, //
+		{ true, UART4, PC10, PC11, 115200, USART_Parity_No, USART_StopBits_2,false, UART4Config }, //
 		{ true, 0 } // SoftSerial
 };
 
@@ -126,24 +126,24 @@ void InitTarget(void) {
 	CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 10;
 
 	TelemetrySerial = Usart1;
-	InitSerialPort(TelemetrySerial, true, false);
+	InitSerialPort(TelemetrySerial, false);
 
 	// CurrRxType always FutabaSBus - forced in params.c
 
 	F.HaveSerialRC = true;
 	RCSerial = Usart2;
-	InitSerialPort(RCSerial, false, CurrRxType == FutabaSBusRx);
+	InitSerialPort(RCSerial, false);
 
 	GPSSerial = Usart3;
-	InitSerialPort(GPSSerial, false, false);
+	InitSerialPort(GPSSerial, false);
 	F.HaveGPS = CurrGPSType != NoGPS; // check for port limitation V3
 
 	FrSkySerial = SoftSerial;
-	InitSerialPort(FrSkySerial, true, false);
+	InitSerialPort(FrSkySerial, true);
 
 	UsingOpenLog = false; // problems - baud rate?
 	OpenLogSerial = Uart4;
-	InitSerialPort(OpenLogSerial, false, false);
+	InitSerialPort(OpenLogSerial, false);
 	SetBaudRate(OpenLogSerial, 9600);
 
 

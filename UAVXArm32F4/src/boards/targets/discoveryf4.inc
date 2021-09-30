@@ -75,10 +75,10 @@ const AnalogPinDef AnalogPins[MAX_ANALOG_CHANNELS] = { //
 
 const SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
 		{ true, }, // mapped to USBSerial
-		{ false, USART1, PA9, PA10, 115200, true, false, USART1Config }, // USB clash
-		{ true, USART2, PA2, PA3, 9600, true, false, USART2Config }, //
-		{ true, USART3, PD8, PD9, 115200, true, false, USART3Config }, //
-		{ true, UART4, PC10, PC11, 115200, true, false, UART4Config }, //
+		{ false, USART1, PA9, PA10, 115200, USART_Parity_No, USART_StopBits_2, false, USART1Config }, // USB clash
+		{ true, USART2, PA2, PA3, 9600, USART_Parity_No, USART_StopBits_2, false, USART2Config }, //
+		{ true, USART3, PD8, PD9, 115200, USART_Parity_No, USART_StopBits_2, false, USART3Config }, //
+		{ true, UART4, PC10, PC11, 115200, USART_Parity_No, USART_StopBits_2, false, UART4Config }, //
 		{ true, 0 } // SoftSerial
 };
 
@@ -123,18 +123,18 @@ void InitTarget(void) {
 	CurrMaxPWMOutputs = 4;
 
 	TelemetrySerial = Uart4; //Uart4; //USBSerial;
-	InitSerialPort(TelemetrySerial, true, false);
+	InitSerialPort(TelemetrySerial, true);
 
 	F.HaveSerialRC = true;
 	RCSerial = Usart2;
-	InitSerialPort(RCSerial, false, true);
+	InitSerialPort(RCSerial, false);
 
 	F.HaveGPS = true; // removed for debug
 	GPSSerial = Usart3;
-	InitSerialPort(GPSSerial, false, false);
+	InitSerialPort(GPSSerial, false);
 
 	FrSkySerial = SoftSerial;
-	InitSerialPort(FrSkySerial, true, false);
+	InitSerialPort(FrSkySerial, true);
 
 } // InitTarget
 

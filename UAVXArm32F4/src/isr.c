@@ -208,7 +208,7 @@ void DMA1_Stream6_IRQHandler(void) {
 	DMA_ClearITPendingBit(DMA1_Stream6, DMA_IT_TCIF6);
 	DMA_Cmd(DMA1_Stream6, DISABLE);
 
-	TxQHead[2] = TxQNewHead[1];
+	TxQHead[2] = TxQNewHead[2];
 	if (TxQHead[2] != TxQTail[2])
 		SerialTxDMA(2);
 

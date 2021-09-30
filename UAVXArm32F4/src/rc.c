@@ -36,6 +36,8 @@ uint8 SpekFrameNo = 0;
 uint32 RCNavFrames = 0;
 uint32 RC1CaptureFrames = 0;
 uint32 RCGlitches = 0;
+uint32 RCFailsafes = 0;
+uint32 RCSignalLosses = 0;
 
 // Futaba SBus
 
@@ -43,8 +45,9 @@ uint32 RCGlitches = 0;
 // See https://github.com/cleanflight/cleanflight/issues/590#issuecomment-101027349
 // and https://github.com/cleanflight/cleanflight/issues/590#issuecomment-101706023
 
-boolean SBusFailsafe = false;
-boolean SBusSignalLost = false;
+boolean RCFailsafe = false;
+boolean RCSignalLost = false;
+boolean FailsafePacketGenerated = false;
 
 uint8 RSSI;
 
@@ -59,12 +62,15 @@ uint8 RSSI;
 #define CRSF_DIGITAL_CHANNEL_MAX 1811
 #define CRSF_PAYLOAD_OFFSET offsetof(crsfFrameDef, type)
 
-rcLinkQualityTrackerStruct lqTracker;
+#define LQ_SIGNAL_LOST_LIMIT 25
+#define LQ_FAILSAFE_LIMIT 50
+
+TrackerStruct lqTracker, rssiTracker, snrTracker;
 rcLinkStatsStruct rcLinkStats;
 
 // Common
 
-RCInpDefStruct RCInp[RC_MAX_CHANNELS];
+RCInpDefStruct RCInp[RC_MAX_CHANNELS], FS[RC_MAX_CHANNELS];
 RCInpDefStruct RCCaptureInp;
 
 timeuS RCLastFrameuS = 0;
@@ -89,6 +95,33 @@ timemS NextNavSwUpdatemS = 0;
 real32 AHThrottle, AHThrottleWindow;
 
 uint8 CurrRxType = UnknownRx;
+
+uint8 crc8_dvb_s2(uint8 crc, unsigned char a) {
+	idx i;
+
+	crc ^= a;
+	for (i = 0; i < 8; ++i)
+		crc = (crc & 0x80) ? (crc << 1) ^ 0xD5 : crc << 1;
+
+	return crc;
+} // scaleRange
+
+void GenerateFailsafePacket(void) {
+	idx c;
+
+	if (!FailsafePacketGenerated) {
+		RCFailsafes++;
+		F.Signal = false;
+		RCSignalLost = RCFailsafe = FailsafePacketGenerated = true;
+
+		for (c = 0; c < RC_MAX_CHANNELS; c++)
+			RCInp[c].Raw = FS[c].Raw;
+
+		SignalCount = -RC_GOOD_BUCKET_MAX;
+		F.RCNewValues = true;
+	}
+
+} // GenerateFailsafePacket
 
 void EnableRC(void) {
 
@@ -131,13 +164,12 @@ void RCSerialISR(timeuS TimerVal) {
 		// MUST demand rock solid RC frames for autonomous functions not
 		// to be cancelled by noise-generated partially correct frames
 		if (++Channel >= DiscoveredRCChannels) {
-			F.RCNewValues = F.RCFrameOK;
-			if (F.RCNewValues)
+			if (F.RCFrameOK)
 				SignalCount++;
 			else
 				SignalCount -= RC_GOOD_RATIO;
 			SignalCount = Limit1(SignalCount, RC_GOOD_BUCKET_MAX);
-			F.Signal = SignalCount > 0;
+			F.Signal = F.RCFrameReceived = SignalCount > 0;
 		}
 	}
 
@@ -175,43 +207,22 @@ void sbusDecode(void) {
 
 	ExtractAndScaleRCInp();
 
-	//RCInp[16].Raw = RCFrame.u.b[22] & 0b0001 ? 2000 : 1000;
-	//RCInp[17].Raw = RCFrame.u.b[22] & 0b0010 ? 2000 : 1000;
+	RCInp[16].Raw = RCFrame.u.b[22] & 0b0001 ? 2000 : 1000;
+	RCInp[17].Raw = RCFrame.u.b[22] & 0b0010 ? 2000 : 1000;
 
-	SBusSignalLost = (RCFrame.u.b[22] & SBUS_SIGNALLOST_MASK) != 0;
-	SBusFailsafe = (RCFrame.u.b[22] & SBUS_FAILSAFE_MASK) != 0;
+	RCSignalLost = (RCFrame.u.b[22] & SBUS_SIGNALLOST_MASK) != 0;
+	RCFailsafe = (RCFrame.u.b[22] & SBUS_FAILSAFE_MASK) != 0;
 
-	F.Signal = !(SBusSignalLost || SBusFailsafe);
+	if (RCSignalLost)
+		RCSignalLosses++;
 
-	if (CurrRxType == FrSkyFBusRx)
-		FrSkyDLinkuS = RCLastFrameuS;
+	F.Signal = !(RCSignalLost || RCFailsafe);
 
 	F.RCNewValues = true;
 
 } // sbusDecode
 
-// CRSF ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-// * This file is part of Cleanflight.
-
-int scaleRange(int x, int srcMin, int srcMax, int destMin, int destMax) {
-	long int a = ((long int) destMax - (long int) destMin)
-			* ((long int) x - (long int) srcMin);
-	long int b = (long int) srcMax - (long int) srcMin;
-	return ((a / b) + destMin);
-}
-
-uint8 crc8_dvb_s2(uint8 crc, unsigned char a) {
-	crc ^= a;
-	for (int ii = 0; ii < 8; ++ii) {
-		if (crc & 0x80) {
-			crc = (crc << 1) ^ 0xD5;
-		} else {
-			crc = crc << 1;
-		}
-	}
-	return crc;
-} // scaleRange
+//  CRSF/ExpressLRS rewritten from Cleanflight/iNav.
 
 static uint8 telemetryBuf[CRSF_FRAME_SIZE_MAX];
 static uint8 telemetryBufLen = 0;
@@ -256,47 +267,12 @@ uint8 crsfFrameCRC(void) {
 	return crc;
 } // crsfFrameCRC
 
-void lqTrackerReset(void) {
-	lqTracker.lastUpdatedmS = mSClock();
-	lqTracker.lqAccumulator = 0;
-	lqTracker.lqCount = 0;
-	lqTracker.lqValue = 0;
-} // lqTrackerReset
-
-void lqTrackerAccumulate(uint16 rawValue) {
-	const timemS NowmS = mSClock();
-
-	if (((NowmS - lqTracker.lastUpdatedmS) > RX_LQ_INTERVAL_MS)
-			&& lqTracker.lqCount) {
-		lqTrackerSet(lqTracker.lqAccumulator / lqTracker.lqCount);
-		lqTracker.lqAccumulator = 0;
-		lqTracker.lqCount = 0;
-	}
-
-	lqTracker.lqAccumulator += rawValue;
-	lqTracker.lqCount++;
-} // lqTrackerAccumulate
-
-void lqTrackerSet(uint16 rawValue) {
-	lqTracker.lqValue = rawValue;
-	lqTracker.lastUpdatedmS = mSClock();
-} // lqTrackerSet
-
-uint16 lqTrackerGet(void) {
-	if ((mSClock() - lqTracker.lastUpdatedmS) > RX_LQ_TIMEOUT_MS)
-		lqTracker.lqValue = 0;
-
-	return lqTracker.lqValue;
-} // lqTrackerGet
-
-uint8 crsfDecode(void) { //rxRuntimeConfig *rxRuntimeConfig) {
+uint8 crsfDecode(void) {
 	idx i;
 	uint8 crc;
 
 	switch (RCFrame.type) {
 	case CRSF_FRAMETYPE_RC_CHANNELS_PACKED:
-
-		//RCFrame.length = CRSF_FRAME_RC_CHANNELS_PAYLOAD_SIZE + CRSF_FRAME_LENGTH_TYPE_CRC;
 
 		ExtractAndScaleRCInp();
 
@@ -308,21 +284,30 @@ uint8 crsfDecode(void) { //rxRuntimeConfig *rxRuntimeConfig) {
 		break;
 	case CRSF_FRAMETYPE_LINK_STATISTICS:
 
-		//RCFrame.length = CRSF_FRAME_LINK_STATISTICS_PAYLOAD_SIZE + CRSF_FRAME_LENGTH_TYPE_CRC;
-
 		memcpy(&rcLinkStats, &RCFrame.u.ls, sizeof(rcLinkStatsStruct)); // assume infrequent updates so save
 
-		int Temp = Limit(rcLinkStats.uplinkLQ, 0, 100);
-		RCInp[17].Raw = scaleRange(Temp, 0, 100, 191, 1791); // will map to [1000;2000] range
-		lqTrackerSet(scaleRange(Temp, 0, 100, 0, RSSI_MAX_VALUE));
+		RCInp[17].Raw = Limit(rcLinkStats.uplinkLQ, 0, 100);
 
-		RSSI = rcLinkStats.downlinkRSSI;
-		//RSSI = -1 * (rcLinkStats.activeAntenna ? rcLinkStats.uplinkRSSIAnt2 : rcLinkStats.uplinkRSSIAnt1);
-		rcLinkStats.uplinkTXPower = crsfPowerStates[rcLinkStats.uplinkTXPower];
+		TrackerSet(&lqTracker, rcLinkStats.uplinkLQ);
+		TrackerSet(&rssiTracker,
+				-1
+						* (rcLinkStats.activeAntenna ?
+								rcLinkStats.uplinkRSSIAnt2 :
+								rcLinkStats.uplinkRSSIAnt1));
+		TrackerSet(&snrTracker, rcLinkStats.uplinkSNR);
+
+		RCSignalLost = TrackerGet(&lqTracker) < LQ_SIGNAL_LOST_LIMIT;
+		RCFailsafe = TrackerGet(&lqTracker) < LQ_FAILSAFE_LIMIT;
+
+		if (RCFailsafe)
+			RCFailsafes++;
+		if (RCSignalLost)
+			RCSignalLosses++;
 
 		break;
 	default:
 		// bad frame
+		RCGlitches++;
 		break;
 	} // switch
 
@@ -399,7 +384,6 @@ void RCUSARTISR(uint8 v) { // based on MultiWii
 		}
 		break;
 	case CRSFRx:
-
 		if ((NowuS - RCFrame.frameStartuS) > CRSF_TIME_NEEDED_PER_FRAME_US) { // TODO:
 			// We've received a character after max time needed to complete a frame,
 			// so this must be the start of a new frame.
@@ -426,6 +410,8 @@ void RCUSARTISR(uint8 v) { // based on MultiWii
 					RCLastFrameuS = NowuS;
 					crc = crsfFrameCRC();
 					F.RCFrameReceived = F.Signal = (v == crc);
+					if (!F.RCFrameReceived)
+						RCGlitches++;
 
 					RCFrame.busy = false;
 					RCFrame.state = CRSFWaitNext;
@@ -437,28 +423,6 @@ void RCUSARTISR(uint8 v) { // based on MultiWii
 			} // switch
 
 		break;
-	case FrSkyFBusRx:
-		/*
-		 RxFrSkySPort(v);
-		 if (FrSkyPacketReceived) {
-		 if (FrSkyPacketTag == 0) {
-
-		 memcpy(&RCFrame.u.b[0], &FrSkyPacket[0], 24);
-
-		 RSSI = RCFrame.u.b[23];
-
-		 CheckSBusFrame(NowuS);
-
-		 } else {
-		 if (FrSkyPacketTag == 1) {
-		 //	TODO: RxCTS[RCSerial] = true;
-		 //	TxFrSkySPort(RCSerial);
-		 //	RxCTS[RCSerial] = false;
-		 }
-		 }
-		 }
-		 break;
-		 */
 	default:
 		break;
 	} // switch
@@ -630,6 +594,7 @@ void InitRC(void) {
 	switch (CurrRxType) {
 	case FutabaSBusRx:
 		DiscoveredRCChannels = SBUS_CHANNELS;
+		SetBaudRate(RCSerial, 100000);
 		RxEnabled[RCSerial] = true;
 		break;
 	case Spektrum1024Rx:
@@ -646,17 +611,13 @@ void InitRC(void) {
 		SpekOffset = (1500 - 988) * 2;
 		RxEnabled[RCSerial] = true;
 		break;
-	case FrSkyFBusRx:
-		DiscoveredRCChannels = SBUS_CHANNELS;
-		RxCTS[RCSerial] = false;
-		SetBaudRate(RCSerial, 115200);
-		RxEnabled[RCSerial] = true;
-		break;
 	case CRSFRx:
 		memset(&rcLinkStats, 0, sizeof(rcLinkStatsStruct));
-		lqTrackerReset();
+		TrackerReset(&lqTracker);
+		TrackerReset(&rssiTracker);
+		TrackerReset(&snrTracker);
 		DiscoveredRCChannels = CRSF_CHANNELS;
-		SetBaudRate(RCSerial, 420000); // 115200
+		SetBaudRate(RCSerial, 420000);
 		RxEnabled[RCSerial] = true;
 		break;
 	default:
@@ -673,17 +634,25 @@ void InitRC(void) {
 	R->PrevEdge = R->Raw = R->FallingEdge = R->RisingEdge = 0;
 
 	for (c = 0; c < RC_MAX_CHANNELS; c++) {
-		R = &RCInp[c];
-
-		R->State = true;
-		R->PrevEdge = R->Raw = R->FallingEdge = R->RisingEdge = 0;
-
-		RC[c] = RCp[c] = 0;
+		FS[c].Raw = 1000;
+		RCInp[c].Raw = 0;
+		RC[c] = RCp[c] = 0.0f;
 	}
 
-	for (c = RollRC; c <= YawRC; c++)
+	for (c = RollRC; c <= YawRC; c++) {
+		FS[Map[c]].Raw = 1500;
 		RC[c] = RCp[c] = RC_NEUTRAL;
+	}
+
 	RC[Aux1CamPitchRC] = RCp[Aux1CamPitchRC] = RC_NEUTRAL;
+
+	FS[Map[ThrottleRC]].Raw = 1050;
+	//FS[Map[RollRC]].Raw = 1500;
+	//FS[Map[PitchRC]].Raw = 1500;
+	//FS[Map[YawRC]].Raw = 1500;
+	//FS[Map[Aux1CamPitchRC]].Raw = 1500;
+	FS[Map[NavQualificationRC]].Raw = 1250; // ~50% sensitivity
+	FS[Map[NavModeRC]].Raw = 2000; // force RTH
 
 	CamPitchTrim = 0;
 	F.ReturnHome = F.Navigate = F.AltControlEnabled = false;
@@ -703,24 +672,37 @@ void InitRC(void) {
 } // InitRC
 
 void MapRC(void) { // re-maps captured PPM to Rx channel sequence
-	uint8 c, cc;
+	idx c, cc;
 	real32 Temp;
 
 	for (c = 0; c < DiscoveredRCChannels; c++) {
 		cc = RMap[c];
 		RCp[cc] = RC[cc];
 		Temp = (RCInp[c].Raw - 1000) * 0.001f;
-		RC[cc] = LPF1(RCp[cc], Temp, 0.75f);
+		RC[cc] = RCFailsafe ? Temp : LPF1(RCp[cc], Temp, 0.75f);
 	}
 } // MapRC
 
 void CheckRC(void) {
 
-	if (CurrRxType != CPPMRx)
+	// most modern receivers continue to emit packets even if there is o signal
+	// being received. Signal can be lost if the receiver actually fails or as in
+	// some cases the receiver stops producing packets after loss of signal.
+	// ExpressLRS and presumably Crossbow where the link status packet gives
+	// LQ, RSSI and SNR. The LQ and RSSI values got to Zero for a few packets
+	// after which it seems packets are no longer emitted.
+	// There also seems to be an issue of transmission being re-established if
+	// the Tx is turned off then on again.
+
+	if (uSClock() > (RCLastFrameuS + RC_SIGNAL_TIMEOUT_US))
+		GenerateFailsafePacket(); // Rx stopped emitting packets
+	else {
 		if (F.RCFrameReceived) {
-			F.RCFrameReceived = false;
+			F.RCFrameReceived = FailsafePacketGenerated = false;
 			switch (CurrRxType) {
-			case FrSkyFBusRx:
+			case CPPMRx:
+				F.RCNewValues = true; // no decoding needed
+				break;
 			case FutabaSBusRx:
 				sbusDecode();
 				break;
@@ -736,10 +718,6 @@ void CheckRC(void) {
 				break;
 			} // switch
 		}
-
-	if (uSClock() > (RCLastFrameuS + RC_SIGNAL_TIMEOUT_US)) {
-		F.Signal = false;
-		SignalCount = -RC_GOOD_BUCKET_MAX;
 	}
 
 } // CheckRC
@@ -774,11 +752,11 @@ void UpdateControls(void) {
 
 		MapRC(); // re-map channel order for specific Tx
 
-		//_________________________________________________________________________________________
+//_________________________________________________________________________________________
 
-		// Attitude
+// Attitude
 
-		// normalise from 0-1.0 -> -1.0-1.0
+// normalise from 0-1.0 -> -1.0-1.0
 		A[Roll].Stick = (RC[RollRC] - RC_NEUTRAL) * 2.0f;
 		A[Pitch].Stick = (RC[PitchRC] - RC_NEUTRAL) * 2.0f;
 		A[Yaw].Stick = (RC[YawRC] - RC_NEUTRAL) * 2.0f;
@@ -787,9 +765,9 @@ void UpdateControls(void) {
 
 		F.AttitudeHold = CurrMaxRollPitchStick < ATTITUDE_HOLD_LIMIT_STICK;
 
-		//_________________________________________________________________________________________
+//_________________________________________________________________________________________
 
-		// Switch Processing
+// Switch Processing
 
 		StickThrottle = RC[ThrottleRC];
 		F.ThrottleOpen = StickThrottle >= RC_THRES_START_STICK;
@@ -810,7 +788,7 @@ void UpdateControls(void) {
 		CamPitchTrim =
 				ActiveCh(Aux1CamPitchRC) ? RC[Aux1CamPitchRC] - RC_NEUTRAL : 0;
 
-		// COMPLICATED switching for arming, AH WP nav etc ****************
+// COMPLICATED switching for arming, AH WP nav etc ****************
 
 		F.AltControlEnabled = State == InFlight;
 
@@ -863,14 +841,14 @@ void UpdateControls(void) {
 
 		F.UsingAngleControl = AttitudeMode == AngleMode;
 
-		// END COMPLICATED switching for arming, AH WP nav etc ****************
+// END COMPLICATED switching for arming, AH WP nav etc ****************
 
 		VTOLMode = ActiveAndTriggered(0.5f, TransitionRC)
 				&& (UAVXAirframe == VTOLAF) && !F.PassThru;
 
-		//_________________________________________________________________________________________
+//_________________________________________________________________________________________
 
-		// Rx has gone to failsafe
+// Rx has gone to failsafe
 
 		if (RCStart == 0)
 			F.NewCommands = true;

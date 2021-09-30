@@ -192,7 +192,6 @@ enum RxTypes {
 	Spektrum1024Rx,
 	Spektrum2048Rx,
 	CRSFRx,
-	FrSkyFBusRx,
 	UnknownRx
 };
 

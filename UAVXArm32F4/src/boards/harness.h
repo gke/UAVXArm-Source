@@ -346,7 +346,8 @@ typedef const struct {
 	USART_TypeDef* USART;
 	ConnectDef Tx, Rx;
 	uint32 Baud;
-	boolean InterruptsUsed;
+	uint16 Parity;
+	uint16 StopBits;
 	boolean DMAUsed;
 	uint8 USART_AF;
 	IRQn_Type ISR;
@@ -432,8 +433,8 @@ void InitPin(const PinDef * d);
 void InitOutputPin(const PinDef * d);
 void InitPinMode(const PinDef * d, boolean IsInput);
 
-void InitSerialPort(uint8 s, boolean Enable, boolean SBusConfig);
 void SetBaudRate(uint8 s, uint32 BaudRate);
+void InitSerialPort(uint8 s, boolean Enable);
 
 void InitPWMPin(const PinDef * u, uint16 pwmprescaler, uint32 pwmperiod,
 		uint32 pwmwidth);

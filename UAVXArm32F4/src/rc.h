@@ -37,15 +37,22 @@
 
 #define RC_THRES_START	4 // zzz was 3
 #define RC_THRES_START_STICK FromPercent(RC_THRES_START)
-#define THR_MAXIMUM FromPercent(90)
-#define RC_FRAME_TIMEOUT_US 25000
-#define RC_SIGNAL_TIMEOUT_US  (RC_FRAME_TIMEOUT_US * 5)
+//#define THR_MAXIMUM FromPercent(90)
+//#define RC_FRAME_TIMEOUT_US 25000
+#define RC_SIGNAL_TIMEOUT_US  (500000L) //RC_FRAME_TIMEOUT_US * 5)
 
 #define RXBUF_SIZE	64
 
 enum SwStates {
 	SwLow, SwMiddle, SwHigh, SwUnknown
 };
+
+
+typedef struct {
+	uint32 count;
+	int32 total;
+} averageStruct;
+
 
 typedef struct  {
 	uint8 uplinkRSSIAnt1;
@@ -151,8 +158,8 @@ void DoSpektrum(void);
 // CRSF
 
 #define MSP_RSSI_TIMEOUT_US     1500000   // 1.5 sec
-#define RX_LQ_INTERVAL_MS       200
-#define RX_LQ_TIMEOUT_MS        1000
+#define TRACKER_INTERVAL_MS       200
+#define TRACKER_TIMEOUT_MS        1000
 
 #define CRSF_CHANNELS SBUS_CHANNELS
 
@@ -176,7 +183,7 @@ extern RCInpDefStruct RCInp[];
 extern timeuS RCLastFrameuS;
 extern timeuS RCSyncWidthuS;
 extern timeuS RCFrameIntervaluS;
-extern uint32 RCGlitches;
+extern uint32 RCGlitches, RCFailsafes, RCSignalLosses;
 extern uint8 Channel;
 extern int8 SignalCount;
 extern uint32 RCNavFrames;
@@ -196,11 +203,9 @@ extern real32 AHThrottle, AHThrottleWindow;
 
 extern uint8 CurrRxType;
 extern uint16 LostFrameCount;
-extern uint8 RSSI;
 
-extern boolean SBusFailsafe;
-extern boolean SBusSignalLost;
-extern boolean SBusFutabaValidFrame;
+
+extern boolean RCFailsafe, RCFailsafe, RCSignalLost;
 
 #define CRSF_BAUDRATE           420000
 //#define CRSF_PORT_OPTIONS       (SERIAL_STOPBITS_1 | SERIAL_PARITY_NO)
@@ -289,21 +294,8 @@ typedef enum {
     CRSF_FRAMETYPE_DISPLAYPORT_CMD = 0x7D, // displayport control command
 } crsfFrameType_e;
 
-typedef struct crsfFrameDef_s {
-    uint8 deviceAddress;
-    uint8 frameLength;
-    uint8 type;
-    uint8 payload[CRSF_PAYLOAD_SIZE_MAX + 1]; // +1 for CRC at end of payload
-} crsfFrameDef;
 
-typedef struct rcLinkQualityTracker_s {
-    timemS lastUpdatedmS;
-    uint32_t lqAccumulator;
-    uint32_t lqCount;
-    uint32_t lqValue;
-} rcLinkQualityTrackerStruct;
-
-typedef struct rcLinkStatistics_s {
+typedef struct  {
     int16_t     uplinkRSSI;     // RSSI value in dBm
     uint8_t     uplinkLQ;       // A protocol specific measure of the link quality in [0..100]
     int8_t      uplinkSNR;      // The SNR of the uplink in dB
@@ -312,26 +304,14 @@ typedef struct rcLinkStatistics_s {
     uint8_t     activeAnt;
 } rcLinkStatisticsStruct;
 
-typedef union  {
-    uint8 bytes[CRSF_FRAME_SIZE_MAX];
-    crsfFrameDef frame;
-} crsfFrame_u;
-
-extern rcLinkStatisticsStruct rcLinkStatistics;
-extern rcLinkStatsStruct rcLinkStats;
-
-void lqTrackerReset(void);
-void lqTrackerAccumulate(uint16_t rawValue);
-void lqTrackerSet(uint16 rawValue);
-uint16_t lqTrackerGet(void);
-
-extern rcLinkQualityTrackerStruct lqTracker;
-
 void crsfRxWriteTelemetryData(const void *data, int len);
 void crsfRxSendTelemetryData(void);
 
-struct rxConfig_s;
-struct rxRuntimeConfig_s;
+extern rcLinkStatisticsStruct rcLinkStatistics;
+extern rcLinkStatsStruct rcLinkStats;
+extern TrackerStruct avRSSI, avLQ;
+extern uint32 RCFailsafes, RCLostSignals;
+extern TrackerStruct lqTracker, rssiTracker, snrTracker;
 
 #endif
 

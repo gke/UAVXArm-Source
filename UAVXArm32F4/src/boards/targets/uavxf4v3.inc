@@ -69,10 +69,10 @@ const PinDef LEDPins[MAX_LED_PINS] = { //
 
 const SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
 		{ false, }, // mapped to USBSerial
-		{ true, USART1, PA9, PA10, 115200, true, false, USART1Config }, //
-		{ true, USART2, PA2, PA3, 115200, true, false, USART2Config }, //
-		{ false, USART3, PB10, PB11, 115200, true, false, USART3Config },//
-		{ false, UART4, PC10, PC11, 115200, true, false, UART4Config }, //
+		{ true, USART1, PA9, PA10, 115200, USART_Parity_No, USART_StopBits_2, false, USART1Config }, //
+		{ true, USART2, PA2, PA3, 115200, USART_Parity_No, USART_StopBits_2, false, USART2Config }, //
+		{ false, USART3, PB10, PB11, 115200, USART_Parity_No, USART_StopBits_2, false, USART3Config },//
+		{ false, UART4, PC10, PC11, 115200, USART_Parity_No, USART_StopBits_2, false, UART4Config }, //
 		{ true, 0 } // SoftSerial
 		};
 
@@ -140,25 +140,26 @@ void InitTarget(void) {
 	CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 10;
 
 	TelemetrySerial = Usart1;
-	InitSerialPort(TelemetrySerial, true, false);
+	InitSerialPort(TelemetrySerial, true);
 
 	switch (CurrRxType) {
 	case CPPMRx:
 		F.HaveSerialRC = false;
 		F.HaveGPS = CurrGPSType != NoGPS;
 		GPSSerial = Usart2;
-		InitSerialPort(GPSSerial, false, false);
+		InitSerialPort(GPSSerial, false);
 		break;
 	default:
 		F.HaveGPS = false;
 		F.HaveSerialRC = true;
 		RCSerial = Usart2;
-		InitSerialPort(RCSerial, false, CurrRxType == FutabaSBusRx);
+		InitSerialPort(RCSerial, false);
+
 		break;
 	} // switch
 
 	FrSkySerial = SoftSerial;
-	InitSerialPort(FrSkySerial, true, false);
+	InitSerialPort(FrSkySerial, true);
 
 	UsingOpenLog = false;
 

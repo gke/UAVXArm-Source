@@ -509,21 +509,23 @@ void SetBaudRate(uint8 s, uint32 BaudRate) {
 		break;
 	default:
 		u = &SerialPorts[s];
+
 		if (u->Used) {
 			USART_Cmd(u->USART, DISABLE);
-			USART_StructInit(&USART_InitStructure);
-			USART_InitStructure.USART_Parity = USART_Parity_No;
+
+			USART_StructInit(&USART_InitStructure); // 9600 8-N-1 default
 			USART_InitStructure.USART_BaudRate = BaudRate;
-			//	if (BaudRate <= 9600)
-			//		USART_InitStructure.USART_StopBits = USART_StopBits_1;
+			USART_InitStructure.USART_StopBits = u->StopBits;
+			USART_InitStructure.USART_Parity = u->Parity;
 			USART_Init(u->USART, &USART_InitStructure);
+
 			USART_Cmd(u->USART, ENABLE);
 		}
 		break;
 	} // switch
 } // SetBaudRate
 
-void InitSerialPort(uint8 s, boolean Enable, boolean SBusConfig) {
+void InitSerialPort(uint8 s, boolean Enable) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 	USART_InitTypeDef USART_InitStructure;
 	DMA_InitTypeDef DMA_InitStructure;
@@ -571,19 +573,12 @@ void InitSerialPort(uint8 s, boolean Enable, boolean SBusConfig) {
 			GPIO_PinAFConfig(u->Tx.Port, u->Tx.PinSource, u->USART_AF);
 			GPIO_PinAFConfig(u->Rx.Port, u->Rx.PinSource, u->USART_AF);
 
-			USART_StructInit(&USART_InitStructure); // 9600 8-N-1 default
+			//	SetBaudRate(s, u->Baud);
 
-			if (SBusConfig) {
-				USART_InitStructure.USART_BaudRate = 100000; // 96000; //100000;
-				USART_InitStructure.USART_WordLength = USART_WordLength_9b;
-				USART_InitStructure.USART_StopBits = USART_StopBits_2;
-				USART_InitStructure.USART_Parity = USART_Parity_Even;
-				USART_Init(u->USART, &USART_InitStructure);
-			} else {
-				USART_InitStructure.USART_BaudRate = 115200;
-				USART_InitStructure.USART_StopBits = USART_StopBits_2;
-				USART_InitStructure.USART_Parity = USART_Parity_No;
-			}
+			USART_StructInit(&USART_InitStructure); // 9600 8-N-1 default
+			USART_InitStructure.USART_BaudRate = u->Baud;
+			USART_InitStructure.USART_StopBits = u->StopBits;
+			USART_InitStructure.USART_Parity = u->Parity;
 			USART_Init(u->USART, &USART_InitStructure);
 
 			NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
@@ -592,13 +587,7 @@ void InitSerialPort(uint8 s, boolean Enable, boolean SBusConfig) {
 
 			TxQTail[s] = TxQHead[s] = TxQNewHead[s] = 0;
 
-			if (u->InterruptsUsed) {
-				RxQTail[s] = RxQHead[s] = 0;
-				NVIC_InitStructure.NVIC_IRQChannel = u->ISR;
-				NVIC_Init(&NVIC_InitStructure);
-
-				USART_ITConfig(u->USART, USART_IT_RXNE, ENABLE);
-			} else {
+			if (u->DMAUsed) {
 				// Common
 				DMA_StructInit(&DMA_InitStructure);
 				DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
@@ -643,12 +632,19 @@ void InitSerialPort(uint8 s, boolean Enable, boolean SBusConfig) {
 				DMA_ITConfig(u->TxStream, DMA_IT_TC, ENABLE);
 
 				USART_DMACmd(u->USART, USART_DMAReq_Tx, ENABLE);
+			} else {
+				RxQTail[s] = RxQHead[s] = 0;
+				NVIC_InitStructure.NVIC_IRQChannel = u->ISR;
+				NVIC_Init(&NVIC_InitStructure);
+
+				USART_ITConfig(u->USART, USART_IT_RXNE, ENABLE);
 			}
 
 			RxEnabled[s] = Enable;
 			USART_Cmd(u->USART, ENABLE);
 		}
-	}
+	} else
+		RxEnabled[s] = false;
 
 } // InitSerialPort
 
@@ -704,7 +700,7 @@ void InitAnalogPorts(void) {
 	AnalogPinDef * u, *ux;
 
 	if (MAX_ANALOG_CHANNELS > 0) {
-		// all pins already configured as AIN
+// all pins already configured as AIN
 
 		ux = &AnalogPins[0];
 
@@ -725,7 +721,7 @@ void InitAnalogPorts(void) {
 
 		DMA_InitStructure.DMA_Channel = ux->DMA.Channel;
 		DMA_InitStructure.DMA_Memory0BaseAddr = (uint32) ADCValues;
-		//DMA_InitStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_HalfFull;
+//DMA_InitStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_HalfFull;
 
 		DMA_Init(ux->DMA.Stream, &DMA_InitStructure);
 		DMA_Cmd(ux->DMA.Stream, ENABLE);
@@ -789,7 +785,7 @@ void InitHarness(void) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 	uint8 i;
 
-	// UGLY but covers everything for now :)
+// UGLY but covers everything for now :)
 	RCC_AHB1PeriphClockCmd(
 			RCC_AHB1Periph_GPIOA | RCC_AHB1Periph_GPIOB | RCC_AHB1Periph_GPIOC
 					| RCC_AHB1Periph_GPIOD | RCC_AHB1Periph_GPIOE |
@@ -837,7 +833,7 @@ void InitHarness(void) {
 
 	RCC_ClearFlag();
 
-	// Make all GPIO input by default
+// Make all GPIO input by default
 	GPIO_StructInit(&GPIO_InitStructure);
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_All;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN;
@@ -860,11 +856,11 @@ void InitHarness(void) {
 
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
 
-	//-----------------
+//-----------------
 
 	InitTarget();
 
-	//-----------------
+//-----------------
 
 	for (i = 0; i < MAX_LED_PINS; i++) {
 		InitPin(&LEDPins[i]);
@@ -884,7 +880,7 @@ void InitHarness(void) {
 	if (PWMPins[Aux2Sel].Used)
 		DigitalWrite(&PWMPins[Aux2Sel].P, false);
 
-	// Drives/Servos
+// Drives/Servos
 	for (i = 0; i < MAX_PWM_OUTPUTS; i++) { // switch off all (potential) motor output pins
 		InitOutputPin(&PWMPins[i]);
 		if (PWMPins[i].Used)
@@ -899,7 +895,7 @@ void InitHarness(void) {
 	InitRC();
 	InitCPPMPin();
 
-	// I2C/SPI
+// I2C/SPI
 	for (i = 0; i < maxDevSel; i++)
 		if (busDev[i].Used)
 			if (busDev[i].useSPI) {
@@ -911,8 +907,6 @@ void InitHarness(void) {
 
 	InitAnalogPorts();
 	Delay1mS(10);
-
-
 
 } // InitHarness
 

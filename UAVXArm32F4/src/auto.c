@@ -496,6 +496,9 @@ void DoNavigation(void) {
 		}
 	} else { // PIC
 
+		//if (F.ReturnHome)
+		//	DoForcedLanding();
+		//else
 		F.ForcedLanding = false;
 		AlarmState = NoAlarms;
 

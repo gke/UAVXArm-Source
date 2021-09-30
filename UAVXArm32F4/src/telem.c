@@ -639,7 +639,7 @@ void SendRCChannelsPacket(uint8 s) {
 
 	TxESCu8(s, UAVXRCChannelsPacketTag);
 	TxESCu8(s, 12 * 2 + 2 + 1);
-	TxESCi16(s, RCFrameIntervaluS);
+	TxESCi16(s, Limit(RCFrameIntervaluS, 0, 32767));
 	TxESCu8(s, DiscoveredRCChannels);
 	for (c = 0; c < RC_MAX_GUI_CHANNELS; c++)
 		TxESCi16(s, RC[c] * 1000.0f + 1000.0f);
@@ -664,30 +664,23 @@ void SendExecutionTimeStatus(uint8 s) {
 
 } // SendExecutionTimeStatus
 
-void SendLinkStats(uint8 s) {
+void SendRCLinkStats(uint8 s) {
 
 	SendPacketHeader(s);
 
 	TxESCu8(s, UAVXLinkStatsPacketTag);
-	TxESCu8(s, 11);
+	TxESCu8(s, 8);
 
-	//lqTrackerGet();
+	TxESCi8(s, TrackerGet(&lqTracker));
+	TxESCi8(s, TrackerGet(&snrTracker));
+	TxESCi16(s, TrackerGet(&rssiTracker));
 
-	TxESCu8(s, rcLinkStats.uplinkRSSIAnt1);
-	TxESCu8(s, rcLinkStats.uplinkRSSIAnt2);
-	TxESCu8(s, rcLinkStats.uplinkLQ);
-	TxESCi8(s, rcLinkStats.uplinkSNR);
-	TxESCu8(s, rcLinkStats.activeAntenna);
-	TxESCu8(s, rcLinkStats.rfMode);
-	TxESCu8(s, rcLinkStats.uplinkTXPower);
-	TxESCu8(s, rcLinkStats.downlinkRSSI);
-	TxESCu8(s, rcLinkStats.downlinkLQ);
-	TxESCi8(s, rcLinkStats.downlinkSNR);
-	TxESCu8(s, rcLinkStats.activeAnt);
+	TxESCi16(s, Limit(RCSignalLosses, 0, 32767));
+	TxESCi16(s, Limit(RCFailsafes, 0, 32767));
 
 	SendPacketTrailer(s);
 
-} // SendLinkStats
+} // SendRCLinkStats
 
 void SendSerialPortStatus(uint8 s) {
 	int16 Entries;
@@ -1225,8 +1218,7 @@ void SendUAVXTelemetry(uint8 s) {
 			//if (F.WindEstValid)
 			//	SendWindPacket(s); // 2+10
 			SendRCChannelsPacket(s); // 27 -> 105
-			if (CurrRxType == CRSFRx)
-				SendLinkStats(s);
+			SendRCLinkStats(s);
 		} else {
 			if (CurrGPSType != NoGPS)
 				SendNavPacket(s); // 2+54+4 = 60

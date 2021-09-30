@@ -151,7 +151,6 @@ int main() {
 
 	InitNVMem();
 
-
 	InitTemperature(); // 0.0003mS
 
 	InitEmulation();
@@ -176,26 +175,20 @@ int main() {
 	FirstPass = true;
 	State = Preflight;
 
-#if defined(DEBUG_CRSF)
-
-	LEDsOff();
-	while (true) {
-
-		UpdateControls();
-		LEDToggle(ledBlueSel);
-	};
-
-#endif
-
 	while (true) {
 
 		if (UAVXAirframe == Instrumentation) {
 			F.Signal = true;
+			RCFailsafe = RCSignalLost = false;
 			StickThrottle = 0.0f;
 			RCStart = 0;
 			//F.ThrottleOpen = F.Navigate = F.ReturnHome = false;
-		} else
+		} else {
+			if (SerialPorts[RCSerial].DMAUsed)
+				while (SerialAvailable(RCSerial))
+					RCUSARTISR(RxChar(RCSerial));
 			UpdateControls(); // avoid loop sync delay
+		}
 
 		if (uSTimeout(CycleUpdateuS)) {
 			uSTimer(CycleUpdateuS, CurrPIDCycleuS);
