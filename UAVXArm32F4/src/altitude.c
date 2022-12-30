@@ -591,26 +591,21 @@ void InitRangefinder(void) {
 
 void SetDesiredAltitude(real32 Desired) {
 
-	DesiredAlt = Desired;
+	Alt.P.Desired = DesiredAlt = Desired;
 	Alt.P.IntE = Alt.R.IntE = Sl = 0.0f;
 } //SetDesiredAltitude
 
-void CaptureDesiredAltitude(real32 Desired) {
-
-	Alt.P.Desired = Desired;
-	SetDesiredAltitude(Desired);
-} //SetDesiredAltitude
 
 void CheckForRFSensor(real32 SensorAltitude) {
 
 	if (F.UsingRangefinderAlt) {
 		if (F.HoldingAlt && !WasUsingRF) {
-			CaptureDesiredAltitude(RangefinderAltitude);
+			SetDesiredAltitude(RangefinderAltitude);
 			WasUsingRF = true;
 		}
 		Altitude = RangefinderAltitude;
 	} else if (F.HoldingAlt && WasUsingRF) {
-		CaptureDesiredAltitude(Altitude);
+		SetDesiredAltitude(Altitude);
 		WasUsingRF = false;
 	}
 
@@ -649,13 +644,15 @@ void UpdateAltitudeEstimates(void) {
 		UpdateBaroVariance(RawDensityAltitude);
 		UpdateAccUVariance(AccU);
 
-		Altitude = KFDensityAltitude - OriginAltitude;
-		ROC = KFROC;
 		AltitudeKF(RawDensityAltitude, AccU, AltdT);
 
+#ifdef USE_BARO_ALT
+		Altitude = DensityAltitude;
+		ROC = BaroROC;
+#else
 		Altitude = KFDensityAltitude - OriginAltitude;
 		ROC = KFROC;
-
+#endif
 		CheckForRFSensor(Altitude);
 
 		ROCTrack = LPFn(&ROCTrackLPF, ROC, AltdT); // used for landing and cruise throttle tracking

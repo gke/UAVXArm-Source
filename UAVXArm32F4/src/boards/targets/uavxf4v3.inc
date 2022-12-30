@@ -106,7 +106,7 @@ const DevDef busDev[maxDevSel] = {	//imuSel,baroSel,magSel,memSel,gpsSel,rfSel,a
 #if defined(USE_ARM_BLACKBOX_FLASH)
 		{ false, memSel, ArmFlashMem,}, // does not use either SPI or I2C
 #else
-		{ false, memSel, i2cEEPROMMem, false, 2, EEPROM_ID, },//
+		{ true, memSel, i2cEEPROMMem, false, 2, EEPROM_ID, },//
 #endif
 		{ false, gpsSel, }, //
 		{ false, rfSel, }, //
@@ -132,6 +132,7 @@ const uint8 MagQuadrant = 0;
 const uint8 currGimbalType = noGimbal;
 const boolean ledsLowOn = false;
 const boolean beeperLowOn = true;
+const uint8 CurrBattVoltsAnalogSel = BattVoltsAnalogSel;
 uint8 CurrMagSel = magSel;
 
 
@@ -142,6 +143,7 @@ void InitTarget(void) {
 	TelemetrySerial = Usart1;
 	InitSerialPort(TelemetrySerial, true);
 
+	// DECISION: Usart2 can be GPS or Serial RC only so if you want GPS then you have to use CPPM
 	switch (CurrRxType) {
 	case CPPMRx:
 		F.HaveSerialRC = false;

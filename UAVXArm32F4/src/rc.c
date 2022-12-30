@@ -20,6 +20,8 @@
 
 #include "UAVX.h"
 
+real32 RCdT;
+
 // Spektrum
 
 boolean SpekHiRes = false;
@@ -92,7 +94,6 @@ real32 ThrottleMovingWindow;
 real32 CurrMaxRollPitchStick;
 int8 RCStart;
 timemS NextNavSwUpdatemS = 0;
-real32 AHThrottle, AHThrottleWindow;
 
 uint8 CurrRxType = UnknownRx;
 
@@ -731,7 +732,7 @@ void CheckThrottleMoved(void) {
 	real32 t;
 
 	if (mSTimeout(ThrottleUpdatemS)) {
-		mSTimer(ThrottleUpdatemS, AH_THR_UPDATE_MS);
+		mSTimer(ThrottleUpdatemS, THR_UPDATE_MS);
 		t = StickThrottle - StickThrottleP;
 		F.ThrottleMoving = (Abs(t) > ThrottleMovingWindow);
 		StickThrottleP = StickThrottle;
@@ -801,20 +802,10 @@ void UpdateControls(void) {
 								NavQualificationRC);
 				EnableWPNav();
 			} else {
-
-#if defined(PRE_20210828)
-				TxSwitchArmed = ActiveAndTriggered(0.2f, NavQualificationRC);
-				Nav.Sensitivity = 0.5f;
-				F.AltControlEnabled = F.AltControlEnabled
-				&& ActiveAndTriggered(0.45f, NavQualificationRC);
-				WPNavEnabled = ActiveAndTriggered(0.7f, NavQualificationRC);
-#else
 				TxSwitchArmed = ActiveAndTriggered(0.1f, NavQualificationRC);
 				WPNavEnabled = true; //ActiveAndTriggered(0.2f, NavQualificationRC);
 				Nav.Sensitivity = Limit(RC[NavQualificationRC] - 0.1f, 0.0f,
 						1.0f);
-#endif
-
 			}
 		else {
 			TxSwitchArmed = false;

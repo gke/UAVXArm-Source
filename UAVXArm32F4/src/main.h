@@ -134,7 +134,7 @@ typedef volatile union {
 				OffsetOriginValid :1,
 				DrivesArmed :1,
 				AccUBump :1,
-				Unused3_7 :1,
+				DCMotorsDetected :1,
 
 				// 4
 				Saturation :1,

@@ -95,7 +95,8 @@ void MixAndLimitCam(void) {
 void DoVTOLMix(void) {
 	real32 TempThrottle, TempElevator, TempRudder;
 
-	TempThrottle = (F.PassThru) ? DesiredThrottle : DesiredThrottle + AltHoldThrComp;
+	TempThrottle =
+			(F.PassThru) ? DesiredThrottle : DesiredThrottle + AltHoldThrComp;
 	NetThrottle = TempThrottle = Limit(TempThrottle * OUT_MAXIMUM, 0.0f, 1.0f);
 
 	if (VTOLMode) {
@@ -712,7 +713,8 @@ void DoMix(void) {
 	if (F.PassThru) // do here at lowest level rather than complicating higher level logic
 		TempThrottle = DesiredThrottle;
 	else
-		TempThrottle = ThrottleSuppressed ? 0.0f : DesiredThrottle + AltHoldThrComp;
+		TempThrottle =
+				ThrottleSuppressed ? 0.0f : DesiredThrottle + AltHoldThrComp;
 
 	NetThrottle = PW[RightThrottleC] = PW[LeftThrottleC] = Limit(
 			TempThrottle * OUT_MAXIMUM, 0.0f, 1.0f);
@@ -730,7 +732,8 @@ void DoMix(void) {
 		PW[RightThrottleC] += Rl;
 
 		PW[LeftTiltServoC] = PWSense[LeftTiltServoC] * (Pl + Yl) + OUT_NEUTRAL;
-		PW[RightTiltServoC] = PWSense[RightTiltServoC] * (-Pl - Yl) + OUT_NEUTRAL;
+		PW[RightTiltServoC] = PWSense[RightTiltServoC]
+				* (-Pl - Yl)+ OUT_NEUTRAL;
 
 		break;
 	case ElevonAF:
@@ -741,9 +744,9 @@ void DoMix(void) {
 			TempElevator = PWSense[ElevatorC] * Pl;
 			// assume servos are opposite hand
 			PW[RightElevonC] = PWSense[RightElevonC]
-					* (TempElevator + Yl) + OUT_NEUTRAL;
+					* (TempElevator + Yl)+ OUT_NEUTRAL;
 			PW[LeftElevonC] = PWSense[LeftElevonC]
-					* (-TempElevator + Yl) + OUT_NEUTRAL;
+					* (-TempElevator + Yl)+ OUT_NEUTRAL;
 		} else {
 			PW[RudderC] = -PWSense[RudderC] * Yl + OUT_NEUTRAL;
 
@@ -751,9 +754,9 @@ void DoMix(void) {
 					* (F.PassThru ? Pl : (Pl + FWRollPitchFFFrac * Abs(Rl)));
 			// assume servos are opposite hand
 			PW[RightElevonC] = PWSense[RightElevonC]
-					* (TempElevator + Rl) + OUT_NEUTRAL;
+					* (TempElevator + Rl)+ OUT_NEUTRAL;
 			PW[LeftElevonC] = PWSense[LeftElevonC]
-					* (-TempElevator + Rl) + OUT_NEUTRAL;
+					* (-TempElevator + Rl)+ OUT_NEUTRAL;
 		}
 		// assume servos are opposite hand
 		PW[SpoilerC] = PWSense[SpoilerC] * Sl;
@@ -809,9 +812,9 @@ void DoMix(void) {
 
 		TempElevator = (F.PassThru ? Pl : (Pl + FWRollPitchFFFrac * Abs(Rl)));
 		PW[RightRudderElevatorC] = PWSense[RightRudderElevatorC]
-				* TempElevator + OUT_NEUTRAL;
+				* TempElevator+ OUT_NEUTRAL;
 		PW[LeftRudderElevatorC] = -PWSense[LeftRudderElevatorC]
-				* TempElevator + OUT_NEUTRAL;
+				* TempElevator+ OUT_NEUTRAL;
 
 		PW[RightRudderElevatorC] -= Yl;
 		PW[LeftRudderElevatorC] -= Yl;
@@ -937,7 +940,7 @@ real32 MaxMotorSwing(void) {
 	return (DemandSwing);
 } // MaxMotorSwing
 
-void RescaledMultiMix(real32 CurrThrottlePW) {
+void RescaledMultiMix_OLD(real32 CurrThrottlePW) {
 #define	MIN_PRESERVED_YAW_PW FromPercent(10)
 	idx m;
 	real32 Scale, DemandSwing, AvailableSwing, TempYl;
@@ -969,15 +972,15 @@ void RescaledMultiMix(real32 CurrThrottlePW) {
 } // RescaledMultiMix
 
 void DoMulticopterMix(void) {
-	real32 CurrThrottlePW, AvailableSwing, MinThrottle;
+	real32 CurrThrottlePW, AvailableYawSwing, MinThrottle;
 	idx m;
 
 	RotateOrientation(&Rl, &Pl, Rl, Pl);
 
-	CurrThrottlePW =(
+	CurrThrottlePW = (
 			(State == InFlight) ?
-					(DesiredThrottle + AltHoldThrComp)
-							* TiltThrFFComp * BattThrFFComp:
+					(DesiredThrottle + AltHoldThrComp) * TiltThrFFComp
+							* BattThrFFComp :
 					DesiredThrottle) * OUT_MAXIMUM;
 
 	CurrThrottlePW = Limit(CurrThrottlePW, IdleThrottlePW, OUT_MAXIMUM);
@@ -987,11 +990,14 @@ void DoMulticopterMix(void) {
 		for (m = 0; m < NoOfDrives; m++)
 			PW[m] = PWp[m] = 0;
 	} else {
-		F.EnforceDriveSymmetry = false; //TODO: BROKEN at low throttle - maybe try yaw preserve?;
-		if (F.EnforceDriveSymmetry)
-			RescaledMultiMix(CurrThrottlePW);
-		else
-			MixMulti();
+		F.EnforceDriveSymmetry = true; //TODO: BROKEN at low throttle - maybe try yaw preserve?;
+		if (F.EnforceDriveSymmetry) {
+			AvailableYawSwing = Min(OUT_MAXIMUM - CurrThrottlePW,
+					CurrThrottlePW - THR_START_PW) * 0.6f;
+			Yl = Limit1(Yl, AvailableYawSwing);
+		}
+
+		MixMulti();
 
 		MinThrottle = (State == InFlight) ? IdleThrottlePW : 0.0f;
 		for (m = 0; m < NoOfDrives; m++)

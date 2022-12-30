@@ -44,6 +44,8 @@
 
 //#define KF_TESTING
 
+//#define USE_BARO_ALT
+
 //#define USE_SPI_ESC  // place holder instead of stupid DSHOT disaster
 
 //#define ALT_KF_TESTING  // different altitude filtering schemes

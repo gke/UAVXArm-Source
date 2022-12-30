@@ -20,7 +20,7 @@
 
 #include "UAVX.h"
 
-const real32 EmulatedWind[2] = { 1.0f, 1.0f };
+const real32 EmulatedWind[2] = { 0.0f, 0.0f };
 
 #define HR_GPS
 
@@ -202,7 +202,7 @@ void DoEmulation(void) {
 		for (a = Pitch; a <= Yaw; a++)
 			Aircraft[a].Vel = Aircraft[a].Acc = GPS.C[a].Vel = Rate[a] =
 					Acc[a] = Angle[a] = A[a].Out = 0.0f;
-		Altitude = FakeROC = FakeAccZ = 0.0f;
+		FakeAltitude = Altitude = FakeROC = FakeAccZ = 0.0f;
 	}
 
 } // DoEmulation

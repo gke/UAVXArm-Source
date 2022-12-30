@@ -76,7 +76,7 @@ AltStruct Alt;
 
 void DetermineInFlightThrottle(void);
 void ResetHeading(void);
-void DoAltitudeControl(void);
+void ControlAltitude(void);
 void ZeroIntegrators(void);
 void DoSetPointSlews(void);
 real32 ComputeRateDerivative(PIDStruct *C);
@@ -105,8 +105,9 @@ extern real32 OrientationRad, OrientS, OrientC;
 extern real32 FWRollPitchFFFrac, FWAileronDifferentialFrac,
 		FWPitchThrottleFFFrac, FWMaxClimbAngleRad, FWClimbThrottleFrac,
 		MaxRollAngleRad, FWGlideAngleOffsetRad, FWBoardPitchAngleRad,
-		FWSpoilerDecayS, FWAileronRudderFFFrac,
-		FWAltSpoilerFFFrac, VRSDescentRateMPS, FWRollControlPitchLimitRad;
+		FWSpoilerDecayPS, FWAileronRudderFFFrac,
+		FWAltSpoilerFFFrac, VRSDescentRateMPS, FWRollControlPitchLimitRad,
+		AltHoldThrCompDecayPS;
 extern real32 MaxAttitudeGainReduction;
 extern real32 GS;
 extern boolean AltHoldAlarmActive;

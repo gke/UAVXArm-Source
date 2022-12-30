@@ -95,10 +95,13 @@ void DumpBlackBox(uint8 s) {
 		}
 
 		do {
+
 			ReadBlockNVMem(a, NVMemBlockSize, NVMemBuffer);
+
 			Finish = true;
 			for (i = 0; i < NVMemBlockSize; i++)
 				Finish &= NVMemBuffer[i] == -1;
+
 			if (!Finish) {
 				if (NVMemBlockSize > 128) {
 					SendBBPacket(s, seqNo++, 128, &NVMemBuffer[0]);

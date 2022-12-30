@@ -57,11 +57,13 @@ void InitMisc(void) {
 		memset(&Angle[i], 0, sizeof(Angle[0]));
 	}
 
-	DesiredThrottle = StickThrottle = AHThrottle = 0.0f;
+	DesiredThrottle = StickThrottle = 0.0f;
 	InitialThrottle = ThrNeutral = ThrLow = ThrHigh = 1.0f;
 	IdleThrottle = FromPercent(10);
 
 	execPeakTimeuS = 0;
+
+	F.DCMotorsDetected = CheckDCMotor();
 
 	GyrosErected = false;
 	State = Preflight;
@@ -366,12 +368,9 @@ int main() {
 				break;
 			case Landing:
 
-				if (StickThrottle > IdleThrottle) {
-					DesiredThrottle = 0.0f;
-
+				if ((StickThrottle + AltHoldThrComp) > IdleThrottle)
 					State = InFlight;
-
-				} else {
+				else {
 					if (mSTimeout(ThrottleIdleTimeoutmS)) {
 						DesiredThrottle = 0.0f;
 
@@ -420,7 +419,7 @@ int main() {
 										&& !Armed()))) {
 
 					ResetMainTimeouts();
-					mSTimer(ThrottleIdleTimeoutmS, 500); //THR_LOW_DELAY_MS);
+					mSTimer(ThrottleIdleTimeoutmS, THR_LOW_DELAY_MS);
 
 					LEDsOffExcept(ledGreenSel);
 
@@ -438,7 +437,7 @@ int main() {
 								Abs(Rate[X]) + Abs(Rate[Y]) + Abs(Rate[Z]));
 						RateEnergySamples++;
 
-						DoAltitudeControl();
+						ControlAltitude();
 						if (DisablingLEDsInFlight)
 							LEDsOff();
 						else {

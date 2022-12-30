@@ -73,13 +73,13 @@ const AnalogPinDef AnalogPins[MAX_ANALOG_CHANNELS] = {
 };
 
 const SerialPortDef SerialPorts[MAX_SERIAL_PORTS] = { // Tx, Rx
-	{false, }, // mapped to USBSerial
-	{true, USART1, PA9, PA10, 115200, true, false, USART1Config},
-	{true, USART2, PA2, PA3, 115200, true, false, USART2Config},
-	{true, USART3, PB10, PB11, 115200, true, false, USART3Config},
-	{false, UART4, PB10, PB11, 115200, true, false, UART4Config},
-	{true, 0 } // SoftSerial
-};
+		{ false, }, // mapped to USBSerial
+		{ true, USART1, PA9, PA10, 115200, USART_Parity_No, USART_StopBits_2, false, USART1Config }, //
+		{ true, USART2, PA2, PA3, 115200, USART_Parity_No, USART_StopBits_2, false, USART2Config }, //
+		{ false, USART3, PB10, PB11, 115200, USART_Parity_No, USART_StopBits_2, false, USART3Config },//
+		{ false, UART4,  }, //
+		{ true, 0 } // SoftSerial
+		};
 
 const I2CPortDef I2CPorts[MAX_I2C_PORTS] = {
 	{false, 0, }, // notionally I2C0
@@ -129,12 +129,13 @@ const uint8 MagQuadrant = 0;
 const uint8 currGimbalType = noGimbal;
 const boolean ledsLowOn = false;
 const boolean beeperLowOn = true;
+const uint8 CurrBattVoltsAnalogSel = ExternalVoltsAnalogSel;
 uint8 CurrMagSel = magSel;
 
 void InitTarget(void) {
 
 	TelemetrySerial = Usart1;
-	InitSerialPort(TelemetrySerial, true, false);
+	InitSerialPort(TelemetrySerial, true);
 
 	switch (CurrRxType) {
 	case CPPMRx:
@@ -144,17 +145,17 @@ void InitTarget(void) {
 	default:
 		CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 10;
 		F.HaveSerialRC = true;
-		RCSerial = Usart2;
-		InitSerialPort(RCSerial, false, CurrRxType == FutabaSBusRx);
+		RCSerial = Usart3;
+		InitSerialPort(RCSerial, false);
 		break;
 	} // switch
 	
 	F.HaveGPS = CurrGPSType != NoGPS;
-    GPSSerial = Usart3;
-	InitSerialPort(GPSSerial, false, false);
+    GPSSerial = Usart2;
+	InitSerialPort(GPSSerial, false);
 			
 	FrSkySerial = SoftSerial;
-	InitSerialPort(FrSkySerial, true, false);
+	InitSerialPort(FrSkySerial, true);
 
 } // uavxf4v4Init
 #endif

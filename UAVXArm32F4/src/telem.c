@@ -313,7 +313,7 @@ void SendFlightPacket(uint8 s) {
 	TxESCi16(s, CruiseThrottle * 1000.0f);
 
 	TxESCi16(s, RangefinderAltitude * 100.0f); // cm
-	TxESCi24(s, Alt.P.Desired * 100.0f);
+	TxESCi24(s, DesiredAlt * 100.0f);
 
 	TxESCi16(s, Heading * 1000.0f);
 	TxESCi16(s, DesiredHeading * 1000.0f);
@@ -467,7 +467,7 @@ void SendAltitudeControlPacket(uint8 s) {
 		TxESCi16(s, (RawDensityAltitude - OriginAltitude) * 100.0f); // raw sensor value
 		TxESCi16(s, (KFDensityAltitude - OriginAltitude) * 100.0f);
 
-		TxESCi16(s, Alt.P.Desired * 100.0f);
+		TxESCi16(s, DesiredAlt * 100.0f);
 
 		TxESCi16(s, BaroROC * 1000.0f);
 		TxESCi16(s, KFROC * 1000.0f);
@@ -789,7 +789,7 @@ void SendMinimOSDPacket(uint8 s) {
 	TxESCi16(s, RadiansToDegrees(Angle[Pitch]));
 
 	TxESCi24(s, Altitude * 100.0f);
-	TxESCi24(s, Alt.P.Desired * 100.0f);
+	TxESCi24(s, DesiredAlt * 100.0f);
 	TxESCi16(s, ROC * 100.0f);
 
 	TxESCi16(s, GPS.gspeed * 10.0f);
@@ -1244,7 +1244,6 @@ void CheckTelemetry(uint8 s) {
 			BlackBoxEnabled = true;
 			SendUAVXTelemetry(s);
 			BlackBoxEnabled = false;
-
 		}
 	} else
 		SendUAVXTelemetry(s);

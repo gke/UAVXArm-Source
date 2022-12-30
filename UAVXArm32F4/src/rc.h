@@ -199,7 +199,6 @@ extern real32 ThrottleMovingWindow;
 extern uint8 NoOfControls;
 extern int8 RCStart;
 extern timemS NextNavSwUpdatemS;
-extern real32 AHThrottle, AHThrottleWindow;
 
 extern uint8 CurrRxType;
 extern uint16 LostFrameCount;

@@ -141,8 +141,8 @@
 
 #define RC_MOVEMENT_STICK FromPercent(1) // minimum to be recognised as a stick input change without triggering failsafe
 
-#define AH_THR_UPDATE_S 0.25f // was 1000 // checking interval  if throttle has moved outside AH tracking window
-#define AH_THR_UPDATE_MS ((timemS)(AH_THR_UPDATE_S * 1000.0f))
+#define THR_UPDATE_MS 250
+#define THR_UPDATE_S ((real32)THR_UPDATE_MS*0.001f)
 
 #define NAV_SENS_ALT_THRESHOLD_STICK FromPercent(10)// Altitude hold disabled if Ch7 is less than this
 #define ATTITUDE_HOLD_LIMIT_STICK FromPercent(20) // dead zone for roll/pitch stick for position hold
@@ -310,7 +310,7 @@ enum Params { // MAX 128
 	AltVelIntLimit, // 67
 	FWMaxClimbAngle, // 68
 	NavMaxAngle, // 69
-	FWSpoilerDecayTime, // 70
+	FWSpoilerDecayPercentPS, // 70
 	FWAileronDifferential, // 71
 	ASSensorType, // 72,
 	KFAccUBiasVar, // 73,
@@ -320,7 +320,7 @@ enum Params { // MAX 128
 	MaxRollAngle, // 77
 	YawLPFHz, // 78
 	NavHeadingTurnout, // 79
-	Unused80, // 80
+	AltHoldThrCompDecayPercentPS, // 80
 	MinhAcc, // 81
 	FWBoardPitchAngle, // 82,
 	MaxRollRate, // 83
@@ -411,7 +411,7 @@ extern boolean IsMulticopter, IsGroundVehicle, UsingBatteryComp, UsingNavBeep, U
 		UsingCruiseCentering, UsingGliderStrategy, DisablingLEDsInFlight;
 extern uint8 CurrMotorStopSel;
 
-extern real32 AltHoldThrCompDecayS;
+extern real32 AltHoldThrCompDecayPS;
 extern boolean UseFastStart;
 
 extern ConfigStruct Config;

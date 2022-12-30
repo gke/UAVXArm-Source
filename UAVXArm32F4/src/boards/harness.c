@@ -29,12 +29,10 @@ boolean DigitalRead(const ConnectDef * d) {
 } // DigitalRead
 
 void DigitalWrite(const ConnectDef * d, boolean m) {
-
 	if (m)
 		d->Port->BSRRL = d->Pin;
 	else
 		d->Port->BSRRH = d->Pin;
-
 } // DigitalWrite
 
 void DigitalToggle(const ConnectDef * d) {
@@ -780,6 +778,15 @@ void CheckBusDev(void) {
 		Catastrophe();
 	}
 } // CheckBusDev
+
+boolean CheckDCMotor(void) { // do in this in harness
+
+	InitPinMode(&PWMPins[0], true);
+
+	Delay1uS(10);  // allow configuration to settle
+
+	return (!DigitalRead(&PWMPins[0].P));
+} // CheckDCMotors
 
 void InitHarness(void) {
 	GPIO_InitTypeDef GPIO_InitStructure;

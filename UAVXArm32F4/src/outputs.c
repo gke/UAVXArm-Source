@@ -276,7 +276,7 @@ void InitDrives(void) {
 
 	F.DrivesArmed = false;
 
-	UsingDCMotors = (CurrESCType == DCMotors);
+	UsingDCMotors = (CurrESCType == DCMotors); // && F.DCMotorsDetected;
 
 	NoOfDrives = Limit(DrivesUsed[UAVXAirframe], 0, CurrMaxPWMOutputs);
 	NoOfDrivesR = 1.0f / NoOfDrives;

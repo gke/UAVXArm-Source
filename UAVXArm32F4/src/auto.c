@@ -77,7 +77,7 @@ boolean DoLanding(void) {
 
 	HasLanded = false;
 
-	Alt.P.Desired = -100.0f; // TODO: redundant?
+	SetDesiredAltitude(-100.0f); // TODO: redundant?
 
 	switch (LandingState) {
 	case InitDescent:
@@ -223,7 +223,7 @@ void InitiatePH(void) {
 
 	// resume mission if PH released? CurrWPNo = 0;
 	if (!F.HoldingAlt)
-		CaptureDesiredAltitude(Altitude);
+		SetDesiredAltitude(Altitude);
 
 	CapturePosition();
 	DesiredHeading = Heading;
@@ -275,8 +275,8 @@ void UpdateRTHSwState(void) { // called in rc.c on every rx packet
 
 		F.ForcedLanding = F.Navigate = F.ReturnHome = F.AltControlEnabled =
 				F.HoldingAlt = F.Glide = F.FenceAlarm = false;
-		CaptureDesiredAltitude(Altitude);
-		AltHoldThrComp = 0.0f;
+		SetDesiredAltitude(Altitude);
+		AltHoldThrComp = 0.0f; // no decay
 		ZeroNavCorrections();
 
 		if (F.OriginValid)
@@ -382,7 +382,7 @@ void DoNavigation(void) {
 
 				if ((F.AltControlEnabled && F.UsingRTHAutoDescend)
 						&& mSTimeout(NavStateTimeoutmS)) {
-					F.RapidDescentHazard = false;
+//F.RapidDescentHazard = false;
 					if (F.IsFixedWing) {
 						// just orbit
 					} else {

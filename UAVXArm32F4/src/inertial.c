@@ -22,7 +22,7 @@
 
 real32 dT, dTR, dTOn2, dTROn2;
 timeuS LastInertialUpdateuS = 0;
-real32 AccConfidenceSDevR = 5.0f;
+real32 AccConfidenceSDevR = 1.0f/0.2f;
 real32 AccConfidence;
 real32 AccU = 0.0f;
 
@@ -67,8 +67,8 @@ real32 CalculateAccConfidence(real32 AccMag) {
 //
 //=====================================================================================================
 
-real32 KpAccBase = 2.0f; // was 5.0f
-real32 KpAcc, KpAcc2;
+real32 TwoKpAccBase = 2.0f; // was 5.0f
+real32 TwoKpAcc, TwoKpAcc2;
 real32 KiAccBase = 0.0f; // no integral term
 real32 KiAcc, KpMag;
 
@@ -254,7 +254,7 @@ void MadgwickUpdate(real32 gx, real32 gy, real32 gz, real32 ax, real32 ay,
 
 	AccMag = sqrtf(Sqr(ax) + Sqr(ay) + Sqr(az));
 	AccConfidence = CalculateAccConfidence(AccMag);
-	KpAcc = KpAccBase * (State == InFlight ? AccConfidence : 15.0f);
+	TwoKpAcc = TwoKpAccBase * (State == InFlight ? AccConfidence : 15.0f);
 
 	// renormalise to attempt to remove a little acc vibration noise
 	normR = 1.0f / AccMag;
@@ -262,9 +262,9 @@ void MadgwickUpdate(real32 gx, real32 gy, real32 gz, real32 ax, real32 ay,
 	ay *= normR;
 	az *= normR;
 
-	gx += (vy * az - vz * ay) * KpAcc;
-	gy += (vz * ax - vx * az) * KpAcc;
-	gz += (vx * ay - vy * ax) * KpAcc;
+	gx += (vy * az - vz * ay) * TwoKpAcc;
+	gy += (vz * ax - vx * az) * TwoKpAcc;
+	gz += (vx * ay - vy * ax) * TwoKpAcc;
 
 	if (F.NewMagValues && !F.MagnetometerFailure) { // no compensation for latency
 		F.NewMagValues = false;
@@ -337,7 +337,7 @@ void TrackPitchAttitude(void) {
 void UpdateInertial(void) {
 	idx a;
 
-	if (F.Emulation && (State == InFlight))
+	if ((F.Emulation) && (State == InFlight))
 		DoEmulation(); // produces Accs, ROC, Altitude etc.
 	else {
 		ReadFilteredGyroAndAcc();

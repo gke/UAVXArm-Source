@@ -103,7 +103,7 @@ void CheckBatteries(void) {
 		} else {
 			RawBatteryCurrent = (analogRead(BattCurrentAnalogSel)
 					- BatteryCurrentADCZero) * CurrentScale;
-			RawBatteryVolts = analogRead(BattVoltsAnalogSel) * VoltageScale;
+			RawBatteryVolts = analogRead(CurrBattVoltsAnalogSel) * VoltageScale;
 		}
 
 		CalcBatThrFFComp(RawBatteryVolts, BattdT);
@@ -141,13 +141,13 @@ void InitBattery(void) {
 		StartupVolts = BatteryVolts = 12.6f;
 	} else {
 
-		StartupVolts = analogRead(BattVoltsAnalogSel) * VoltageScale;
+		StartupVolts = analogRead(CurrBattVoltsAnalogSel) * VoltageScale;
 		BatteryCurrentADCZero = analogRead(BattCurrentAnalogSel);
 
 		for (i = 0; i < 200; i++) {
 			Delay1mS(5);
 			StartupVolts = SlewLimit(StartupVolts,
-					analogRead(BattVoltsAnalogSel) * VoltageScale, 2.0f,
+					analogRead(CurrBattVoltsAnalogSel) * VoltageScale, 2.0f,
 					0.005f);
 			BatteryCurrentADCZero = SlewLimit(BatteryCurrentADCZero,
 					analogRead(BattCurrentAnalogSel), 200.0f, 0.005f);

@@ -45,7 +45,7 @@ void UpdateAccUBias(real32 AccU);
 extern const char * IMUName[];
 
 extern real32 AccConfidenceSDevR, AccConfidence;
-extern real32 KpAccBase, KpMag;
+extern real32 TwoKpAccBase, KpMag;
 
 extern HistStruct AccUF;
 extern real32 AccU;

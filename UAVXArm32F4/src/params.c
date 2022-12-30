@@ -325,8 +325,6 @@ void UpdateParameters(void) {
 		//CruiseThrottleTrackingRate
 		//		= FromPercent(LimitP(CruiseTrackingRate, 1, 100) * 0.01f);
 
-		AHThrottle = CruiseThrottle;
-
 		// Attitude
 
 		FWStickScaleFrac = FromPercent(
@@ -337,10 +335,10 @@ void UpdateParameters(void) {
 
 		StickDeadZone = FromPercent(LimitP(StickHysteresis, 1, 5));
 
-		KpAccBase = P(MadgwickKpAcc) * 0.1f;
-		KpMag = P(MadgwickKpMag) * 0.01f;
+		AccConfidenceSDevR = 1.0f / (LimitP(AccConfSD, 1, 127) * 0.01f);
 
-		AccConfidenceSDevR = 1.0f / FromPercent(LimitP(AccConfSD, 1, 100));
+		TwoKpAccBase = P(MadgwickKpAcc) * 0.01f * 2.0f;
+		KpMag = P(MadgwickKpMag) * 0.01f;
 
 		FWAileronDifferentialFrac = FromPercent(P(FWAileronDifferential));
 		FWRollPitchFFFrac = -FromPercent(P(FWRollPitchFF));
@@ -363,13 +361,14 @@ void UpdateParameters(void) {
 
 		FWAileronRudderFFFrac = FromPercent(P(FWAileronRudderMix));
 		FWAltSpoilerFFFrac = FromPercent(P(FWAltSpoilerFF));
-		FWSpoilerDecayS = P(FWSpoilerDecayTime) * 0.1f;
 
-		AHThrottleWindow = FromPercent(
-				(real32) (LimitP(AHThrottleMovingTrigger, 1, 100)) * 0.1f);
-		ThrottleMovingWindow = AHThrottleWindow * AH_THR_UPDATE_S;
-		AltitudeHoldROCWindow = (timemS) LimitP(AHROCWindowMPS, 15, 200)
-				* 0.01f;
+		FWSpoilerDecayPS = FromPercent((real32)LimitP(FWSpoilerDecayPercentPS, 10, 50) * 0.1f);
+
+		AltHoldThrCompDecayPS = FromPercent((real32)LimitP(AltHoldThrCompDecayPercentPS, 10, 200) * 0.1f );
+
+		ThrottleMovingWindow = FromPercent(P(AHThrottleMovingTrigger)) * THR_UPDATE_S;
+
+		AltitudeHoldROCWindow = (timemS) LimitP(AHROCWindowMPS, 15, 200) * 0.01f;
 
 		// Nav
 		NavGPSTimeoutmS = 3000.0f; // (timemS) LimitP(NavGPSTimeoutS, 2, 30) * 1000;

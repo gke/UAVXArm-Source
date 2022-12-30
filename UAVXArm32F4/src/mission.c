@@ -90,8 +90,10 @@ void CheckFence(void) {
 
 void ClearNavMission(void) {
 
-	Config.Mission.NoOfWayPoints = 0;
+	memset(&Config.Mission, 0, sizeof(MissionStruct));
+
 	Config.Mission.FenceRadius = NAV_DEFAULT_FENCE_M;
+
 	noofFenceSegments = 0;
 
 } // ClearMission
@@ -321,7 +323,9 @@ void UpdateNavMission(void) {
 
 		memset(&NewNavMission, 0, sizeof(MissionStruct));
 
-		NavMissionUpdated = true;
+		NavMissionUpdated = ConfigChanged = true;
+
+		RefreshConfig();
 	}
 
 } // DoNavMissionUpdate
