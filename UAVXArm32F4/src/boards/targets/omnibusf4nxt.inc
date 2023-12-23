@@ -117,8 +117,6 @@ const DevDef busDev[] = {
 		{ false, asSel, },//
 		{ false, flowSel, },//
 		{ false, oledSel, oledDisplay, },//
-		{ false, escSPISel, },//
-		{ false, escI2CSel, } ,//
 		{ false, mag2Sel, hmc5xxxMag, false, 1, HMC5XXX_ID,},
 };
 

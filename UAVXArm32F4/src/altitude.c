@@ -392,7 +392,8 @@ void InitBaro(void) {
 					OriginAltitude = RawDensityAltitude;
 					First = false;
 				} else
-					OriginAltitude = OriginAltitude * 0.9f + RawDensityAltitude * 0.1f;
+					OriginAltitude = OriginAltitude * 0.9f
+							+ RawDensityAltitude * 0.1f;
 
 				BaroWarmupCycles++;
 			}
@@ -595,7 +596,6 @@ void SetDesiredAltitude(real32 Desired) {
 	Alt.P.IntE = Alt.R.IntE = Sl = 0.0f;
 } //SetDesiredAltitude
 
-
 void CheckForRFSensor(real32 SensorAltitude) {
 
 	if (F.UsingRangefinderAlt) {
@@ -610,6 +610,69 @@ void CheckForRFSensor(real32 SensorAltitude) {
 	}
 
 } // CheckForRFSensor
+
+//----------------------------------------------------------------
+
+// ChatGBT 3.4
+
+
+#define Q 0.01  // Process noise covariance
+#define R 0.1   // Measurement noise covariance
+#define INNOVATION_THRESHOLD 5.0  // Innovation threshold to filter outliers
+
+typedef struct {
+	double x;  // State (true altitude)
+	double v;  // Vertical velocity
+	double P;  // Error covariance
+} KalmanState;
+
+void kalmanFilterUpdate(KalmanState *state, double z, double u, double dt) {
+
+	static boolean FirstPass = true;
+
+	if (FirstPass) {
+		state->x = z;
+		FirstPass = false;
+	}
+
+	// Prediction
+	state->x += state->v * dt + 0.5 * u * dt * dt;
+	state->v += u * dt;
+	state->P += Q;
+
+	// Calculate innovation
+	double innovation = z - state->x;
+
+	// Check if the innovation is within the threshold
+	if (fabs(innovation) < INNOVATION_THRESHOLD) {
+		// Update
+		double K = state->P / (state->P + R);
+		state->x += K * innovation;
+		state->v += K * (innovation / dt);  // Update vertical velocity
+		state->P *= (1 - K);
+	}
+
+}
+
+void UpdateAltitudeEstimatesGBT(real32 RawDensityAltitude, real32 AccU,
+		real32 AltdT) {
+	// Initial state
+	KalmanState kalmanState = { 0.0, 0.0, 1.0 }; // Assuming initial vertical velocity is 0
+
+	// Kalman filter
+
+	if (F.NewBaroValue) {
+		// Use density altitude as the measurement, and vertical acceleration as the control input
+		kalmanFilterUpdate(&kalmanState, RawDensityAltitude, AccU, AltdT);
+
+		// Use GPS altitude as an additional measurement
+		kalmanFilterUpdate(&kalmanState, GPS.altitude, 0.0, AltdT);
+
+		KFDensityAltitude = kalmanState.x;
+		KFROC = kalmanState.v;
+	}
+
+}
 
 void UpdateAltitudeEstimates(void) {
 	static boolean First = true;
@@ -630,7 +693,7 @@ void UpdateAltitudeEstimates(void) {
 
 		// Baro
 		DensityAltitude = LPFn(&DensityAltLPF,
-				RawDensityAltitude - OriginAltitude, AltdT);
+				RawDensityAltitude, AltdT);
 		if (First) {
 			DensityAltitudeP = DensityAltitude;
 			First = false;
@@ -640,19 +703,28 @@ void UpdateAltitudeEstimates(void) {
 			DensityAltitudeP = DensityAltitude;
 		}
 
+
 		// BaroAccKF
 		UpdateBaroVariance(RawDensityAltitude);
 		UpdateAccUVariance(AccU);
 
-		AltitudeKF(RawDensityAltitude, AccU, AltdT);
+//#define USE_CHATGBT
+#if defined(USE_CHATGBT)
+		BROKEN AltitudeKFChatGBT(RawDensityAltitude, GPS.altitude, AccU, AltdT);
+#else
+		AltitudeKF(RawDensityAltitude, GPS.altitude, AccU, AltdT);
+
+#endif
+
 
 #ifdef USE_BARO_ALT
-		Altitude = DensityAltitude;
+		Altitude = DensityAltitude - OriginAltitude;
 		ROC = BaroROC;
 #else
 		Altitude = KFDensityAltitude - OriginAltitude;
 		ROC = KFROC;
 #endif
+
 		CheckForRFSensor(Altitude);
 
 		ROCTrack = LPFn(&ROCTrackLPF, ROC, AltdT); // used for landing and cruise throttle tracking

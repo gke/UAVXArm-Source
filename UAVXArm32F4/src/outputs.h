@@ -21,10 +21,6 @@
 #ifndef _outputs_h
 #define _outputs_h
 
-#define ESCI2C_ID 0x52
-
-#define PWServoFilter		MediumFilter
-
 void InitPWM(void);
 void pwmWrite(idx p, real32 pulseWidth, uint16 pulsemin, uint16 pulsemax);
 
@@ -34,15 +30,13 @@ void UpdateDrives(void);
 void StopDrives(void);
 void InitDrives(void);
 
-void DoI2CESCs(void);
-
 void ProgramSlaveAddress(idx s, uint8 addr);
 void ConfigureESCs(uint8 s);
 
 void driveWrite(idx channel, real32 v);
 
 enum ESCTypes {
-	ESCPWM, DCMotors, ESCI2C, ESCSPI, ESCUnknown
+	ESCPWM, DCMotors, ESCUnknown
 };
 
 enum PWMTagsQuad {

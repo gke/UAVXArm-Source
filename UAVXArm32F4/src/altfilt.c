@@ -24,6 +24,7 @@
 real32 AccUBiasVariance = 0.000001f; // fairly slow convergence but less noisy
 real32 BaroVariance = 0.35f;
 real32 AccUVariance = 2.0f;
+real32 GPSVariance = 2.0f;
 
 real32 AccUBias = 0.0f; // maybe should capture and use slower tracking?
 
@@ -64,7 +65,6 @@ real32 KFROC, KFDensityAltitude;
 // value. For an audio variometer, the symptom would be the variometer beeping for several seconds after reset, with the unit at rest.
 #define ZACCELBIAS_VARIANCE 0.01f
 
-
 real32 Pzh = 1.0f;
 real32 Pzv = 0.0f;
 real32 Pza_ = 0.0f;
@@ -77,12 +77,12 @@ real32 Pah = 0.0f;
 real32 Pav = 0.0;
 real32 Paa_ = 100000.0f;
 
-void AltitudeKF(real32 Alt, real32 AccU, real32 dT) {
+void AltitudeKF(real32 DensityAlt, real32 GPSAlt, real32 AccU, real32 dT) {
 	static boolean First = true;
 	real32 Acceleration;
 
 	if (First) {
-		KFDensityAltitude = Alt;
+		KFDensityAltitude = DensityAlt;
 		KFROC = AccUBias = 0.0f;
 		First = false;
 	}
@@ -138,7 +138,7 @@ void AltitudeKF(real32 Alt, real32 AccU, real32 dT) {
 	Paa_ += AccUBiasVariance;
 
 	// Error
-	real32 innov = Alt - KFDensityAltitude;
+	real32 innov = DensityAlt - KFDensityAltitude;
 	real32 sInv = 1.0f / (Pzh + BaroVariance);
 
 	// Kalman gains
@@ -165,4 +165,104 @@ void AltitudeKF(real32 Alt, real32 AccU, real32 dT) {
 	Pza_ -= kz * Pza_;
 
 } // AltitudeKF
+
+void AltitudeKFChatGBT(real32 DensityAlt, real32 GPSAlt, real32 AccU, real32 dT) { // ChatGBT 3.5 after a LOT of discussion
+	static boolean First = true;
+	real32 Acceleration;
+
+	if (First) {
+		KFDensityAltitude = DensityAlt;
+		KFROC = AccUBias = 0.0f;
+		First = false;
+	}
+
+	// Predict state
+	Acceleration = AccU - AccUBias;
+	KFROC += Acceleration * dT;
+	KFDensityAltitude += KFROC * dT;
+
+	// Predict State Covariance matrix
+	real32 t00, t01, t02;
+	real32 t10, t11, t12;
+	real32 t20, t21, t22;
+
+	real32 dT2div2 = Sqr(dT) * 0.5f;
+	real32 dT3div2 = dT2div2 * dT;
+	real32 dT4div4 = dT2div2 * dT2div2;
+
+	t00 = Pzh + dT * Pvh - dT2div2 * Pah;
+	t01 = Pzv + dT * Pvv - dT2div2 * Pav;
+	t02 = Pza_ + dT * Pva_ - dT2div2 * Paa_;
+
+	t10 = Pvh - dT * Pah;
+	t11 = Pvv - dT * Pav;
+	t12 = Pva_ - dT * Paa_;
+
+	t20 = Pah;
+	t21 = Pav;
+	t22 = Paa_;
+
+	Pzh = t00 + dT * t01 - dT2div2 * t02;
+	Pzv = t01 - dT * t02;
+	Pza_ = t02;
+
+	Pvh = t10 + dT * t11 - dT2div2 * t12;
+	Pvv = t11 - dT * t12;
+	Pva_ = t12;
+
+	Pah = t20 + dT * t21 - dT2div2 * t22;
+	Pav = t21 - dT * t22;
+	Paa_ = t22;
+
+	Pzh += dT4div4 * AccUVariance;
+	Pzv += dT3div2 * AccUVariance;
+
+	Pvh += dT3div2 * AccUVariance;
+	Pvv += dT * dT * AccUVariance;
+
+	Paa_ += AccUBiasVariance;
+
+	// Error
+	real32 innovAlt = DensityAlt - KFDensityAltitude;
+	real32 innovGPS = GPSAlt - KFDensityAltitude;
+	real32 sInvAlt = 1.0f / (Pzh + BaroVariance);
+
+	// Kalman gains
+	real32 kzAlt = Pzh * sInvAlt;
+	real32 kv = Pvh * sInvAlt;
+	real32 ka = Pah * sInvAlt;
+
+	// Update state based on barometric pressure sensor measurements
+	KFDensityAltitude += kzAlt * innovAlt;
+	KFROC += kv * innovAlt;
+	AccUBias += ka * innovAlt;
+
+	// Conditionally include GPS-derived terms even if GPS.Valid is false
+	if (F.GPSValid) {
+		real32 sInvGPS = 1.0f / (Pzh + GPS.vAcc);
+		real32 kzGPS = Pzh * sInvGPS;
+
+		// Update state based on GPS altitude measurements
+		KFDensityAltitude += kzGPS * innovGPS;
+
+		// Update state covariance matrix for GPS altitude measurements
+		Pzh -= kzGPS * Pzh;
+		Pzv -= kzGPS * Pzv;
+		Pza_ -= kzGPS * Pza_;
+	}
+
+	// Update state covariance matrix for barometric pressure sensor measurements
+	Pah -= ka * Pzh;
+	Pav -= ka * Pzv;
+	Paa_ -= ka * Pza_;
+
+	Pvh -= kv * Pzh;
+	Pvv -= kv * Pzv;
+	Pva_ -= kv * Pza_;
+
+	Pzh -= kzAlt * Pzh;
+	Pzv -= kzAlt * Pzv;
+	Pza_ -= kzAlt * Pza_;
+
+}
 

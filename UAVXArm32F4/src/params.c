@@ -112,7 +112,9 @@ void DoConfigBits(void) {
 	F.UsingRTHAutoDescend = (P(Config1Bits) & UseRTHDescendMask) != 0;
 	F.UsingAltHoldAlarm = (P(Config1Bits) & UseAltHoldAlarmMask) != 0;
 	F.InvertMagnetometer = (P(Config1Bits) & UseInvertMagMask) != 0;
-	F.UsingRapidDescent = (P(Config1Bits) & UseRapidDescentMask) != 0;
+
+	F.UsingRapidDescent = (P(Config1Bits) & UseRapidDescentMask) == 0; // change to flag used to disable VRS
+
 	F.Emulation = (P(Config1Bits) & EmulationEnableMask) != 0;
 	F.UsingOffsetHome = (P(Config1Bits) & UseOffsetHomeMask) != 0;
 	DisablingLEDsInFlight = (P(Config1Bits) & DisableLEDsInFlightMask) != 0;

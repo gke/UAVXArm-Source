@@ -1273,11 +1273,6 @@ void ShowStat(uint8 s) {
 	TxString(s, "Baro:  \t");
 	TxVal32(s, (int32) currStat(BaroFailS), 0, 0);
 	TxNextLine(s);
-	if (CurrESCType != ESCPWM) {
-		TxString(s, "I2CESC:   \t");
-		TxVal32(s, (int32) currStat(ESCI2CFailS), 0, 0);
-		TxNextLine(s);
-	}
 	TxString(s, "Rx:       \t");
 	TxVal32(s, (int32) currStat(RCGlitchesS), 0, ' ');
 	TxNextLine(s);

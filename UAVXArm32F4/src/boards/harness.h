@@ -255,8 +255,8 @@ enum BusDevSelectors {
 	asSel,
 	flowSel,
 	oledSel,
-	escSPISel,
-	escI2CSel,
+//	escSPISel,
+//	escI2CSel,
 	mag2Sel,
 	maxDevSel
 };

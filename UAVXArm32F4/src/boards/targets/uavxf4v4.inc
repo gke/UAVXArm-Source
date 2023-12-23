@@ -145,13 +145,13 @@ void InitTarget(void) {
 	default:
 		CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 10;
 		F.HaveSerialRC = true;
-		RCSerial = Usart3;
+		RCSerial = Usart2; // swap from 3
 		InitSerialPort(RCSerial, false);
 		break;
 	} // switch
 	
 	F.HaveGPS = CurrGPSType != NoGPS;
-    GPSSerial = Usart2;
+    GPSSerial = Usart3; // swap from 2
 	InitSerialPort(GPSSerial, false);
 			
 	FrSkySerial = SoftSerial;

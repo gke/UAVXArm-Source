@@ -117,12 +117,6 @@ const DevDef busDev[maxDevSel] = {	//imuSel,baroSel,magSel,memSel,gpsSel,rfSel,a
 #else
 		{ false, oledSel, oledDisplay, }, //
 #endif
-#if defined(USE_SPI_ESC)	 
-		{ true, escSPISel, ESCSPI, true, 1, 0, PC13}, // PC13 NC no select required
-#else
-		{ false, escSPISel, }, //
-#endif
-		{ true, escI2CSel, ESCI2C, false, 2, ESCI2C_ID, }, //
 		{ false, mag2Sel, hmc5xxxMag, false, 3, HMC5XXX_ID, }//
 };
 

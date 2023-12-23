@@ -23,13 +23,10 @@
 #define _altfilt_h
 
 void AltitudeSimpleLPF(real32 Alt, real32 dT);
-void AltitudeKF(real32 Alt, real32 AccU, real32 dT);
+void AltitudeKF(real32 DensityAlt, real32 GPSAlt, real32 AccU, real32 dT);
+void AltitudeKFChatGBT(real32 DensityAlt, real32 GPSAlt, real32 AccU, real32 dT);
 
-void initKF3(real32 BaroVariance, real32 AccUVariance, real32 AccUBiasVariance,
-		real32 zInitial, real32 vInitial, real32 aBiasInitial);
-void AltitudeKF3(real32 Alt, real32 AccU, real32 dT);
-
-extern real32 KFROC, KFDensityAltitude, BaroVariance, AccUVariance, AccUBias, AccUBiasVariance, TrackBaroVariance, TrackAccUVariance;
+extern real32 KFROC, KFDensityAltitude, BaroVariance, GPSVariance, AccUVariance, AccUBias, AccUBiasVariance, TrackBaroVariance, TrackAccUVariance;
 
 #endif
 

@@ -27,7 +27,7 @@ uint8 ArmingMethod;
 void Probe(boolean p) {
 #if defined(USE_AUX3_PROBE_PIN)
 	if (GPIOPins[WPMissionOrProbeSel].Used)
-		DigitalWrite(&GPIOPins[WPMissionOrProbeSel].P, p);
+	DigitalWrite(&GPIOPins[WPMissionOrProbeSel].P, p);
 #endif
 } // Probe
 
@@ -61,7 +61,6 @@ void CheckLandingSwitch(void) { // sampled every PID cycle
 
 } // CheckLandingSwitch
 
-
 boolean Armed(void) {
 	static boolean ArmedP = false;
 	boolean NewUplinkState;
@@ -80,7 +79,7 @@ boolean FailPreflight(void) {
 
 	r = !((UAVXAirframe == Instrumentation) || ( //
 			F.Signal //
-					&& (!F.RCMapFail) //
+			&& (!F.RCMapFail) //
 					&& (RCStart <= 0) //
 					&& !(Armed() && FirstPass) //
 					&& !F.ThrottleOpen //
@@ -89,8 +88,8 @@ boolean FailPreflight(void) {
 					&& F.IMUCalibrated //
 					&& (F.BaroActive || (busDev[baroSel].type == noBaro)) //
 					&& ((F.MagnetometerActive && F.MagnetometerCalibrated) //
-							|| ((busDev[CurrMagSel].type == noMag) //
-									|| F.IsFixedWing)) //
+					|| ((busDev[CurrMagSel].type == noMag) //
+					|| F.IsFixedWing)) //
 					&& !(F.LowBatt || F.sioFatal || F.ReturnHome || F.Navigate) //
 			));
 
@@ -99,7 +98,6 @@ boolean FailPreflight(void) {
 	return (r);
 
 } // FailPreflight
-
 
 void DoCalibrationAlarm(void) {
 
@@ -144,15 +142,14 @@ void ScheduleBeeper(timemS w) {
 
 } // ScheduleNavBeeper
 
-
 void CheckAlarms(void) {
 
 	static timemS BeeperOffTime = 100;
 	static timemS BeeperOnTime = 100;
 
-	F.BeeperInUse = PreflightFail || F.FenceAlarm || F.LowBatt || (State == Shutdown) || (State
-			== ThrottleOpenCheck) || (NavState == Descending)
-			|| AltHoldAlarmActive;
+	F.BeeperInUse = PreflightFail || F.FenceAlarm || F.LowBatt
+			|| (State == Shutdown) || (State == ThrottleOpenCheck)
+			|| (NavState == Descending) || AltHoldAlarmActive;
 
 	if (F.BeeperInUse) {
 		if (F.FenceAlarm) {
@@ -188,7 +185,6 @@ void CheckAlarms(void) {
 
 } // CheckAlarms
 
-
 void Catastrophe(void) {
 
 	/*
@@ -204,7 +200,6 @@ void Catastrophe(void) {
 	systemReset(false);
 
 } // Catastrophe
-
 
 boolean UpsideDownMulticopter(void) {
 
@@ -228,5 +223,4 @@ boolean UpsideDownMulticopter(void) {
 	return (UpsideDown);
 
 } // UpsideDownMulticopter
-
 

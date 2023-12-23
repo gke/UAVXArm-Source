@@ -110,11 +110,6 @@ void UbxSaveConfig(uint8 s);
 void UpdateField(void);
 real32 GPSToM(int32 g);
 int32 MToGPS(real32 m);
-int32 ConvertInt(uint8, uint8);
-//int32 ConvertLatLonM(uint8, uint8);
-int32 ConvertUTime(uint8, uint8);
-void ParseGXRMCSentence(void);
-void ParseGXGGASentence(void);
 void SetGPSOrigin(void);
 void ParseGPSSentence(void);
 void CheckGPSUpdate(void);
@@ -126,20 +121,6 @@ void InitGPS(void);
 
 #define MAXTAGINDEX 4
 #define GPSRXBUFFLENGTH 80
-typedef struct {
-	uint8 s[GPSRXBUFFLENGTH];
-	uint8 length;
-} NMEAStruct;
-
-#define MAX_NMEA_SENTENCES 4
-#define NMEA_TAG_INDEX 4
-
-enum GPSPackeType {
-	GPGGAPacketTag, GPRMCPacketTag, GNGGAPacketTag, GNRMCPacketTag, GPSUnknownPacketTag
-};
-
-extern NMEAStruct NMEA;
-extern const uint8 NMEATags[MAX_NMEA_SENTENCES][5];
 
 extern uint8 GPSPacketTag;
 extern timemS GPSdTmS;

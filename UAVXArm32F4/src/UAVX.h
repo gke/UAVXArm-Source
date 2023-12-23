@@ -30,6 +30,9 @@
 
 // Options
 
+#define USE_STRICT_GPS_HACC
+//#define USE_STRICT_GPS_VACC
+
 //#define USE_KEN_GPS_M8
 
 //#define USB_TESTING

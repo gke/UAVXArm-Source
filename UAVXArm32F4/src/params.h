@@ -137,7 +137,6 @@
 #define GPS_MIN_VACC 5.0f
 #define GPS_MIN_SACC 1.0f
 #define GPS_MIN_CACC 1.0f // deg
-#define GPS_HDOP_TO_HACC 4.0f // crude approximation for NMEA GPS units
 
 #define RC_MOVEMENT_STICK FromPercent(1) // minimum to be recognised as a stick input change without triggering failsafe
 

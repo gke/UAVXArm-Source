@@ -138,6 +138,7 @@ int main() {
 	SendDefAFNames(TelemetrySerial);
 
 	InitLEDs();
+
 	LEDOn(ledYellowSel);
 
 	InitPollRxPacket();
@@ -371,6 +372,9 @@ int main() {
 				if ((StickThrottle + AltHoldThrComp) > IdleThrottle)
 					State = InFlight;
 				else {
+
+					ZeroIntegrators();
+
 					if (mSTimeout(ThrottleIdleTimeoutmS)) {
 						DesiredThrottle = 0.0f;
 

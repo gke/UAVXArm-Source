@@ -25,19 +25,10 @@
 // Moving average of coordinates needed - or Kalman Estimator probably
 
 #define GPSVelocityFilter NoFilter		// done after position filter
-const uint8 NMEATags[MAX_NMEA_SENTENCES][5] = {
-// NMEA
-		{ 'G', 'P', 'G', 'G', 'A' }, // position fix
-		{ 'G', 'P', 'R', 'M', 'C' }, // ground speed and heading
-		{ 'G', 'N', 'G', 'G', 'A' }, // position fix
-		{ 'G', 'N', 'R', 'M', 'C' }, // ground speed and heading
-		};
 
 uint8 CurrGPSType;
 
 uint8 RxState = WaitSentinel;
-
-NMEAStruct NMEA;
 
 uint8 GPSPacketTag;
 
@@ -957,7 +948,12 @@ void ParseUbxPacket(void) {
 	F.GPSValid = ((GPS.fix == Fix3D) || (GPS.fix == Fix2D)
 			|| (GPS.fix == FixGPSDeadReckoning));
 
-//F.GPSValid &= (GPS.hAcc <= GPSMinhAcc) && (GPS.vAcc <= GPSMinvAcc);
+#ifdef USE_STRICT_GPS_HACC
+	F.GPSValid &= (GPS.hAcc <= GPSMinhAcc);
+#endif
+#ifdef USE_STRICT_GPS_VACC
+	F.GPSValid &= (GPS.vAcc <= GPSMinvAcc);
+#endif
 
 	GPS.lastMessage = uSClock() * 0.000001f;
 
@@ -1048,10 +1044,6 @@ void InitUbxGPS(uint8 s, int16 UbxVersion) {
 
 } // InitUbxGPS
 
-//___________________________________________________________________________________
-
-// NMEA Decoder
-
 real32 GPSToM(int32 c) {
 //return ((real64) c * 0.011131948079f);
 	return ((real64) c * ((real64) EARTH_RADIUS_M * PI) / (180.0 * 1e7));
@@ -1060,177 +1052,6 @@ real32 GPSToM(int32 c) {
 int32 MToGPS(real32 c) {
 	return ((real64) c / (((real64) EARTH_RADIUS_M * PI) / (180.0 * 1e7)));
 } // MToGPS
-
-int32 I32(uint8 lo, uint8 hi) {
-	idx i;
-	int32 r;
-
-	r = 0;
-	if (!EmptyField)
-		for (i = lo; i <= hi; i++)
-			r = r * 10 + NMEA.s[i] - '0';
-
-	return (r);
-} // I32
-
-int32 ConvertLatLon(uint8 lo, uint8 hi) {
-	int32 dd, mm, dm, r;
-	idx dp;
-
-	r = 0;
-	if (!EmptyField) {
-		dp = lo + 4;
-		while (NMEA.s[dp] != '.')
-			dp++;
-
-		dd = I32(lo, dp - 3);
-		mm = I32(dp - 2, dp - 1);
-		if ((hi - dp) > (uint8) 4)
-			dm = I32(dp + 1, dp + 5);
-		else
-			dm = I32(dp + 1, dp + 4) * 10L;
-
-		r = dd * 10000000;
-		r += (mm * 10000000 + dm * 100 + 30) / 60;
-	}
-
-	return (r);
-} // ConvertLatLon
-
-int32 ConvertUTime(uint8 lo, uint8 hi) {
-	int32 ival;
-
-	ival = 0;
-	if (!EmptyField)
-		ival = (int32) (I32(lo, lo + 1)) * 3600
-				+ (int32) (I32(lo + 2, lo + 3) * 60)
-				+ (int32) (I32(lo + 4, hi));
-
-	return (ival);
-} // ConvertUTime
-
-void UpdateField(void) {
-	uint8 ch;
-
-	lo = cc;
-
-	ch = NMEA.s[cc];
-	while ((ch != ',') && (ch != '*') && (cc < nll))
-		ch = NMEA.s[++cc];
-
-	hi = cc - 1;
-	cc++;
-	EmptyField = hi < lo;
-} // UpdateField
-
-void ParseGXGGASentence(void) { // full position $GXGGA fix
-
-	cc = 0;
-	nll = NMEA.length;
-
-	UpdateField();
-
-	UpdateField(); //UTime
-	GPS.missionTime = GPS.lastPosUpdatemS = mSClock(); // ConvertUTime(lo, hi);
-
-	UpdateField(); //Lat
-	GPS.C[NorthC].Raw = ConvertLatLon(lo, hi);
-	UpdateField(); //LatH
-	if (NMEA.s[lo] == 'S')
-		GPS.C[NorthC].Raw = -GPS.C[NorthC].Raw;
-
-	UpdateField(); //Lon
-	GPS.C[EastC].Raw = ConvertLatLon(lo, hi);
-	UpdateField(); //LonH
-	if (NMEA.s[lo] == 'W')
-		GPS.C[EastC].Raw = -GPS.C[EastC].Raw;
-
-	UpdateField(); //Fix
-	GPS.fix = (uint8) (I32(lo, hi));
-
-	UpdateField(); //Sats
-	GPS.noofsats = (uint8) (I32(lo, hi));
-
-	UpdateField(); // HDOP
-	GPS.hDOP = (real32) I32(lo, hi - 3) + (real32) (I32(hi - 1, hi)) * 0.01;
-	GPS.hAcc = GPS.vAcc = GPS.hDOP * GPS_HDOP_TO_HACC;
-
-	UpdateField(); // Alt
-	GPS.altitude = (real32) (I32(lo, hi - 2)) + (real32) (I32(hi, hi)) * 0.1f;
-
-//UpdateField();   // AltUnit - assume Metres!
-
-//UpdateField();   // GHeight
-//GPS.geoidheight = (real32) (I32(lo, hi - 2)) + (real32) (I32(hi, hi)) * 0.1f;
-//UpdateField();   // GHeightUnit
-
-	F.GPSValid = (GPS.fix > 0) && (GPS.noofsats >= GPS_MIN_SATELLITES)
-			&& F.ValidGPSVel;
-
-} // ParseGXGGASentence
-
-void ParseGXRMCSentence() { // main current position and heading
-	idx a;
-
-	cc = 0;
-	nll = NMEA.length;
-
-	UpdateField();
-
-	UpdateField(); //UTime
-
-	UpdateField();
-	if (NMEA.s[lo] == 'A') {
-
-		GPS.missionTime = GPS.lastPosUpdatemS = mSClock(); //ConvertUTime(lo, hi);
-
-		UpdateField(); //Lat
-		GPS.C[NorthC].Raw = ConvertLatLon(lo, hi);
-		UpdateField(); //LatH
-		if (NMEA.s[lo] == 'S')
-			GPS.C[NorthC].Raw = -GPS.C[NorthC].Raw;
-
-		UpdateField(); //Lon
-		GPS.C[EastC].Raw = ConvertLatLon(lo, hi);
-		UpdateField(); //LonH
-		if (NMEA.s[lo] == 'W')
-			GPS.C[EastC].Raw = -GPS.C[EastC].Raw;
-
-		UpdateField(); // Groundspeed (Knots)
-		GPS.gspeed =
-				((real32) I32(lo, hi - 3) + (real32) I32(hi - 1, hi) * 0.01)
-						* 0.5144444; //  MPS/Kt
-		GPS.sAcc = GPS_MIN_SACC;
-
-		UpdateField(); // True course made good (Degrees)
-		GPS.heading = DegreesToRadians(
-				(real32 )I32(lo, hi - 3) + (real32 )I32(hi - 1, hi) * 0.01);
-		GPS.cAcc = GPS_MIN_CACC;
-
-		UpdateField();
-		GPS.day = I32(lo, lo + 1);
-		GPS.month = I32(lo + 2, lo + 3);
-		GPS.year = I32(lo + 4, lo + 5) + 2000;
-
-		// usually returns zero - not used
-		// UpdateField();
-		// GPS.magvariation = DegreesToRadians((real32) I32(lo, hi) * 0.1f);
-		// UpdateField(); // magvar sign
-		// if (NMEA.s[lo] == 'W')
-		// GPS.magvariation = -GPS.magvariation;
-
-		for (a = NorthC; a <= EastC; a++) {
-			GPS.C[a].Vel = GPSToM(GPS.C[a].Raw - GPS.C[a].RawP)
-					/ (GPSdTmS * 0.001f);
-			GPS.C[a].RawP = GPS.C[a].Raw;
-		}
-
-		F.ValidGPSVel = GPS.sAcc <= GPS_MIN_SACC;
-
-	}
-
-} // ParseGXRMCSentence
-
 void RxGPSUbxPacket(char c) {
 
 	switch (RxState) {
@@ -1285,75 +1106,6 @@ void RxGPSUbxPacket(char c) {
 
 } // RxGPSUbxPacket
 
-void RxGPSNMEAPacket(char c) {
-
-	switch (RxState) {
-	case WaitSentinel:
-		if (c == '$') {
-			ll = tt = ss = RxCheckSum = 0;
-			RxState = WaitNMEAID;
-		}
-		break;
-	case WaitNMEAID:
-		RxCheckSum ^= c;
-		while ((c != NMEATags[ss][tt]) && (ss < MAX_NMEA_SENTENCES))
-			ss++;
-		if (c == NMEATags[ss][tt])
-			if (tt == NMEA_TAG_INDEX) {
-				GPSPacketTag = ss;
-				RxState = WaitNMEABody;
-			} else
-				tt++;
-		else
-			RxState = WaitSentinel;
-		break;
-	case WaitNMEABody:
-		if (c == '*')
-			RxState = WaitNMEACheckSum;
-		else if (c == '$') {
-			ll = tt = RxCheckSum = 0;
-			RxState = WaitNMEAID;
-		} else {
-			RxCheckSum ^= c;
-			NMEA.s[ll++] = c;
-			if (ll > (GPSRXBUFFLENGTH - 1))
-				RxState = WaitSentinel;
-		}
-		break;
-	case WaitNMEACheckSum:
-		if (c >= 'A')
-			GPSTxCheckSum = c - ('A' - 10);
-		else
-			GPSTxCheckSum = c - '0';
-		RxState = WaitNMEACheckSum2;
-		break;
-	case WaitNMEACheckSum2:
-		GPSTxCheckSum *= 16;
-		if (c >= 'A')
-			GPSTxCheckSum += c - ('A' - 10);
-		else
-			GPSTxCheckSum += c - '0';
-		NMEA.length = ll;
-		F.GPSPacketReceived = GPSTxCheckSum == RxCheckSum;
-		if (F.GPSPacketReceived)
-			switch (GPSPacketTag) {
-			case GPGGAPacketTag:
-			case GNGGAPacketTag:
-				ParseGXGGASentence();
-				break;
-			case GPRMCPacketTag:
-			case GNRMCPacketTag:
-				ParseGXRMCSentence();
-				break;
-			default:
-				F.GPSPacketReceived = false;
-			} // switch
-
-		RxState = WaitSentinel;
-		break;
-	} // switch
-
-} // RxGPSNMEAPacket
 
 boolean GPSSanityCheck(void) {
 	boolean r;
@@ -1434,8 +1186,6 @@ void GPSISR(char ch) {
 			RxGPSUbxPacket(ch);
 			break;
 		case NMEAGPS:
-			RxGPSNMEAPacket(ch);
-			break;
 		case NoGPS:
 		default:
 			break;

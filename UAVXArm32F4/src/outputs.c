@@ -40,23 +40,7 @@ const uint8 DrivesUsed[AFUnknown + 1] = { 3, 6, 4, 4, 4, 8, 8, 6, 6, 8, 8, // Tr
 
 const idx DM[10] = { 0, 1, 2, 3, // TIM4
 		6, 7, 8, 9, // TIM3
-		4, 5 }; // TIM1 V4 TIM8  camera servo channels always last
-
-#define SPI_MAX 2048
-enum spicommands {
-	spiResetCmd, spiWriteCmd, spiReadCmd, spiExtendedCmd
-};
-
-typedef struct {
-	uint8 cmd :2;
-	uint8 c :3; // 8 motors
-	uint16 v :11; // SPI_MAX
-}__attribute__((packed)) SPIESCChanStruct_t;
-
-typedef struct {
-	SPIESCChanStruct_t ch[4];
-	uint16 cs;
-}__attribute__((packed)) SPIESCFrameStruct_t;
+		4, 5 }; // TIM1 V4 TIM8 camera servo channels always last
 
 boolean UsingDCMotors = false;
 boolean DrivesInitialised = false;
@@ -72,19 +56,16 @@ real32 PW[MAX_PWM_OUTPUTS];
 real32 PWp[MAX_PWM_OUTPUTS];
 idx NoOfDrives = 4;
 real32 NoOfDrivesR;
-uint32 ESCI2CFail[256] = { 0 };
-SPIESCFrameStruct_t SPIESCFrame;
 
 real32 Rl, Pl, Yl, Sl;
-real32 I2CESCMax;
 idx CurrMaxPWMOutputs = 6;
 
 CamStruct Cam;
 
 real32 DFT[8];
 
-const char * ESCName[] = { "PWM", "DC Motor", "DC Motor Slow Idle", "I2C",
-		"SPI", "ADC Angle", "Unknown" };
+const char * ESCName[] = { "PWM", "DC Motor", "OneShot", "MultiShot",
+		"DShot", "Unknown" };
 
 void ShowESCType(uint8 s) {
 	TxString(s, ESCName[CurrESCType]);
@@ -101,12 +82,10 @@ void driveWrite(idx channel, real32 v) {
 void servoWrite(idx channel, real32 v) {
 
 	if (DM[channel] < CurrMaxPWMOutputs) {
-		v = Limit((int16)((v + 1.0f) * 1000.0f),
-				PWM_MIN_SERVO, PWM_MAX_SERVO);
+		v = Limit((int16 )((v + 1.0f) * 1000.0f), PWM_MIN_SERVO, PWM_MAX_SERVO);
 		*PWMPins[DM[channel]].Timer.CCR = v;
 	}
 } // servoWrite
-
 
 void driveSyncStart(uint8 drives) {
 
@@ -116,99 +95,18 @@ void driveSyncStart(uint8 drives) {
 
 } // driveSyncStart
 
-#define NO_OF_I2C_ESCS 4
-#define OUT_HOLGER_MAXIMUM	225
-#define OUT_YGEI2C_MAXIMUM	240
-#define OUT_X3D_MAXIMUM		200
-
-void DoI2CESCs_HISTORICAL_RETIRED(void) {
-	// i2c at 100KHz probably OK at 500Hz cycle
-	enum i2cESCTypes {
-		ESCX3D, ESCHolger, ESCYGEI2C
-	};
-	const uint8 i2cESCType = ESCX3D;
-
-	uint8 i2cP[NO_OF_I2C_ESCS];
-	static uint8 m;
-	uint8 p, n;
-
-	// in X3D and Holger-Mode, K2 (left motor) is SDA, K3 (right) is SCL.
-	// ACK (r) not checked as no recovery is possible.
-	// Octocopters may have ESCs paired with common address so ACK is meaningless.
-	// All motors driven with fourth motor ignored for Tricopter.
-
-	switch (i2cESCType) {
-	case ESCX3D:
-		for (m = 0; m < NO_OF_I2C_ESCS; m++)
-			i2cP[m]
-					= Limit((PW[m] + 1.0f) * OUT_X3D_MAXIMUM, 0, OUT_X3D_MAXIMUM);
-		I2CWriteBlock(escI2CSel, 0x10, i2cP[0], NO_OF_I2C_ESCS - 1, &i2cP[1]);
-		break;
-	case ESCYGEI2C:
-		for (m = 0; m < NO_OF_I2C_ESCS; m++) {
-			p
-					= Limit((PW[m] + 1.0f) * 0.5f * OUT_YGEI2C_MAXIMUM, 0, OUT_YGEI2C_MAXIMUM);
-			p = p >> 1;
-			I2CWriteBlock(escI2CSel, 0x62 + (m * 2), p, 0, 0);
-		}
-		break;
-	case ESCHolger: // 100KHz 0.209mS/Motor or ~0.85mS per cycle for a quad
-		for (m = 0; m < NO_OF_I2C_ESCS; m++) {
-			p
-					= Limit((PW[m] + 1.0f) * 0.5f * OUT_HOLGER_MAXIMUM, 0, OUT_HOLGER_MAXIMUM);
-			I2CWriteBlock(escI2CSel, 0x52 + (m * 2), p, 0, 0);
-		}
-		break;
-	default:
-		break;
-	} // switch
-
-} // DoI2CESCs
-
-void driveI2CWrite(idx m, real32 v) {
-	uint8 r;
-
-	if (m < CurrMaxPWMOutputs) {
-		r
-				= Limit((v + 1.0f) * 0.5f * OUT_HOLGER_MAXIMUM, 0, OUT_HOLGER_MAXIMUM);
-		I2CWriteBlock(escI2CSel, ESCI2C_ID + (m * 2), r, 0, 0);
-	}
-
-} // driveI2CWrite_HISTORICAL_RETIRED
-
-
-void driveSPIWrite(idx m, real32 v) {
-
-	if (m < CurrMaxPWMOutputs) { // TODO: max 4
-		SPIESCFrame.ch[m].cmd = spiWriteCmd;
-		SPIESCFrame.ch[m].c = m;
-		SPIESCFrame.ch[m].v = Limit((v + 1.0f) * 0.5f * SPI_MAX, 0, SPI_MAX);
-	}
-
-} // driveSPIWrite
-
-void driveSPISyncStart(uint8 drives) {
-#if defined(USE_SPI_ESC)
-	// TODO: generate checksum here
-	SIOWriteBlock(escSPISel, 0, sizeof(SPIESCFrameStruct_t),
-			(uint8 *) (&SPIESCFrame));
-#endif
-} // driveSPISync
-
-
 void driveDCWrite(idx channel, real32 v) {
 
 	if (DM[channel] < CurrMaxPWMOutputs) {
-		v = Limit((int16)(v * 1000.0f), PWM_MIN_DC, PWM_MAX_DC);
+		v = Limit((int16 )(v * 1000.0f), PWM_MIN_DC, PWM_MAX_DC);
 		*PWMPins[DM[channel]].Timer.CCR = v;
 	}
 } // driveDCWrite
 
-
 typedef void (*driveWriteFuncPtr)(idx channel, real32 value);
 static driveWriteFuncPtr driveWritePtr = NULL;
 
-// ESCPWM,  DCMotors, ESCI2C, SPI, ESCUnknown,
+// ESCPWM,  DCMotors, OneShot, MultiShot, DShot, ESCUnknown,
 
 const struct {
 	driveWriteFuncPtr driver;
@@ -217,10 +115,8 @@ const struct {
 	uint32 min;
 	uint32 max;
 } Drive[] = { { driveWrite, PWM_PS, PWM_PERIOD, PWM_MIN, PWM_MAX }, // ESCPWM
-		{ driveDCWrite, PWM_PS_DC, PWM_PERIOD_DC, PWM_MIN_DC, PWM_MAX_DC }, // DCMotors
-		{ driveI2CWrite, 0, 0, 0, 225 }, // ESCI2C
-		{ driveSPIWrite, 0, 0, 0, SPI_MAX }, // ESCSPI
-		};
+		{ driveDCWrite, PWM_PS_DC, PWM_PERIOD_DC, PWM_MIN_DC, PWM_MAX_DC } // DCMotors
+};
 
 void UpdateDrives(void) {
 	static idx m;
@@ -246,18 +142,15 @@ void UpdateDrives(void) {
 			DoMix();
 
 		for (m = 0; m < NoOfDrives; m++) { // drives
-			PWp[m]
-					= (Armed() && !F.Emulation) ? LPF1(PWp[m], PW[m],
-							LPF1DriveK) : 0.0f;
+			PWp[m] =
+					(Armed() && !F.Emulation) ?
+							LPF1(PWp[m], PW[m], LPF1DriveK) : 0.0f;
 			driveWritePtr(m, PWp[m]);
 
 			PWSum[m] += PWp[m];
 		}
 
 		PWSamples++;
-
-		if (CurrESCType == ESCSPI)
-			driveSPISyncStart(NoOfDrives);
 
 		// servos
 		MixAndLimitCam();
@@ -269,7 +162,6 @@ void UpdateDrives(void) {
 	}
 
 } // UpdateDrives
-
 
 void InitDrives(void) {
 	idx m, nd;
@@ -287,10 +179,9 @@ void InitDrives(void) {
 	for (m = 0; m < nd; m++) {
 		PW[m] = PWp[m] = 0.0f;
 
-		if ((CurrESCType != ESCI2C) && (CurrESCType != ESCSPI))
-			if (DM[m] < CurrMaxPWMOutputs)
-				InitPWMPin(&PWMPins[DM[m]], Drive[CurrESCType].prescaler,
-						Drive[CurrESCType].period, Drive[CurrESCType].min);
+		if (DM[m] < CurrMaxPWMOutputs)
+			InitPWMPin(&PWMPins[DM[m]], Drive[CurrESCType].prescaler,
+					Drive[CurrESCType].period, Drive[CurrESCType].min);
 	}
 
 	for (m = nd; m < MAX_PWM_OUTPUTS; m++)
@@ -316,5 +207,4 @@ void InitDrives(void) {
 	DrivesInitialised = true;
 
 } // InitDrives
-
 

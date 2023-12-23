@@ -224,7 +224,6 @@ void GPSEmulation(void) {
 		GPS.heading = Heading;
 		GPS.cAcc = 0.5f; // degrees
 
-		GPSPacketTag = GPGGAPacketTag;
 		GPS.fix = 3;
 		GPS.noofsats = 10;
 		GPS.hDOP = 0.9f;

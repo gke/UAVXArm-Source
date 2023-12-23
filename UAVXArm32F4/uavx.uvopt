@@ -197,7 +197,7 @@
       <Focus>0</Focus>
       <ColumnNumber>0</ColumnNumber>
       <tvExpOptDlg>0</tvExpOptDlg>
-      <TopLine>125</TopLine>
+      <TopLine>126</TopLine>
       <CurrentLine>128</CurrentLine>
       <bDave2>0</bDave2>
       <PathWithFileName>.\src\alarms.c</PathWithFileName>
@@ -211,9 +211,9 @@
       <FileType>1</FileType>
       <tvExp>0</tvExp>
       <Focus>0</Focus>
-      <ColumnNumber>11</ColumnNumber>
+      <ColumnNumber>12</ColumnNumber>
       <tvExpOptDlg>0</tvExpOptDlg>
-      <TopLine>642</TopLine>
+      <TopLine>643</TopLine>
       <CurrentLine>680</CurrentLine>
       <bDave2>0</bDave2>
       <PathWithFileName>.\src\altitude.c</PathWithFileName>
@@ -243,9 +243,9 @@
       <FileType>1</FileType>
       <tvExp>0</tvExp>
       <Focus>0</Focus>
-      <ColumnNumber>18</ColumnNumber>
+      <ColumnNumber>19</ColumnNumber>
       <tvExpOptDlg>0</tvExpOptDlg>
-      <TopLine>107</TopLine>
+      <TopLine>108</TopLine>
       <CurrentLine>116</CurrentLine>
       <bDave2>0</bDave2>
       <PathWithFileName>.\src\as.c</PathWithFileName>
@@ -291,10 +291,10 @@
       <FileType>1</FileType>
       <tvExp>0</tvExp>
       <Focus>0</Focus>
-      <ColumnNumber>63</ColumnNumber>
+      <ColumnNumber>65</ColumnNumber>
       <tvExpOptDlg>0</tvExpOptDlg>
-      <TopLine>47</TopLine>
-      <CurrentLine>48</CurrentLine>
+      <TopLine>48</TopLine>
+      <CurrentLine>49</CurrentLine>
       <bDave2>0</bDave2>
       <PathWithFileName>.\src\bb.c</PathWithFileName>
       <FilenameWithoutPath>bb.c</FilenameWithoutPath>
@@ -323,9 +323,9 @@
       <FileType>1</FileType>
       <tvExp>0</tvExp>
       <Focus>0</Focus>
-      <ColumnNumber>17</ColumnNumber>
+      <ColumnNumber>18</ColumnNumber>
       <tvExpOptDlg>0</tvExpOptDlg>
-      <TopLine>114</TopLine>
+      <TopLine>115</TopLine>
       <CurrentLine>139</CurrentLine>
       <bDave2>0</bDave2>
       <PathWithFileName>.\src\clocks.c</PathWithFileName>
@@ -357,7 +357,7 @@
       <Focus>0</Focus>
       <ColumnNumber>0</ColumnNumber>
       <tvExpOptDlg>0</tvExpOptDlg>
-      <TopLine>195</TopLine>
+      <TopLine>196</TopLine>
       <CurrentLine>202</CurrentLine>
       <bDave2>0</bDave2>
       <PathWithFileName>.\src\emu.c</PathWithFileName>
@@ -371,9 +371,9 @@
       <FileType>1</FileType>
       <tvExp>0</tvExp>
       <Focus>0</Focus>
-      <ColumnNumber>5</ColumnNumber>
+      <ColumnNumber>6</ColumnNumber>
       <tvExpOptDlg>0</tvExpOptDlg>
-      <TopLine>526</TopLine>
+      <TopLine>527</TopLine>
       <CurrentLine>534</CurrentLine>
       <bDave2>0</bDave2>
       <PathWithFileName>.\src\filters.c</PathWithFileName>
@@ -387,7 +387,7 @@
       <FileType>1</FileType>
       <tvExp>0</tvExp>
       <Focus>0</Focus>
-      <ColumnNumber>14</ColumnNumber>
+      <ColumnNumber>16</ColumnNumber>
       <tvExpOptDlg>0</tvExpOptDlg>
       <TopLine>469</TopLine>
       <CurrentLine>470</CurrentLine>
@@ -419,9 +419,9 @@
       <FileType>1</FileType>
       <tvExp>0</tvExp>
       <Focus>0</Focus>
-      <ColumnNumber>23</ColumnNumber>
+      <ColumnNumber>25</ColumnNumber>
       <tvExpOptDlg>0</tvExpOptDlg>
-      <TopLine>220</TopLine>
+      <TopLine>221</TopLine>
       <CurrentLine>231</CurrentLine>
       <bDave2>0</bDave2>
       <PathWithFileName>.\src\i2c.c</PathWithFileName>
@@ -453,7 +453,7 @@
       <Focus>0</Focus>
       <ColumnNumber>0</ColumnNumber>
       <tvExpOptDlg>0</tvExpOptDlg>
-      <TopLine>333</TopLine>
+      <TopLine>334</TopLine>
       <CurrentLine>340</CurrentLine>
       <bDave2>0</bDave2>
       <PathWithFileName>.\src\inertial.c</PathWithFileName>
@@ -515,10 +515,10 @@
       <FileType>1</FileType>
       <tvExp>0</tvExp>
       <Focus>0</Focus>
-      <ColumnNumber>5</ColumnNumber>
+      <ColumnNumber>7</ColumnNumber>
       <tvExpOptDlg>0</tvExpOptDlg>
-      <TopLine>86</TopLine>
-      <CurrentLine>88</CurrentLine>
+      <TopLine>87</TopLine>
+      <CurrentLine>89</CurrentLine>
       <bDave2>0</bDave2>
       <PathWithFileName>.\src\mag.c</PathWithFileName>
       <FilenameWithoutPath>mag.c</FilenameWithoutPath>
@@ -547,7 +547,7 @@
       <FileType>1</FileType>
       <tvExp>0</tvExp>
       <Focus>0</Focus>
-      <ColumnNumber>12</ColumnNumber>
+      <ColumnNumber>13</ColumnNumber>
       <tvExpOptDlg>0</tvExpOptDlg>
       <TopLine>104</TopLine>
       <CurrentLine>105</CurrentLine>
@@ -563,9 +563,9 @@
       <FileType>1</FileType>
       <tvExp>0</tvExp>
       <Focus>0</Focus>
-      <ColumnNumber>6</ColumnNumber>
+      <ColumnNumber>7</ColumnNumber>
       <tvExpOptDlg>0</tvExpOptDlg>
-      <TopLine>393</TopLine>
+      <TopLine>394</TopLine>
       <CurrentLine>401</CurrentLine>
       <bDave2>0</bDave2>
       <PathWithFileName>.\src\mixer.c</PathWithFileName>
@@ -579,10 +579,10 @@
       <FileType>1</FileType>
       <tvExp>0</tvExp>
       <Focus>0</Focus>
-      <ColumnNumber>5</ColumnNumber>
+      <ColumnNumber>3</ColumnNumber>
       <tvExpOptDlg>0</tvExpOptDlg>
-      <TopLine>132</TopLine>
-      <CurrentLine>133</CurrentLine>
+      <TopLine>133</TopLine>
+      <CurrentLine>134</CurrentLine>
       <bDave2>0</bDave2>
       <PathWithFileName>.\src\mpu6xxx.c</PathWithFileName>
       <FilenameWithoutPath>mpu6xxx.c</FilenameWithoutPath>
@@ -595,7 +595,7 @@
       <FileType>1</FileType>
       <tvExp>0</tvExp>
       <Focus>0</Focus>
-      <ColumnNumber>26</ColumnNumber>
+      <ColumnNumber>27</ColumnNumber>
       <tvExpOptDlg>0</tvExpOptDlg>
       <TopLine>130</TopLine>
       <CurrentLine>131</CurrentLine>
@@ -611,7 +611,7 @@
       <FileType>1</FileType>
       <tvExp>0</tvExp>
       <Focus>0</Focus>
-      <ColumnNumber>2</ColumnNumber>
+      <ColumnNumber>3</ColumnNumber>
       <tvExpOptDlg>0</tvExpOptDlg>
       <TopLine>163</TopLine>
       <CurrentLine>164</CurrentLine>
@@ -627,7 +627,7 @@
       <FileType>1</FileType>
       <tvExp>0</tvExp>
       <Focus>0</Focus>
-      <ColumnNumber>19</ColumnNumber>
+      <ColumnNumber>22</ColumnNumber>
       <tvExpOptDlg>0</tvExpOptDlg>
       <TopLine>444</TopLine>
       <CurrentLine>445</CurrentLine>
@@ -675,7 +675,7 @@
       <FileType>1</FileType>
       <tvExp>0</tvExp>
       <Focus>0</Focus>
-      <ColumnNumber>8</ColumnNumber>
+      <ColumnNumber>9</ColumnNumber>
       <tvExpOptDlg>0</tvExpOptDlg>
       <TopLine>26</TopLine>
       <CurrentLine>27</CurrentLine>
@@ -693,7 +693,7 @@
       <Focus>0</Focus>
       <ColumnNumber>0</ColumnNumber>
       <tvExpOptDlg>0</tvExpOptDlg>
-      <TopLine>61</TopLine>
+      <TopLine>62</TopLine>
       <CurrentLine>67</CurrentLine>
       <bDave2>0</bDave2>
       <PathWithFileName>.\src\spi.c</PathWithFileName>
@@ -707,9 +707,9 @@
       <FileType>1</FileType>
       <tvExp>0</tvExp>
       <Focus>0</Focus>
-      <ColumnNumber>19</ColumnNumber>
+      <ColumnNumber>20</ColumnNumber>
       <tvExpOptDlg>0</tvExpOptDlg>
-      <TopLine>328</TopLine>
+      <TopLine>329</TopLine>
       <CurrentLine>338</CurrentLine>
       <bDave2>0</bDave2>
       <PathWithFileName>.\src\spiflash.c</PathWithFileName>
@@ -773,7 +773,7 @@
       <Focus>0</Focus>
       <ColumnNumber>3</ColumnNumber>
       <tvExpOptDlg>0</tvExpOptDlg>
-      <TopLine>10</TopLine>
+      <TopLine>11</TopLine>
       <CurrentLine>34</CurrentLine>
       <bDave2>0</bDave2>
       <PathWithFileName>.\src\temp.c</PathWithFileName>
@@ -787,10 +787,10 @@
       <FileType>1</FileType>
       <tvExp>0</tvExp>
       <Focus>0</Focus>
-      <ColumnNumber>9</ColumnNumber>
+      <ColumnNumber>10</ColumnNumber>
       <tvExpOptDlg>0</tvExpOptDlg>
-      <TopLine>322</TopLine>
-      <CurrentLine>323</CurrentLine>
+      <TopLine>323</TopLine>
+      <CurrentLine>324</CurrentLine>
       <bDave2>0</bDave2>
       <PathWithFileName>.\src\tests.c</PathWithFileName>
       <FilenameWithoutPath>tests.c</FilenameWithoutPath>

@@ -187,6 +187,55 @@ void DoAltitudeControl(real32 CurrMinROCMPS, real32 CurrMaxROCMPS) {
 
 //______________________________________________________________________________
 
+// ChatGBT 3.5 20231216
+
+
+// Constants
+//#define HOVER_THROTTLE 0.5  // Hover throttle value
+#define MAX_THRUST 2.0      // Maximum thrust in Kg
+#define MAX_INTEGRAL 0.1    // Maximum value for the integral term
+
+
+// Function to compute throttle values for climbing
+real32 DoAltitudeControlGBT(real32 CurrMinROCMPS, real32 CurrMaxROCMPS) {
+    // Altitude control parameters
+
+	real32 Mass = 2.0f;
+
+    // Proportional control: directly use the altitude error
+    Alt.P.Error = Alt.P.Desired - Altitude;
+    Alt.P.PTerm = Alt.P.Error * Alt.P.Kp;
+
+    // Integral control with anti-windup
+    if (Alt.P.Error == 0.0) {
+        // Reset integral term when there is no altitude error
+        Alt.P.IntE = 0.0;
+    } else {
+        Alt.P.IntE += (Alt.P.Error * Alt.P.Ki * AltdT);
+        Alt.P.IntE = Limit(Alt.P.IntE, -Alt.P.IntLim, Alt.P.IntLim);
+    }
+    Alt.P.ITerm = Alt.P.IntE;
+
+    // Desired vertical velocity directly limited by MinROCMPS and MaxROCMPS
+    real32 desiredVerticalVelocity = Limit(Alt.P.PTerm + Alt.P.ITerm, CurrMinROCMPS, CurrMaxROCMPS);
+
+    // Convert desired vertical velocity to acceleration (considering mass)
+    real32 desiredAcc = (desiredVerticalVelocity - ROC) / AltdT;
+
+    // Convert acceleration to thrust
+    real32 thrust = Mass * (GRAVITY_MPS_S + desiredAcc);
+
+    // Convert thrust to throttle (assuming linear relationship between thrust and throttle)
+    real32 AltHoldThrComp = thrust / (Mass * GRAVITY_MPS_S);
+
+    // Ensure throttle is within bounds
+    AltHoldThrComp = Limit(AltHoldThrComp, 0.0, 1.0);
+
+}
+
+
+//______________________________________________________________________________
+
 // Fixed Wing
 
 void DeploySpoilers(real32 a) {

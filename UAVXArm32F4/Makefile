@@ -2,9 +2,16 @@ SHELL=cmd
 
 #V1 = -DV1_BOARD  // Beeper reversed but must be re-wired to 5V
 
-SVN_REV := "$(shell "C:\Program Files (x86)\Subversion\bin\svnversion" -cn . | sed -e 's/[MS]//g' -e 's/^[[:digit:]]*://')" 
+SVN_REV := "xxxx"
+#SVN_REV := 
 
-INSTALL_DIR = "C:/Flight/gitHub/UAVXArm.git/UAVXArm/firmware"
+
+#"$(shell "C:\Program Files (x86)\Subversion\bin\svnversion" -cn . | sed -e 's/[MS]//g' -e 's/^[[:digit:]]*://')" 
+#SVN_REV := "$(shell "SubWCRev" -cn . | sed -e 's/[MS]//g' -e 's/^[[:digit:]]*://')" 
+#SVN_REV := "$(shell "SubWCRev" .)" 
+
+
+INSTALL_DIR = "D:/Flight/gitHub/UAVXArm.git/UAVXArm/firmware"
 
 #-------------------------------------------------------------
 
@@ -22,23 +29,22 @@ BOARD= UAVXF4V3
 
 #-------------------------------------------------------------
  
-TARGET=uavx_$(BOARD)_r$(SVN_REV)
+TARGET=$(BOARD)$(SVN_REV)
 CONFIG= -DARM_MATH_CM4  -DHSE_VALUE=8000000
 
 LINK_SCRIPT=stm32f4_eeprom16k.ld
 
 # System configuration - UNCOMMENT AS DESIRED
 
-#TCHAIN="C:\gcc\bin\"
+
 TCHAIN="C:\Program Files (x86)\Atollic\TrueSTUDIO for STM32 9.3.0\ARMTools\bin\"
 OPT = -O3 
-
 #OPT = -Os
 
-#CC = $(TCHAIN)arm-none-eabi-gcc
-#OBJCOPY = $(TCHAIN)arm-none-eabi-objcopy
 CC = $(TCHAIN)arm-atollic-eabi-gcc
 OBJCOPY = $(TCHAIN)arm-atollic-eabi-objcopy
+#CC = $(TCHAIN)gcc
+#OBJCOPY = $(TCHAIN)objcopy
 
 #FPFLAGS= -mcpu=cortex-m4 -mthumb -mfloat-abi=softfp -mfpu=fpv4-sp-d16 -mlittle-endian 
 FPFLAGS=  -D__FPU_PRESENT -D__VFP_FP__ -mthumb -march=armv7e-m -mtune=cortex-m4 -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard 
@@ -141,7 +147,7 @@ uavxarm: svn  $(OBJS)
 
 clean:
 #	$(RM) $(OBJS) "$(BIN_DIR)/*.*"
-	$(RM) $(OBJS) "$(BIN_DIR)/*.elf" "$(BIN_DIR)/$(TARGET).map" "$(BIN_DIR)/src" "$(BIN_DIR)/lib"
+	$(RM) $(OBJS) "$(BIN_DIR)/$(TARGET).map" "$(BIN_DIR)/src" "$(BIN_DIR)/lib"
 	
 stm_libs:
 	ar obj/lib/stmlib.a  $(STMLIB_OBJS)
