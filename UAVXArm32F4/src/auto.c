@@ -22,8 +22,6 @@
 
 #include "UAVX.h"
 
-real32 NavdT;
-
 uint8 NavState, AlarmState;
 uint8 LandingState = InitDescent;
 
