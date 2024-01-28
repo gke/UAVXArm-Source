@@ -22,7 +22,7 @@
 #ifndef _uavx_h
 #define _uavx_h
 
-#define USE_UAVX_DJT
+//#define USE_UAVX_DJT
 
 //#define USE_CRUISE_FOR_PH
 
@@ -37,8 +37,6 @@
 
 //#define USB_TESTING
 
-//#define USE_MAHONY_AHRS
-
 //#define MADGWICK_TESTING
 
 //#define RC_TESTING
@@ -49,11 +47,7 @@
 
 //#define USE_BARO_ALT
 
-//#define USE_SPI_ESC  // place holder instead of stupid DSHOT disaster
-
 //#define ALT_KF_TESTING  // different altitude filtering schemes
-
-//#define USE_AUX3_PROBE_PIN
 
 //#define USE_CONSERVATIVE_DEF_PARAM_LOAD
 

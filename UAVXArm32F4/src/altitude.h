@@ -31,8 +31,6 @@
 
 #define MAF_ROC_LEN 10
 
-real32 Airspeed;
-
 //#define MS56XX_CYCLE_MS 	10
 //#define MS56XX_HZ			(1000.0f/MS56XX_CYCLE_MS)
 
@@ -73,7 +71,6 @@ enum RangeFinders {
 };
 
 
-extern const char * TelemetryName[];
 void GetRangefinderAltitude(void);
 void InitRangefinder(void);
 

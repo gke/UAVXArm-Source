@@ -330,7 +330,7 @@ void UpdateParameters(void) {
 		// Attitude
 
 		FWStickScaleFrac = FromPercent(
-				LimitP(FWStickScale, 20, 100)) * OUT_NEUTRAL;
+				LimitP(FWStickScale, 15, 100)) * OUT_NEUTRAL;
 
 		FWRollControlPitchLimitRad = DegreesToRadians(
 				LimitP(FWRollControlPitchLimit, 45, 60));
@@ -383,8 +383,6 @@ void UpdateParameters(void) {
 		InitServoSense();
 
 		InitTune();
-
-		//zzzInitBattery();
 
 		RefreshConfig();
 	}

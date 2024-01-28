@@ -27,9 +27,9 @@
 // AltitudeErrorP, AltitudeErrorI, AltitudeROCP, AltitudeROCD,
 // NavPositionP, NavPositionI, NavVelP, NavCrossTrack, UnknownParameter
 
-real32 TuningScale;
-uint8 CurrTuningSel;
-boolean Tuning;
+extern real32 TuningScale;
+extern uint8 CurrTuningSel;
+extern boolean Tuning;
 
 void Tune(void);
 void InitTune(void);

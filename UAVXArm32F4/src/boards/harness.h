@@ -427,8 +427,6 @@ extern uint8 CurrMagSel;
 void systemReset(boolean toBootloader);
 void InitClocks(void);
 
-boolean CheckDCMotor(void);
-
 void InitHarness(void);
 void InitTarget(void);
 

@@ -50,8 +50,7 @@ real32 DesiredThrottle, IdleThrottle, InitialThrottle;
 real32 FWRollPitchFFFrac, FWAileronDifferentialFrac, FWPitchThrottleFFFrac,
 		FWMaxClimbAngleRad, FWBoardPitchAngleRad, FWClimbThrottleFrac,
 		FWSpoilerDecayPS, FWAileronRudderFFFrac, FWAltSpoilerFFFrac,
-		VRSDescentRateMPS, FWRollControlPitchLimitRad,
-		AltHoldThrCompDecayPS;
+		VRSDescentRateMPS, FWRollControlPitchLimitRad, AltHoldThrCompDecayPS;
 real32 FWGlideAngleOffsetRad = 0.0f;
 real32 ThrottleGain, AttitudeGainScale;
 real32 MaxAttitudeGainReduction = 0.0f;
@@ -61,7 +60,7 @@ boolean AltHoldAlarmActive = false;
 void DoSetPointSlews(void) {
 	idx a;
 
-    //Alt.P.Desired = SlewLimit(Alt.P.Desired, DesiredAlt, Alt.P.Max, dT);
+	//Alt.P.Desired = SlewLimit(Alt.P.Desired, DesiredAlt, Alt.P.Max, dT);
 	//Alt.P.Desired = DesiredAlt;
 
 	for (a = Pitch; a <= Roll; a++)
@@ -187,55 +186,6 @@ void DoAltitudeControl(real32 CurrMinROCMPS, real32 CurrMaxROCMPS) {
 
 //______________________________________________________________________________
 
-// ChatGBT 3.5 20231216
-
-
-// Constants
-//#define HOVER_THROTTLE 0.5  // Hover throttle value
-#define MAX_THRUST 2.0      // Maximum thrust in Kg
-#define MAX_INTEGRAL 0.1    // Maximum value for the integral term
-
-
-// Function to compute throttle values for climbing
-real32 DoAltitudeControlGBT(real32 CurrMinROCMPS, real32 CurrMaxROCMPS) {
-    // Altitude control parameters
-
-	real32 Mass = 2.0f;
-
-    // Proportional control: directly use the altitude error
-    Alt.P.Error = Alt.P.Desired - Altitude;
-    Alt.P.PTerm = Alt.P.Error * Alt.P.Kp;
-
-    // Integral control with anti-windup
-    if (Alt.P.Error == 0.0) {
-        // Reset integral term when there is no altitude error
-        Alt.P.IntE = 0.0;
-    } else {
-        Alt.P.IntE += (Alt.P.Error * Alt.P.Ki * AltdT);
-        Alt.P.IntE = Limit(Alt.P.IntE, -Alt.P.IntLim, Alt.P.IntLim);
-    }
-    Alt.P.ITerm = Alt.P.IntE;
-
-    // Desired vertical velocity directly limited by MinROCMPS and MaxROCMPS
-    real32 desiredVerticalVelocity = Limit(Alt.P.PTerm + Alt.P.ITerm, CurrMinROCMPS, CurrMaxROCMPS);
-
-    // Convert desired vertical velocity to acceleration (considering mass)
-    real32 desiredAcc = (desiredVerticalVelocity - ROC) / AltdT;
-
-    // Convert acceleration to thrust
-    real32 thrust = Mass * (GRAVITY_MPS_S + desiredAcc);
-
-    // Convert thrust to throttle (assuming linear relationship between thrust and throttle)
-    real32 AltHoldThrComp = thrust / (Mass * GRAVITY_MPS_S);
-
-    // Ensure throttle is within bounds
-    AltHoldThrComp = Limit(AltHoldThrComp, 0.0, 1.0);
-
-}
-
-
-//______________________________________________________________________________
-
 // Fixed Wing
 
 void DeploySpoilers(real32 a) {
@@ -286,7 +236,8 @@ void ControllingAltitudeFW(void) {
 				//				: 0.0f; // TODO: slew
 				DeploySpoilers(Abs(t));
 				F.HoldingAlt = AltHoldAlarmActive = false;
-				AltHoldThrComp = DecayX(AltHoldThrComp, AltHoldThrCompDecayPS, AltdT);
+				AltHoldThrComp = DecayX(AltHoldThrComp, AltHoldThrCompDecayPS,
+						AltdT);
 			}
 		} else {
 			if (F.NavigationEnabled) { // Navigating - using CruiseThrottle
@@ -334,7 +285,8 @@ void ControllingAltitude(void) {
 			F.HoldingAlt = !(F.ThrottleMoving || ROCTooHigh(0.25f));
 
 			if (!F.HoldingAlt)
-				AltHoldThrComp = DecayX(AltHoldThrComp, AltHoldThrCompDecayPS, AltdT);
+				AltHoldThrComp = DecayX(AltHoldThrComp, AltHoldThrCompDecayPS,
+						AltdT);
 		}
 	}
 
@@ -356,7 +308,8 @@ void ControlAltitude(void) {
 		} else {
 			F.RapidDescentHazard = ROC < VRSDescentRateMPS;
 			SetDesiredAltitude(Altitude);
-			AltHoldThrComp = DecayX(AltHoldThrComp, AltHoldThrCompDecayPS, AltdT);
+			AltHoldThrComp = DecayX(AltHoldThrComp, AltHoldThrCompDecayPS,
+					AltdT);
 			Sl = DecayX(Sl, FWSpoilerDecayPS, AltdT);
 			F.HoldingAlt = false;
 		}
@@ -426,11 +379,14 @@ void DoAttitudeGainScale(void) {
 
 } // DoAttitudeGainScale
 
+
 real32 conditionOut(real32 v) {
 
-	return (Limit1(v * AttitudeGainScale, 1.0f));
+	return (Limit1(v, 1.0f));
 
 } // conditionOut
+
+
 
 void ControlRate(idx a) {
 	PIDStruct *R = &A[a].R;
@@ -476,6 +432,8 @@ void DoAngleControl(idx a) {
 
 	P->Error = Limit1(P->Desired, P->Max) - Angle[a];
 	P->PTerm = P->Error * P->Kp;
+//gke ??????????????????????????????
+	// do pitch angle check code here!!!!!!!!!!!!!!!!!!!!!!!!
 
 	if (AttitudeMode == HorizonMode) {
 		P->IntE = 0.0f; // for flip back to angle mode
@@ -626,18 +584,19 @@ void DoControl(void) {
 
 		for (a = Pitch; a <= Roll; a++)
 
-			if ((a == Roll) && (Abs(Angle[Pitch]) > FWRollControlPitchLimitRad))
-				DoRateDampingControl(Roll);
-			else
-				switch (AttitudeMode) {
-				case AngleMode:
-					DoAngleControl(a);
-					break;
-				case HorizonMode: // no Horizon Control for FW
-				case RateMode:
-					DoRateDampingControl(a);
-					break;
-				} // switch
+		if ((a == Roll) && (Abs(Angle[Pitch]) > FWRollControlPitchLimitRad))
+		DoRateDampingControl(Roll);
+		else
+		switch (AttitudeMode) {
+			case AngleMode:
+			DoAngleControl(a);
+			break;
+			case HorizonMode: // no Horizon Control for FW
+			case RateMode:
+			DoRateDampingControl(a);
+			break;
+		} // switch
+
 	} else if (IsGroundVehicle) {
 
 	} else {

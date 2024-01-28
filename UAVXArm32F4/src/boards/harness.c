@@ -779,14 +779,6 @@ void CheckBusDev(void) {
 	}
 } // CheckBusDev
 
-boolean CheckDCMotor(void) { // do in this in harness
-
-	InitPinMode(&PWMPins[0], true);
-
-	Delay1uS(10);  // allow configuration to settle
-
-	return (!DigitalRead(&PWMPins[0].P));
-} // CheckDCMotors
 
 void InitHarness(void) {
 	GPIO_InitTypeDef GPIO_InitStructure;

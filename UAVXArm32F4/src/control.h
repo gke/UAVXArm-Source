@@ -93,7 +93,7 @@ extern real32 CameraAngle[3], OrbitCamAngle;
 extern real32 DesiredHeading, SavedHeading;
 extern real32 CurrMaxTiltAngle;
 extern real32 Altitude;
-extern real32 AltHoldThrComp, ROC, MinROCMPS, MaxROCMPS;
+extern real32 AltHoldThrComp, MinROCMPS, MaxROCMPS;
 extern real32 DesiredThrottle, CruiseThrottle, IdleThrottle, InitialThrottle;
 extern real32 AltitudeHoldROCWindow;
 extern real32 MaxAltHoldThrComp;

@@ -209,7 +209,7 @@ void InitNVMem(void) {
 			F.HaveNVMem = false;
 		}
 	} else {
-		NVMemSize =
+		NVMemSize = 0;
 		F.HaveNVMem = false;
 	}
 

@@ -142,8 +142,10 @@ void InitTarget(void) {
 	case CPPMRx:
 		F.HaveSerialRC = false;
 		F.HaveGPS = CurrGPSType != NoGPS;
-		GPSSerial = Usart2;
-		InitSerialPort(GPSSerial, false);
+		if (F.HaveGPS) {
+			GPSSerial = Usart2;
+			InitSerialPort(GPSSerial, false);
+		}
 		break;
 	default:
 		F.HaveGPS = false;

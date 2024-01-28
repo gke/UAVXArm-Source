@@ -38,7 +38,6 @@ const uint8 SM[] = { RightAileronC, LeftAileronC, ElevatorC, RudderC, SpoilerC,
 		CamRollC, Aux1CamPitchC };
 
 real32 PWSense[MAX_PWM_OUTPUTS];
-real32 FWAileronDifferentialFrac = 0.0f;
 
 real32 OrientationRad = 0.0f;
 real32 OrientS = 0.0f;
@@ -60,7 +59,7 @@ void RotateOrientation(real32 * nx, real32 * ny, real32 x, real32 y) {
 
 void DoDifferential(uint8 R, uint8 L) {
 
-	real32 d = 1.0f - FWAileronDifferentialFrac;
+    real32 d = 1.0f - FWAileronDifferentialFrac;
 	if (PW[R] > 0.0f)
 		PW[R] *= d;
 

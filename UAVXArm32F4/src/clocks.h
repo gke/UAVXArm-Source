@@ -27,13 +27,6 @@ typedef struct {
 	uint64 Cumulative;
 } tickStruct;
 
-extern volatile timeuS uS[];
-extern volatile timemS mS[];
-extern volatile tickStruct ticks[];
-
-
-extern volatile timeuS TicksuS;
-
 void cycleCounterInit(void);
 timeuS uSClock(void);
 void Delay1uS(uint16 DelayuS);
@@ -44,5 +37,10 @@ void mSTimer(uint8 t, timemS TimePeriodmS);
 void uSTimer(uint8 t, timeuS TimePerioduS);
 boolean mSTimeout(uint8 t);
 boolean uSTimeout(uint8 t);
+
+extern volatile timeuS uS[];
+extern volatile timemS mS[];
+extern volatile tickStruct ticks[];
+extern volatile timeuS TicksuS;
 
 #endif

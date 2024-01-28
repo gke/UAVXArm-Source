@@ -22,8 +22,6 @@
 
 #include "UAVX.h"
 
-
-
 real32 MagTemperature = 0.0f;
 real32 MagVariation = 0.0f;
 real32 MagVariationWMM2010 = 0.0f;

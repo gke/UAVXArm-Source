@@ -64,8 +64,8 @@ CamStruct Cam;
 
 real32 DFT[8];
 
-const char * ESCName[] = { "PWM", "DC Motor", "OneShot", "MultiShot",
-		"DShot", "Unknown" };
+const char * ESCName[] = { "PWM", "DC Motor", "OneShot", "MultiShot", "DShot",
+		"Unknown" };
 
 void ShowESCType(uint8 s) {
 	TxString(s, ESCName[CurrESCType]);
@@ -126,7 +126,7 @@ void UpdateDrives(void) {
 		if (F.PassThru && !IsMulticopter) {
 			Rl = Limit1(-A[Roll].Stick * FWStickScaleFrac, OUT_NEUTRAL);
 			Pl = Limit1(-A[Pitch].Stick * FWStickScaleFrac, OUT_NEUTRAL);
-			Yl = Limit1(A[Yaw].Stick * FWStickScaleFrac, OUT_NEUTRAL);
+			Yl = Limit1(-A[Yaw].Stick * FWStickScaleFrac, OUT_NEUTRAL);
 			Sl = 0.0f; //zzz
 		} else {
 			Rl = Limit1(A[Roll].Out, OUT_NEUTRAL);
@@ -168,31 +168,51 @@ void InitDrives(void) {
 
 	F.DrivesArmed = false;
 
-	UsingDCMotors = (CurrESCType == DCMotors); // && F.DCMotorsDetected;
+	UsingDCMotors = (CurrESCType == DCMotors);
 
 	NoOfDrives = Limit(DrivesUsed[UAVXAirframe], 0, CurrMaxPWMOutputs);
-	NoOfDrivesR = 1.0f / NoOfDrives;
-	nd = ((NoOfDrives + 3) / 4) * 4; // Timers share period 4 + 4 + 2
 
-	driveWritePtr = Drive[CurrESCType].driver;
+	if (IsMulticopter) {
 
-	for (m = 0; m < nd; m++) {
-		PW[m] = PWp[m] = 0.0f;
+		NoOfDrivesR = 1.0f / NoOfDrives;
+		nd = ((NoOfDrives + 3) / 4) * 4; // Timers share period 4 + 4 + 2
 
-		if (DM[m] < CurrMaxPWMOutputs)
-			InitPWMPin(&PWMPins[DM[m]], Drive[CurrESCType].prescaler,
-					Drive[CurrESCType].period, Drive[CurrESCType].min);
-	}
+		driveWritePtr = Drive[CurrESCType].driver;
 
-	for (m = nd; m < MAX_PWM_OUTPUTS; m++)
-		if (DM[m] < CurrMaxPWMOutputs) {
-			PW[m] = PWp[m] = OUT_NEUTRAL;
-			InitPWMPin(&PWMPins[DM[m]], PWM_PS, PWM_PERIOD_SERVO, PWM_NEUTRAL);
+		for (m = 0; m < nd; m++) {
+			PW[m] = PWp[m] = 0.0f;
+
+			if (DM[m] < CurrMaxPWMOutputs)
+				InitPWMPin(&PWMPins[DM[m]], Drive[CurrESCType].prescaler,
+						Drive[CurrESCType].period, Drive[CurrESCType].min);
 		}
 
-	for (m = nd; m < MAX_PWM_OUTPUTS; m++) {
-		PW[m] = PWp[m] = 0.5f;
-		servoWrite(m, PWp[m]);
+		// servos
+		if (!UsingDCMotors)
+			for (m = nd; m < MAX_PWM_OUTPUTS; m++)
+				if (DM[m] < CurrMaxPWMOutputs) {
+					PW[m] = PWp[m] = OUT_NEUTRAL;
+					InitPWMPin(&PWMPins[DM[m]], PWM_PS, PWM_PERIOD_SERVO,
+					PWM_NEUTRAL);
+				}
+	} else {
+
+		driveWritePtr = servoWrite;
+
+		for (m = 0; m < NoOfDrives; m++)
+			PW[m] = PWp[m] = 0.0f;
+
+		for (m = NoOfDrives; m < MAX_PWM_OUTPUTS; m++)
+			PW[m] = PWp[m] = OUT_NEUTRAL;
+
+		for (m = 0; m < MAX_PWM_OUTPUTS; m++)
+			if (DM[m] < CurrMaxPWMOutputs)
+				InitPWMPin(&PWMPins[DM[m]], PWM_PS, PWM_PERIOD_SERVO,
+				PWM_WIDTH_SERVO);
+
+		for (m = 0; m < MAX_PWM_OUTPUTS; m++)
+			servoWrite(m, PWp[m]);
+
 	}
 
 	for (m = 0; m < MAX_PWM_OUTPUTS; m++) {

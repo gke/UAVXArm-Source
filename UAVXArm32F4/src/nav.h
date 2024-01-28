@@ -31,7 +31,7 @@ timemS WPAltitudeTimeout(void);
 void ZeroNavCorrections(void);
 void DecayNavCorrections(void);
 
-boolean SavedPIOState;
+extern boolean SavedPIOState;
 
 #endif
 

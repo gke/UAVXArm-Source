@@ -495,11 +495,14 @@ void SendAttitudeControlPacket(uint8 s, idx a) {
 	// 65536 / ( 6 bytes * 250 Hz) -> 45 seconds
 
 	static boolean TickTock = false;
+	static uint32 Tick = 0;
 
 	if ((State == InFlight) || (State == MonitorInstruments)) {
 
-		TickTock = !TickTock;
-		if (TickTock) {
+		//TickTock = !TickTock;
+		//if (TickTock) {
+		Tick++;
+		if (Tick > 20) {
 
 			BlackBoxEnabled = true;
 
@@ -513,6 +516,8 @@ void SendAttitudeControlPacket(uint8 s, idx a) {
 			TxESCi8(s, A[a].Out * 200.0f);
 
 			SendPacketTrailer(s);
+
+			Tick = 0;
 
 			BlackBoxEnabled = false;
 		}

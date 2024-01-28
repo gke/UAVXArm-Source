@@ -24,8 +24,8 @@
 
 #define MS4525_ID 0x28
 
-real32 Airspeed;
-uint8 CurrASSensorType;
+extern real32 Airspeed;
+extern uint8 CurrASSensorType;
 
 enum ASSensorTypes { MS4525D0I2C, MPXV7002DPAnalog, ASThermopileAnalog, ASGPSDerived, noAS };
 

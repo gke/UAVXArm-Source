@@ -63,8 +63,6 @@ void InitMisc(void) {
 
 	execPeakTimeuS = 0;
 
-	F.DCMotorsDetected = CheckDCMotor();
-
 	GyrosErected = false;
 	State = Preflight;
 
@@ -149,7 +147,6 @@ int main() {
 	InitIMU(); // 0.504mS
 	InitMagnetometer(); // 1574mS
 	InitMadgwick(); // 0.00353mS
-
 	InitAltitude();
 
 	InitNVMem();
@@ -262,7 +259,6 @@ int main() {
 					GyroErectionSamples = 0;
 					State = ErectingGyros;
 				}
-
 				break;
 			case ErectingGyros:
 

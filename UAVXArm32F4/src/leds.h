@@ -37,6 +37,7 @@ void InitLEDs(void);
 void BeeperOff(void);
 void BeeperOn(void);
 void BeeperToggle(void);
+
 extern boolean BeeperIsOn;
 
 #endif
