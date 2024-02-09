@@ -36,7 +36,6 @@ enum MagSensors {
 };
 
 extern int16 RawMag[];
-extern real32 MagScale[];
 extern real32 MagSamples[][3];
 extern uint16 Population[2][2][2];
 
@@ -45,11 +44,10 @@ extern uint16 Population[2][2][2];
 #define IST8310_ID  (0x1c*2)
 #define HMC5XXX_ID 	(0x1e*2)
 
-boolean ReadMagnetometer(void);
+void ReadMagnetometer(void);
 void GetMagnetometer(void);
 real32 CalculateMagneticHeading(void);
 
-void CalibrateHMC5XXX(uint8 s);
 void CalibrateMagnetometer(uint8 s);
 void CheckMagnetometerIsCalibrated(void);
 

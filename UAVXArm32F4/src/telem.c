@@ -550,7 +550,7 @@ void SendCalibrationPacket(uint8 s) {
 				Config.AccCal.Bias[a] * Config.AccCal.Scale[a] * GRAVITY_MPS_S_R
 						* 1000.0f);
 
-		TxESCi16(s, MagScale[a] * 1000.0f);
+		TxESCi16(s, Mag[a]);
 		TxESCi16(s, Config.MagCal.Bias[a] * 1000.0f);
 	}
 
@@ -607,7 +607,6 @@ void SendParamsPacket(uint8 s, uint8 GUIPS) {
 			UseDefaultParameters(GUIPS);
 
 		Config.CurrPS = 0;
-
 		SendPacketHeader(s);
 
 		uint16 len = strlen(Revision);
@@ -616,9 +615,9 @@ void SendParamsPacket(uint8 s, uint8 GUIPS) {
 		TxESCu8(s, 1 + MAX_PARAMETERS + len + 1);
 
 		TxESCu8(s, Config.CurrPS);
+
 		for (p = 0; p < MAX_PARAMETERS; p++)
 			TxESCi8(s, Config.P[Config.CurrPS][p]);
-
 		TxESCu8(s, len);
 		for (p = 0; p < len; p++)
 			TxESCu8(s, Revision[p]);
@@ -955,8 +954,6 @@ void ProcessParamsPacket(uint8 s) {
 	if ((State == Preflight) || (State == Ready)
 			|| (State == MonitorInstruments)) { // not inflight
 
-		Config.CurrPS = 0;
-
 		for (p = 0; p < MAX_PARAMETERS; p++)
 			SetP(p, UAVXPacketi8(p + 3));
 
@@ -1119,7 +1116,7 @@ void ProcessRxPacket(uint8 s) {
 				SendCalibrationPacket(s);
 				break;
 			case miscCalMag:
-				CalibrateHMC5XXX(s);
+				CalibrateMagnetometer(s);
 				SendCalibrationPacket(s);
 				break;
 			case miscLB:
@@ -1229,7 +1226,7 @@ void SendUAVXTelemetry(uint8 s) {
 				SendNavPacket(s); // 2+54+4 = 60
 			SendExecutionTimeStatus(s);
 			SendSerialPortStatus(s);
-			if ((State == Preflight) || (State == Ready)) //Warmup) || (State == Landed))
+			if ((State == Preflight) || (State == Ready) || (State == Landed))
 				SendCalibrationPacket(s);
 		}
 		SendFlight = !SendFlight;

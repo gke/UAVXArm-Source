@@ -47,7 +47,6 @@ typedef struct {
 	real32 Bias[3];
 } MagCalStruct;
 
-
 typedef struct {
 	uint16 CurrRevisionNo;
 	uint8 CurrPS;

@@ -39,9 +39,13 @@ ConfigStruct Config;
 boolean ConfigChanged = false;
 
 boolean ConfigUninitialised(void) {
+	uint8 p;
+	boolean same = true;
 
-	return ((Config.P[0][0] == Config.P[0][1])); // UNLIKELY
+	for (p = 1; p<= MAX_PARAMETERS; p++)
+		same = same && (Config.P[0][p-1] == Config.P[0][p]);
 
+	return (same);
 } // ConfigUninitialised
 
 void RefreshConfig(void) {
@@ -615,3 +619,4 @@ void LoadParameters(void) {
 	ConditionParameters();
 
 } // LoadParameters
+

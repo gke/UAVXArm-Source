@@ -129,6 +129,7 @@ int main() {
 
 	LoadParameters();
 	InitHarness();
+
 	InitOLED();
 
 	InitBattery();

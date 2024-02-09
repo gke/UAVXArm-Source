@@ -29,6 +29,7 @@
 
 // Substantially rewritten for UAVXArm by Prof. G.K. Egan (C) 2012.
 
+
 uint16 SphereFit(real32 d[][3], uint16 N, uint16 MaxIterations, real32 Err,
 		real32 SphereOrigin[], real32 * SphereRadius) {
 
@@ -262,5 +263,6 @@ void CalibrateAccSixPointSphere(uint8 s, uint8 imuSel) {
 } // CalibrateAccSixPointSphere
 
 #endif
+
 
 

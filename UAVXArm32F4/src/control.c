@@ -379,14 +379,11 @@ void DoAttitudeGainScale(void) {
 
 } // DoAttitudeGainScale
 
-
 real32 conditionOut(real32 v) {
 
 	return (Limit1(v, 1.0f));
 
 } // conditionOut
-
-
 
 void ControlRate(idx a) {
 	PIDStruct *R = &A[a].R;
@@ -432,8 +429,6 @@ void DoAngleControl(idx a) {
 
 	P->Error = Limit1(P->Desired, P->Max) - Angle[a];
 	P->PTerm = P->Error * P->Kp;
-//gke ??????????????????????????????
-	// do pitch angle check code here!!!!!!!!!!!!!!!!!!!!!!!!
 
 	if (AttitudeMode == HorizonMode) {
 		P->IntE = 0.0f; // for flip back to angle mode
@@ -584,18 +579,18 @@ void DoControl(void) {
 
 		for (a = Pitch; a <= Roll; a++)
 
-		if ((a == Roll) && (Abs(Angle[Pitch]) > FWRollControlPitchLimitRad))
-		DoRateDampingControl(Roll);
-		else
-		switch (AttitudeMode) {
-			case AngleMode:
-			DoAngleControl(a);
-			break;
-			case HorizonMode: // no Horizon Control for FW
-			case RateMode:
-			DoRateDampingControl(a);
-			break;
-		} // switch
+			if ((a == Roll) && (Abs(Angle[Pitch]) > FWRollControlPitchLimitRad))
+				DoRateDampingControl(Roll);
+			else
+				switch (AttitudeMode) {
+				case AngleMode:
+					DoAngleControl(a);
+					break;
+				case HorizonMode: // no Horizon Control for FW
+				case RateMode:
+					DoRateDampingControl(a);
+					break;
+				} // switch
 
 	} else if (IsGroundVehicle) {
 

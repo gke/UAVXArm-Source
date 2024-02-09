@@ -106,7 +106,7 @@ void DoEmulation(void) {
 			//FakeROC = Limit(FakeROC, EffSink, 1000.0f);
 			FakeROC += Thermal(Nav.C[EastC].Pos, Nav.C[NorthC].Pos);
 
-			FakeAccZ =  (FakeROC - PrevFakeROC) * dTR;
+			FakeAccZ = (FakeROC - PrevFakeROC) * dTR;
 
 #define NEW_FW
 #if defined(NEW_FW)
@@ -185,8 +185,6 @@ void DoEmulation(void) {
 			GPS.C[a].Pos += GPS.C[a].Vel * dT;
 		}
 
-
-
 		GPS.C[DownC].Vel = GPS.velD = -FakeROC;
 		GPS.altitude = FakeAltitude;
 
@@ -234,13 +232,12 @@ void GPSEmulation(void) {
 
 		GPSdTmS = FAKE_GPS_DT_MS;
 
-	//	UpdateWhere();
+		//	UpdateWhere();
 
 		Nav.Distance = sqrtf(Sqr(Nav.C[EastC].Pos) + Sqr(Nav.C[NorthC].Pos));
-			Nav.Bearing = Make2Pi(atan2f(Nav.C[EastC].Pos, Nav.C[NorthC].Pos));
-			Nav.Elevation = MakePi(atan2f(Altitude, Nav.Distance));
-			Nav.Hint = MakePi((Nav.Bearing - PI) - Heading);
-
+		Nav.Bearing = Make2Pi(atan2f(Nav.C[EastC].Pos, Nav.C[NorthC].Pos));
+		Nav.Elevation = MakePi(atan2f(Altitude, Nav.Distance));
+		Nav.Hint = MakePi((Nav.Bearing - PI) - Heading);
 
 		F.NewNavUpdate =
 				(ArmingMethod == SwitchArming) ?

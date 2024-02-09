@@ -36,17 +36,12 @@
 //#define USE_KEN_GPS_M8
 
 //#define USB_TESTING
-
 //#define MADGWICK_TESTING
-
 //#define RC_TESTING
-
 //#define ACC_TESTING
-
+//#define MAG_TESTING
 //#define KF_TESTING
-
 //#define USE_BARO_ALT
-
 //#define ALT_KF_TESTING  // different altitude filtering schemes
 
 //#define USE_CONSERVATIVE_DEF_PARAM_LOAD

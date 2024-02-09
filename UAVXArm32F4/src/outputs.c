@@ -126,7 +126,7 @@ void UpdateDrives(void) {
 		if (F.PassThru && !IsMulticopter) {
 			Rl = Limit1(-A[Roll].Stick * FWStickScaleFrac, OUT_NEUTRAL);
 			Pl = Limit1(-A[Pitch].Stick * FWStickScaleFrac, OUT_NEUTRAL);
-			Yl = Limit1(-A[Yaw].Stick * FWStickScaleFrac, OUT_NEUTRAL);
+			Yl = Limit1(A[Yaw].Stick * FWStickScaleFrac, OUT_NEUTRAL);//-gke
 			Sl = 0.0f; //zzz
 		} else {
 			Rl = Limit1(A[Roll].Out, OUT_NEUTRAL);
@@ -141,10 +141,8 @@ void UpdateDrives(void) {
 		else
 			DoMix();
 
-		for (m = 0; m < NoOfDrives; m++) { // drives
-			PWp[m] =
-					(Armed() && !F.Emulation) ?
-							LPF1(PWp[m], PW[m], LPF1DriveK) : 0.0f;
+		for (m = 0; m < NoOfDrives; m++) { // drives - kill if in emulation
+			PWp[m] = (Armed() && !F.Emulation) ? LPF1(PWp[m], PW[m], LPF1DriveK) : 0.0f;
 			driveWritePtr(m, PWp[m]);
 
 			PWSum[m] += PWp[m];

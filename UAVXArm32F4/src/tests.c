@@ -185,22 +185,22 @@ void DoTesting(void) {
 
 	uint8 v = 0;
 
-	while(1) {
-		SIOReadBlock(CurrMagSel, HMC5XXX_TAG, 1, &v);
-		Delay1mS(1);
-	}
+//	while(1) {
+//		SIOReadBlock(CurrMagSel, HMC5XXX_TAG, 1, &v);
+//		Delay1mS(1);
+//	}
+//	SIOWriteBlockataddr(CurrMagSel, HMC5XXX_CONFIG_A, 1, tx);
+
 
 	timemS NextUpdatemS = 0;
 
 	mSTimer(MagnetometerUpdatemS, MAG_TIME_MS);
 	while (true) {
 		if (mSTimeout(MagnetometerUpdatemS)) {
-			mSTimer(MagnetometerUpdatemS, MAG_TIME_MS);
-			//ScanSIOBus(TelemetrySerial, CurrMagSel);
 
-			//boolean r = I2CReadBlock(CurrMagSel, HMC5XXX_ID, HMC5XXX_DATA, 6, buf);
-			//boolean r = SIOReadBlocki16vataddr(CurrMagSel, HMC5XXX_DATA, 3, RawMag, true);
-			ReadMagnetometer();
+			mSTimer(MagnetometerUpdatemS, MAG_TIME_MS);
+
+			GetMagnetometer();
 
 			if (mSClock() > NextUpdatemS) {
 
