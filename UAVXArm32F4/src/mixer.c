@@ -141,12 +141,15 @@ void DoMix(void) {
 
 	if (F.PassThru) // do here at lowest level rather than complicating higher level logic
 		TempThrottle = DesiredThrottle;
-	else
+	else {
 		TempThrottle =
 				ThrottleSuppressed ? 0.0f : DesiredThrottle + AltHoldThrComp;
+		TempThrottle = Limit(TempThrottle, 0.0f, OUT_MAXIMUM * FWClimbThrottleFrac);
+
+	}
 
 	NetThrottle = PW[RightThrottleC] = PW[LeftThrottleC] = Limit(
-			TempThrottle * OUT_MAXIMUM, 0.0f, 1.0f);
+			TempThrottle * OUT_MAXIMUM, 0.0f, OUT_MAXIMUM);
 
 	switch (UAVXAirframe) {
 	case Heli90AF:

@@ -114,12 +114,6 @@ const DevDef busDev[maxDevSel] = {
 #else
 	{false, oledSel, oledDisplay,},
 #endif
-#if defined(USE_SPI_ESC)
-	{true, escSPISel, ESCSPI, true, 1, 0, PC13}, // PC13 NC no select required
-#else
-	{false, escSPISel, }, // PC13 not connected
-#endif
-	{false, escI2CSel, ESCI2C, false, 2, ESCI2C_ID, }, //
 	{true, mag2Sel, hmc5xxxMag, false, 3, HMC5XXX_ID, }
 };
 
@@ -139,7 +133,7 @@ void InitTarget(void) {
 
 	switch (CurrRxType) {
 	case CPPMRx:
-		CurrMaxPWMOutputs = (UsingDCMotors || (CurrESCType == ESCSPI)) ? 4 : 10;
+		CurrMaxPWMOutputs = UsingDCMotors ? 4 : 10;
 		F.HaveSerialRC = false;
 		break;
 	default:

@@ -100,12 +100,20 @@ const DevDef busDev[maxDevSel] = { //
 		{ true, imuSel, mpu6050IMU, false, 2, MPU_0x68_ID, }, //
 		{ true, baroSel, ms5611Baro, false, 2, MS56XX_0_ID, }, //
 		{ true, magSel, hmc5xxxMag, false, 2, HMC5XXX_ID, }, //
+#if defined(USE_ARM_BLACKBOX_FLASH)
 		{ false, memSel, ArmFlashMem,}, // does not use either SPI or I2C
+#else
+		{ true, memSel, i2cEEPROMMem, false, 2, EEPROM_ID, },//
+#endif
 		{ false, gpsSel, }, //
 		{ false, rfSel, }, //
 		{ false, asSel, }, //
 		{ false, flowSel, }, //
+#if defined(USE_OLED)
+		{ true, oledSel, oledDisplay, false, 2, SSD1X06_I2C_ADDRESS,},
+#else
 		{ false, oledSel, oledDisplay, }, //
+#endif
 		{ true, mag2Sel, hmc5xxxMag, false, 3, HMC5XXX_ID, }
 };
 

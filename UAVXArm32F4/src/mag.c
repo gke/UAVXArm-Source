@@ -56,7 +56,7 @@ real32 CalculateMagneticHeading(void) {
 
 	//	if (F.NewMagValues) {
 	//		F.NewMagValues = false;
-	if (F.MagnetometerActive) {
+	//if (F.MagnetometerActive) {
 
 		cR = cosf(-Angle[Roll]);
 		sR = sinf(-Angle[Roll]);
@@ -67,8 +67,8 @@ real32 CalculateMagneticHeading(void) {
 		yh = Mag[LR] * cR + Mag[UD] * sR;
 
 		return -atan2f(yh, xh);
-	} else
-		return 0.0f;
+	//} else
+	//	return 0.0f;
 
 } // CalculateMagneticHeading
 

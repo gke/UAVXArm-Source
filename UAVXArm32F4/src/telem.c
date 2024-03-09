@@ -408,7 +408,7 @@ void SendNavPacket(uint8 s) {
 
 	TxESCi32(s, GPS.hwVersion);
 
-	TxESCi16(s, Nav.Sensitivity * 1000.0f);
+	TxESCi16(s, 0); // Nav.Sensitivity * 1000.0f);
 
 	TxESCi16(s, A[Pitch].NavCorr * 1000.0f);
 	TxESCi16(s, A[Roll].NavCorr * 1000.0f);
@@ -1008,17 +1008,10 @@ void ProcessGPSPassThru(void) {
 	EnableGPSPassThru = true;
 
 	while (true) {
-
-		//if (SerialAvailable(GPSSerial)) {
-		//	LEDToggle(ledBlueSel);
-		//	TxChar(TelemetrySerial, RxChar(GPSSerial));
-		//}
-
 		if (SerialAvailable(TelemetrySerial)) {
 			TxChar(GPSSerial, RxChar(TelemetrySerial));
 			LEDToggle(ledRedSel);
 		}
-
 	}
 } // ProcessGPSPassThru
 
@@ -1129,6 +1122,7 @@ void ProcessRxPacket(uint8 s) {
 			case miscGPSPassThru:
 				if (!Armed()) {
 					InitiateShutdown(GPSSerialPassThru);
+					State = Shutdown;
 					SendAckPacket(s, miscGPSPassThru, true);
 					ProcessGPSPassThru(); // requires power cycle to escape
 				} else

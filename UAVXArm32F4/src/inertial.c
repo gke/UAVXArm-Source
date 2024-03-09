@@ -22,7 +22,7 @@
 
 real32 dT, dTR, dTOn2, dTROn2;
 timeuS LastInertialUpdateuS = 0;
-real32 AccConfidenceSDevR = 1.0f/0.2f;
+real32 AccConfidenceSDevR = 1.0f / 0.2f;
 real32 AccConfidence;
 real32 AccU = 0.0f;
 
@@ -213,6 +213,7 @@ void UpdateHeading(void) {
 			Heading = Make2Pi(MagHeading - MagVariation);
 		}
 	}
+
 } // UpdateHeading
 
 //___________________________________________________________________________
@@ -243,20 +244,20 @@ void MadgwickUpdate(real32 gx, real32 gy, real32 gz, real32 ax, real32 ay,
 	q2q3 = q2 * q3;
 	q3q3 = q3 * q3;
 
-	// estimated direction of gravity (v)
+// estimated direction of gravity (v)
 	vx = 2.0f * (q1q3 - q0q2);
 	vy = 2.0f * (q0q1 + q2q3);
-	//vz = q0q0 - q1q1 - q2q2 + q3q3;
+//vz = q0q0 - q1q1 - q2q2 + q3q3;
 	vz = 2.0f * (q0q0 + q3q3) - 1.0f;
 
-	// error is sum of cross product between reference direction
-	// of fields and direction measured by sensors
+// error is sum of cross product between reference direction
+// of fields and direction measured by sensors
 
 	AccMag = sqrtf(Sqr(ax) + Sqr(ay) + Sqr(az));
 	AccConfidence = CalculateAccConfidence(AccMag);
 	TwoKpAcc = TwoKpAccBase * (State == InFlight ? AccConfidence : 15.0f);
 
-	// renormalise to attempt to remove a little acc vibration noise
+// renormalise to attempt to remove a little acc vibration noise
 	normR = 1.0f / AccMag;
 	ax *= normR;
 	ay *= normR;
@@ -298,7 +299,7 @@ void MadgwickUpdate(real32 gx, real32 gy, real32 gz, real32 ax, real32 ay,
 		gz += (mx * wy - my * wx) * KpMag;
 	}
 
-	// integrate quaternion rate
+// integrate quaternion rate
 	gx *= dTOn2;
 	gy *= dTOn2;
 	gz *= dTOn2;
@@ -308,13 +309,13 @@ void MadgwickUpdate(real32 gx, real32 gy, real32 gz, real32 ax, real32 ay,
 	q2i = q0 * gy - q1 * gz + q3 * gx;
 	q3i = q0 * gz + q1 * gy - q2 * gx;
 
-	// two steps to preserve old to new q
+// two steps to preserve old to new q
 	q0 += q0i;
 	q1 += q1i;
 	q2 += q2i;
 	q3 += q3i;
 
-	// normalize quaternion
+// normalize quaternion
 	normR = invSqrt(Sqr(q0) + Sqr(q1) + Sqr(q2) + Sqr(q3));
 	q0 *= normR;
 	q1 *= normR;
@@ -361,7 +362,7 @@ void UpdateInertial(void) {
 
 	DoControl();
 
-	// one cycle delay OK
+// one cycle delay OK
 	UpdateHeading();
 
 	if (F.NewGPSPosition) {
@@ -375,7 +376,7 @@ void UpdateInertial(void) {
 		UpdateWhere();
 
 		F.NavigationEnabled = true;
-		F.NewNavUpdate = Nav.Sensitivity > NAV_SENS_THRESHOLD_STICK;
+		F.NewNavUpdate = true;
 	}
 
 	UpdateAltitudeEstimates();

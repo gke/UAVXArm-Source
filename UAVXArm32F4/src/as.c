@@ -116,7 +116,6 @@ void UpdateAirspeed(void) {
 	if (!F.Emulation) {
 		if (F.ASActive) {
 			if (mSTimeout(ASUpdatemS)) { // use mS[]
-
 				mSTimer(ASUpdatemS, 500); // make faster with filter and out of bound checks
 
 				switch (CurrASSensorType) {
@@ -130,12 +129,16 @@ void UpdateAirspeed(void) {
 				case ASGPSDerived:
 					break;
 				default:
+					Airspeed = 0.5f * (AS_MIN_MPS + AS_MAX_MPS);
 					break;
 				} // switch
 			}
+
+			else
+				Airspeed = 0.5f * (AS_MIN_MPS + AS_MAX_MPS);
+		}
+		else
 			Airspeed = 0.5f * (AS_MIN_MPS + AS_MAX_MPS);
-		} else
-			Airspeed = 0.0f;
 	}
 
 } // UpdateAirspeed
@@ -155,10 +158,13 @@ void InitAirspeed(void) {
 			break;
 		default:
 			break;
-
+			Airspeed = 0.5f * (AS_MIN_MPS + AS_MAX_MPS);
 		}
-	} else
+	} else {
+		Airspeed = 0.5f * (AS_MIN_MPS + AS_MAX_MPS);
+
 		F.ASActive = false;
+	}
 
 } // InitAirspeed
 

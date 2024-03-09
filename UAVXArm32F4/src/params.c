@@ -506,7 +506,7 @@ void DoStickProgramming(void) {
 				// updated in Landing or disarm UpdateConfig();
 
 				UpdateGyroTempComp();
-				LEDToggle(ledBlueSel);
+				LEDToggle(ledYellowSel);
 				DoBeep(1, 0);
 
 				NowmS = mSClock();
@@ -516,12 +516,12 @@ void DoStickProgramming(void) {
 				SticksState = SticksChanging;
 			} else {
 				SticksState = MonitorSticks;
-				LEDOff(ledBlueSel);
+				LEDOff(ledYellowSel);
 			}
 		}
 	}
 
-	LEDOff(ledBlueSel);
+	LEDOff(ledYellowSel);
 
 } // DoStickProgramming
 

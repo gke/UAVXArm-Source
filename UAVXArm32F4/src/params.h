@@ -126,8 +126,7 @@
 
 #define NAV_CORR_DECAY 2.0f	// decay to zero /S of nav corrections
 
-#define NAV_SENS_THRESHOLD_STICK FromPercent(20)// No GPS Nav if Ch7 is less than this
-#define NAV_ALT_THRESHOLD_STICK FromPercent(10)// No Alt Hold if Ch7 is less than this
+#define NAV_ALT_THRESHOLD_STICK FromPercent(60)// No Alt Hold if Ch7 is less than this
 
 #define NAV_LAND_M 5.0f // altitude below which motor shutoff armed for autoland
 #define NAV_MIN_ALT_M 5.0f // minimum altitude after takeoff before going to next WP
@@ -143,7 +142,6 @@
 #define THR_UPDATE_MS 250
 #define THR_UPDATE_S ((real32)THR_UPDATE_MS*0.001f)
 
-#define NAV_SENS_ALT_THRESHOLD_STICK FromPercent(10)// Altitude hold disabled if Ch7 is less than this
 #define ATTITUDE_HOLD_LIMIT_STICK FromPercent(20) // dead zone for roll/pitch stick for position hold
 #define ATTITUDE_THRESHOLD_STICK FromPercent(2) // make sure neutral is 1500uS with no trims
 #define ATTITUDE_HOLD_RESET_INTERVAL 25 // number of impulse cycles before GPS position is re-acquired

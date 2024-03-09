@@ -1122,6 +1122,8 @@ void ProcessGPSSentence(void) {
 	idx a;
 	static timemS GPSPosUpdatemSP = 0;
 
+	LEDOn(ledBlueSel);
+
 	if (F.GPSValid) {
 
 		mSTimer(GPSTimeoutmS, NavGPSTimeoutmS);
@@ -1141,13 +1143,14 @@ void ProcessGPSSentence(void) {
 			GPSdTmS = GPS.lastPosUpdatemS - GPSPosUpdatemSP;
 			GPSPosUpdatemSP = GPS.lastPosUpdatemS;
 
-			if ((State == Ready) || (State == Landed))
-				LEDOn(ledBlueSel);
-			else
-				LEDToggle(ledYellowSel);
+			//if ((State == Ready) || (State == Landed))
+			//	LEDOn(ledBlueSel);
+			//else
+			//	LEDToggle(ledYellowSel);
 
 			F.NewGPSPosition = true;
 		}
+
 	}
 
 } // ProcessGPSSentence
@@ -1162,7 +1165,6 @@ void CheckGPSTimeouts(void) {
 		false;
 
 		LEDOff(ledBlueSel);
-		LEDOff(ledYellowSel);
 	}
 
 } // CheckGPSTimeouts

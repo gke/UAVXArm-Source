@@ -791,25 +791,20 @@ void UpdateControls(void) {
 
 // COMPLICATED switching for arming, AH WP nav etc ****************
 
-		F.AltControlEnabled = State == InFlight;
+		if (ActiveCh(NavQualificationRC)) {
 
-		if (ActiveCh(NavQualificationRC))
+			F.AltControlEnabled = (State == InFlight)
+					&& ActiveAndTriggered(NAV_ALT_THRESHOLD_STICK,
+							NavQualificationRC);
 			if (ArmingMethod == SwitchArming) {
 				TxSwitchArmed = false;
-				Nav.Sensitivity = Limit(RC[NavQualificationRC], 0, 1.0f);
-				F.AltControlEnabled = F.AltControlEnabled
-						&& ActiveAndTriggered(NAV_ALT_THRESHOLD_STICK,
-								NavQualificationRC);
 				EnableWPNav();
 			} else {
 				TxSwitchArmed = ActiveAndTriggered(0.1f, NavQualificationRC);
 				WPNavEnabled = true; //ActiveAndTriggered(0.2f, NavQualificationRC);
-				Nav.Sensitivity = Limit(RC[NavQualificationRC] - 0.1f, 0.0f,
-						1.0f);
 			}
-		else {
+		} else {
 			TxSwitchArmed = false;
-			Nav.Sensitivity = F.Emulation ? 0.5f : 1.0f;
 			F.AltControlEnabled = true;
 			EnableWPNav();
 		}

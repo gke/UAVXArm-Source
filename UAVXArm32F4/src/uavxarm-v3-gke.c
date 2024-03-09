@@ -108,8 +108,6 @@ void InitiateFlight(void) {
 
 	mS[StartTime] = mSClock();
 	F.DrivesArmed = true;
-
-	State = InFlight;
 }
 
 int main() {
@@ -175,6 +173,7 @@ int main() {
 
 	FirstPass = true;
 	State = Preflight;
+	LEDsOffExcept(ledRedSel);
 
 	while (true) {
 
@@ -206,6 +205,7 @@ int main() {
 
 			DoHouseKeeping();
 
+
 			switch (State) {
 			case Preflight:
 
@@ -222,8 +222,7 @@ int main() {
 					AlarmState = NoAlarms;
 					InitialThrottle = StickThrottle;
 
-					//	LEDsOff();
-					LEDsOffExcept(ledYellowSel);
+					LEDsOffExcept(ledGreenSel);
 
 					State = Ready;
 				}
@@ -233,10 +232,8 @@ int main() {
 
 				DisableFlightStuff();
 
-				if (Armed() || (UAVXAirframe == Instrumentation)) {
-					LEDsOffExcept(ledYellowSel);
+				if (Armed() || (UAVXAirframe == Instrumentation))
 					State = Starting;
-				}
 
 				break;
 			case Starting:
@@ -249,11 +246,8 @@ int main() {
 				InitControl();
 				InitNavigation();
 
-				LEDsOffExcept(ledYellowSel);
-
 				if ((UsingFastStart || GyrosErected)) {
 					mSTimer(WarmupTimeoutmS, WARMUP_TIMEOUT_MS);
-					LEDsOffExcept(ledYellowSel);
 					State = Warmup;
 				} else {
 					GyrosErected = false;
@@ -265,11 +259,10 @@ int main() {
 
 				SendFlightPacket(TelemetrySerial);
 
-				ErectGyros(imuSel); // blue, red if moving
+				ErectGyros(imuSel); // red if moving
 
 				if (GyrosErected) {
 					mSTimer(WarmupTimeoutmS, WARMUP_TIMEOUT_MS);
-					LEDsOffExcept(ledYellowSel);
 					State = Warmup;
 				}
 
@@ -293,10 +286,8 @@ int main() {
 						State = MonitorInstruments;
 					} else if (CurrGPSType == NoGPS)
 						State = ThrottleOpenCheck;
-					else {
-						LEDsOffExcept(ledBlueSel);
+					else
 						State = InitialisingGPS;
-					}
 				}
 
 				break;
@@ -310,13 +301,14 @@ int main() {
 			case InitialisingGPS:
 
 				if (Armed()) {
-					if (F.OriginValid) {
+					if (F.OriginValid)
 						//UbxReset(GPSSerial, stopGNSS);
 						State = ThrottleOpenCheck;
-					} else
+					else
 						CaptureHomePosition();
+
 				} else
-					State = Preflight;
+				  State = Preflight;
 
 				break;
 
@@ -325,10 +317,12 @@ int main() {
 				DisableFlightStuff();
 
 				if (F.ThrottleOpen) {
-					LEDsOffExcept(ledRedSel);
+					LEDOff(ledGreenSel);
+					LEDOn(ledRedSel);
 					AlarmState = CloseThrottle;
 				} else {
-					LEDsOffExcept(ledGreenSel);
+					LEDOff(ledRedSel);
+					LEDOn(ledGreenSel);
 					AlarmState = NoAlarms;
 					State = Landed;
 				}
@@ -347,10 +341,13 @@ int main() {
 
 					if (F.HaveGPS && !F.GPSValid) {
 						// just wait for GPS to come back
-					} else if (StickThrottle >= IdleThrottle)
+					} else if (StickThrottle >= IdleThrottle) {
 						InitiateFlight();
-					else if (mSTimeout(ArmedTimeoutmS))
+						State = InFlight;
+					} else if (mSTimeout(ArmedTimeoutmS)) {
 						InitiateShutdown(ArmingTimeout);
+						State = Shutdown;
+					}
 
 				} else { // became disarmed mid state change
 
@@ -383,6 +380,7 @@ int main() {
 
 						ResetMainTimeouts();
 
+						LEDsOffExcept(ledGreenSel);
 						State = Landed;
 
 					} else
@@ -422,7 +420,7 @@ int main() {
 					ResetMainTimeouts();
 					mSTimer(ThrottleIdleTimeoutmS, THR_LOW_DELAY_MS);
 
-					LEDsOffExcept(ledGreenSel);
+					//LEDsOffExcept(ledGreenSel);
 
 					State = Landing;
 
@@ -430,9 +428,10 @@ int main() {
 
 					DetermineInFlightThrottle();
 
-					if (UpsideDownMulticopter())
+					if (UpsideDownMulticopter()){
 						InitiateShutdown(UpsideDown);
-					else {
+						State = Shutdown;
+					} else {
 
 						RateEnergySum += Sqr(
 								Abs(Rate[X]) + Abs(Rate[Y]) + Abs(Rate[Z]));
@@ -444,8 +443,8 @@ int main() {
 						else {
 							if (F.HoldingAlt)
 								LEDChaser();
-							else
-								LEDsOffExcept(ledGreenSel);
+							//else
+							//	LEDsOffExcept(ledGreenSel);
 						}
 					}
 				}

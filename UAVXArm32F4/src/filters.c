@@ -550,7 +550,7 @@ real32 SF1eFilterDo(SF1eFilter *F, real32 x) {
 }
 
 real32 SF1eFilterAlpha(real32 rate, real32 cutoff) {
-	const real32 tau = 1.0f / (2.0f * M_PI * cutoff);
+	const real32 tau = 1.0f / (2.0f * PI * cutoff);
 //	const real32 te  = 1.0f / F->rate;
 //
 //	return 1.0f / (1.0f + tau / te);
@@ -560,17 +560,102 @@ real32 SF1eFilterAlpha(real32 rate, real32 cutoff) {
 //-----------------------------------------------------------------
 
 
-real32 SlewLimit(real32 O, real32 N, const real32 Slew, real32 dT) {
-	// DO NOT USE WHEN YOU HAVE 360DEG STEPS AS IT WILL NOT TRACK
-	real32 L, H, SlewD;
+real32 SlewLimit(real32 O, real32 N, const real32 Rate, real32 dT) {
+	real32 Low, High, Slew;
 
-	SlewD = Slew * dT;
+	Slew = Rate * dT;
 
-	L = O - SlewD;
-	H = O + SlewD;
-	O = (N < L) ? L : ((N > H) ? H : N);
+	Low = O - Slew;
+	High = O + Slew;
+	O = (N < Low) ? Low : ((N > High) ? High : N);
 	return (O);
 } // SlewLimit
+
+
+//============================CHATGPT
+
+#define MAX_CONTROL_SURFACE_ANGLE 60.0 // Maximum control surface angle in degrees
+#define MAX_HEADING_CHANGE 180.0       // Maximum heading change in degrees
+
+
+real32 s1updateValue(real32 oldValue, real32 newValue, real32 rate, real32 dT) {
+    // Calculate the absolute difference between the new value and old value
+    real32 absDiff = fabs(newValue - oldValue);
+
+    // Calculate the maximum change allowed based on the rate and time step
+    real32 maxChange = rate * dT;
+
+    // Calculate the adjusted change based on the sign of newValue - oldValue
+    real32 adjustedChange = (newValue > oldValue) ? fmin(absDiff, maxChange) : -fmin(absDiff, maxChange);
+
+    // Update the old value with the adjusted change
+    oldValue += adjustedChange;
+
+    return oldValue;
+}
+
+
+
+#define s3MAX_CONTROL_SURFACE_ANGLE (PI / 3.0) // Maximum control surface angle in radians (60 degrees)
+#define s3MAX_HEADING_CHANGE (PI)             // Maximum heading change in radians (180 degrees)
+
+
+real32 s3wrapToPi(real32 angle) {
+    // Wrap the angle to the range [-π, π]
+    return fmod(angle + PI, TWO_PI) - PI;
+}
+
+real32 s3updateAngle(real32 oldValue, real32 newValue, real32 maxAngle, real32 rate, real32 dT) {
+    // Wrap oldValue and newValue to the range [-π, π]
+    oldValue = s3wrapToPi(oldValue);
+    newValue = s3wrapToPi(newValue);
+
+    // Calculate the angular difference between the new value and old value
+    real32 diff = newValue - oldValue;
+
+    // Handle cases where the absolute difference is greater than π
+    if (fabs(diff) > PI)
+        if (diff > 0)
+            diff -= TWO_PI;
+       else
+            diff += TWO_PI;
+
+    // Calculate the maximum change allowed based on the rate and time step
+    real32 maxChange = rate * dT;
+
+    // Apply the maximum change
+    diff = fmin(maxChange, fabs(diff)) * (diff < 0 ? -1 : 1);
+
+    // Update the old value with the adjusted difference
+    oldValue += diff;
+
+    // Clamp the old value to the range [-maxAngle, maxAngle]
+    oldValue = fmax(-maxAngle, fmin(maxAngle, oldValue));
+
+    return oldValue;
+}
+
+int s3main() {
+    const real32 rate = 30.0; // Desired rate of change in radians per second
+    const real32 dT = 1.0;    // Time step in seconds
+
+    real32 oldValue = 0.0; // Initial value in radians
+    real32 newValue = -PI / 3.0; // New value in radians
+
+    // For control surfaces
+    oldValue = s3updateAngle(oldValue, newValue, MAX_CONTROL_SURFACE_ANGLE, rate, dT);
+    printf("Updated control surface angle: %.2f\n", oldValue); // Output: Updated control surface angle: -1.05
+
+    // For heading changes
+    oldValue = s3updateAngle(oldValue, newValue, MAX_HEADING_CHANGE, rate, dT);
+    printf("Updated heading: %.2f\n", oldValue); // Output: Updated heading: -1.05
+
+    return 0;
+}
+
+
+//=================================================================
+
 
 real32 Threshold(real32 v, real32 t) {
 

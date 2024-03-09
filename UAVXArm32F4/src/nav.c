@@ -59,9 +59,7 @@ void RotateWPPath(real32 * nx, real32 * ny, real32 x, real32 y) {
 
 } // RotateWPPath
 
-
 //_______________________________________________________________________________
-
 
 void UpdateWhere(void) {
 
@@ -95,7 +93,6 @@ boolean UseCrossTrack(real32 DiffHeading) {
 	return r;
 } // UseCrossTrack
 
-
 void CompensateCrossTrackError1D(void) {
 	real32 DiffHeading;
 
@@ -104,8 +101,8 @@ void CompensateCrossTrackError1D(void) {
 	DiffHeading = Nav.WPBearing - Nav.OriginalWPBearing;
 	if (UseCrossTrack(DiffHeading)) {
 		Nav.CrossTrackE = sinf(DiffHeading) * Nav.WPDistance;
-		Nav.WPBearing
-				+= Limit1(Nav.CrossTrackE * Nav.CrossTrackKp, DegreesToRadians(30));
+		Nav.WPBearing += Limit1(Nav.CrossTrackE * Nav.CrossTrackKp,
+				DegreesToRadians(30));
 		Nav.WPBearing = Make2Pi(Nav.WPBearing);
 	} else {
 		Nav.OriginalWPBearing = Nav.WPBearing; // safety
@@ -116,15 +113,13 @@ void CompensateCrossTrackError1D(void) {
 } // CompensateCrossTrackError1D
 
 timemS WPDistanceTimeout(void) {
-	return (timemS) (FromPercent(120) * Nav.WPDistance / Nav.MaxVelocity)
-			* 1000;
+	return (timemS) (FromPercent(120) * Nav.WPDistance / Nav.MaxVelocity) * 1000;
 } // WPDistanceTimeout
 
 timemS WPAltitudeTimeout(void) {
 	real32 t = Alt.P.Desired - Altitude;
 	return (timemS) (FromPercent(120) * Abs(t) / Alt.R.Max) * 1000;
 } // WPDistanceTimeout
-
 
 void CheckProximity(real32 V, real32 H) {
 
@@ -140,14 +135,13 @@ void CheckProximity(real32 V, real32 H) {
 
 } // CheckProximity
 
-
 void ZeroNavCorrections(void) {
 	idx a;
 
 	F.Glide =
 	//F.Navigate = F.ReturnHome =
-			F.CrossTrackActive = F.WayPointAchieved = F.WayPointCentred
-					= F.OrbitingWP = F.RapidDescentHazard = false;
+			F.CrossTrackActive = F.WayPointAchieved = F.WayPointCentred =
+					F.OrbitingWP = F.RapidDescentHazard = false;
 
 	SavedPIOState = F.UsingPOI;
 	F.UsingPOI = false;
@@ -156,10 +150,9 @@ void ZeroNavCorrections(void) {
 		Nav.C[a].Corr = 0.0f;
 
 	for (a = Pitch; a <= Yaw; a++)
-		A[a].NavCorr = A[a].DesiredNavCorr =  Nav.C[a].PosIntE = 0.0f;
+		A[a].NavCorr = A[a].DesiredNavCorr = Nav.C[a].PosIntE = 0.0f;
 
 } // ZeroNavCorrections
-
 
 void DecayNavCorrections(void) {
 	static timeuS LastUpdateuS = 0;
@@ -175,11 +168,10 @@ void DecayNavCorrections(void) {
 	for (a = Pitch; a <= Yaw; a++)
 		A[a].DesiredNavCorr = 0.0f;
 
-	F.WayPointAchieved = F.WayPointCentred = F.CrossTrackActive = F.OrbitingWP
-			= F.RapidDescentHazard = false;
+	F.WayPointAchieved = F.WayPointCentred = F.CrossTrackActive = F.OrbitingWP =
+			F.RapidDescentHazard = false;
 
 } // DecayNavCorrections
-
 
 real32 WPDistance(WPStruct * W) {
 	real32 NorthE, EastE;
@@ -190,7 +182,6 @@ real32 WPDistance(WPStruct * W) {
 	return sqrtf(Sqr(EastE) + Sqr(NorthE));
 
 } // WPDistance
-
 
 void DoOrbit(real32 Radius, real32 OrbitVelocity) {
 	real32 TangentialVelocity;
@@ -203,7 +194,6 @@ void DoOrbit(real32 Radius, real32 OrbitVelocity) {
 	Nav.DesiredHeading = Nav.WPBearing;
 
 } // DoOrbit
-
 
 real32 MinimumTurn(real32 Desired) {
 	real32 HE, absHE;
@@ -234,7 +224,6 @@ real32 MinimumTurn(real32 Desired) {
 
 } // MinimumTurn
 
-
 void NavYaw(WPStruct * W) {
 	real32 POIEastDiff, POINorthDiff, POIDistance;
 
@@ -252,9 +241,9 @@ void NavYaw(WPStruct * W) {
 				POINorthDiff = POI.Pos[NorthC] - Nav.C[NorthC].Pos;
 
 				POIDistance = sqrtf(Sqr(POIEastDiff) + Sqr(POINorthDiff));
-				Nav.DesiredHeading = (POIDistance
-						> (Nav.ProximityRadius * 2.0f)) ? atan2f(POIEastDiff,
-						POINorthDiff) : Heading;
+				Nav.DesiredHeading =
+						(POIDistance > (Nav.ProximityRadius * 2.0f)) ?
+								atan2f(POIEastDiff, POINorthDiff) : Heading;
 			} else {
 				if (F.UsingTurnToWP) {
 					if (F.WayPointCentred) {
@@ -273,7 +262,6 @@ void NavYaw(WPStruct * W) {
 	A[Yaw].NavCorr = 0.0f;
 
 } // NavYaw
-
 
 void NavPI_P(void) {
 	idx a;
@@ -309,16 +297,16 @@ void NavPI_P(void) {
 		// Velocity - really this is bank angle and controls acceleration not velocity
 		Nav.C[a].VelE = Nav.C[a].DesVel - Nav.C[a].Vel;
 
-		Pvel = Nav.C[a].VelE * Nav.VelKp * Nav.Sensitivity;
+		Pvel = Nav.C[a].VelE * Nav.VelKp;
 		Nav.C[a].Corr = Pvel;
 
 	}
 
 } // NavPI_P
 
-
 void Navigate(WPStruct * W) {
 	idx a;
+	real32 Turn, C;
 
 	NavdT = dTUpdate(&LastNavUpdateuS);
 	NavdTR = 1.0f / NavdT;
@@ -340,7 +328,14 @@ void Navigate(WPStruct * W) {
 
 		A[Pitch].DesiredNavCorr = A[Yaw].DesiredNavCorr = 0.0f;
 
-		Nav.DesiredHeading = Make2Pi(Nav.WPBearing);
+		//Turn = MinimumTurn(Make2Pi(Heading - Nav.WPBearing)); thermaling code more complex
+
+		Turn = MakePi(Heading - Nav.WPBearing);
+		C = (Turn * Nav.MaxBankAngle)/Nav.HeadingTurnout;
+		A[Roll].DesiredNavCorr = Limit1(C, Nav.MaxBankAngle);
+
+		//A[Roll].DesiredNavCorr = atan2(sin(Turn), cos(Turn) + 1.0);
+		//A[Roll].DesiredNavCorr = Limit1(A[Roll].DesiredNavCorr, Nav.MaxBankAngle);
 
 	} else {
 
@@ -352,8 +347,8 @@ void Navigate(WPStruct * W) {
 		NavYaw(W);
 		NavPI_P();
 
-		Rotate(&A[Pitch].DesiredNavCorr, &A[Roll].DesiredNavCorr, -Nav.C[NorthC].Corr,
-				Nav.C[EastC].Corr, -Heading);
+		Rotate(&A[Pitch].DesiredNavCorr, &A[Roll].DesiredNavCorr,
+				-Nav.C[NorthC].Corr, Nav.C[EastC].Corr, -Heading);
 
 		for (a = Pitch; a <= Roll; a++)
 			A[a].DesiredNavCorr = Limit1(A[a].DesiredNavCorr, Nav.MaxBankAngle);
@@ -362,15 +357,15 @@ void Navigate(WPStruct * W) {
 
 } // Navigate
 
+
 void InitNavigation(void) {
 
 	//DEFINITELY not memset(&Nav, 0, sizeof(NavStruct));
 
-	Nav.Elevation = Nav.Bearing = Nav.Distance = Nav.TakeoffBearing
-			= Nav.WPDistance = Nav.WPBearing = Nav.CrossTrackE = Nav.Sensitivity = 0.0f;
+	Nav.Elevation = Nav.DesiredHeading = Nav.Bearing = Nav.Distance = Nav.TakeoffBearing =
+			Nav.WPDistance = Nav.WPBearing = Nav.CrossTrackE = 0.0f;
 
-	F.OriginValid = F.OffsetOriginValid = F.NewNavUpdate = F.UsingPOI
-			= false;
+	F.OriginValid = F.OffsetOriginValid = F.NewNavUpdate = F.UsingPOI = false;
 
 	//GPS.C[NorthC].OriginRaw = GPS.C[NorthC].Raw = 0;
 	//GPS.C[EastC].OriginRaw = GPS.C[EastC].Raw = 0;
@@ -393,5 +388,4 @@ void InitNavigation(void) {
 	NavState = PIC;
 
 } // InitNavigation
-
 

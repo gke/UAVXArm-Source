@@ -131,7 +131,7 @@ void UpdateDrives(void) {
 		} else {
 			Rl = Limit1(A[Roll].Out, OUT_NEUTRAL);
 			Pl = Limit1(A[Pitch].Out, OUT_NEUTRAL);
-			Yl = Limit1(A[Yaw].Out, OUT_NEUTRAL);
+			Yl = -Limit1(A[Yaw].Out, OUT_NEUTRAL);
 		}
 
 		if (IsMulticopter)

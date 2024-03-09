@@ -243,7 +243,7 @@ void CalibrateAccSixPointSphere(uint8 s, uint8 imuSel) {
 
 	} while (calDirCnt != 6);
 
-	LEDOff(ledBlueSel);
+	LEDOff(ledYellowSel);
 
 	SphereFit(sp, ACC_CAL_SPHERE_CYCLES * 6, 50, 0.01f, SphereOrigin, &SphereRadius);
 

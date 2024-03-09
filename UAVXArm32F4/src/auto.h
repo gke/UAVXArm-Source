@@ -40,7 +40,7 @@ typedef struct {
 	NavCoordStruct C[3];
 
 	real32 PosKp, PosKi, VelKp;
-	real32 Sensitivity;
+	real32 UNUSED_Sensitivity;
 	real32 TakeoffBearing;
 	real32 Distance, Bearing, Elevation;
 	real32 Hint;

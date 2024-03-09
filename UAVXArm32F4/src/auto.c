@@ -121,14 +121,14 @@ void InitiateShutdown(uint8 s) {
 	F.DrivesArmed = false;
 	LEDsOn();
 	AlarmState = s;
-	State = Shutdown;
 } // InitiateShutdown
 
 void DoAutoLanding(void) {
 
 	if (DoLanding()) {
-		InitiateShutdown(NoAlarms);
 		NavState = Touchdown;
+		InitiateShutdown(NoAlarms);
+		State = Shutdown;
 	}
 
 } // DoAutoLanding
@@ -146,8 +146,10 @@ void DoForcedLanding(void) {
 	}
 	AlarmState = ForcedLanding;
 
-	if (DoLanding())
+	if (DoLanding()) {
 		InitiateShutdown(ForcedLanding);
+		State = Shutdown;
+	}
 
 } // DoForcedLanding
 

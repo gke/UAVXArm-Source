@@ -239,10 +239,7 @@ void GPSEmulation(void) {
 		Nav.Elevation = MakePi(atan2f(Altitude, Nav.Distance));
 		Nav.Hint = MakePi((Nav.Bearing - PI) - Heading);
 
-		F.NewNavUpdate =
-				(ArmingMethod == SwitchArming) ?
-						(Nav.Sensitivity > NAV_SENS_THRESHOLD_STICK) :
-						true;
+		F.NewNavUpdate = true;
 	}
 
 } // GPSEmulation

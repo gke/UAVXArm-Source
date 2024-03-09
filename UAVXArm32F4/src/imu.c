@@ -77,7 +77,7 @@ void ErectGyros(uint8 imuFilterSel) {
 	static int32 samples;
 	boolean Moving;
 
-	LEDOn(ledBlueSel);
+	LEDOn(ledYellowSel);
 
 	if (GyroErectionSamples == 0) {
 		for (a = X; a <= Z; a++)
@@ -95,8 +95,6 @@ void ErectGyros(uint8 imuFilterSel) {
 	t += MPU6XXXTemperature;
 
 	if (++GyroErectionSamples >= NoOfSamples) {
-		LEDOff(ledRedSel);
-		LEDOff(ledBlueSel);
 
 		Moving = false;
 		for (a = X; a <= Z; a++) {
@@ -107,17 +105,24 @@ void ErectGyros(uint8 imuFilterSel) {
 		}
 
 		if (Moving) {
+			GyroErectionSamples = 0;
 			DoBeep(2, 8);
-			LEDToggle(ledRedSel);
+			LEDOn(ledRedSel);
+
+			GyrosErected = false;
+
 		} else {
+
 			for (a = X; a <= Z; a++)
 				Config.GyroCal.Bias[a] = g[a];
 			Config.GyroCal.ReferenceTemp = t / NoOfSamples;
 
+			LEDOff(ledRedSel);
+
+			GyrosErected = true;
+
 			SendCalibrationPacket(TelemetrySerial);
 		}
-
-		GyrosErected = true;
 	}
 } // ErectGyros
 

@@ -18,18 +18,18 @@
 
 //  You should have received a copy of the GNU General Public License along
 //  with this program; if not, write to the Free Software Foundation, Inc.,
-//  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+//  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.  
 
 
 #if defined(UAVXF4V4)
-#define Revision "1562 V4 2024/02/06 07:09:30"
+#define Revision "1566 V4 2024/02/25 23:20:14"
 #else
-#define Revision "1562 V3 2024/02/06 07:09:30"
+#define Revision "1566 V3 2024/02/25 23:20:14"
 #endif
-#define RevisionNo 1562
-#define BLDate "Feb 06 2024"
-#define BLTime "18:09:30"
-#define BLRev "1562"
+#define RevisionNo 1566
+#define BLDate "Feb 26 2024"
+#define BLTime "10:20:14"
+#define BLRev "1566"
 
 
 
