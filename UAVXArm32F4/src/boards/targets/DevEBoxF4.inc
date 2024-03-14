@@ -133,7 +133,7 @@ void InitTarget(void) {
 	CurrMaxPWMOutputs = (UsingDCMotors) ? 4 : 10;
 
 	TelemetrySerial = Usart1;
-	InitSerialPort(TelemetrySerial, false);
+	InitSerialPort(TelemetrySerial, true);
 
 	// CurrRxType always FutabaSBus - forced in params.c
 
